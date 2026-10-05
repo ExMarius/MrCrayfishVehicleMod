@@ -1,0 +1,14 @@
+# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack.zip.
+# Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
+resource-pack:
+  url: ""
+  sha1: ""
+  required: true
+  prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
+
+physics:
+  global-speed-limit: 100.0
+  fuel-consumption-factor: 1.0
+
+persistence:
+  autosave-seconds: 300

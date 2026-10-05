@@ -1,0 +1,21 @@
+name: MrCrayfishVehiclePlugin
+version: '${version}'
+main: com.mrcrayfish.vehicle.paper.VehiclePlugin
+api-version: '26.2'
+description: Server-side port of MrCrayfish's Vehicle Mod for vanilla clients.
+author: MrCrayfish
+contributors: [ExMarius]
+website: https://github.com/ExMarius/MrCrayfishVehicleMod
+commands:
+  vehicle:
+    description: Manage server-side vehicles.
+    usage: /vehicle <spawn|remove|list|save|pack>
+    permission: vehicle.use
+    aliases: [veh, car]
+permissions:
+  vehicle.use:
+    description: Allows players to use vehicles.
+    default: true
+  vehicle.admin:
+    description: Allows spawning and removing vehicles.
+    default: op

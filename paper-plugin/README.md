@@ -1,0 +1,26 @@
+# MrCrayfish Vehicle Plugin prototype
+
+Paper 26.2 server-side port for unmodified (vanilla) clients. The prototype currently targets the Go Kart and ports the original land-vehicle equations, model layout, input mapping, and sounds.
+
+## Build
+
+Requires Java 25 and Gradle 9+.
+
+```bash
+./gradlew -p paper-plugin clean build resourcePack
+```
+
+Outputs:
+
+- `paper-plugin/build/libs/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar`
+- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip`
+
+## Test
+
+1. Install the JAR in a Paper 26.2 server's `plugins/` directory.
+2. Host the resource-pack ZIP at a direct HTTPS URL.
+3. Put the URL and SHA-1 in `plugins/MrCrayfishVehiclePlugin/config.yml`.
+4. Restart and run `/vehicle spawn go_kart` as an operator.
+5. Right-click the Go Kart to drive. Use W/S, A/D, Space for the handbrake, and Shift to dismount.
+
+This is an MVP. It intentionally keeps the original Forge project intact while the Paper implementation is validated.
