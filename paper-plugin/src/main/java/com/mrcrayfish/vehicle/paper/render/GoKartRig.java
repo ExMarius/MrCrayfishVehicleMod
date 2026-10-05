@@ -180,6 +180,9 @@ public final class GoKartRig {
             Quaternionf rotation = new Quaternionf()
                     .rotateY((float) Math.toRadians(-steer))
                     .rotateX((float) Math.toRadians(wheelRotation));
+            if (wheel.offset.x > 0.0F) {
+                rotation.rotateY((float) Math.PI);
+            }
             wheel.entity.setTransformation(transform(new Vector3f(), rotation,
                     new Vector3f(1.0F, 0.8F, 0.8F)));
         }

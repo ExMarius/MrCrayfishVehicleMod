@@ -26,6 +26,7 @@ public final class VehicleManager {
     private final VehiclePlugin plugin;
     private final Map<UUID, GoKart> vehicles = new HashMap<>();
     private final Map<UUID, GoKart> entities = new HashMap<>();
+    private final Map<UUID, VehicleChunk> chunkTickets = new HashMap<>();
     private final File storageFile;
     private BukkitTask tickTask;
     private BukkitTask saveTask;
@@ -52,10 +53,12 @@ public final class VehicleManager {
         }
         save();
         for (GoKart vehicle : new ArrayList<>(vehicles.values())) {
+            releaseChunkTicket(vehicle);
             vehicle.remove();
         }
         vehicles.clear();
         entities.clear();
+        chunkTickets.clear();
     }
 
     public GoKart spawn(Location location) {
@@ -66,6 +69,7 @@ public final class VehicleManager {
         GoKart vehicle = GoKart.spawn(plugin, id, location);
         vehicles.put(id, vehicle);
         index(vehicle);
+        updateChunkTicket(vehicle);
         return vehicle;
     }
 
@@ -76,6 +80,7 @@ public final class VehicleManager {
         for (Entity entity : vehicle.rig().entities()) {
             entities.remove(entity.getUniqueId());
         }
+        releaseChunkTicket(vehicle);
         vehicle.remove();
         save();
         return true;
@@ -212,6 +217,7 @@ public final class VehicleManager {
                     continue;
                 }
                 vehicle.tick(globalSpeedLimit, fuelFactor);
+                updateChunkTicket(vehicle);
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Vehicle tick failed for " + vehicle.id(), exception);
                 remove(vehicle);
@@ -222,6 +228,31 @@ public final class VehicleManager {
     private void index(GoKart vehicle) {
         for (Entity entity : vehicle.rig().entities()) {
             entities.put(entity.getUniqueId(), vehicle);
+        }
+    }
+
+    private void updateChunkTicket(GoKart vehicle) {
+        Location location = vehicle.location();
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        VehicleChunk next = new VehicleChunk(world, location.getBlockX() >> 4, location.getBlockZ() >> 4);
+        VehicleChunk previous = chunkTickets.get(vehicle.id());
+        if (next.equals(previous)) {
+            return;
+        }
+        next.world().addPluginChunkTicket(next.x(), next.z(), plugin);
+        if (previous != null) {
+            previous.world().removePluginChunkTicket(previous.x(), previous.z(), plugin);
+        }
+        chunkTickets.put(vehicle.id(), next);
+    }
+
+    private void releaseChunkTicket(GoKart vehicle) {
+        VehicleChunk chunk = chunkTickets.remove(vehicle.id());
+        if (chunk != null) {
+            chunk.world().removePluginChunkTicket(chunk.x(), chunk.z(), plugin);
         }
     }
 
@@ -238,5 +269,8 @@ public final class VehicleManager {
         if (removed > 0) {
             plugin.getLogger().info("Removed " + removed + " orphaned vehicle display entities.");
         }
+    }
+
+    private record VehicleChunk(World world, int x, int z) {
     }
 }
