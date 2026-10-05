@@ -18,7 +18,7 @@ Outputs:
 Published prototype downloads:
 
 - [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
-- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack.zip) (`SHA-1: 7b543650768ce7868f263ac36b0b85891f0eb828`)
+- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack.zip) (`SHA-1: 7b543650768ce7868f263ac36b0b85891f0eb828`; includes the GPLv3 license)
 
 ## Test
 
