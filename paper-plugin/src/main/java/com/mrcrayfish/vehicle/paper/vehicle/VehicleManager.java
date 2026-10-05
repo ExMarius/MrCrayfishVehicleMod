@@ -114,6 +114,10 @@ public final class VehicleManager {
         if (vehicle == null) {
             return;
         }
+        if (!player.hasPermission("vehicle.use")) {
+            player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
+            return;
+        }
         if (player.isSneaking() && player.hasPermission("vehicle.admin")) {
             remove(vehicle);
             player.sendRichMessage("<green>Vehicul eliminat.</green>");

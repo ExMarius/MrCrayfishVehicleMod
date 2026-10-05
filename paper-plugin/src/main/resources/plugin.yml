@@ -9,7 +9,7 @@ website: https://github.com/ExMarius/MrCrayfishVehicleMod
 commands:
   vehicle:
     description: Manage server-side vehicles.
-    usage: /vehicle <spawn|remove|list|save|pack>
+    usage: /vehicle <spawn|remove|refuel|list|save|pack>
     permission: vehicle.use
     aliases: [veh, car]
 permissions:

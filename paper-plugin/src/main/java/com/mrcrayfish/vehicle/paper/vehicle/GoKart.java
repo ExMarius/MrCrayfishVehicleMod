@@ -64,7 +64,9 @@ public final class GoKart {
         age++;
         Player driver = driver().orElse(null);
         VehicleInput input = driver == null ? VehicleInput.idle() : VehicleInput.from(driver.getCurrentInput());
-        throttle = input.throttle();
+        boolean enginePowered = driver != null
+                && (driver.getGameMode() == GameMode.CREATIVE || fuel > 0.0F);
+        throttle = enginePowered ? input.throttle() : 0.0F;
 
         float turnValue = input.steeringDirection();
         float steeringStrength = turnValue == 0.0F ? 0.2F : 0.05F;
@@ -221,7 +223,7 @@ public final class GoKart {
         if (world == null || driver == null) {
             return;
         }
-        if (age % 18 == 0) {
+        if (age % 18 == 0 && (fuel > 0.0F || driver.getGameMode() == GameMode.CREATIVE)) {
             float normalizedSpeed = (float) Math.min(1.0D, velocity.length() / 18.0D);
             float pitch = 0.9F + (2.0F - 0.9F) * normalizedSpeed;
             world.playSound(location, "vehicle:entity.go_kart.engine", SoundCategory.NEUTRAL, 0.55F, pitch);

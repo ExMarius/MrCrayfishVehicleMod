@@ -26,6 +26,6 @@ Published prototype downloads:
 2. Host the resource-pack ZIP at a direct HTTPS URL.
 3. Put the URL and SHA-1 in `plugins/MrCrayfishVehiclePlugin/config.yml`.
 4. Restart and run `/vehicle spawn go_kart` as an operator.
-5. Right-click the Go Kart to drive. Use W/S, A/D, Space for the handbrake, and Shift to dismount.
+5. Right-click the Go Kart to drive. Use W/S, A/D, Space for the handbrake, and Shift to dismount. Operators can refill the nearest kart with `/vehicle refuel`.
 
 This is an MVP. It intentionally keeps the original Forge project intact while the Paper implementation is validated.

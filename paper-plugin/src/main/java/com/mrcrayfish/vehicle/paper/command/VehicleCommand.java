@@ -32,8 +32,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return true;
         }
         switch (args[0].toLowerCase(Locale.ROOT)) {
-            case "spawn" -> spawn(sender);
+            case "spawn" -> spawn(sender, args);
             case "remove" -> remove(sender);
+            case "refuel" -> refuel(sender);
             case "list" -> sender.sendRichMessage("<gold>Vehicule active:</gold> <white>" + vehicles.vehicles().size() + "</white>");
             case "save" -> {
                 if (!sender.hasPermission("vehicle.admin")) {
@@ -49,13 +50,17 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         return true;
     }
 
-    private void spawn(CommandSender sender) {
+    private void spawn(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             return;
         }
         if (!sender.hasPermission("vehicle.admin")) {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        if (args.length < 2 || !args[1].equalsIgnoreCase("go_kart")) {
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn go_kart</yellow>");
             return;
         }
         GoKart goKart = vehicles.spawn(player.getLocation());
@@ -78,6 +83,22 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }, () -> player.sendRichMessage("<red>Nu există niciun vehicul la mai puțin de 6 blocuri.</red>"));
     }
 
+    private void refuel(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (!sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        vehicles.nearest(player.getLocation(), 6.0D).ifPresentOrElse(vehicle -> {
+            vehicle.setFuel(GoKart.ENERGY_CAPACITY);
+            vehicles.save();
+            player.sendRichMessage("<green>Rezervorul vehiculului a fost umplut.</green>");
+        }, () -> player.sendRichMessage("<red>Nu există niciun vehicul la mai puțin de 6 blocuri.</red>"));
+    }
+
     private void pack(CommandSender sender) {
         String url = plugin.getConfig().getString("resource-pack.url", "");
         if (url.isBlank()) {
@@ -91,6 +112,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>prototip Go Kart</gray>");
         sender.sendRichMessage("<yellow>/" + label + " spawn go_kart</yellow> <gray>- creează un Go Kart</gray>");
         sender.sendRichMessage("<yellow>/" + label + " remove</yellow> <gray>- elimină vehiculul apropiat</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
     }
@@ -99,7 +121,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
             return filter(List.of("go_kart"), args[1]);
