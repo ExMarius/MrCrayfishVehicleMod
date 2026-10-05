@@ -59,6 +59,7 @@ def build(output: Path) -> tuple[Path, str]:
             }
         })
         copy(ROOT / "src/main/resources/vehicle_mod.png", pack / "pack.png")
+        copy(ROOT / "MOD-LICENSE.txt", pack / "LICENSE.txt")
 
         namespace = pack / "assets/vehicle"
         for item, model in {

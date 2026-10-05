@@ -20,6 +20,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: paper-plugin-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -42,14 +46,24 @@ jobs:
 
       - name: Verify resource pack
         run: |
-          unzip -t paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip
-          sha1sum paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip"
+          unzip -t "$PACK"
+          PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
+          CONFIG_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)
+          echo "Resource-pack SHA-1: $PACK_SHA1"
+          test "$PACK_SHA1" = "$CONFIG_SHA1"
+          unzip -l "$PACK" LICENSE.txt | grep -q LICENSE.txt
 
       - name: Publish prototype release
         if: github.event_name != 'pull_request'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          BRANCH_HEAD=$(git ls-remote --heads origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)
+          if [ "$GITHUB_SHA" != "$BRANCH_HEAD" ]; then
+            echo "Skipping release upload from stale commit $GITHUB_SHA (branch head is $BRANCH_HEAD)."
+            exit 0
+          fi
           TAG="vehicle-plugin-prototype-v0.1.0"
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
           PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip"
