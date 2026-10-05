@@ -8,13 +8,6 @@ on:
       - "src/main/resources/assets/vehicle/**"
       - "src/main/resources/vehicle_mod.png"
       - ".github/workflows/paper-plugin.yml"
-  pull_request:
-    paths:
-      - "paper-plugin/**"
-      - "tools/build_resource_pack.py"
-      - "src/main/resources/assets/vehicle/**"
-      - "src/main/resources/vehicle_mod.png"
-      - ".github/workflows/paper-plugin.yml"
   workflow_dispatch:
 
 permissions:
