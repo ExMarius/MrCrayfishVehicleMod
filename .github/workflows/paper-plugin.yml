@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -44,6 +44,24 @@ jobs:
         run: |
           unzip -t paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip
           sha1sum paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip
+
+      - name: Publish prototype release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="vehicle-plugin-prototype-v0.1.0"
+          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$JAR" "$PACK" --clobber
+          else
+            gh release create "$TAG" "$JAR" "$PACK" \
+              --target "$GITHUB_SHA" \
+              --title "Vehicle Plugin Go Kart prototype v0.1.0" \
+              --notes "First server-side Go Kart prototype for Paper 26.2. Requires the attached resource pack." \
+              --prerelease
+          fi
 
       - name: Upload deliverables
         uses: actions/upload-artifact@v4
