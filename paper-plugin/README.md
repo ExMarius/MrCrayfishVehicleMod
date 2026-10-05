@@ -15,6 +15,11 @@ Outputs:
 - `paper-plugin/build/libs/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar`
 - `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip`
 
+Published prototype downloads:
+
+- [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
+- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack.zip) (`SHA-1: 6073315195905ac83dcef4015c1395d7a0b9304c`)
+
 ## Test
 
 1. Install the JAR in a Paper 26.2 server's `plugins/` directory.
