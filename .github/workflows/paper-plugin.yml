@@ -69,6 +69,9 @@ jobs:
           PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$JAR" "$PACK" --clobber
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
+              -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            gh release edit "$TAG" --target "$GITHUB_SHA"
           else
             gh release create "$TAG" "$JAR" "$PACK" \
               --target "$GITHUB_SHA" \
