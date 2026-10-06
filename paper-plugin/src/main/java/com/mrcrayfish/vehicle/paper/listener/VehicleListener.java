@@ -10,21 +10,69 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
+import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.world.WorldLoadEvent;
 
+import java.util.Locale;
+import java.util.regex.Pattern;
+
 public final class VehicleListener implements Listener {
+    private static final Pattern GLOBAL_ENTITY_KILL = Pattern.compile(
+            "(?:^|\\s)(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
 
     public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
         this.vehicles = vehicles;
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
+        if (unsafeGlobalKill(event.getMessage())) {
+            event.setCancelled(true);
+            event.getPlayer().sendRichMessage(
+                    "<red>Comanda a fost blocată: ar elimina scaunele vehiculelor și jucătorii.</red> "
+                            + "<yellow>Exclude tag-ul cu tag=!mcv_plugin_vehicle.</yellow>");
+            plugin.getLogger().warning("Blocked an unsafe entity-wide kill command from "
+                    + event.getPlayer().getName());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST)
+    public void onServerCommand(ServerCommandEvent event) {
+        if (unsafeGlobalKill(event.getCommand())) {
+            event.setCancelled(true);
+            event.getSender().sendRichMessage(
+                    "<red>Comanda a fost blocată. Folosește tag=!mcv_plugin_vehicle în selector.</red>");
+            plugin.getLogger().warning("Blocked an unsafe entity-wide kill command from "
+                    + event.getSender().getName());
+        }
+    }
+
+    static boolean unsafeGlobalKill(String command) {
+        String normalized = command.startsWith("/") ? command.substring(1) : command;
+        java.util.regex.Matcher matcher = GLOBAL_ENTITY_KILL.matcher(normalized);
+        while (matcher.find()) {
+            int selectorStart = normalized.toLowerCase(Locale.ROOT).indexOf("@e", matcher.start());
+            int selectorEnd = selectorStart + 2;
+            if (selectorEnd < normalized.length() && normalized.charAt(selectorEnd) == '[') {
+                int closingBracket = normalized.indexOf(']', selectorEnd + 1);
+                selectorEnd = closingBracket < 0 ? normalized.length() : closingBracket + 1;
+            }
+            String selector = normalized.substring(selectorStart, selectorEnd).toLowerCase(Locale.ROOT);
+            if (!selector.contains("tag=!mcv_plugin_vehicle")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

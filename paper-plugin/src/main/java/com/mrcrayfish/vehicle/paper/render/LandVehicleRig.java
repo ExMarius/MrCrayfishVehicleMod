@@ -345,7 +345,7 @@ public final class LandVehicleRig {
             carrier.horse = null;
             if (!removed && riderId != null) {
                 Player rider = Bukkit.getPlayer(riderId);
-                if (rider != null && rider.isOnline()) {
+                if (rider != null && rider.isOnline() && !rider.isDead()) {
                     Horse replacement = createHorse(carrier);
                     if (replacement != null && replacement.addPassenger(rider)) {
                         carrier.rider = riderId;
