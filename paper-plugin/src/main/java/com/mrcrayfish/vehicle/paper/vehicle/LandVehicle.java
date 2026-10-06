@@ -29,7 +29,6 @@ public final class LandVehicle {
     private static final float BRAKE_POWER = -1.0F;
     private static final float DRAG = 0.001F;
 
-    private final VehiclePlugin plugin;
     private final UUID id;
     private final LandVehicleSpec spec;
     private final TrailerManager trailers;
@@ -62,9 +61,8 @@ public final class LandVehicle {
     private int age;
     private boolean transported;
 
-    private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
+    private LandVehicle(UUID id, Location location, LandVehicleSpec spec,
                         TrailerManager trailers, LandVehicleRig rig) {
-        this.plugin = plugin;
         this.id = id;
         this.location = location;
         this.spec = spec;
@@ -82,7 +80,7 @@ public final class LandVehicle {
         root.setYaw(normalizeYaw(root.getYaw()));
         root.setY(findSpawnY(root));
         LandVehicleRig rig = LandVehicleRig.spawn(id, spec, root);
-        return new LandVehicle(plugin, id, root, spec, trailers, rig);
+        return new LandVehicle(id, root, spec, trailers, rig);
     }
 
     public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
@@ -401,12 +399,9 @@ public final class LandVehicle {
         }
         for (Entity seat : rig.seatCarriers()) {
             if (seat.getPassengers().isEmpty() && seat.addPassenger(player)) {
-                /* VehicleEntity#addPassenger faces a new rider along the vehicle before
-                 * clampYaw starts allowing head-only movement. */
-                player.setRotation(location.getYaw(), 0.0F);
-                if (plugin.getConfig().getBoolean("seating.lock-body-to-seat", true)) {
-                    player.setBodyYaw(location.getYaw());
-                }
+                /* The player is deliberately never rotated here or during ticks.
+                 * Riding the living seat carrier makes the vanilla client hold the
+                 * torso in its mounted pose while leaving camera/head input alone. */
                 return true;
             }
         }
@@ -419,40 +414,6 @@ public final class LandVehicle {
             return Optional.empty();
         }
         return Optional.of(player);
-    }
-
-    /**
-     * Paper equivalent of VehicleEntity#clampYaw: the torso remains aligned
-     * with the seat while the player's camera/head stays free inside the
-     * original -120..120 degree range. Pitch is never constrained.
-     */
-    public void updateRiderPose() {
-        if (!plugin.getConfig().getBoolean("seating.lock-body-to-seat", true)) {
-            return;
-        }
-        float bodyYaw = location.getYaw();
-        float maximumHeadYaw = clamp((float) plugin.getConfig().getDouble(
-                "seating.max-head-yaw", 120.0D), 0.0F, 180.0F);
-        for (Entity seat : rig.seatCarriers()) {
-            for (Entity passenger : seat.getPassengers()) {
-                if (!(passenger instanceof Player player)) {
-                    continue;
-                }
-                /* Keep both rotations continuous across the -180/180 boundary. Sending the
-                 * normalized vehicle yaw directly makes the client interpolate a full turn,
-                 * which is the visible spin/glitch during corners. */
-                float currentBodyYaw = player.getBodyYaw();
-                player.setBodyYaw(continuousYaw(currentBodyYaw, bodyYaw));
-
-                float headYaw = player.getLocation().getYaw();
-                float relativeYaw = wrapDegrees(headYaw - bodyYaw);
-                float clampedYaw = clamp(relativeYaw, -maximumHeadYaw, maximumHeadYaw);
-                if (Math.abs(clampedYaw - relativeYaw) > 0.001F) {
-                    player.setRotation(headYaw + clampedYaw - relativeYaw,
-                            player.getLocation().getPitch());
-                }
-            }
-        }
     }
 
     public void remove() {
@@ -617,10 +578,6 @@ public final class LandVehicle {
 
     private static float yaw(Vector vector) {
         return (float) (Math.toDegrees(Math.atan2(vector.getZ(), vector.getX())) - 90.0D);
-    }
-
-    static float continuousYaw(float current, float target) {
-        return current + wrapDegrees(target - current);
     }
 
     private static float wrapDegrees(float value) {

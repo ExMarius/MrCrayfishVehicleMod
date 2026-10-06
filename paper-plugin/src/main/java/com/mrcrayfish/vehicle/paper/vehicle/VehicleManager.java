@@ -314,7 +314,6 @@ public final class VehicleManager {
                     continue;
                 }
                 vehicle.tick(globalSpeedLimit, fuelFactor);
-                vehicle.updateRiderPose();
                 if (vehicle.resting()) {
                     releaseChunkTicket(vehicle);
                     if (!trailers.referencesVehicle(vehicle.id())
@@ -430,7 +429,7 @@ public final class VehicleManager {
             }
         }
         if (removed > 0) {
-            plugin.getLogger().info("Removed " + removed + " orphaned vehicle display entities.");
+            plugin.getLogger().info("Removed " + removed + " orphaned vehicle rig entities.");
         }
     }
 

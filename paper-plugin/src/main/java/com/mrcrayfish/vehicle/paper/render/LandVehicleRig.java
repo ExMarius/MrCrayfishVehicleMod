@@ -7,6 +7,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.entity.ArmorStand;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
@@ -94,20 +95,22 @@ public final class LandVehicleRig {
         }
 
         List<SeatCarrier> seats = new ArrayList<>();
-        boolean bodyAssigned = false;
         for (LandVehicleSpec.Seat seat : spec.seats()) {
-            ItemDisplay carrier;
-            if (seat.driver() && !bodyAssigned) {
-                carrier = body;
-                bodyAssigned = true;
-            } else {
-                carrier = display(world, location, new ItemStack(Material.AIR));
-                mark(carrier, vehicleId);
-                all.add(carrier);
+            /* The smooth ItemDisplay remains the moving anchor. The player rides a
+             * marker ArmorStand nested on it, so the vanilla client applies its
+             * normal horse-like riding pose without any forced player yaw packets. */
+            ItemDisplay anchor = display(world, location, new ItemStack(Material.AIR));
+            mark(anchor, vehicleId);
+            all.add(anchor);
+            ArmorStand mount = seatMount(world, location);
+            mark(mount, vehicleId);
+            all.add(mount);
+            if (!anchor.addPassenger(mount)) {
+                throw new IllegalStateException("Could not attach living seat for " + spec.id());
             }
-            seats.add(new SeatCarrier(carrier, seat));
+            seats.add(new SeatCarrier(anchor, mount, seat));
         }
-        if (!bodyAssigned) {
+        if (seats.stream().noneMatch(seat -> seat.properties.driver())) {
             throw new IllegalArgumentException("Land vehicle " + spec.id() + " has no driver seat");
         }
 
@@ -140,6 +143,20 @@ public final class LandVehicleRig {
             display.setPersistent(false);
             display.setShadowRadius(0.0F);
             display.setShadowStrength(0.0F);
+        });
+    }
+
+    private static ArmorStand seatMount(World world, Location location) {
+        return world.spawn(location, ArmorStand.class, stand -> {
+            stand.setVisible(false);
+            stand.setMarker(true);
+            stand.setGravity(false);
+            stand.setInvulnerable(true);
+            stand.setPersistent(false);
+            stand.setSilent(true);
+            stand.setBasePlate(false);
+            stand.setArms(false);
+            stand.setCollidable(false);
         });
     }
 
@@ -240,13 +257,13 @@ public final class LandVehicleRig {
         }
 
         for (SeatCarrier carrier : seats) {
-            if (carrier.entity == body) {
-                continue;
-            }
             Vector3f seatPoint = wheelie(seatOffset(carrier.properties), wheelieAngle);
             Location seatLocation = local(root, seatPoint);
-            carrier.entity.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            carrier.entity.setRotation(yaw, 0.0F);
+            carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            carrier.anchor.setRotation(yaw, 0.0F);
+            // Rotate only the dummy mount. The client derives the rider body pose
+            // from it while retaining complete control of the rider's head/camera.
+            carrier.mount.setRotation(continuousYaw(carrier.mount.getLocation().getYaw(), yaw), 0.0F);
         }
     }
 
@@ -311,6 +328,16 @@ public final class LandVehicleRig {
         return (float) Math.toRadians(degrees);
     }
 
+    private static float continuousYaw(float current, float target) {
+        float delta = (target - current) % 360.0F;
+        if (delta >= 180.0F) {
+            delta -= 360.0F;
+        } else if (delta < -180.0F) {
+            delta += 360.0F;
+        }
+        return current + delta;
+    }
+
     private static Location local(Location root, Vector3f point) {
         double radians = Math.toRadians(root.getYaw());
         double sin = Math.sin(radians);
@@ -318,12 +345,12 @@ public final class LandVehicleRig {
         return root.clone().add(point.x * cos - point.z * sin, point.y, point.x * sin + point.z * cos);
     }
 
-    public ItemDisplay driverSeat() {
-        return seats.stream().filter(seat -> seat.properties.driver()).findFirst().orElseThrow().entity;
+    public ArmorStand driverSeat() {
+        return seats.stream().filter(seat -> seat.properties.driver()).findFirst().orElseThrow().mount;
     }
 
-    public List<ItemDisplay> seatCarriers() {
-        return seats.stream().map(SeatCarrier::entity).toList();
+    public List<ArmorStand> seatCarriers() {
+        return seats.stream().map(SeatCarrier::mount).toList();
     }
 
     public List<Entity> entities() {
@@ -340,7 +367,7 @@ public final class LandVehicleRig {
                 && (steering == null || steering.isValid())
                 && (towBar == null || towBar.isValid())
                 && wheels.stream().allMatch(wheel -> wheel.entity.isValid())
-                && seats.stream().allMatch(seat -> seat.entity.isValid());
+                && seats.stream().allMatch(seat -> seat.anchor.isValid() && seat.mount.isValid());
     }
 
     public void remove() {
@@ -352,6 +379,6 @@ public final class LandVehicleRig {
     private record WheelDisplay(ItemDisplay entity, LandVehicleSpec.Wheel properties) {
     }
 
-    private record SeatCarrier(ItemDisplay entity, LandVehicleSpec.Seat properties) {
+    private record SeatCarrier(ItemDisplay anchor, ArmorStand mount, LandVehicleSpec.Seat properties) {
     }
 }
