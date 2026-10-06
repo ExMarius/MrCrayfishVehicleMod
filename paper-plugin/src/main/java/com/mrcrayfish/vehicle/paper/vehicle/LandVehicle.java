@@ -4,10 +4,11 @@ import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.physics.SurfaceProfile;
 import com.mrcrayfish.vehicle.paper.physics.VehicleCollisionMover;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
+import com.mrcrayfish.vehicle.paper.runtime.EngineSoundController;
+import com.mrcrayfish.vehicle.paper.runtime.TrailerManager;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
@@ -31,7 +32,9 @@ public final class LandVehicle {
     private final VehiclePlugin plugin;
     private final UUID id;
     private final LandVehicleSpec spec;
+    private final TrailerManager trailers;
     private final LandVehicleRig rig;
+    private final EngineSoundController soundController;
     private final double[] wheelPositions;
 
     private Location location;
@@ -57,28 +60,37 @@ public final class LandVehicle {
     private int boostTimer;
     private int wheelieCount;
     private int age;
+    private boolean transported;
 
-    private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec, LandVehicleRig rig) {
+    private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
+                        TrailerManager trailers, LandVehicleRig rig) {
         this.plugin = plugin;
         this.id = id;
         this.location = location;
         this.spec = spec;
+        this.trailers = trailers;
         this.rig = rig;
+        this.soundController = new EngineSoundController(spec, rig);
         this.wheelPositions = new double[spec.wheels().size() * 3];
         this.fuel = spec.energyCapacity();
     }
 
-    public static LandVehicle spawn(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec) {
+    public static LandVehicle spawn(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
+                                    TrailerManager trailers) {
         Location root = location.clone();
         root.setPitch(0.0F);
         root.setYaw(normalizeYaw(root.getYaw()));
         root.setY(findSpawnY(root));
         LandVehicleRig rig = LandVehicleRig.spawn(id, spec, root);
-        return new LandVehicle(plugin, id, root, spec, rig);
+        return new LandVehicle(plugin, id, root, spec, trailers, rig);
     }
 
     public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
         age++;
+        if (transported) {
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
+            return;
+        }
         Player driver = driver().orElse(null);
 
         /* LandVehicleEntity#onClientUpdate runs before onUpdateVehicle. */
@@ -91,6 +103,7 @@ public final class LandVehicle {
         }
 
         if (driver == null && resting()) {
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
             updateInput(null);
             float previousRenderAngle = renderWheelAngle;
             renderWheelAngle += (steeringAngle - renderWheelAngle) * 0.3F;
@@ -153,7 +166,8 @@ public final class LandVehicle {
                 wheelieAngle, driver != null && enginePowered, age);
         effects(driver, enginePowered);
         if (driver != null && spec.lawnMower()) {
-            LawnMowerBehavior.cutBushes(location, motion, spec.entityWidth(), driver);
+            LawnMowerBehavior.cutBushes(location, motion, spec.entityWidth(), driver,
+                    stack -> trailers.storeMowerDrop(id, stack));
         }
     }
 
@@ -352,20 +366,23 @@ public final class LandVehicle {
 
     private void effects(Player driver, boolean enginePowered) {
         World world = location.getWorld();
-        if (world == null || driver == null) {
+        if (world == null) {
+            return;
+        }
+        if (driver == null) {
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
             return;
         }
 
-        if (age % 18 == 0 && enginePowered) {
-            float pitch = spec.minEnginePitch()
-                    + (spec.maxEnginePitch() - spec.minEnginePitch())
-                    * (float) Math.abs(motion.length() * 20.0D / 25.0D);
-            if ((isSliding(forward(location.getYaw())) && throttle > 0.0F && !handbraking) || boosting) {
-                pitch = spec.minEnginePitch()
-                        + (spec.maxEnginePitch() - spec.minEnginePitch()) * throttle;
-            }
-            world.playSound(location, spec.engineSound(), SoundCategory.NEUTRAL, 1.0F, pitch);
-        }
+        boolean sliding = isSliding(forward(location.getYaw()));
+        float targetPitch = EngineSoundController.targetPitch(spec, motion.length() * 20.0D,
+                charging, chargingAmount, sliding, boosting, throttle, handbraking);
+        List<UUID> riders = rig.seatCarriers().stream()
+                .flatMap(seat -> seat.getPassengers().stream())
+                .filter(Player.class::isInstance)
+                .map(Entity::getUniqueId)
+                .toList();
+        soundController.tick(location, enginePowered, targetPitch, riders);
 
         if (age % 2 == 0 && enginePowered && spec.exhaustFumes()) {
             LandVehicleSpec.Point point = spec.exhaustPosition();
@@ -379,7 +396,7 @@ public final class LandVehicle {
     }
 
     public boolean mount(Player player) {
-        if (!rig.valid()) {
+        if (transported || !rig.valid()) {
             return false;
         }
         for (Entity seat : rig.seatCarriers()) {
@@ -399,7 +416,44 @@ public final class LandVehicle {
     }
 
     public void remove() {
+        soundController.stop(location);
         rig.remove();
+    }
+
+    public Location towBarLocation() {
+        LandVehicleSpec.Point tow = spec.towBarOffset();
+        return local(location,
+                tow.x() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
+                tow.y() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
+                tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT);
+    }
+
+    public void placeOnTrailer(Location trailerLocation) {
+        LandVehicleSpec.Point offset = spec.trailerOffset();
+        Location carried = local(trailerLocation, offset.x(), 0.5D + offset.y(), offset.z());
+        carried.setYaw(trailerLocation.getYaw());
+        this.location = carried;
+        this.velocity.zero();
+        this.motion.zero();
+        this.verticalVelocity = 0.0D;
+        this.transported = true;
+        rig.update(location, 0.0F, frontWheelRotation, rearWheelRotation, 0.0F, false, age);
+    }
+
+    public void releaseFromTrailer(Location releaseLocation) {
+        this.location = releaseLocation.clone();
+        this.location.setPitch(0.0F);
+        this.transported = false;
+        this.onGround = false;
+        rig.update(location, 0.0F, frontWheelRotation, rearWheelRotation, 0.0F, false, age);
+    }
+
+    public boolean transported() {
+        return transported;
+    }
+
+    public boolean occupied() {
+        return rig.seatCarriers().stream().anyMatch(seat -> !seat.getPassengers().isEmpty());
     }
 
     public UUID id() {

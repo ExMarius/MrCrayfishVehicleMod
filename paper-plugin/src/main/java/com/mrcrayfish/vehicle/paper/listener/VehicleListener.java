@@ -7,6 +7,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -24,11 +26,13 @@ public final class VehicleListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInteract(PlayerInteractEntityEvent event) {
-        if (vehicles.byEntity(event.getRightClicked()).isEmpty()) {
-            return;
+        if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
+            event.setCancelled(true);
+            vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
+        } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
+            event.setCancelled(true);
+            vehicles.trailers().handleInteraction(event.getPlayer(), event.getRightClicked());
         }
-        event.setCancelled(true);
-        vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
     }
 
     @EventHandler
@@ -44,7 +48,7 @@ public final class VehicleListener implements Listener {
     public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
         switch (event.getStatus()) {
             case SUCCESSFULLY_LOADED -> event.getPlayer().sendRichMessage(
-                    "<green>[Vehicle] Resource pack-ul r7 a fost încărcat.</green>");
+                    "<green>[Vehicle] Resource pack-ul r8 a fost încărcat.</green>");
             case DECLINED, FAILED_DOWNLOAD, FAILED_RELOAD, INVALID_URL, DISCARDED -> {
                 plugin.getLogger().warning("Resource pack " + event.getStatus() + " for "
                         + event.getPlayer().getName());
@@ -60,7 +64,18 @@ public final class VehicleListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        vehicles.trailers().onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onInventoryClick(InventoryClickEvent event) {
+        vehicles.trailers().handleInventoryClick(event);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onInventoryDrag(InventoryDragEvent event) {
+        vehicles.trailers().handleInventoryDrag(event);
     }
 
     @EventHandler

@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r7 — Go Kart, Lawn Mower, Quad Bike",
+                "description": "MrCrayfish Vehicle Plugin r8 — vehicles, improved engine audio, five trailers",
                 "pack_format": 46,
             }
         })
@@ -78,6 +78,12 @@ def build(output: Path) -> tuple[Path, str]:
             "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
+            "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
+            "seeder_body": ("vehicle:item/seeder_body", 16383998),
+            "storage_trailer_body": ("vehicle:item/storage_trailer_body", 16383998),
+            "fluid_trailer_body": ("vehicle:item/fluid_trailer_body", 16383998),
+            "vehicle_trailer_body": ("vehicle:item/vehicle_trailer_body", 16383998),
+            "seed_spiker": ("vehicle:item/seed_spiker", 0xFFFFFF),
             "standard_wheel": ("vehicle:item/standard_wheel", 0xFFFFFF),
             "iron_small_engine": ("vehicle:item/iron_small_engine", 0xFFFFFF),
         }.items():
@@ -118,6 +124,18 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/tow_bar.json",
             namespace / "models/item/tow_bar.json",
         )
+        for source, target in {
+            "trailer_fertilizer_body": "fertilizer_body",
+            "trailer_seeder_body": "seeder_body",
+            "trailer_chest_body": "storage_trailer_body",
+            "trailer_fluid_body": "fluid_trailer_body",
+            "trailer_body": "vehicle_trailer_body",
+            "seed_spiker": "seed_spiker",
+        }.items():
+            convert_model(
+                ASSETS / f"models/vehicle/{source}.json",
+                namespace / f"models/item/{target}.json",
+            )
         convert_model(
             ASSETS / "models/item/standard_wheel.json",
             namespace / "models/item/standard_wheel.json",
@@ -151,6 +169,10 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "textures/item/lawn_mower_logo.png",
         )
         copy(
+            ASSETS / "textures/model/cray_industries.png",
+            namespace / "textures/model/cray_industries.png",
+        )
+        copy(
             ASSETS / "textures/model/wheel.png",
             namespace / "textures/item/standard_wheel.png",
         )
@@ -172,10 +194,10 @@ def build(output: Path) -> tuple[Path, str]:
         )
         write_json(namespace / "sounds.json", {
             "entity.go_kart.engine": {
-                "sounds": [{"name": "vehicle:entity/go_kart/engine"}]
+                "sounds": [{"name": "vehicle:entity/go_kart/engine", "preload": True}]
             },
             "entity.quad_bike.engine": {
-                "sounds": [{"name": "vehicle:entity/quad_bike/engine"}]
+                "sounds": [{"name": "vehicle:entity/quad_bike/engine", "preload": True}]
             },
         })
 
@@ -197,7 +219,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r7.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r8.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

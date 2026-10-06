@@ -17,6 +17,7 @@ import org.bukkit.util.Vector;
 import java.util.Collection;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 
 /** Direct server-side port of LawnMowerEntity's BushBlock cutting loop. */
 final class LawnMowerBehavior {
@@ -40,7 +41,8 @@ final class LawnMowerBehavior {
     private LawnMowerBehavior() {
     }
 
-    static void cutBushes(Location root, Vector motion, float entityWidth, Player driver) {
+    static void cutBushes(Location root, Vector motion, float entityWidth, Player driver,
+                          Function<ItemStack, ItemStack> storage) {
         World world = root.getWorld();
         if (world == null) {
             return;
@@ -65,20 +67,24 @@ final class LawnMowerBehavior {
                 if (event.isCancelled()) {
                     continue;
                 }
-                cut(world, block, motion, root);
+                cut(world, block, motion, root, storage);
             }
         }
     }
 
-    private static void cut(World world, Block block, Vector motion, Location vehicleLocation) {
+    private static void cut(World world, Block block, Vector motion, Location vehicleLocation,
+                            Function<ItemStack, ItemStack> storage) {
         BlockData data = block.getBlockData();
         Collection<ItemStack> drops = block.getDrops();
         Location center = block.getLocation().add(0.5D, 0.5D, 0.5D);
         block.setType(Material.AIR, false);
         world.playSound(center, data.getSoundGroup().getBreakSound(), SoundCategory.BLOCKS, 1.0F, 1.0F);
         world.spawnParticle(Particle.BLOCK, center, 12, 0.25D, 0.25D, 0.25D, 0.0D, data);
-        for (ItemStack drop : drops) {
-            drop(world, vehicleLocation, motion, drop);
+        for (ItemStack stack : drops) {
+            ItemStack remainder = storage.apply(stack);
+            if (remainder != null && !remainder.getType().isAir() && remainder.getAmount() > 0) {
+                drop(world, vehicleLocation, motion, remainder);
+            }
         }
     }
 

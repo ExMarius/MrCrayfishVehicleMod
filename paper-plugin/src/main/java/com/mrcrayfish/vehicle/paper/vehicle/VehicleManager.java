@@ -2,6 +2,8 @@ package com.mrcrayfish.vehicle.paper.vehicle;
 
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
+import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
+import com.mrcrayfish.vehicle.paper.runtime.TrailerManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -32,6 +34,7 @@ public final class VehicleManager {
     private final Map<UUID, StoredVehicle> pendingWorlds = new HashMap<>();
     private final Map<UUID, VehicleChunk> chunkTickets = new HashMap<>();
     private final File storageFile;
+    private final TrailerManager trailers;
     private BukkitTask tickTask;
     private BukkitTask saveTask;
     private int activationTick;
@@ -39,11 +42,13 @@ public final class VehicleManager {
     public VehicleManager(VehiclePlugin plugin) {
         this.plugin = plugin;
         this.storageFile = new File(plugin.getDataFolder(), "vehicles.yml");
+        this.trailers = new TrailerManager(plugin, this);
     }
 
     public void start() {
         cleanupOrphanedEntities();
         load();
+        trailers.start();
         tickTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
         long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
         saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
@@ -57,6 +62,7 @@ public final class VehicleManager {
             saveTask.cancel();
         }
         save();
+        trailers.stop();
         for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
             releaseChunkTicket(vehicle);
             vehicle.remove();
@@ -70,8 +76,12 @@ public final class VehicleManager {
         return spawn(UUID.randomUUID(), spec, location);
     }
 
+    public PaperTrailer spawn(TrailerSpec spec, Location location) {
+        return trailers.spawn(spec, location);
+    }
+
     private LandVehicle spawn(UUID id, LandVehicleSpec spec, Location location) {
-        LandVehicle vehicle = LandVehicle.spawn(plugin, id, location, spec);
+        LandVehicle vehicle = LandVehicle.spawn(plugin, id, location, spec, trailers);
         vehicles.put(id, vehicle);
         pendingWorlds.remove(id);
         index(vehicle);
@@ -85,6 +95,7 @@ public final class VehicleManager {
         }
         unindex(vehicle);
         releaseChunkTicket(vehicle);
+        trailers.onVehicleRemoved(vehicle.id());
         vehicle.remove();
         save();
         return true;
@@ -92,6 +103,18 @@ public final class VehicleManager {
 
     public Optional<LandVehicle> byEntity(Entity entity) {
         return Optional.ofNullable(entities.get(entity.getUniqueId()));
+    }
+
+    public Optional<LandVehicle> byId(UUID id) {
+        return Optional.ofNullable(vehicles.get(id));
+    }
+
+    public boolean hasVehicleId(UUID id) {
+        return vehicles.containsKey(id) || pendingWorlds.containsKey(id);
+    }
+
+    public TrailerManager trailers() {
+        return trailers;
     }
 
     public Optional<LandVehicle> nearest(Location origin, double maximumDistance) {
@@ -131,9 +154,7 @@ public final class VehicleManager {
             player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
             return;
         }
-        if (player.isSneaking() && player.hasPermission("vehicle.admin")) {
-            remove(vehicle);
-            player.sendRichMessage("<green>Vehicul eliminat.</green>");
+        if (player.isSneaking() && trailers.attachHeldToVehicle(player, vehicle)) {
             return;
         }
         if (vehicle.mount(player)) {
@@ -145,6 +166,7 @@ public final class VehicleManager {
 
     /** Save to a same-directory temporary file and atomically replace the last good snapshot. */
     public void save() {
+        trailers.save();
         YamlConfiguration data = new YamlConfiguration();
         for (StoredVehicle stored : pendingWorlds.values()) {
             write(data, stored);
@@ -268,7 +290,8 @@ public final class VehicleManager {
                 vehicle.tick(globalSpeedLimit, fuelFactor);
                 if (vehicle.resting()) {
                     releaseChunkTicket(vehicle);
-                    if (!hasNearbyPlayer(vehicle.location(), activationDistance)) {
+                    if (!trailers.referencesVehicle(vehicle.id())
+                            && !hasNearbyPlayer(vehicle.location(), activationDistance)) {
                         hibernate(vehicle);
                     }
                 } else {
@@ -279,6 +302,7 @@ public final class VehicleManager {
                 hibernate(vehicle);
             }
         }
+        trailers.tick();
     }
 
     private void activateNearbyVehicles(World onlyWorld) {

@@ -2,8 +2,10 @@ package com.mrcrayfish.vehicle.paper.command;
 
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
+import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -39,7 +41,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "refuel" -> refuel(sender);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
-                    + vehicles.pendingVehicleCount() + " inactive/în așteptare</gray>");
+                    + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
+                    + vehicles.trailers().trailers().size() + " remorci</gray>");
             case "save" -> {
                 if (!sender.hasPermission("vehicle.admin")) {
                     sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
@@ -63,15 +66,24 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }
-        LandVehicleSpec spec = args.length < 2 ? null : LandVehicleSpec.byId(args[1]);
-        if (spec == null) {
-            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower|quad_bike></yellow>");
+        String id = args.length < 2 ? "" : args[1];
+        LandVehicleSpec vehicleSpec = LandVehicleSpec.byId(id);
+        TrailerSpec trailerSpec = TrailerSpec.byId(id);
+        if (vehicleSpec == null && trailerSpec == null) {
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower|quad_bike|fertilizer|seeder|storage_trailer|fluid_trailer|vehicle_trailer></yellow>");
             return;
         }
-        LandVehicle vehicle = vehicles.spawn(spec, player.getLocation());
-        vehicles.save();
-        player.sendRichMessage("<green>" + spec.displayName() + " creat.</green> <gray>ID: "
-                + vehicle.id() + "</gray>");
+        if (vehicleSpec != null) {
+            LandVehicle vehicle = vehicles.spawn(vehicleSpec, player.getLocation());
+            vehicles.save();
+            player.sendRichMessage("<green>" + vehicleSpec.displayName() + " creat.</green> <gray>ID: "
+                    + vehicle.id() + "</gray>");
+        } else {
+            PaperTrailer trailer = vehicles.spawn(trailerSpec, player.getLocation());
+            vehicles.save();
+            player.sendRichMessage("<green>" + trailerSpec.displayName() + " creat.</green> <gray>ID: "
+                    + trailer.id() + "</gray>");
+        }
     }
 
     private void remove(CommandSender sender) {
@@ -83,10 +95,19 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }
-        vehicles.nearest(player.getLocation(), 6.0D).ifPresentOrElse(vehicle -> {
+        LandVehicle vehicle = vehicles.nearest(player.getLocation(), 6.0D).orElse(null);
+        PaperTrailer trailer = vehicles.trailers().nearest(player.getLocation(), 6.0D).orElse(null);
+        if (vehicle == null && trailer == null) {
+            player.sendRichMessage("<red>Nu există niciun vehicul sau remorcă la mai puțin de 6 blocuri.</red>");
+        } else if (trailer != null && (vehicle == null
+                || trailer.location().distanceSquared(player.getLocation())
+                < vehicle.location().distanceSquared(player.getLocation()))) {
+            vehicles.trailers().remove(trailer);
+            player.sendRichMessage("<green>Cea mai apropiată remorcă a fost eliminată.</green>");
+        } else {
             vehicles.remove(vehicle);
             player.sendRichMessage("<green>Cel mai apropiat vehicul a fost eliminat.</green>");
-        }, () -> player.sendRichMessage("<red>Nu există niciun vehicul la mai puțin de 6 blocuri.</red>"));
+        }
     }
 
     private void refuel(CommandSender sender) {
@@ -120,7 +141,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
 
     private void help(CommandSender sender, String label) {
         sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>vehicule pentru clienți vanilla</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " spawn <go_kart|lawn_mower|quad_bike></yellow> <gray>- creează un vehicul</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " spawn <tip></yellow> <gray>- creează un vehicul sau una dintre cele 5 remorci</gray>");
         sender.sendRichMessage("<yellow>/" + label + " remove</yellow> <gray>- elimină vehiculul apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
@@ -134,7 +155,10 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("spawn", "remove", "refuel", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
-            return filter(LandVehicleSpec.ids(), args[1]);
+            List<String> types = new ArrayList<>(LandVehicleSpec.ids());
+            types.addAll(TrailerSpec.ids());
+            types.sort(String::compareTo);
+            return filter(types, args[1]);
         }
         return List.of();
     }
