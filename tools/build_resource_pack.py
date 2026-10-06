@@ -54,8 +54,7 @@ def build(output: Path) -> tuple[Path, str]:
         write_json(pack / "pack.mcmeta", {
             "pack": {
                 "description": "MrCrayfish Vehicle Plugin — vanilla client assets",
-                "min_format": 88,
-                "max_format": 88,
+                "pack_format": 46,
             }
         })
         copy(ROOT / "src/main/resources/vehicle_mod.png", pack / "pack.png")

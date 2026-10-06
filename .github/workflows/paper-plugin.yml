@@ -25,11 +25,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Set up Java 25
+      - name: Set up Java 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
-          java-version: "25"
+          java-version: "21"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
@@ -64,12 +64,14 @@ jobs:
             gh release upload "$TAG" "$JAR" "$PACK" --clobber
             gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
               -f sha="$GITHUB_SHA" -F force=true >/dev/null
-            gh release edit "$TAG" --target "$GITHUB_SHA"
+            gh release edit "$TAG" --target "$GITHUB_SHA" \
+              --title "Vehicle Plugin Go Kart prototype v0.1.0 (Paper 1.21.4)" \
+              --notes "First server-side Go Kart prototype for Paper 1.21.4. Requires the attached resource pack."
           else
             gh release create "$TAG" "$JAR" "$PACK" \
               --target "$GITHUB_SHA" \
-              --title "Vehicle Plugin Go Kart prototype v0.1.0" \
-              --notes "First server-side Go Kart prototype for Paper 26.2. Requires the attached resource pack." \
+              --title "Vehicle Plugin Go Kart prototype v0.1.0 (Paper 1.21.4)" \
+              --notes "First server-side Go Kart prototype for Paper 1.21.4. Requires the attached resource pack." \
               --prerelease
           fi
 
