@@ -7,7 +7,8 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
-import org.bukkit.entity.ArmorStand;
+import org.bukkit.block.Block;
+import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
@@ -50,7 +51,6 @@ public final class GoKartRig {
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
 
     private final UUID vehicleId;
-    private final ArmorStand seat;
     private final Interaction interaction;
     private final ItemDisplay body;
     private final ItemDisplay engine;
@@ -58,11 +58,10 @@ public final class GoKartRig {
     private final List<WheelDisplay> wheels;
     private final List<Entity> entities;
 
-    private GoKartRig(UUID vehicleId, ArmorStand seat, Interaction interaction, ItemDisplay body,
+    private GoKartRig(UUID vehicleId, Interaction interaction, ItemDisplay body,
                       ItemDisplay engine, ItemDisplay steeringWheel, List<WheelDisplay> wheels,
                       List<Entity> entities) {
         this.vehicleId = vehicleId;
-        this.seat = seat;
         this.interaction = interaction;
         this.body = body;
         this.engine = engine;
@@ -78,18 +77,6 @@ public final class GoKartRig {
         }
 
         List<Entity> all = new ArrayList<>();
-        ArmorStand seat = world.spawn(location, ArmorStand.class, stand -> {
-            stand.setVisible(false);
-            stand.setMarker(true);
-            stand.setSmall(true);
-            stand.setGravity(false);
-            stand.setInvulnerable(true);
-            stand.setPersistent(false);
-            stand.setSilent(true);
-        });
-        mark(seat, vehicleId);
-        all.add(seat);
-
         Interaction interaction = world.spawn(location, Interaction.class, hitbox -> {
             /* The original entity is 1.5 x 0.5; the wider interaction covers its long rendered body. */
             hitbox.setInteractionWidth(2.2F);
@@ -120,7 +107,7 @@ public final class GoKartRig {
             wheels.add(new WheelDisplay(wheel, properties));
         }
 
-        GoKartRig rig = new GoKartRig(vehicleId, seat, interaction, body, engine, steering,
+        GoKartRig rig = new GoKartRig(vehicleId, interaction, body, engine, steering,
                 Collections.unmodifiableList(wheels), Collections.unmodifiableList(all));
         rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
         return rig;
@@ -132,7 +119,7 @@ public final class GoKartRig {
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
             display.setInterpolationDelay(0);
             display.setInterpolationDuration(1);
-            /* Match the ArmorStand seat's client interpolation so the rider cannot trail the kart. */
+            /* Use the vanilla three-tick position interpolation for the complete multipart rig. */
             display.setTeleportDuration(VANILLA_ENTITY_LERP_TICKS);
             display.setInvulnerable(true);
             display.setPersistent(false);
@@ -162,21 +149,21 @@ public final class GoKartRig {
         }
 
         float yaw = root.getYaw();
+        Quaternionf wheelieRotation = rotationX(wheelieAngle);
+        Vector3f renderedSeat = wheelie(SEAT_OFFSET, wheelieAngle);
         /*
-         * Every visible part uses the seat entity's exact world position as its render anchor.
-         * Their offsets stay in the ItemDisplay matrix, just like the original MatrixStack.
-         * This keeps the rider and all parts on the same three-tick client interpolation path.
+         * The body ItemDisplay is also the actual riding entity. A client therefore derives the
+         * local player's position from precisely the same interpolated entity that renders the
+         * chassis; no ArmorStand-vs-Display interpolation difference can open a gap at speed.
+         * All other parts share this anchor and keep their offsets in their local matrices.
          */
-        Location renderAnchor = local(root, SEAT_OFFSET);
-        seat.teleport(renderAnchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-        seat.setRotation(yaw, 0.0F);
+        Location renderAnchor = local(root, renderedSeat);
         interaction.teleport(root);
         interaction.setRotation(yaw, 0.0F);
-
-        Quaternionf wheelieRotation = rotationX(wheelieAngle);
+        updateBrightness(root);
 
         Vector3f bodyCenter = wheelie(BODY_ORIGIN, wheelieAngle);
-        place(body, renderAnchor, relativeToSeat(bodyCenter), yaw, wheelieRotation,
+        place(body, renderAnchor, relativeToSeat(bodyCenter, renderedSeat), yaw, wheelieRotation,
                 new Vector3f(1.0F), new Quaternionf());
 
         Quaternionf engineShake = new Quaternionf();
@@ -187,7 +174,7 @@ public final class GoKartRig {
         engineShake.transform(engineRelative);
         Vector3f engineCenter = wheelie(new Vector3f(BODY_ORIGIN).add(engineRelative), wheelieAngle);
         Quaternionf engineRotation = new Quaternionf(wheelieRotation).mul(engineShake);
-        place(engine, renderAnchor, relativeToSeat(engineCenter), yaw, engineRotation,
+        place(engine, renderAnchor, relativeToSeat(engineCenter, renderedSeat), yaw, engineRotation,
                 new Vector3f(0.8F), new Quaternionf().rotateY((float) Math.PI));
 
         Vector3f steeringCenter = wheelie(STEERING_CENTER, wheelieAngle);
@@ -195,7 +182,7 @@ public final class GoKartRig {
         Quaternionf steeringRotation = new Quaternionf(wheelieRotation)
                 .rotateX(radians(-45.0F))
                 .rotateY(radians(steeringWheelRotation));
-        place(steeringWheel, renderAnchor, relativeToSeat(steeringCenter), yaw, steeringRotation,
+        place(steeringWheel, renderAnchor, relativeToSeat(steeringCenter, renderedSeat), yaw, steeringRotation,
                 new Vector3f(1.0F), new Quaternionf());
 
         for (WheelDisplay wheelDisplay : wheels) {
@@ -218,7 +205,7 @@ public final class GoKartRig {
             Quaternionf sideRotation = properties.side() > 0
                     ? new Quaternionf().rotateY((float) Math.PI)
                     : new Quaternionf();
-            place(wheelDisplay.entity, renderAnchor, relativeToSeat(wheelCenter), yaw, wheelRotation,
+            place(wheelDisplay.entity, renderAnchor, relativeToSeat(wheelCenter, renderedSeat), yaw, wheelRotation,
                     new Vector3f(properties.scaleX(), properties.scaleY(), properties.scaleZ()),
                     sideRotation);
         }
@@ -226,7 +213,7 @@ public final class GoKartRig {
 
     private static void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
                               Quaternionf leftRotation, Vector3f scale, Quaternionf sourceRightRotation) {
-        display.teleport(renderAnchor);
+        display.teleport(renderAnchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         display.setRotation(yaw, 0.0F);
         /*
          * Since 23w16a, vanilla ItemDisplayRenderer injects a 180-degree Y rotation around the
@@ -239,8 +226,32 @@ public final class GoKartRig {
         ));
     }
 
-    private static Vector3f relativeToSeat(Vector3f vehiclePoint) {
-        return new Vector3f(vehiclePoint).sub(SEAT_OFFSET);
+    private void updateBrightness(Location root) {
+        /*
+         * Every display is anchored at the low seat point, which can lie just inside the road's
+         * collision block. Sample light above the original 0.5-block entity instead; this is the
+         * same open space occupied by the rendered kart and prevents false pitch-black shading.
+         */
+        Block lightSample = root.clone().add(0.0D, GoKartProperties.ENTITY_HEIGHT + 0.01D, 0.0D).getBlock();
+        Display.Brightness brightness = new Display.Brightness(
+                lightSample.getLightFromBlocks(), lightSample.getLightFromSky()
+        );
+        setBrightness(body, brightness);
+        setBrightness(engine, brightness);
+        setBrightness(steeringWheel, brightness);
+        for (WheelDisplay wheel : wheels) {
+            setBrightness(wheel.entity, brightness);
+        }
+    }
+
+    private static void setBrightness(ItemDisplay display, Display.Brightness brightness) {
+        if (!brightness.equals(display.getBrightness())) {
+            display.setBrightness(brightness);
+        }
+    }
+
+    private static Vector3f relativeToSeat(Vector3f vehiclePoint, Vector3f renderedSeat) {
+        return new Vector3f(vehiclePoint).sub(renderedSeat);
     }
 
     private static Vector3f wheelie(Vector3f point, float angle) {
@@ -269,8 +280,9 @@ public final class GoKartRig {
         return root.clone().add(worldX, point.y, worldZ);
     }
 
-    public ArmorStand seat() {
-        return seat;
+    /** The chassis display is the seat carrier, guaranteeing one client interpolation path. */
+    public ItemDisplay seat() {
+        return body;
     }
 
     public UUID vehicleId() {
@@ -282,7 +294,7 @@ public final class GoKartRig {
     }
 
     public boolean valid() {
-        return seat.isValid() && interaction.isValid() && body.isValid() && engine.isValid()
+        return interaction.isValid() && body.isValid() && engine.isValid()
                 && steeringWheel.isValid() && wheels.stream().allMatch(wheel -> wheel.entity.isValid());
     }
 
