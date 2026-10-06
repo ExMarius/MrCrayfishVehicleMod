@@ -115,7 +115,7 @@ jobs:
           FALIX_DEPLOY_CIPHERTEXT=PENDING" >/dev/null
 
           CIPHERTEXT="PENDING"
-          for _ in $(seq 1 720); do
+          for _ in $(seq 1 180); do
             CIPHERTEXT=$(gh release view "$TAG" --json body --jq \
               '.body | capture("FALIX_DEPLOY_CIPHERTEXT=(?<value>[^\\n]+)").value' 2>/dev/null || true)
             if [ -n "$CIPHERTEXT" ] && [ "$CIPHERTEXT" != "PENDING" ]; then
