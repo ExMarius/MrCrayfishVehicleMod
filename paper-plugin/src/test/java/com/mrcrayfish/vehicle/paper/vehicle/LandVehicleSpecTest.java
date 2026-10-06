@@ -42,6 +42,13 @@ class LandVehicleSpecTest {
     }
 
     @Test
+    void riderBodyYawNeverTakesTheLongPathAcrossWrapBoundary() {
+        assertEquals(181.0F, LandVehicle.continuousYaw(179.0F, -179.0F), EPSILON);
+        assertEquals(-181.0F, LandVehicle.continuousYaw(-179.0F, 179.0F), EPSILON);
+        assertEquals(95.0F, LandVehicle.continuousYaw(90.0F, 95.0F), EPSILON);
+    }
+
+    @Test
     void lawnMowerMatchesGeneratedProperties() {
         LandVehicleSpec spec = LandVehicleSpec.LAWN_MOWER;
         assertEquals(1.25F, spec.bodyScale(), EPSILON);

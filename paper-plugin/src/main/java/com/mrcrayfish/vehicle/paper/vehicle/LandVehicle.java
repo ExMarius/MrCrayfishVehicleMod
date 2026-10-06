@@ -438,12 +438,17 @@ public final class LandVehicle {
                 if (!(passenger instanceof Player player)) {
                     continue;
                 }
-                player.setBodyYaw(bodyYaw);
+                /* Keep both rotations continuous across the -180/180 boundary. Sending the
+                 * normalized vehicle yaw directly makes the client interpolate a full turn,
+                 * which is the visible spin/glitch during corners. */
+                float currentBodyYaw = player.getBodyYaw();
+                player.setBodyYaw(continuousYaw(currentBodyYaw, bodyYaw));
+
                 float headYaw = player.getLocation().getYaw();
                 float relativeYaw = wrapDegrees(headYaw - bodyYaw);
                 float clampedYaw = clamp(relativeYaw, -maximumHeadYaw, maximumHeadYaw);
                 if (Math.abs(clampedYaw - relativeYaw) > 0.001F) {
-                    player.setRotation(normalizeYaw(bodyYaw + clampedYaw),
+                    player.setRotation(headYaw + clampedYaw - relativeYaw,
                             player.getLocation().getPitch());
                 }
             }
@@ -612,6 +617,10 @@ public final class LandVehicle {
 
     private static float yaw(Vector vector) {
         return (float) (Math.toDegrees(Math.atan2(vector.getZ(), vector.getX())) - 90.0D);
+    }
+
+    static float continuousYaw(float current, float target) {
+        return current + wrapDegrees(target - current);
     }
 
     private static float wrapDegrees(float value) {
