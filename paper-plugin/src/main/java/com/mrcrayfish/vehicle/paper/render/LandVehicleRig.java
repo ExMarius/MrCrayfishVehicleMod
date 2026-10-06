@@ -157,6 +157,8 @@ public final class LandVehicleRig {
             stand.setBasePlate(false);
             stand.setArms(false);
             stand.setCollidable(false);
+            stand.setRotation(location.getYaw(), 0.0F);
+            stand.setBodyYaw(location.getYaw());
         });
     }
 
@@ -261,9 +263,12 @@ public final class LandVehicleRig {
             Location seatLocation = local(root, seatPoint);
             carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             carrier.anchor.setRotation(yaw, 0.0F);
-            // Rotate only the dummy mount. The client derives the rider body pose
-            // from it while retaining complete control of the rider's head/camera.
-            carrier.mount.setRotation(continuousYaw(carrier.mount.getLocation().getYaw(), yaw), 0.0F);
+            // Lock only the invisible living mount to the seat direction. Vanilla's
+            // mounted renderer uses this body yaw for the rider's torso; the player's
+            // own rotation is never changed, so head and camera input stay untouched.
+            float mountYaw = continuousYaw(carrier.mount.getLocation().getYaw(), yaw);
+            carrier.mount.setRotation(mountYaw, 0.0F);
+            carrier.mount.setBodyYaw(mountYaw);
         }
     }
 
