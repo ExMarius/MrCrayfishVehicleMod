@@ -46,7 +46,17 @@ public final class GoKartRig {
     );
 
     /* Seat (-3) + axle (-1) + wheel offset (3.2), converted from model units. */
-    private static final Vector3f SEAT_OFFSET = new Vector3f(0.0F, -0.05F, -1.0F / 16.0F);
+    private static final Vector3f SOURCE_SEAT_OFFSET = new Vector3f(0.0F, -0.05F, -1.0F / 16.0F);
+    /*
+     * The source seat position targets the 1.16 player renderer, whose riding/model offset differs
+     * from a 1.21.4 vanilla player riding a zero-height display. The Go Kart seat cushion ends at
+     * model Y=3, i.e. BODY_RENDER_Y + (3-8)/16 = 0.325. Raising the carrier by 6 model units puts
+     * the vanilla player's pelvis on that surface; display translations cancel the carrier shift,
+     * so no vehicle part moves.
+     */
+    private static final float VANILLA_RIDER_HEIGHT_CORRECTION = 6.0F * GoKartProperties.MODEL_UNIT;
+    private static final Vector3f RIDER_CARRIER_OFFSET = new Vector3f(SOURCE_SEAT_OFFSET)
+            .add(0.0F, VANILLA_RIDER_HEIGHT_CORRECTION, 0.0F);
     /* Vanilla non-player entities interpolate teleports over three client ticks. */
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
 
@@ -150,7 +160,7 @@ public final class GoKartRig {
 
         float yaw = root.getYaw();
         Quaternionf wheelieRotation = rotationX(wheelieAngle);
-        Vector3f renderedSeat = wheelie(SEAT_OFFSET, wheelieAngle);
+        Vector3f renderedSeat = wheelie(RIDER_CARRIER_OFFSET, wheelieAngle);
         /*
          * The body ItemDisplay is also the actual riding entity. A client therefore derives the
          * local player's position from precisely the same interpolated entity that renders the
