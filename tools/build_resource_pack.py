@@ -74,6 +74,8 @@ def build(output: Path) -> tuple[Path, str]:
             # VehicleEntity's default white dye and the default wheel item tint.
             "go_kart_body": ("vehicle:item/go_kart_body", 16383998),
             "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
+            "quad_bike_body": ("vehicle:item/quad_bike_body", 16383998),
+            "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "standard_wheel": ("vehicle:item/standard_wheel", 0xFFFFFF),
@@ -89,6 +91,14 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
             namespace / "models/item/lawn_mower_body.json",
+        )
+        convert_model(
+            ASSETS / "models/vehicle/quad_bike/base.json",
+            namespace / "models/item/quad_bike_body.json",
+        )
+        convert_model(
+            ASSETS / "models/vehicle/quad_bike/handles.json",
+            namespace / "models/item/quad_bike_handles.json",
         )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -117,6 +127,14 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ASSETS / "textures/vehicle/go_kart/base.png",
             namespace / "textures/item/go_kart_body.png",
+        )
+        copy(
+            ASSETS / "textures/vehicle/quad_bike/base.png",
+            namespace / "textures/vehicle/quad_bike/base.png",
+        )
+        copy(
+            ASSETS / "textures/vehicle/quad_bike/handles.png",
+            namespace / "textures/vehicle/quad_bike/handles.png",
         )
         copy(
             ASSETS / "textures/model/cray_industries.png",
@@ -169,7 +187,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r5.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r6.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

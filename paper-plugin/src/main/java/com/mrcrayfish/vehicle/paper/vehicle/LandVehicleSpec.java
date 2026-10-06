@@ -92,9 +92,35 @@ public record LandVehicleSpec(
             true
     );
 
+    public static final LandVehicleSpec QUAD_BIKE = new LandVehicleSpec(
+            "quad_bike", "Quad Bike", "quad_bike_body",
+            1.5F, 1.0F, 1.0F,
+            1.1F, -0.5F, 4.4F,
+            15.0F, 35.0F, 9.5F * MODEL_UNIT * 1.1F, -11.0F * MODEL_UNIT * 1.1F, 5.0F,
+            20_000.0F, 0.25F, 0.5F, 1.25F, "vehicle:entity.quad_bike.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            new Part("iron_small_engine", new Point(0.0F, 0.611875F, -0.06875F),
+                    0.55F, 0.0F, 180.0F, 0.0F),
+            new Part("quad_bike_handles", new Point(0.0F, 1.230625F, 0.20625F),
+                    1.1F, -35.0F, 0.0F, 0.0F),
+            List.of(
+                    wheel(-1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
+                    wheel(1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
+                    wheel(-1, false, 4.5F, 0.0F, -11.0F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
+                    wheel(1, false, 4.5F, 0.0F, -11.0F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F)
+            ),
+            List.of(
+                    seat(true, 0.0F, 5.0F, -4.0F, 1.1F, -0.5F, 4.4F),
+                    seat(false, 0.0F, 5.5F, -12.0F, 1.1F, -0.5F, 4.4F)
+            ),
+            true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, -0.55F),
+            false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.of(
             GO_KART.id, GO_KART,
-            LAWN_MOWER.id, LAWN_MOWER
+            LAWN_MOWER.id, LAWN_MOWER,
+            QUAD_BIKE.id, QUAD_BIKE
     );
 
     public static LandVehicleSpec byId(String id) {

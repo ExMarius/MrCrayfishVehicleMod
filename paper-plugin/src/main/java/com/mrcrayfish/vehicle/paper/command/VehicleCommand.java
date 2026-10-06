@@ -64,7 +64,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         LandVehicleSpec spec = args.length < 2 ? null : LandVehicleSpec.byId(args[1]);
         if (spec == null) {
-            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower></yellow>");
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower|quad_bike></yellow>");
             return;
         }
         LandVehicle vehicle = vehicles.spawn(spec, player.getLocation());
@@ -115,7 +115,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
 
     private void help(CommandSender sender, String label) {
         sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>vehicule pentru clienți vanilla</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " spawn <go_kart|lawn_mower></yellow> <gray>- creează un vehicul</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " spawn <go_kart|lawn_mower|quad_bike></yellow> <gray>- creează un vehicul</gray>");
         sender.sendRichMessage("<yellow>/" + label + " remove</yellow> <gray>- elimină vehiculul apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");

@@ -26,6 +26,22 @@ class LandVehicleSpecTest {
     }
 
     @Test
+    void quadBikeMatchesGeneratedPropertiesAndHasTwoSeats() {
+        LandVehicleSpec spec = LandVehicleSpec.QUAD_BIKE;
+        assertEquals(1.1F, spec.bodyScale(), EPSILON);
+        assertEquals(4.4F, spec.wheelOffset(), EPSILON);
+        assertEquals(20_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(9.5F / 16.0F * 1.1F, spec.frontAxleOffset(), EPSILON);
+        assertEquals(-11.0F / 16.0F * 1.1F, spec.rearAxleOffset(), EPSILON);
+        assertEquals(1.21F, spec.firstFrontWheel().scaleY(), EPSILON);
+        assertEquals(0.0F, spec.firstFrontWheel().contactY(), EPSILON);
+        assertEquals(2, spec.seats().size());
+        assertTrue(spec.seats().getFirst().driver());
+        assertFalse(spec.seats().getLast().driver());
+        assertTrue(spec.canTowTrailers());
+    }
+
+    @Test
     void lawnMowerMatchesGeneratedProperties() {
         LandVehicleSpec spec = LandVehicleSpec.LAWN_MOWER;
         assertEquals(1.25F, spec.bodyScale(), EPSILON);
