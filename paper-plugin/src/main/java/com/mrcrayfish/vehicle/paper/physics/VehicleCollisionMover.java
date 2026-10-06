@@ -1,6 +1,5 @@
 package com.mrcrayfish.vehicle.paper.physics;
 
-import com.mrcrayfish.vehicle.paper.vehicle.GoKartProperties;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.util.BoundingBox;
@@ -19,8 +18,9 @@ public final class VehicleCollisionMover {
     private VehicleCollisionMover() {
     }
 
-    public static Result move(World world, Location origin, Vector requested, boolean wasOnGround) {
-        BoundingBox start = vehicleBox(origin);
+    public static Result move(World world, Location origin, Vector requested, boolean wasOnGround,
+                              double entityWidth, double entityHeight, double stepHeight) {
+        BoundingBox start = vehicleBox(origin, entityWidth, entityHeight);
         Candidate normal = moveWithoutStep(world, start, requested);
 
         boolean clippedHorizontal = different(normal.movement.getX(), requested.getX())
@@ -30,7 +30,7 @@ public final class VehicleCollisionMover {
 
         Candidate selected = normal;
         if (clippedHorizontal && (wasOnGround || landedDuringNormalMove)) {
-            Candidate stepped = moveWithStep(world, start, requested, GoKartProperties.STEP_HEIGHT);
+            Candidate stepped = moveWithStep(world, start, requested, stepHeight);
             if (horizontalLengthSquared(stepped.movement) > horizontalLengthSquared(normal.movement) + 1.0E-9D) {
                 selected = stepped;
             }
@@ -146,14 +146,14 @@ public final class VehicleCollisionMover {
         };
     }
 
-    private static BoundingBox vehicleBox(Location location) {
-        double halfWidth = GoKartProperties.ENTITY_WIDTH * 0.5D;
+    private static BoundingBox vehicleBox(Location location, double entityWidth, double entityHeight) {
+        double halfWidth = entityWidth * 0.5D;
         return new BoundingBox(
                 location.getX() - halfWidth,
                 location.getY(),
                 location.getZ() - halfWidth,
                 location.getX() + halfWidth,
-                location.getY() + GoKartProperties.ENTITY_HEIGHT,
+                location.getY() + entityHeight,
                 location.getZ() + halfWidth
         );
     }

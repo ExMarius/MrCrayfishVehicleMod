@@ -11,6 +11,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.world.WorldLoadEvent;
 
 public final class VehicleListener implements Listener {
     private final VehiclePlugin plugin;
@@ -38,6 +39,11 @@ public final class VehicleListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
+    }
+
+    @EventHandler
+    public void onWorldLoad(WorldLoadEvent event) {
+        vehicles.onWorldLoaded(event.getWorld());
     }
 
     private void sendResourcePack(Player player) {

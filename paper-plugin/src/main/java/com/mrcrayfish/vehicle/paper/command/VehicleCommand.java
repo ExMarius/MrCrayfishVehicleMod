@@ -1,7 +1,8 @@
 package com.mrcrayfish.vehicle.paper.command;
 
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
-import com.mrcrayfish.vehicle.paper.vehicle.GoKart;
+import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
+import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -35,7 +36,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "spawn" -> spawn(sender, args);
             case "remove" -> remove(sender);
             case "refuel" -> refuel(sender);
-            case "list" -> sender.sendRichMessage("<gold>Vehicule active:</gold> <white>" + vehicles.vehicles().size() + "</white>");
+            case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
+                    + vehicles.vehicles().size() + " active</white><gray>, "
+                    + vehicles.pendingVehicleCount() + " inactive/în așteptare</gray>");
             case "save" -> {
                 if (!sender.hasPermission("vehicle.admin")) {
                     sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
@@ -59,13 +62,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }
-        if (args.length < 2 || !args[1].equalsIgnoreCase("go_kart")) {
-            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn go_kart</yellow>");
+        LandVehicleSpec spec = args.length < 2 ? null : LandVehicleSpec.byId(args[1]);
+        if (spec == null) {
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower></yellow>");
             return;
         }
-        GoKart goKart = vehicles.spawn(player.getLocation());
+        LandVehicle vehicle = vehicles.spawn(spec, player.getLocation());
         vehicles.save();
-        player.sendRichMessage("<green>Go Kart creat.</green> <gray>ID: " + goKart.id() + "</gray>");
+        player.sendRichMessage("<green>" + spec.displayName() + " creat.</green> <gray>ID: "
+                + vehicle.id() + "</gray>");
     }
 
     private void remove(CommandSender sender) {
@@ -93,7 +98,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         vehicles.nearest(player.getLocation(), 6.0D).ifPresentOrElse(vehicle -> {
-            vehicle.setFuel(GoKart.ENERGY_CAPACITY);
+            vehicle.setFuel(vehicle.spec().energyCapacity());
             vehicles.save();
             player.sendRichMessage("<green>Rezervorul vehiculului a fost umplut.</green>");
         }, () -> player.sendRichMessage("<red>Nu există niciun vehicul la mai puțin de 6 blocuri.</red>"));
@@ -109,8 +114,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     }
 
     private void help(CommandSender sender, String label) {
-        sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>prototip Go Kart</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " spawn go_kart</yellow> <gray>- creează un Go Kart</gray>");
+        sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>vehicule pentru clienți vanilla</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " spawn <go_kart|lawn_mower></yellow> <gray>- creează un vehicul</gray>");
         sender.sendRichMessage("<yellow>/" + label + " remove</yellow> <gray>- elimină vehiculul apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
@@ -124,7 +129,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("spawn", "remove", "refuel", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
-            return filter(List.of("go_kart"), args[1]);
+            return filter(LandVehicleSpec.ids(), args[1]);
         }
         return List.of();
     }

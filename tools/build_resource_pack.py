@@ -73,7 +73,9 @@ def build(output: Path) -> tuple[Path, str]:
         for item, (model, tint) in {
             # VehicleEntity's default white dye and the default wheel item tint.
             "go_kart_body": ("vehicle:item/go_kart_body", 16383998),
+            "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
+            "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "standard_wheel": ("vehicle:item/standard_wheel", 0xFFFFFF),
             "iron_small_engine": ("vehicle:item/iron_small_engine", 0xFFFFFF),
         }.items():
@@ -85,8 +87,16 @@ def build(output: Path) -> tuple[Path, str]:
             {"2": "vehicle:item/go_kart_body", "particle": "vehicle:item/go_kart_body"},
         )
         convert_model(
+            ASSETS / "models/vehicle/lawn_mower_body.json",
+            namespace / "models/item/lawn_mower_body.json",
+        )
+        convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
+        )
+        convert_model(
+            ASSETS / "models/vehicle/tow_bar.json",
+            namespace / "models/item/tow_bar.json",
         )
         convert_model(
             ASSETS / "models/item/standard_wheel.json",
@@ -109,6 +119,10 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "textures/item/go_kart_body.png",
         )
         copy(
+            ASSETS / "textures/model/cray_industries.png",
+            namespace / "textures/model/cray_industries.png",
+        )
+        copy(
             ASSETS / "textures/model/wheel.png",
             namespace / "textures/item/standard_wheel.png",
         )
@@ -124,10 +138,17 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/entity/go_kart/engine.ogg",
             namespace / "sounds/entity/go_kart/engine.ogg",
         )
+        copy(
+            ASSETS / "sounds/entity/quad_bike/engine.ogg",
+            namespace / "sounds/entity/quad_bike/engine.ogg",
+        )
         write_json(namespace / "sounds.json", {
             "entity.go_kart.engine": {
                 "sounds": [{"name": "vehicle:entity/go_kart/engine"}]
-            }
+            },
+            "entity.quad_bike.engine": {
+                "sounds": [{"name": "vehicle:entity/quad_bike/engine"}]
+            },
         })
 
         if output.exists():
@@ -148,7 +169,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r4.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r5.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

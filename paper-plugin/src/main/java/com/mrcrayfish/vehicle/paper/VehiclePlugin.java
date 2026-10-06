@@ -24,7 +24,7 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
 
         vehicleManager.start();
-        getLogger().info("Vehicle plugin enabled. Go Kart prototype is ready.");
+        getLogger().info("Vehicle plugin enabled. Go Kart and Lawn Mower are ready.");
     }
 
     @Override

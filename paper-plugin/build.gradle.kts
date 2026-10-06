@@ -12,6 +12,11 @@ repositories {
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 java {
@@ -47,6 +52,6 @@ tasks.register<Exec>("resourcePack") {
         "python3",
         "tools/build_resource_pack.py",
         "--output",
-        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-1.21.4-r4.zip").get().asFile.absolutePath
+        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-1.21.4-r5.zip").get().asFile.absolutePath
     )
 }
