@@ -166,7 +166,7 @@ public final class GoKart {
             return false;
         }
         double step = groundY - location.getY();
-        if (step > 0.625D || step < -1.25D) {
+        if (step > 1.05D || step < -1.25D) {
             return false;
         }
         target.setY(groundY);

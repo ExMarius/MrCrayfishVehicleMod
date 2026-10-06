@@ -36,9 +36,11 @@ def item_definition(model: str) -> dict[str, object]:
     }
 
 
-def convert_model(source: Path, destination: Path) -> None:
+def convert_model(source: Path, destination: Path, textures: dict[str, str] | None = None) -> None:
     """Normalize Forge/Blockbench model metadata to vanilla model JSON."""
     model = json.loads(source.read_text(encoding="utf-8"))
+    if textures is not None:
+        model["textures"] = textures
     components = model.pop("components", None)
     if components is not None:
         model["elements"] = components
@@ -79,6 +81,7 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/go_kart/base.json",
             namespace / "models/item/go_kart_body.json",
+            {"2": "vehicle:item/go_kart_body", "particle": "vehicle:item/go_kart_body"},
         )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -87,31 +90,34 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/item/standard_wheel.json",
             namespace / "models/item/standard_wheel.json",
+            {"particle": "vehicle:item/standard_wheel", "wheel": "vehicle:item/standard_wheel"},
         )
         convert_model(
             ASSETS / "models/item/small_engine.json",
             namespace / "models/item/small_engine.json",
+            {"small_engine": "vehicle:item/small_engine", "particle": "vehicle:item/small_engine"},
         )
         convert_model(
             ASSETS / "models/item/iron_small_engine.json",
             namespace / "models/item/iron_small_engine.json",
+            {"small_engine": "vehicle:item/iron_small_engine"},
         )
 
         copy(
             ASSETS / "textures/vehicle/go_kart/base.png",
-            namespace / "textures/vehicle/go_kart/base.png",
+            namespace / "textures/item/go_kart_body.png",
         )
         copy(
             ASSETS / "textures/model/wheel.png",
-            namespace / "textures/model/wheel.png",
+            namespace / "textures/item/standard_wheel.png",
         )
         copy(
             ASSETS / "textures/model/small_engine.png",
-            namespace / "textures/model/small_engine.png",
+            namespace / "textures/item/small_engine.png",
         )
         copy(
             ASSETS / "textures/model/iron_small_engine.png",
-            namespace / "textures/model/iron_small_engine.png",
+            namespace / "textures/item/iron_small_engine.png",
         )
         copy(
             ASSETS / "sounds/entity/go_kart/engine.ogg",
@@ -141,7 +147,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r2.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r3.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")
