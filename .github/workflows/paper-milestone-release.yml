@@ -1,9 +1,6 @@
 name: Paper Go Kart milestone release
 
 on:
-  push:
-    paths:
-      - ".github/workflows/paper-milestone-release.yml"
   workflow_dispatch:
 
 permissions:
@@ -86,9 +83,9 @@ jobs:
           - the resource pack SHA-1 used by Paper configuration.
 
           Verified in GitHub Actions:
-          - clean Java 21 compile and Gradle check;
-          - JAR structure and required plugin resources;
-          - resource-pack ZIP integrity, JSON parsing, required assets, license, and exact configured SHA-1.
+          - clean Java 21 Gradle build;
+          - non-empty plugin JAR output;
+          - resource-pack ZIP integrity, license, and exact configured SHA-1.
 
           Scope and known limitations:
           - Go Kart prototype only; the remaining mod vehicles are not ported yet;
