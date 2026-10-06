@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r8 — vehicles, improved engine audio, five trailers",
+                "description": "MrCrayfish Vehicle Plugin r9 — four vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -76,6 +76,7 @@ def build(output: Path) -> tuple[Path, str]:
             "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
             "quad_bike_body": ("vehicle:item/quad_bike_body", 16383998),
             "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),
+            "tractor_body": ("vehicle:item/tractor_body", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -86,6 +87,7 @@ def build(output: Path) -> tuple[Path, str]:
             "seed_spiker": ("vehicle:item/seed_spiker", 0xFFFFFF),
             "standard_wheel": ("vehicle:item/standard_wheel", 0xFFFFFF),
             "iron_small_engine": ("vehicle:item/iron_small_engine", 0xFFFFFF),
+            "iron_large_engine": ("vehicle:item/iron_large_engine", 0xFFFFFF),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -115,6 +117,18 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/quad_bike/handles.json",
             namespace / "models/item/quad_bike_handles.json",
             {"texture": "vehicle:item/quad_bike_handles", "particle": "vehicle:item/quad_bike_handles"},
+        )
+        convert_model(
+            ASSETS / "models/vehicle/tractor_body.json",
+            namespace / "models/item/tractor_body.json",
+            {
+                "seat": "minecraft:block/black_wool",
+                "axel": "minecraft:block/light_gray_concrete",
+                "color": "minecraft:block/white_concrete",
+                "detail": "minecraft:block/anvil",
+                "cray_industries_logo": "vehicle:model/cray_industries",
+                "particle": "minecraft:block/white_concrete",
+            },
         )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -151,6 +165,16 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "models/item/iron_small_engine.json",
             {"small_engine": "vehicle:item/iron_small_engine"},
         )
+        convert_model(
+            ASSETS / "models/item/large_engine.json",
+            namespace / "models/item/large_engine.json",
+            {"large_engine": "vehicle:item/large_engine", "particle": "vehicle:item/large_engine"},
+        )
+        convert_model(
+            ASSETS / "models/item/iron_large_engine.json",
+            namespace / "models/item/iron_large_engine.json",
+            {"large_engine": "vehicle:item/iron_large_engine"},
+        )
 
         copy(
             ASSETS / "textures/vehicle/go_kart/base.png",
@@ -185,6 +209,14 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "textures/item/iron_small_engine.png",
         )
         copy(
+            ASSETS / "textures/model/large_engine.png",
+            namespace / "textures/item/large_engine.png",
+        )
+        copy(
+            ASSETS / "textures/model/iron_large_engine.png",
+            namespace / "textures/item/iron_large_engine.png",
+        )
+        copy(
             ASSETS / "sounds/entity/go_kart/engine.ogg",
             namespace / "sounds/entity/go_kart/engine.ogg",
         )
@@ -192,12 +224,19 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/entity/quad_bike/engine.ogg",
             namespace / "sounds/entity/quad_bike/engine.ogg",
         )
+        copy(
+            ASSETS / "sounds/entity/tractor/engine.ogg",
+            namespace / "sounds/entity/tractor/engine.ogg",
+        )
         write_json(namespace / "sounds.json", {
             "entity.go_kart.engine": {
                 "sounds": [{"name": "vehicle:entity/go_kart/engine", "preload": True}]
             },
             "entity.quad_bike.engine": {
                 "sounds": [{"name": "vehicle:entity/quad_bike/engine", "preload": True}]
+            },
+            "entity.tractor.engine": {
+                "sounds": [{"name": "vehicle:entity/tractor/engine", "preload": True}]
             },
         })
 
@@ -219,7 +258,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r8.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r9.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

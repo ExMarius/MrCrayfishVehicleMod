@@ -118,10 +118,41 @@ public record LandVehicleSpec(
             false
     );
 
+    /* Source wheelOffset = (8 * 2.8 / 2) - 5.5 = 5.7. The front wheel's
+     * auto-scaled Y/Z axes become 5.7 / 4 = 1.425 while X stays 0.9375. */
+    public static final LandVehicleSpec TRACTOR = new LandVehicleSpec(
+            "tractor", "Tractor", "tractor_body",
+            1.5F, 1.5F, 1.0F,
+            1.0F, -3.0F, 5.7F,
+            8.0F, 35.0F, 14.0F * MODEL_UNIT, -14.5F * MODEL_UNIT, 5.0F,
+            15_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.tractor.engine",
+            true, new Point(-2.0F * MODEL_UNIT, 32.0F * MODEL_UNIT, 16.0F * MODEL_UNIT),
+            new Part("iron_large_engine", new Point(0.0F, 0.96875F, 7.5F * MODEL_UNIT),
+                    0.85F, 0.0F, 0.0F, 0.0F),
+            /* TractorRenderer translates to (0, .66, -.475), rotates -67.5 degrees,
+             * then translates another -.02 on its local Y axis. */
+            new Part("go_kart_steering_wheel", new Point(0.0F, 1.3210963F, -0.4565224F),
+                    0.9F, -67.5F, 0.0F, 0.0F),
+            List.of(
+                    wheel(-1, true, 8.0F, 0.0F, 14.0F,
+                            0.9375F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
+                    wheel(1, true, 8.0F, 0.0F, 14.0F,
+                            0.9375F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
+                    wheel(-1, false, 8.0F, 5.5F, -14.5F,
+                            1.875F, 2.8F, 2.8F, 1.0F, -3.0F, 5.7F),
+                    wheel(1, false, 8.0F, 5.5F, -14.5F,
+                            1.875F, 2.8F, 2.8F, 1.0F, -3.0F, 5.7F)
+            ),
+            List.of(seat(true, 0.0F, 9.0F, -14.0F, 1.0F, -3.0F, 5.7F)),
+            true, new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
+            false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.of(
             GO_KART.id, GO_KART,
             LAWN_MOWER.id, LAWN_MOWER,
-            QUAD_BIKE.id, QUAD_BIKE
+            QUAD_BIKE.id, QUAD_BIKE,
+            TRACTOR.id, TRACTOR
     );
 
     public static LandVehicleSpec byId(String id) {

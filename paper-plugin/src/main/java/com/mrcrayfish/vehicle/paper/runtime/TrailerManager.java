@@ -207,7 +207,7 @@ public final class TrailerManager {
         clicked.detach(false);
         clicked.attach(PaperTrailer.PullerType.PLAYER, player.getUniqueId());
         playerHeldTrailer.put(player.getUniqueId(), clicked.id());
-        player.sendRichMessage("<yellow>Tragi remorca. Click dreapta pe Lawn Mower, Quad Bike sau Storage Trailer pentru atașare.</yellow>");
+        player.sendRichMessage("<yellow>Tragi remorca. Click dreapta pe Lawn Mower, Quad Bike, Tractor sau Storage Trailer pentru atașare.</yellow>");
         playHitch(clicked.location());
     }
 

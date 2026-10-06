@@ -101,8 +101,14 @@ public final class EngineSoundController {
 
     /** Original OGG sample duration divided by pitch; one tick overlap avoids an audible gap. */
     public static double replayTicks(String sound, float pitch) {
-        double ticksAtPitchOne = sound.endsWith("go_kart.engine")
-                ? 74.43083900226758D : 4.022675736961451D;
+        double ticksAtPitchOne;
+        if (sound.endsWith("go_kart.engine")) {
+            ticksAtPitchOne = 74.43083900226758D;
+        } else if (sound.endsWith("tractor.engine")) {
+            ticksAtPitchOne = 36.833958333333335D;
+        } else {
+            ticksAtPitchOne = 4.022675736961451D;
+        }
         return Math.max(1.0D, ticksAtPitchOne / Math.max(0.01F, pitch) - 1.0D);
     }
 

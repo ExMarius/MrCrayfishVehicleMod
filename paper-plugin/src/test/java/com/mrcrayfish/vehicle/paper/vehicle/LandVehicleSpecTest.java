@@ -42,6 +42,32 @@ class LandVehicleSpecTest {
     }
 
     @Test
+    void tractorMatchesGeneratedPropertiesAndRendererTransforms() {
+        LandVehicleSpec spec = LandVehicleSpec.TRACTOR;
+        assertEquals(1.0F, spec.bodyScale(), EPSILON);
+        assertEquals(-3.0F, spec.axleOffset(), EPSILON);
+        assertEquals(5.7F, spec.wheelOffset(), EPSILON);
+        assertEquals(8.0F, spec.enginePower(), EPSILON);
+        assertEquals(15_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(0.25F, spec.energyPerTick(), EPSILON);
+        assertEquals(14.0F / 16.0F, spec.frontAxleOffset(), EPSILON);
+        assertEquals(-14.5F / 16.0F, spec.rearAxleOffset(), EPSILON);
+        assertEquals(0.9375F, spec.firstFrontWheel().scaleX(), EPSILON);
+        assertEquals(1.425F, spec.firstFrontWheel().scaleY(), EPSILON);
+        assertEquals(1.875F, spec.firstRearWheel().scaleX(), EPSILON);
+        assertEquals(2.8F, spec.firstRearWheel().scaleY(), EPSILON);
+        assertEquals(0.0F, spec.firstFrontWheel().contactY(), EPSILON);
+        assertEquals(0.0F, spec.firstRearWheel().contactY(), EPSILON);
+        assertEquals(0.96875F, spec.engine().center().y(), EPSILON);
+        assertEquals(0.85F, spec.engine().scale(), EPSILON);
+        assertEquals(-67.5F, spec.steering().rotationX(), EPSILON);
+        assertEquals(-24.5F, spec.towBarOffset().z(), EPSILON);
+        assertEquals(1, spec.seats().size());
+        assertTrue(spec.seats().getFirst().driver());
+        assertTrue(spec.canTowTrailers());
+    }
+
+    @Test
     void lawnMowerMatchesGeneratedProperties() {
         LandVehicleSpec spec = LandVehicleSpec.LAWN_MOWER;
         assertEquals(1.25F, spec.bodyScale(), EPSILON);
