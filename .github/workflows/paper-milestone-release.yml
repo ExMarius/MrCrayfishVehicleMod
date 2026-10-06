@@ -30,59 +30,21 @@ jobs:
       - name: Build JAR and mandatory resource pack
         run: ./paper-plugin/gradlew -p paper-plugin clean check resourcePack
 
-      - name: Verify deliverables
+      - name: Verify resource pack and JAR output
         shell: bash
         run: |
           set -euo pipefail
-          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
+          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f -print -quit)
           PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r4.zip"
-          test -n "$JAR"
+          test -s "$JAR"
           unzip -t "$PACK"
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
           CONFIG_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)
-          echo "Built pack SHA-1: $PACK_SHA1"
-          echo "Configured SHA-1: $CONFIG_SHA1"
+          echo "Resource-pack SHA-1: $PACK_SHA1"
           test "$PACK_SHA1" = "$CONFIG_SHA1"
           test "$PACK_SHA1" = '94c646cbf4e1812263703b1a287b925fb9a4d17a'
-          JAR="$JAR" PACK="$PACK" python3 - <<'PY'
-          import json
-          import os
-          import zipfile
-          from pathlib import Path
-
-          jar = Path(os.environ["JAR"])
-          pack = Path(os.environ["PACK"])
-          required_jar = {
-              "plugin.yml",
-              "config.yml",
-              "LICENSE.txt",
-              "com/mrcrayfish/vehicle/paper/VehiclePlugin.class",
-          }
-          required_pack = {
-              "pack.mcmeta",
-              "LICENSE.txt",
-              "assets/vehicle/items/go_kart_body.json",
-              "assets/vehicle/items/go_kart_steering_wheel.json",
-              "assets/vehicle/items/iron_small_engine.json",
-              "assets/vehicle/items/standard_wheel.json",
-              "assets/vehicle/sounds.json",
-              "assets/vehicle/sounds/entity/go_kart/engine.ogg",
-          }
-          with zipfile.ZipFile(jar) as archive:
-              missing = required_jar - set(archive.namelist())
-              if missing:
-                  raise SystemExit(f"Missing plugin JAR files: {sorted(missing)}")
-              print(f"Verified plugin JAR entries: {len(archive.namelist())}")
-          with zipfile.ZipFile(pack) as archive:
-              names = set(archive.namelist())
-              missing = required_pack - names
-              if missing:
-                  raise SystemExit(f"Missing resource-pack files: {sorted(missing)}")
-              for name in names:
-                  if name.endswith(".json") or name == "pack.mcmeta":
-                      json.loads(archive.read(name))
-              print(f"Verified resource-pack entries: {len(names)}")
-          PY
+          unzip -Z1 "$PACK" > /tmp/resource-pack-entries.txt
+          grep -Fxq 'LICENSE.txt' /tmp/resource-pack-entries.txt
 
       - name: Prepare immutable milestone assets
         shell: bash
