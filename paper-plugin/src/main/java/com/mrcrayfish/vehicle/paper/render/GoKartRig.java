@@ -1,6 +1,7 @@
 package com.mrcrayfish.vehicle.paper.render;
 
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.vehicle.GoKartProperties;
 import io.papermc.paper.entity.TeleportFlag;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -21,9 +22,31 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 
-/** Vanilla display-entity replacement for GoKartRenderer. */
+/**
+ * Vanilla display-entity implementation of GoKartRenderer,
+ * AbstractLandVehicleRenderer, AbstractPoweredRenderer, and
+ * AbstractVehicleRenderer. The transform order and constants mirror those
+ * renderers; only the final conversion to ItemDisplay coordinates is new.
+ */
 public final class GoKartRig {
     public static final String ENTITY_TAG = "mcv_plugin_vehicle";
+
+    private static final Vector3f BODY_ORIGIN = new Vector3f(0.0F, GoKartProperties.BODY_RENDER_Y, 0.0F);
+    private static final Vector3f WHEELIE_PIVOT = new Vector3f(
+            0.0F,
+            GoKartProperties.BODY_RENDER_Y - 0.5F - GoKartProperties.AXLE_OFFSET * GoKartProperties.MODEL_UNIT,
+            GoKartProperties.REAR_AXLE_OFFSET
+    );
+    private static final Vector3f ENGINE_CENTER = new Vector3f(0.0F, 0.6F, -11.0F / 16.0F);
+    private static final Vector3f STEERING_CENTER = new Vector3f(
+            0.0F,
+            GoKartProperties.BODY_RENDER_Y + 0.6814F / 16.0F,
+            8.0426F / 16.0F
+    );
+
+    /* Seat (-3) + axle (-1) + wheel offset (3.2), converted from model units. */
+    private static final float SEAT_CARRIER_Y = -0.05F;
+    private static final float SEAT_Z = -1.0F / 16.0F;
 
     private final UUID vehicleId;
     private final ArmorStand seat;
@@ -33,7 +56,6 @@ public final class GoKartRig {
     private final ItemDisplay steeringWheel;
     private final List<WheelDisplay> wheels;
     private final List<Entity> entities;
-    private float wheelRotation;
 
     private GoKartRig(UUID vehicleId, ArmorStand seat, Interaction interaction, ItemDisplay body,
                       ItemDisplay engine, ItemDisplay steeringWheel, List<WheelDisplay> wheels,
@@ -68,6 +90,7 @@ public final class GoKartRig {
         all.add(seat);
 
         Interaction interaction = world.spawn(location, Interaction.class, hitbox -> {
+            /* The original entity is 1.5 x 0.5; the wider interaction covers its long rendered body. */
             hitbox.setInteractionWidth(2.2F);
             hitbox.setInteractionHeight(1.1F);
             hitbox.setResponsive(true);
@@ -89,23 +112,17 @@ public final class GoKartRig {
         all.add(steering);
 
         List<WheelDisplay> wheels = new ArrayList<>();
-        wheels.add(wheel(world, location, -0.50F, 0.20F, 0.55F, true, vehicleId, all));
-        wheels.add(wheel(world, location, 0.50F, 0.20F, 0.55F, true, vehicleId, all));
-        wheels.add(wheel(world, location, -0.50F, 0.22F, -0.59F, false, vehicleId, all));
-        wheels.add(wheel(world, location, 0.50F, 0.22F, -0.59F, false, vehicleId, all));
+        for (GoKartProperties.Wheel properties : GoKartProperties.WHEELS) {
+            ItemDisplay wheel = display(world, location, model("standard_wheel"));
+            mark(wheel, vehicleId);
+            all.add(wheel);
+            wheels.add(new WheelDisplay(wheel, properties));
+        }
 
         GoKartRig rig = new GoKartRig(vehicleId, seat, interaction, body, engine, steering,
                 Collections.unmodifiableList(wheels), Collections.unmodifiableList(all));
-        rig.update(location, 0.0F, 0.0F);
+        rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
         return rig;
-    }
-
-    private static WheelDisplay wheel(World world, Location origin, float x, float y, float z,
-                                      boolean steering, UUID vehicleId, List<Entity> all) {
-        ItemDisplay display = display(world, origin, model("standard_wheel"));
-        mark(display, vehicleId);
-        all.add(display);
-        return new WheelDisplay(display, new Vector3f(x, y, z), steering);
     }
 
     private static ItemDisplay display(World world, Location location, ItemStack stack) {
@@ -135,71 +152,104 @@ public final class GoKartRig {
         entity.addScoreboardTag("mcv_" + vehicleId);
     }
 
-    public void update(Location root, float steeringAngle, float speed) {
+    public void update(Location root, float renderSteeringAngle, float frontWheelRotation,
+                       float rearWheelRotation, float wheelieAngle, boolean engineRunning,
+                       int tickCount) {
         if (!valid()) {
             return;
         }
+
         float yaw = root.getYaw();
-        seat.teleport(local(root, 0.0F, 0.05F, -0.06F), TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        seat.teleport(local(root, new Vector3f(0.0F, SEAT_CARRIER_Y, SEAT_Z)),
+                TeleportFlag.EntityState.RETAIN_PASSENGERS);
         seat.setRotation(yaw, 0.0F);
-        interaction.teleport(local(root, 0.0F, 0.45F, 0.0F));
+        interaction.teleport(root);
         interaction.setRotation(yaw, 0.0F);
 
-        body.teleport(root);
-        body.setRotation(yaw, 0.0F);
-        body.setTransformation(transform(
-                new Vector3f(0.0F, 0.30F, 0.0F),
-                new Quaternionf(),
-                new Vector3f(1.0F, 1.0F, 1.0F)
-        ));
+        Quaternionf wheelieRotation = rotationX(wheelieAngle);
 
-        Location engineLocation = local(root, 0.0F, 0.36F, -0.69F);
-        engine.teleport(engineLocation);
-        engine.setRotation(yaw + 180.0F, 0.0F);
-        engine.setTransformation(transform(
-                new Vector3f(),
-                new Quaternionf(),
-                new Vector3f(0.8F)
-        ));
+        Vector3f bodyCenter = wheelie(BODY_ORIGIN, wheelieAngle);
+        place(body, root, bodyCenter, yaw, wheelieRotation,
+                new Vector3f(1.0F), new Quaternionf());
 
-        Location steeringLocation = local(root, 0.0F, 0.68F, 0.50F);
-        steeringWheel.teleport(steeringLocation);
-        steeringWheel.setRotation(yaw, 0.0F);
-        steeringWheel.setTransformation(transform(
-                new Vector3f(),
-                new Quaternionf().rotateX((float) Math.toRadians(-45.0F))
-                        .rotateZ((float) Math.toRadians(-steeringAngle * 0.625F)),
-                new Vector3f(0.9F)
-        ));
+        Quaternionf engineShake = new Quaternionf();
+        if (engineRunning && (tickCount & 1) == 1) {
+            engineShake.rotateX(radians(0.5F)).rotateZ(radians(0.5F)).rotateY(radians(-0.5F));
+        }
+        Vector3f engineRelative = new Vector3f(ENGINE_CENTER).sub(BODY_ORIGIN);
+        engineShake.transform(engineRelative);
+        Vector3f engineCenter = wheelie(new Vector3f(BODY_ORIGIN).add(engineRelative), wheelieAngle);
+        Quaternionf engineRotation = new Quaternionf(wheelieRotation).mul(engineShake);
+        place(engine, root, engineCenter, yaw, engineRotation,
+                new Vector3f(0.8F), new Quaternionf().rotateY((float) Math.PI));
 
-        wheelRotation -= speed * 20.0F;
-        for (WheelDisplay wheel : wheels) {
-            Location wheelLocation = local(root, wheel.offset.x, wheel.offset.y, wheel.offset.z);
-            wheel.entity.teleport(wheelLocation);
-            wheel.entity.setRotation(yaw, 0.0F);
-            float steer = wheel.steering ? steeringAngle : 0.0F;
-            Quaternionf rotation = new Quaternionf()
-                    .rotateY((float) Math.toRadians(-steer))
-                    .rotateX((float) Math.toRadians(wheelRotation));
-            if (wheel.offset.x > 0.0F) {
-                rotation.rotateY((float) Math.PI);
-            }
-            wheel.entity.setTransformation(transform(new Vector3f(), rotation,
-                    new Vector3f(1.0F, 0.8F, 0.8F)));
+        Vector3f steeringCenter = wheelie(STEERING_CENTER, wheelieAngle);
+        float steeringWheelRotation = renderSteeringAngle / GoKartProperties.MAX_STEERING_ANGLE * 25.0F;
+        Quaternionf steeringRotation = new Quaternionf(wheelieRotation)
+                .rotateX(radians(-45.0F))
+                .rotateY(radians(steeringWheelRotation));
+        place(steeringWheel, root, steeringCenter, yaw, steeringRotation,
+                new Vector3f(1.0F), new Quaternionf());
+
+        for (WheelDisplay wheelDisplay : wheels) {
+            GoKartProperties.Wheel properties = wheelDisplay.properties;
+            float steering = properties.front() ? renderSteeringAngle : 0.0F;
+            float spin = properties.front() ? frontWheelRotation : rearWheelRotation;
+
+            float width = properties.halfWidthOffset();
+            float steerRadians = radians(steering);
+            Vector3f wheelCenter = new Vector3f(
+                    properties.axleX() + width * (float) Math.cos(steerRadians),
+                    properties.centerY(),
+                    properties.axleZ() - width * (float) Math.sin(steerRadians)
+            );
+            wheelCenter = wheelie(wheelCenter, wheelieAngle);
+
+            Quaternionf wheelRotation = new Quaternionf(wheelieRotation)
+                    .rotateY(steerRadians)
+                    .rotateX(radians(-spin));
+            Quaternionf sideRotation = properties.side() > 0
+                    ? new Quaternionf().rotateY((float) Math.PI)
+                    : new Quaternionf();
+            place(wheelDisplay.entity, root, wheelCenter, yaw, wheelRotation,
+                    new Vector3f(properties.scaleX(), properties.scaleY(), properties.scaleZ()),
+                    sideRotation);
         }
     }
 
-    private static Transformation transform(Vector3f translation, Quaternionf rotation, Vector3f scale) {
-        return new Transformation(translation, rotation, scale, new Quaternionf());
+    private static void place(ItemDisplay display, Location root, Vector3f center, float yaw,
+                              Quaternionf leftRotation, Vector3f scale, Quaternionf rightRotation) {
+        display.teleport(local(root, center));
+        display.setRotation(yaw, 0.0F);
+        display.setTransformation(new Transformation(
+                new Vector3f(), leftRotation, scale, rightRotation
+        ));
     }
 
-    private static Location local(Location root, float x, float y, float z) {
+    private static Vector3f wheelie(Vector3f point, float angle) {
+        if (angle == 0.0F) {
+            return new Vector3f(point);
+        }
+        Vector3f relative = new Vector3f(point).sub(WHEELIE_PIVOT);
+        rotationX(angle).transform(relative);
+        return relative.add(WHEELIE_PIVOT);
+    }
+
+    private static Quaternionf rotationX(float degrees) {
+        return new Quaternionf().rotateX(radians(degrees));
+    }
+
+    private static float radians(float degrees) {
+        return (float) Math.toRadians(degrees);
+    }
+
+    private static Location local(Location root, Vector3f point) {
         double radians = Math.toRadians(root.getYaw());
         double sin = Math.sin(radians);
         double cos = Math.cos(radians);
-        double worldX = x * cos - z * sin;
-        double worldZ = x * sin + z * cos;
-        return root.clone().add(worldX, y, worldZ);
+        double worldX = point.x * cos - point.z * sin;
+        double worldZ = point.x * sin + point.z * cos;
+        return root.clone().add(worldX, point.y, worldZ);
     }
 
     public ArmorStand seat() {
@@ -215,7 +265,8 @@ public final class GoKartRig {
     }
 
     public boolean valid() {
-        return seat.isValid() && interaction.isValid() && body.isValid() && engine.isValid();
+        return seat.isValid() && interaction.isValid() && body.isValid() && engine.isValid()
+                && steeringWheel.isValid() && wheels.stream().allMatch(wheel -> wheel.entity.isValid());
     }
 
     public void remove() {
@@ -224,6 +275,6 @@ public final class GoKartRig {
         }
     }
 
-    private record WheelDisplay(ItemDisplay entity, Vector3f offset, boolean steering) {
+    private record WheelDisplay(ItemDisplay entity, GoKartProperties.Wheel properties) {
     }
 }

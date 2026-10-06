@@ -151,6 +151,12 @@ public final class VehicleManager {
             data.set(path + ".z", location.getZ());
             data.set(path + ".yaw", location.getYaw());
             data.set(path + ".fuel", vehicle.fuel());
+            Vector velocity = vehicle.velocity();
+            data.set(path + ".velocity.x", velocity.getX());
+            data.set(path + ".velocity.y", velocity.getY());
+            data.set(path + ".velocity.z", velocity.getZ());
+            data.set(path + ".traction", vehicle.traction());
+            data.set(path + ".vertical-velocity", vehicle.verticalVelocity());
         }
         try {
             if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {
@@ -185,7 +191,13 @@ public final class VehicleManager {
                         (float) data.getDouble(path + ".yaw"), 0.0F);
                 GoKart vehicle = spawn(id, location);
                 vehicle.setFuel((float) data.getDouble(path + ".fuel", GoKart.ENERGY_CAPACITY));
-                vehicle.setVelocity(new Vector());
+                vehicle.setVelocity(new Vector(
+                        data.getDouble(path + ".velocity.x", 0.0D),
+                        data.getDouble(path + ".velocity.y", 0.0D),
+                        data.getDouble(path + ".velocity.z", 0.0D)
+                ));
+                vehicle.setTraction((float) data.getDouble(path + ".traction", 0.0D));
+                vehicle.setVerticalVelocity(data.getDouble(path + ".vertical-velocity", 0.0D));
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.WARNING, "Could not load vehicle entry " + key, exception);
             }

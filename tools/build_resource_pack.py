@@ -21,7 +21,7 @@ def write_json(path: Path, value: object) -> None:
     path.write_text(json.dumps(value, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
-def item_definition(model: str) -> dict[str, object]:
+def item_definition(model: str, tint: int = 0xFFFFFF) -> dict[str, object]:
     return {
         "model": {
             "type": "minecraft:model",
@@ -29,7 +29,7 @@ def item_definition(model: str) -> dict[str, object]:
             "tints": [
                 {
                     "type": "minecraft:constant",
-                    "value": -1,
+                    "value": tint,
                 }
             ],
         }
@@ -70,13 +70,14 @@ def build(output: Path) -> tuple[Path, str]:
         copy(ROOT / "MOD-LICENSE.txt", pack / "LICENSE.txt")
 
         namespace = pack / "assets/vehicle"
-        for item, model in {
-            "go_kart_body": "vehicle:item/go_kart_body",
-            "go_kart_steering_wheel": "vehicle:item/go_kart_steering_wheel",
-            "standard_wheel": "vehicle:item/standard_wheel",
-            "iron_small_engine": "vehicle:item/iron_small_engine",
+        for item, (model, tint) in {
+            # VehicleEntity's default white dye and the default wheel item tint.
+            "go_kart_body": ("vehicle:item/go_kart_body", 16383998),
+            "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
+            "standard_wheel": ("vehicle:item/standard_wheel", 0xFFFFFF),
+            "iron_small_engine": ("vehicle:item/iron_small_engine", 0xFFFFFF),
         }.items():
-            write_json(namespace / f"items/{item}.json", item_definition(model))
+            write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
         convert_model(
             ASSETS / "models/vehicle/go_kart/base.json",
@@ -147,7 +148,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r3.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r4.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")
