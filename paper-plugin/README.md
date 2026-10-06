@@ -4,7 +4,7 @@ Paper 1.21.4 server-side port for unmodified (vanilla) clients. The current chec
 
 The engine controller uses the original OGG assets, original pitch equations and 0.2 interpolation. Because a vanilla client does not expose Forge's continuously mutable `TickableSound`, the server replays each source sample at its actual pitch-adjusted duration and attaches it to the moving vehicle entity. This avoids the former overlapping fixed-position 18-tick impulses while remaining honest about the protocol limitation.
 
-The current rider-pose experiment mounts every seat occupant on a minimum-scale invisible horse carried by the existing smooth display anchor. This asks an unmodified client to use its native horse-riding posture while preserving each source seat position and the accepted rider-height correction.
+The current rider-pose experiment mounts every seat occupant on a minimum-scale invisible horse carried by the existing smooth display anchor. This asks an unmodified client to use its native horse-riding posture while preserving each source seat position and the accepted rider-height correction. Carriers exist only while a seat is occupied, are removed on dismount, and are recreated with their rider if an external command or plugin removes one.
 
 ## Build
 

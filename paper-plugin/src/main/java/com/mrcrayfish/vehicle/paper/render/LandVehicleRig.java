@@ -2,6 +2,7 @@ package com.mrcrayfish.vehicle.paper.render;
 
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import io.papermc.paper.entity.TeleportFlag;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -14,6 +15,7 @@ import org.bukkit.entity.Entity;
 import org.bukkit.entity.Horse;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.util.Transformation;
@@ -44,6 +46,7 @@ public final class LandVehicleRig {
     private final List<WheelDisplay> wheels;
     private final List<SeatCarrier> seats;
     private final List<Entity> entities;
+    private boolean removed;
 
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
                            ItemDisplay body, ItemDisplay engine, ItemDisplay steering, ItemDisplay towBar,
@@ -112,21 +115,14 @@ public final class LandVehicleRig {
                 mark(anchor, vehicleId);
                 all.add(anchor);
             }
-            Horse horse = horseCarrier(world, location, vehicleId);
-            all.add(horse);
-            if (!anchor.addPassenger(horse)) {
-                horse.remove();
-                throw new IllegalStateException("Could not attach horse-style seat for " + spec.id());
-            }
-            seats.add(new SeatCarrier(anchor, horse, seat));
+            seats.add(new SeatCarrier(anchor, seat));
         }
         if (!bodyAssigned) {
             throw new IllegalArgumentException("Land vehicle " + spec.id() + " has no driver seat");
         }
 
         LandVehicleRig rig = new LandVehicleRig(vehicleId, spec, interaction, body, engine, steering, towBar,
-                Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats),
-                Collections.unmodifiableList(all));
+                Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats), all);
         rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
         return rig;
     }
@@ -177,6 +173,30 @@ public final class LandVehicleRig {
         });
         mark(horse, vehicleId);
         return horse;
+    }
+
+    private Horse createHorse(SeatCarrier carrier) {
+        if (removed || !carrier.anchor.isValid()) {
+            return null;
+        }
+        Location location = carrier.anchor.getLocation();
+        Horse horse = horseCarrier(location.getWorld(), location, vehicleId);
+        if (!carrier.anchor.addPassenger(horse)) {
+            horse.remove();
+            return null;
+        }
+        carrier.horse = horse;
+        entities.add(horse);
+        return horse;
+    }
+
+    private void discardHorse(SeatCarrier carrier) {
+        Horse horse = carrier.horse;
+        carrier.horse = null;
+        if (horse != null) {
+            entities.remove(horse);
+            horse.remove();
+        }
     }
 
     private static ItemStack model(String name) {
@@ -310,8 +330,46 @@ public final class LandVehicleRig {
                 carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
                 carrier.anchor.setRotation(yaw, 0.0F);
             }
-            carrier.horse.setRotation(yaw, 0.0F);
+            maintainHorse(carrier, yaw);
         }
+    }
+
+    private void maintainHorse(SeatCarrier carrier, float yaw) {
+        Horse horse = carrier.horse;
+        if (horse == null) {
+            return;
+        }
+        if (!horse.isValid()) {
+            UUID riderId = carrier.rider;
+            entities.remove(horse);
+            carrier.horse = null;
+            if (!removed && riderId != null) {
+                Player rider = Bukkit.getPlayer(riderId);
+                if (rider != null && rider.isOnline()) {
+                    Horse replacement = createHorse(carrier);
+                    if (replacement != null && replacement.addPassenger(rider)) {
+                        carrier.rider = riderId;
+                        replacement.setRotation(yaw, 0.0F);
+                        return;
+                    }
+                    discardHorse(carrier);
+                }
+            }
+            carrier.rider = null;
+            return;
+        }
+
+        Player rider = horse.getPassengers().stream()
+                .filter(Player.class::isInstance)
+                .map(Player.class::cast)
+                .findFirst().orElse(null);
+        if (rider == null) {
+            carrier.rider = null;
+            discardHorse(carrier);
+            return;
+        }
+        carrier.rider = rider.getUniqueId();
+        horse.setRotation(yaw, 0.0F);
     }
 
     private Quaternionf motorcycleSteering(float steeringRotation) {
@@ -412,16 +470,54 @@ public final class LandVehicleRig {
         return root.clone().add(point.x * cos - point.z * sin, point.y, point.x * sin + point.z * cos);
     }
 
+    public void tickSeats(float yaw) {
+        if (removed) {
+            return;
+        }
+        for (SeatCarrier carrier : seats) {
+            maintainHorse(carrier, yaw);
+        }
+    }
+
+    public boolean mount(Player player) {
+        if (removed || !valid()) {
+            return false;
+        }
+        for (SeatCarrier carrier : seats) {
+            Horse horse = carrier.horse;
+            if (horse != null && horse.isValid() && !horse.getPassengers().isEmpty()) {
+                continue;
+            }
+            if (horse != null) {
+                discardHorse(carrier);
+            }
+            horse = createHorse(carrier);
+            if (horse != null && horse.addPassenger(player)) {
+                carrier.rider = player.getUniqueId();
+                return true;
+            }
+            discardHorse(carrier);
+        }
+        return false;
+    }
+
     public Entity driverSeat() {
-        return seats.stream().filter(seat -> seat.properties.driver()).findFirst().orElseThrow().horse;
+        SeatCarrier driver = seats.stream().filter(seat -> seat.properties.driver())
+                .findFirst().orElseThrow();
+        return driver.horse != null && driver.horse.isValid() ? driver.horse : driver.anchor;
     }
 
     public List<Entity> seatCarriers() {
-        return seats.stream().map(SeatCarrier::horse).map(Entity.class::cast).toList();
+        return seats.stream()
+                .map(SeatCarrier::horse)
+                .filter(java.util.Objects::nonNull)
+                .filter(Entity::isValid)
+                .map(Entity.class::cast)
+                .toList();
     }
 
     public List<Entity> entities() {
-        return entities;
+        return Collections.unmodifiableList(entities);
     }
 
     public UUID vehicleId() {
@@ -434,18 +530,37 @@ public final class LandVehicleRig {
                 && (steering == null || steering.isValid())
                 && (towBar == null || towBar.isValid())
                 && wheels.stream().allMatch(wheel -> wheel.entity.isValid())
-                && seats.stream().allMatch(seat -> seat.anchor.isValid() && seat.horse.isValid());
+                && seats.stream().allMatch(seat -> seat.anchor.isValid());
     }
 
     public void remove() {
-        for (Entity entity : entities) {
+        removed = true;
+        for (Entity entity : new ArrayList<>(entities)) {
             entity.remove();
+        }
+        entities.clear();
+        for (SeatCarrier carrier : seats) {
+            carrier.horse = null;
+            carrier.rider = null;
         }
     }
 
     private record WheelDisplay(ItemDisplay entity, LandVehicleSpec.Wheel properties) {
     }
 
-    private record SeatCarrier(ItemDisplay anchor, Horse horse, LandVehicleSpec.Seat properties) {
+    private static final class SeatCarrier {
+        private final ItemDisplay anchor;
+        private final LandVehicleSpec.Seat properties;
+        private Horse horse;
+        private UUID rider;
+
+        private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
+            this.anchor = anchor;
+            this.properties = properties;
+        }
+
+        private Horse horse() {
+            return horse;
+        }
     }
 }

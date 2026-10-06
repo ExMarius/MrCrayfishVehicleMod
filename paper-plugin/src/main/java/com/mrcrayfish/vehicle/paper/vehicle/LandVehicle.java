@@ -87,6 +87,7 @@ public final class LandVehicle {
 
     public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
         age++;
+        rig.tickSeats(location.getYaw());
         if (transported) {
             soundController.tick(location, false, spec.minEnginePitch(), List.of());
             return;
@@ -401,15 +402,7 @@ public final class LandVehicle {
     }
 
     public boolean mount(Player player) {
-        if (transported || !rig.valid()) {
-            return false;
-        }
-        for (Entity seat : rig.seatCarriers()) {
-            if (seat.getPassengers().isEmpty() && seat.addPassenger(player)) {
-                return true;
-            }
-        }
-        return false;
+        return !transported && rig.mount(player);
     }
 
     public Optional<Player> driver() {
