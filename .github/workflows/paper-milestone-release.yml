@@ -28,7 +28,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Build JAR and mandatory resource pack
-        run: ./paper-plugin/gradlew -p paper-plugin clean check resourcePack
+        run: ./paper-plugin/gradlew -p paper-plugin clean build resourcePack
 
       - name: Verify resource pack and JAR output
         shell: bash
