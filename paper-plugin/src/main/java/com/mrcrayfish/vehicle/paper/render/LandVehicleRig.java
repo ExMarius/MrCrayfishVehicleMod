@@ -6,9 +6,12 @@ import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Horse;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.inventory.ItemStack;
@@ -26,6 +29,10 @@ import java.util.UUID;
 public final class LandVehicleRig {
     public static final String ENTITY_TAG = "mcv_plugin_vehicle";
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
+    /* A minimum-scale invisible horse gives vanilla clients their native mounted
+     * player pose without adding a visible or colliding animal to the rig. */
+    private static final double HORSE_CARRIER_SCALE = 0.0625D;
+    private static final float HORSE_PASSENGER_OFFSET = 1.4F * (float) HORSE_CARRIER_SCALE;
 
     private final UUID vehicleId;
     private final LandVehicleSpec spec;
@@ -96,16 +103,22 @@ public final class LandVehicleRig {
         List<SeatCarrier> seats = new ArrayList<>();
         boolean bodyAssigned = false;
         for (LandVehicleSpec.Seat seat : spec.seats()) {
-            ItemDisplay carrier;
+            ItemDisplay anchor;
             if (seat.driver() && !bodyAssigned) {
-                carrier = body;
+                anchor = body;
                 bodyAssigned = true;
             } else {
-                carrier = display(world, location, new ItemStack(Material.AIR));
-                mark(carrier, vehicleId);
-                all.add(carrier);
+                anchor = display(world, location, new ItemStack(Material.AIR));
+                mark(anchor, vehicleId);
+                all.add(anchor);
             }
-            seats.add(new SeatCarrier(carrier, seat));
+            Horse horse = horseCarrier(world, location, vehicleId);
+            all.add(horse);
+            if (!anchor.addPassenger(horse)) {
+                horse.remove();
+                throw new IllegalStateException("Could not attach horse-style seat for " + spec.id());
+            }
+            seats.add(new SeatCarrier(anchor, horse, seat));
         }
         if (!bodyAssigned) {
             throw new IllegalArgumentException("Land vehicle " + spec.id() + " has no driver seat");
@@ -143,6 +156,29 @@ public final class LandVehicleRig {
         });
     }
 
+    private static Horse horseCarrier(World world, Location location, UUID vehicleId) {
+        Horse horse = world.spawn(location, Horse.class, carrier -> {
+            carrier.setAdult();
+            carrier.setTamed(true);
+            carrier.setDomestication(carrier.getMaxDomestication());
+            carrier.setJumpStrength(0.0D);
+            carrier.setAI(false);
+            carrier.setGravity(false);
+            carrier.setCollidable(false);
+            carrier.setInvisible(true);
+            carrier.setInvulnerable(true);
+            carrier.setSilent(true);
+            carrier.setPersistent(false);
+            carrier.setRemoveWhenFarAway(false);
+            AttributeInstance scale = carrier.getAttribute(Attribute.SCALE);
+            if (scale != null) {
+                scale.setBaseValue(HORSE_CARRIER_SCALE);
+            }
+        });
+        mark(horse, vehicleId);
+        return horse;
+    }
+
     private static ItemStack model(String name) {
         ItemStack item = new ItemStack(Material.PAPER);
         ItemMeta meta = item.getItemMeta();
@@ -168,7 +204,7 @@ public final class LandVehicleRig {
                 .rotateZ(radians(bodyRoll))
                 .rotateX(radians(wheelieAngle));
         Vector3f bodyOrigin = point(spec.bodyOrigin());
-        Vector3f driverSeat = chassis(driverSeatOffset(), wheelieAngle, bodyRoll);
+        Vector3f driverSeat = horseAnchor(chassis(driverSeatOffset(), wheelieAngle, bodyRoll));
         Location renderAnchor = local(root, driverSeat);
 
         interaction.teleport(root);
@@ -267,13 +303,14 @@ public final class LandVehicleRig {
         }
 
         for (SeatCarrier carrier : seats) {
-            if (carrier.entity == body) {
-                continue;
+            if (carrier.anchor != body) {
+                Vector3f seatPoint = horseAnchor(chassis(
+                        seatOffset(carrier.properties), wheelieAngle, bodyRoll));
+                Location seatLocation = local(root, seatPoint);
+                carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                carrier.anchor.setRotation(yaw, 0.0F);
             }
-            Vector3f seatPoint = chassis(seatOffset(carrier.properties), wheelieAngle, bodyRoll);
-            Location seatLocation = local(root, seatPoint);
-            carrier.entity.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            carrier.entity.setRotation(yaw, 0.0F);
+            carrier.horse.setRotation(yaw, 0.0F);
         }
     }
 
@@ -334,6 +371,10 @@ public final class LandVehicleRig {
         return point(seat.sourceOffset()).add(0.0F, LandVehicleSpec.RIDER_HEIGHT_CORRECTION, 0.0F);
     }
 
+    private static Vector3f horseAnchor(Vector3f seatPoint) {
+        return new Vector3f(seatPoint).sub(0.0F, HORSE_PASSENGER_OFFSET, 0.0F);
+    }
+
     private Vector3f chassis(Vector3f point, float wheelieAngle, float bodyRoll) {
         Vector3f transformed = new Vector3f(point);
         if (wheelieAngle != 0.0F) {
@@ -371,12 +412,12 @@ public final class LandVehicleRig {
         return root.clone().add(point.x * cos - point.z * sin, point.y, point.x * sin + point.z * cos);
     }
 
-    public ItemDisplay driverSeat() {
-        return seats.stream().filter(seat -> seat.properties.driver()).findFirst().orElseThrow().entity;
+    public Entity driverSeat() {
+        return seats.stream().filter(seat -> seat.properties.driver()).findFirst().orElseThrow().horse;
     }
 
-    public List<ItemDisplay> seatCarriers() {
-        return seats.stream().map(SeatCarrier::entity).toList();
+    public List<Entity> seatCarriers() {
+        return seats.stream().map(SeatCarrier::horse).map(Entity.class::cast).toList();
     }
 
     public List<Entity> entities() {
@@ -393,7 +434,7 @@ public final class LandVehicleRig {
                 && (steering == null || steering.isValid())
                 && (towBar == null || towBar.isValid())
                 && wheels.stream().allMatch(wheel -> wheel.entity.isValid())
-                && seats.stream().allMatch(seat -> seat.entity.isValid());
+                && seats.stream().allMatch(seat -> seat.anchor.isValid() && seat.horse.isValid());
     }
 
     public void remove() {
@@ -405,6 +446,6 @@ public final class LandVehicleRig {
     private record WheelDisplay(ItemDisplay entity, LandVehicleSpec.Wheel properties) {
     }
 
-    private record SeatCarrier(ItemDisplay entity, LandVehicleSpec.Seat properties) {
+    private record SeatCarrier(ItemDisplay anchor, Horse horse, LandVehicleSpec.Seat properties) {
     }
 }
