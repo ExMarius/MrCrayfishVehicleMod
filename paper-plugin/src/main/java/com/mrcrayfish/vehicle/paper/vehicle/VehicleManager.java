@@ -429,7 +429,7 @@ public final class VehicleManager {
             }
         }
         if (removed > 0) {
-            plugin.getLogger().info("Removed " + removed + " orphaned vehicle rig entities.");
+            plugin.getLogger().info("Removed " + removed + " orphaned vehicle display entities.");
         }
     }
 

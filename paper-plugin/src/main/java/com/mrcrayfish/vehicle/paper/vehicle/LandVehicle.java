@@ -29,6 +29,7 @@ public final class LandVehicle {
     private static final float BRAKE_POWER = -1.0F;
     private static final float DRAG = 0.001F;
 
+    private final VehiclePlugin plugin;
     private final UUID id;
     private final LandVehicleSpec spec;
     private final TrailerManager trailers;
@@ -61,8 +62,9 @@ public final class LandVehicle {
     private int age;
     private boolean transported;
 
-    private LandVehicle(UUID id, Location location, LandVehicleSpec spec,
+    private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
                         TrailerManager trailers, LandVehicleRig rig) {
+        this.plugin = plugin;
         this.id = id;
         this.location = location;
         this.spec = spec;
@@ -80,7 +82,7 @@ public final class LandVehicle {
         root.setYaw(normalizeYaw(root.getYaw()));
         root.setY(findSpawnY(root));
         LandVehicleRig rig = LandVehicleRig.spawn(id, spec, root);
-        return new LandVehicle(id, root, spec, trailers, rig);
+        return new LandVehicle(plugin, id, root, spec, trailers, rig);
     }
 
     public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
@@ -399,9 +401,6 @@ public final class LandVehicle {
         }
         for (Entity seat : rig.seatCarriers()) {
             if (seat.getPassengers().isEmpty() && seat.addPassenger(player)) {
-                /* The player is deliberately never rotated here or during ticks.
-                 * Riding the living seat carrier makes the vanilla client hold the
-                 * torso in its mounted pose while leaving camera/head input alone. */
                 return true;
             }
         }
