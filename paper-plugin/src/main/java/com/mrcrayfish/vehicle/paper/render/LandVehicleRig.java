@@ -114,7 +114,7 @@ public final class LandVehicleRig {
         LandVehicleRig rig = new LandVehicleRig(vehicleId, spec, interaction, body, engine, steering, towBar,
                 Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats),
                 Collections.unmodifiableList(all));
-        rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
+        rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
         return rig;
     }
 
@@ -157,16 +157,18 @@ public final class LandVehicleRig {
     }
 
     public void update(Location root, float renderSteeringAngle, float frontWheelRotation,
-                       float rearWheelRotation, float wheelieAngle, boolean engineRunning,
-                       int tickCount) {
+                       float rearWheelRotation, float wheelieAngle, float bodyRoll,
+                       boolean engineRunning, int tickCount) {
         if (!valid()) {
             return;
         }
 
         float yaw = root.getYaw();
-        Quaternionf wheelieRotation = rotationX(wheelieAngle);
+        Quaternionf chassisRotation = new Quaternionf()
+                .rotateZ(radians(bodyRoll))
+                .rotateX(radians(wheelieAngle));
         Vector3f bodyOrigin = point(spec.bodyOrigin());
-        Vector3f driverSeat = wheelie(driverSeatOffset(), wheelieAngle);
+        Vector3f driverSeat = chassis(driverSeatOffset(), wheelieAngle, bodyRoll);
         Location renderAnchor = local(root, driverSeat);
 
         interaction.teleport(root);
@@ -175,8 +177,8 @@ public final class LandVehicleRig {
             updateBrightness(root);
         }
 
-        Vector3f bodyCenter = wheelie(bodyOrigin, wheelieAngle);
-        place(body, renderAnchor, relativeToSeat(bodyCenter, driverSeat), yaw, wheelieRotation,
+        Vector3f bodyCenter = chassis(bodyOrigin, wheelieAngle, bodyRoll);
+        place(body, renderAnchor, relativeToSeat(bodyCenter, driverSeat), yaw, chassisRotation,
                 new Vector3f(spec.bodyScale()), new Quaternionf());
 
         if (engine != null) {
@@ -187,8 +189,8 @@ public final class LandVehicleRig {
             }
             Vector3f relative = point(part.center()).sub(bodyOrigin);
             shake.transform(relative);
-            Vector3f center = wheelie(new Vector3f(bodyOrigin).add(relative), wheelieAngle);
-            Quaternionf rotation = new Quaternionf(wheelieRotation).mul(shake);
+            Vector3f center = chassis(new Vector3f(bodyOrigin).add(relative), wheelieAngle, bodyRoll);
+            Quaternionf rotation = new Quaternionf(chassisRotation).mul(shake);
             Quaternionf sourceRotation = new Quaternionf()
                     .rotateX(radians(part.rotationX()))
                     .rotateY(radians(part.rotationY()))
@@ -197,57 +199,104 @@ public final class LandVehicleRig {
                     new Vector3f(part.scale()), sourceRotation);
         }
 
+        float steeringRotation = renderSteeringAngle / spec.maxSteeringAngle() * 25.0F;
+        Quaternionf forkRotation = motorcycleSteering(steeringRotation);
         if (steering != null) {
             LandVehicleSpec.Part part = spec.steering();
-            Vector3f center = wheelie(point(part.center()), wheelieAngle);
-            float steeringRotation = renderSteeringAngle / spec.maxSteeringAngle() * 25.0F;
-            Quaternionf rotation = new Quaternionf(wheelieRotation)
-                    .rotateX(radians(part.rotationX()))
-                    .rotateY(radians(part.rotationY() + steeringRotation))
-                    .rotateZ(radians(part.rotationZ()));
+            Vector3f center;
+            Quaternionf rotation;
+            if (spec.motorcycle() != null) {
+                center = forkPoint(point(part.center()), bodyOrigin, forkRotation);
+                center = chassis(center, wheelieAngle, bodyRoll);
+                rotation = new Quaternionf(chassisRotation).mul(forkRotation)
+                        .rotateX(radians(part.rotationX()))
+                        .rotateY(radians(part.rotationY()))
+                        .rotateZ(radians(part.rotationZ()));
+            } else {
+                center = chassis(point(part.center()), wheelieAngle, bodyRoll);
+                rotation = new Quaternionf(chassisRotation)
+                        .rotateX(radians(part.rotationX()))
+                        .rotateY(radians(part.rotationY() + steeringRotation))
+                        .rotateZ(radians(part.rotationZ()));
+            }
             place(steering, renderAnchor, relativeToSeat(center, driverSeat), yaw, rotation,
                     new Vector3f(part.scale()), new Quaternionf());
         }
 
         if (towBar != null) {
             LandVehicleSpec.Point tow = spec.towBarOffset();
-            Vector3f center = wheelie(new Vector3f(
+            Vector3f center = chassis(new Vector3f(
                     tow.x() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
                     0.5F + tow.y() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
-                    tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT), wheelieAngle);
-            place(towBar, renderAnchor, relativeToSeat(center, driverSeat), yaw, wheelieRotation,
+                    tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT), wheelieAngle, bodyRoll);
+            place(towBar, renderAnchor, relativeToSeat(center, driverSeat), yaw, chassisRotation,
                     new Vector3f(1.0F), new Quaternionf().rotateY((float) Math.PI));
         }
 
         for (WheelDisplay wheelDisplay : wheels) {
             LandVehicleSpec.Wheel wheel = wheelDisplay.properties;
-            float steeringAngle = wheel.front() ? renderSteeringAngle : 0.0F;
             float spin = wheel.front() ? frontWheelRotation : rearWheelRotation;
-            float steerRadians = radians(steeringAngle);
-            Vector3f center = new Vector3f(
-                    wheel.axleX() + wheel.halfWidthOffset() * (float) Math.cos(steerRadians),
-                    wheel.centerY(),
-                    wheel.axleZ() - wheel.halfWidthOffset() * (float) Math.sin(steerRadians)
-            );
-            center = wheelie(center, wheelieAngle);
-            Quaternionf rotation = new Quaternionf(wheelieRotation)
-                    .rotateY(steerRadians)
-                    .rotateX(radians(-spin));
-            Quaternionf sideRotation = wheel.side() > 0
-                    ? new Quaternionf().rotateY((float) Math.PI) : new Quaternionf();
+            Vector3f center;
+            Quaternionf rotation;
+            Quaternionf sourceRotation;
+            if (wheel.front() && spec.motorcycle() != null) {
+                Vector3f unsteeredCenter = new Vector3f(wheel.axleX(), wheel.centerY(), wheel.axleZ());
+                center = forkPoint(unsteeredCenter, bodyOrigin, forkRotation);
+                center = chassis(center, wheelieAngle, bodyRoll);
+                rotation = new Quaternionf(chassisRotation).mul(forkRotation)
+                        .rotateX(radians(-spin));
+                sourceRotation = spec.motorcycle().frontWheelYaw180()
+                        ? new Quaternionf().rotateY((float) Math.PI) : new Quaternionf();
+            } else {
+                float steeringAngle = wheel.front() ? renderSteeringAngle : 0.0F;
+                float steerRadians = radians(steeringAngle);
+                center = new Vector3f(
+                        wheel.axleX() + wheel.halfWidthOffset() * (float) Math.cos(steerRadians),
+                        wheel.centerY(),
+                        wheel.axleZ() - wheel.halfWidthOffset() * (float) Math.sin(steerRadians)
+                );
+                center = chassis(center, wheelieAngle, bodyRoll);
+                rotation = new Quaternionf(chassisRotation)
+                        .rotateY(steerRadians)
+                        .rotateX(radians(-spin));
+                sourceRotation = wheel.side() > 0
+                        ? new Quaternionf().rotateY((float) Math.PI) : new Quaternionf();
+            }
             place(wheelDisplay.entity, renderAnchor, relativeToSeat(center, driverSeat), yaw, rotation,
-                    new Vector3f(wheel.scaleX(), wheel.scaleY(), wheel.scaleZ()), sideRotation);
+                    new Vector3f(wheel.scaleX(), wheel.scaleY(), wheel.scaleZ()), sourceRotation);
         }
 
         for (SeatCarrier carrier : seats) {
             if (carrier.entity == body) {
                 continue;
             }
-            Vector3f seatPoint = wheelie(seatOffset(carrier.properties), wheelieAngle);
+            Vector3f seatPoint = chassis(seatOffset(carrier.properties), wheelieAngle, bodyRoll);
             Location seatLocation = local(root, seatPoint);
             carrier.entity.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             carrier.entity.setRotation(yaw, 0.0F);
         }
+    }
+
+    private Quaternionf motorcycleSteering(float steeringRotation) {
+        LandVehicleSpec.Motorcycle motorcycle = spec.motorcycle();
+        if (motorcycle == null) {
+            return new Quaternionf();
+        }
+        return new Quaternionf()
+                .rotateX(radians(motorcycle.steeringAxisTilt()))
+                .rotateY(radians(steeringRotation))
+                .rotateX(radians(-motorcycle.steeringAxisTilt()));
+    }
+
+    private Vector3f forkPoint(Vector3f unsteered, Vector3f bodyOrigin, Quaternionf forkRotation) {
+        LandVehicleSpec.Motorcycle motorcycle = spec.motorcycle();
+        if (motorcycle == null) {
+            return new Vector3f(unsteered);
+        }
+        Vector3f pivot = new Vector3f(bodyOrigin).add(0.0F, 0.0F, motorcycle.steeringPivotZ());
+        Vector3f relative = new Vector3f(unsteered).sub(pivot);
+        forkRotation.transform(relative);
+        return relative.add(pivot);
     }
 
     private void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
@@ -285,14 +334,18 @@ public final class LandVehicleRig {
         return point(seat.sourceOffset()).add(0.0F, LandVehicleSpec.RIDER_HEIGHT_CORRECTION, 0.0F);
     }
 
-    private Vector3f wheelie(Vector3f point, float angle) {
-        if (angle == 0.0F) {
-            return new Vector3f(point);
+    private Vector3f chassis(Vector3f point, float wheelieAngle, float bodyRoll) {
+        Vector3f transformed = new Vector3f(point);
+        if (wheelieAngle != 0.0F) {
+            Vector3f pivot = point(spec.wheeliePivot());
+            transformed.sub(pivot);
+            rotationX(wheelieAngle).transform(transformed);
+            transformed.add(pivot);
         }
-        Vector3f pivot = point(spec.wheeliePivot());
-        Vector3f relative = new Vector3f(point).sub(pivot);
-        rotationX(angle).transform(relative);
-        return relative.add(pivot);
+        if (bodyRoll != 0.0F) {
+            new Quaternionf().rotateZ(radians(bodyRoll)).transform(transformed);
+        }
+        return transformed;
     }
 
     private static Vector3f relativeToSeat(Vector3f point, Vector3f seat) {

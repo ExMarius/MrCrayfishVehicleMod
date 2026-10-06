@@ -113,7 +113,7 @@ public final class LandVehicle {
             traction = LandVehicleSpec.STANDARD_TRACTION;
             if (previousRenderAngle != renderWheelAngle) {
                 rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
-                        0.0F, false, age);
+                        0.0F, spec.bodyRoll(steeringAngle, horizontalSpeed()), false, age);
             } else if (age % 20 == 0) {
                 rig.refreshBrightness(location);
             }
@@ -162,8 +162,9 @@ public final class LandVehicle {
 
         updateWheelRotations();
         float wheelieAngle = -30.0F * boostStrength * wheelieProgress();
+        float bodyRoll = spec.bodyRoll(steeringAngle, horizontalSpeed());
         rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
-                wheelieAngle, driver != null && enginePowered, age);
+                wheelieAngle, bodyRoll, driver != null && enginePowered, age);
         effects(driver, enginePowered);
         if (driver != null && spec.lawnMower()) {
             LawnMowerBehavior.cutBushes(location, motion, spec.entityWidth(), driver,
@@ -360,6 +361,10 @@ public final class LandVehicle {
         return 1.0F - (1.0F - progress) * (1.0F - progress);
     }
 
+    private double horizontalSpeed() {
+        return Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
+    }
+
     private boolean isSliding(Vector forward) {
         return normalized(velocity).crossProduct(normalized(forward)).length() >= 0.3D;
     }
@@ -437,7 +442,8 @@ public final class LandVehicle {
         this.motion.zero();
         this.verticalVelocity = 0.0D;
         this.transported = true;
-        rig.update(location, 0.0F, frontWheelRotation, rearWheelRotation, 0.0F, false, age);
+        rig.update(location, 0.0F, frontWheelRotation, rearWheelRotation,
+                0.0F, 0.0F, false, age);
     }
 
     public void releaseFromTrailer(Location releaseLocation) {
@@ -445,7 +451,8 @@ public final class LandVehicle {
         this.location.setPitch(0.0F);
         this.transported = false;
         this.onGround = false;
-        rig.update(location, 0.0F, frontWheelRotation, rearWheelRotation, 0.0F, false, age);
+        rig.update(location, 0.0F, frontWheelRotation, rearWheelRotation,
+                0.0F, 0.0F, false, age);
     }
 
     public boolean transported() {

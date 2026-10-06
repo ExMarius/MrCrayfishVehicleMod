@@ -65,7 +65,7 @@ public final class VehicleListener implements Listener {
     public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
         switch (event.getStatus()) {
             case SUCCESSFULLY_LOADED -> event.getPlayer().sendRichMessage(
-                    "<green>[Vehicle] Resource pack-ul r10 a fost încărcat.</green>");
+                    "<green>[Vehicle] Resource pack-ul r11 a fost încărcat.</green>");
             case DECLINED, FAILED_DOWNLOAD, FAILED_RELOAD, INVALID_URL, DISCARDED -> {
                 plugin.getLogger().warning("Resource pack " + event.getStatus() + " for "
                         + event.getPlayer().getName());

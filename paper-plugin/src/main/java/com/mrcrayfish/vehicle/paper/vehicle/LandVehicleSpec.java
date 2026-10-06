@@ -38,6 +38,7 @@ public record LandVehicleSpec(
         boolean canTowTrailers,
         Point towBarOffset,
         Point trailerOffset,
+        Motorcycle motorcycle,
         boolean lawnMower
 ) {
     public static final float MODEL_UNIT = 1.0F / 16.0F;
@@ -67,7 +68,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, -3.0F, -1.0F, 1.0F, -1.0F, 3.2F)),
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.375F),
-            false
+            null, false
     );
 
     /* wheelOffset = (8 * 0.97 / 2) - 0.8 = 3.08; auto-scaled front wheels become 0.77. */
@@ -90,7 +91,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, 7.0F, -9.0F, 1.25F, -2.0F, 3.08F)),
             true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, -0.01F, -1.0F),
-            true
+            null, true
     );
 
     public static final LandVehicleSpec QUAD_BIKE = new LandVehicleSpec(
@@ -115,7 +116,7 @@ public record LandVehicleSpec(
                     seat(false, 0.0F, 5.5F, -12.0F, 1.1F, -0.5F, 4.4F)
             ),
             true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, -0.55F),
-            false
+            null, false
     );
 
     /* Source wheelOffset = (8 * 2.8 / 2) - 5.5 = 5.7. The front wheel's
@@ -145,14 +146,42 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, 9.0F, -14.0F, 1.0F, -3.0F, 5.7F)),
             true, new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
-            false
+            null, false
+    );
+
+    /* DirtBikeRenderer steers both the handle assembly and the separately rendered
+     * front wheel around a fork axis tilted 22.5 degrees toward the rider. */
+    public static final LandVehicleSpec DIRT_BIKE = new LandVehicleSpec(
+            "dirt_bike", "Dirt Bike", "dirt_bike_body",
+            1.0F, 1.5F, 1.0F,
+            1.0F, 0.0F, 5.6F,
+            16.0F, 35.0F, 14.08F * MODEL_UNIT, -11.61F * MODEL_UNIT, 5.0F,
+            20_000.0F, 0.35F, 0.85F, 1.5F, "vehicle:entity.dirt_bike.engine",
+            true, new Point(-1.0F * MODEL_UNIT, 16.0F * MODEL_UNIT, -16.0F * MODEL_UNIT),
+            new Part("iron_small_engine", new Point(0.0F, 0.7125F, 0.0F),
+                    0.6F, 0.0F, 180.0F, 0.0F),
+            new Part("dirt_bike_handles", new Point(0.0F, 0.85F, 0.0F),
+                    1.0F, 0.0F, 0.0F, 0.0F),
+            List.of(
+                    wheel(0, true, 0.0F, 0.0F, 14.08F,
+                            0.9375F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F),
+                    wheel(0, false, 0.0F, 0.0F, -11.61F,
+                            0.9375F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F)
+            ),
+            List.of(
+                    seat(true, 0.0F, 8.0F, -2.0F, 1.0F, 0.0F, 5.6F),
+                    seat(false, 0.0F, 9.0F, -9.0F, 1.0F, 0.0F, 5.6F)
+            ),
+            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.0625F, -0.3125F),
+            new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), false
     );
 
     private static final Map<String, LandVehicleSpec> BY_ID = Map.of(
             GO_KART.id, GO_KART,
             LAWN_MOWER.id, LAWN_MOWER,
             QUAD_BIKE.id, QUAD_BIKE,
-            TRACTOR.id, TRACTOR
+            TRACTOR.id, TRACTOR,
+            DIRT_BIKE.id, DIRT_BIKE
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -177,6 +206,15 @@ public record LandVehicleSpec(
 
     public Wheel firstRearWheel() {
         return wheels.stream().filter(wheel -> !wheel.front()).findFirst().orElseThrow();
+    }
+
+    /** Mirrors MotorcycleEntity#getBodyRotationRoll: steering ratio times speed/30, capped at full lean. */
+    public float bodyRoll(float steeringAngle, double speed) {
+        if (motorcycle == null || maxSteeringAngle == 0.0F) {
+            return 0.0F;
+        }
+        double speedFactor = Math.max(0.0D, Math.min(1.0D, speed / 30.0D));
+        return (float) (-motorcycle.maxLeanAngle() * (steeringAngle / maxSteeringAngle) * speedFactor);
     }
 
     private static Wheel wheel(int side, boolean front, float offsetX, float offsetY, float offsetZ,
@@ -206,6 +244,10 @@ public record LandVehicleSpec(
 
     public record Part(String model, Point center, float scale,
                        float rotationX, float rotationY, float rotationZ) {
+    }
+
+    public record Motorcycle(float maxLeanAngle, float steeringPivotZ,
+                             float steeringAxisTilt, boolean frontWheelYaw180) {
     }
 
     public record Wheel(int side, boolean front, float axleX, float centerY, float axleZ,

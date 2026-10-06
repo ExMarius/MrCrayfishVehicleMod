@@ -70,7 +70,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         LandVehicleSpec vehicleSpec = LandVehicleSpec.byId(id);
         TrailerSpec trailerSpec = TrailerSpec.byId(id);
         if (vehicleSpec == null && trailerSpec == null) {
-            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower|quad_bike|tractor|fertilizer|seeder|storage_trailer|fluid_trailer|vehicle_trailer></yellow>");
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower|quad_bike|tractor|dirt_bike|fertilizer|seeder|storage_trailer|fluid_trailer|vehicle_trailer></yellow>");
             return;
         }
         if (vehicleSpec != null) {

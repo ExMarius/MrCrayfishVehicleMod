@@ -68,6 +68,31 @@ class LandVehicleSpecTest {
     }
 
     @Test
+    void dirtBikeMatchesGeneratedPropertiesAndMotorcycleBehavior() {
+        LandVehicleSpec spec = LandVehicleSpec.DIRT_BIKE;
+        assertEquals(1.0F, spec.bodyScale(), EPSILON);
+        assertEquals(5.6F, spec.wheelOffset(), EPSILON);
+        assertEquals(16.0F, spec.enginePower(), EPSILON);
+        assertEquals(20_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(0.35F, spec.energyPerTick(), EPSILON);
+        assertEquals(14.08F / 16.0F, spec.frontAxleOffset(), EPSILON);
+        assertEquals(-11.61F / 16.0F, spec.rearAxleOffset(), EPSILON);
+        assertEquals(0.9375F, spec.firstFrontWheel().scaleX(), EPSILON);
+        assertEquals(1.4F, spec.firstFrontWheel().scaleY(), EPSILON);
+        assertEquals(0.0F, spec.firstFrontWheel().contactY(), EPSILON);
+        assertEquals(0.7125F, spec.engine().center().y(), EPSILON);
+        assertEquals(2, spec.seats().size());
+        assertTrue(spec.seats().getFirst().driver());
+        assertFalse(spec.seats().getLast().driver());
+        assertFalse(spec.canTowTrailers());
+        assertEquals(45.0F, spec.motorcycle().maxLeanAngle(), EPSILON);
+        assertEquals(10.5F / 16.0F, spec.motorcycle().steeringPivotZ(), EPSILON);
+        assertEquals(-22.5F, spec.motorcycle().steeringAxisTilt(), EPSILON);
+        assertEquals(-22.5F, spec.bodyRoll(17.5F, 30.0D), EPSILON);
+        assertEquals(22.5F, spec.bodyRoll(-35.0F, 15.0D), EPSILON);
+    }
+
+    @Test
     void lawnMowerMatchesGeneratedProperties() {
         LandVehicleSpec spec = LandVehicleSpec.LAWN_MOWER;
         assertEquals(1.25F, spec.bodyScale(), EPSILON);
