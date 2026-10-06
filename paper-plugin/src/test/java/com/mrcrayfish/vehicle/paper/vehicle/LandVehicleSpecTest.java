@@ -18,7 +18,7 @@ class LandVehicleSpecTest {
         assertEquals(-0.59375F, spec.rearAxleOffset(), EPSILON);
         assertEquals(18.0F, spec.enginePower(), EPSILON);
         assertEquals(15_000.0F, spec.energyCapacity(), EPSILON);
-        assertEquals(0.325F, spec.seats().getFirst().sourceOffset().y()
+        assertEquals(0.2F, spec.seats().getFirst().sourceOffset().y()
                 + LandVehicleSpec.RIDER_HEIGHT_CORRECTION, EPSILON);
         assertEquals(0.2F, spec.wheels().getFirst().centerY(), EPSILON);
         assertEquals(0.0F, spec.wheels().getFirst().contactY(), EPSILON);

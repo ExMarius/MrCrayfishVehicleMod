@@ -13,12 +13,12 @@ Requires Java 21 and Gradle 9+.
 Outputs:
 
 - `paper-plugin/build/libs/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar`
-- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r6.zip`
+- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r7.zip`
 
 Published prototype downloads:
 
 - [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
-- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r6.zip) (`SHA-1: 5b68fa3232613c7d8d7fbde51c6f9cb958f53f9c`; includes the GPLv3 license)
+- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r7.zip) (`SHA-1: 40f97bca4c1082f9f8afd2f0c542c859829537ba`; includes the GPLv3 license)
 
 ## Test
 

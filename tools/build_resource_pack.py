@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin — vanilla client assets",
+                "description": "MrCrayfish Vehicle Plugin r7 — Go Kart, Lawn Mower, Quad Bike",
                 "pack_format": 46,
             }
         })
@@ -91,14 +91,24 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
             namespace / "models/item/lawn_mower_body.json",
+            {
+                "seat": "minecraft:block/black_wool",
+                "axel": "minecraft:block/light_gray_concrete",
+                "blade_cover": "minecraft:block/black_concrete",
+                "logo": "vehicle:item/lawn_mower_logo",
+                "body": "minecraft:block/white_concrete",
+                "particle": "minecraft:block/white_concrete",
+            },
         )
         convert_model(
             ASSETS / "models/vehicle/quad_bike/base.json",
             namespace / "models/item/quad_bike_body.json",
+            {"1": "vehicle:item/quad_bike_body", "particle": "vehicle:item/quad_bike_body"},
         )
         convert_model(
             ASSETS / "models/vehicle/quad_bike/handles.json",
             namespace / "models/item/quad_bike_handles.json",
+            {"texture": "vehicle:item/quad_bike_handles", "particle": "vehicle:item/quad_bike_handles"},
         )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -130,15 +140,15 @@ def build(output: Path) -> tuple[Path, str]:
         )
         copy(
             ASSETS / "textures/vehicle/quad_bike/base.png",
-            namespace / "textures/vehicle/quad_bike/base.png",
+            namespace / "textures/item/quad_bike_body.png",
         )
         copy(
             ASSETS / "textures/vehicle/quad_bike/handles.png",
-            namespace / "textures/vehicle/quad_bike/handles.png",
+            namespace / "textures/item/quad_bike_handles.png",
         )
         copy(
             ASSETS / "textures/model/cray_industries.png",
-            namespace / "textures/model/cray_industries.png",
+            namespace / "textures/item/lawn_mower_logo.png",
         )
         copy(
             ASSETS / "textures/model/wheel.png",
@@ -187,7 +197,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r6.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r7.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

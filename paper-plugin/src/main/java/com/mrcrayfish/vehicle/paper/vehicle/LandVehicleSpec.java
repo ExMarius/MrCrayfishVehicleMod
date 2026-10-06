@@ -43,7 +43,8 @@ public record LandVehicleSpec(
     public static final float MODEL_UNIT = 1.0F / 16.0F;
     public static final float STANDARD_TRACTION = 0.8F;
     public static final float SLIDE_TRACTION = 0.05F;
-    public static final float RIDER_HEIGHT_CORRECTION = 6.0F * MODEL_UNIT;
+    /* 1.21.4's passenger attachment sits two model pixels above the source seat pose. */
+    public static final float RIDER_HEIGHT_CORRECTION = 4.0F * MODEL_UNIT;
 
     public static final LandVehicleSpec GO_KART = new LandVehicleSpec(
             "go_kart", "Go Kart", "go_kart_body",

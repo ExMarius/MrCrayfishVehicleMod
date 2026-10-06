@@ -1,5 +1,6 @@
 package com.mrcrayfish.vehicle.paper.command;
 
+import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
@@ -105,12 +106,16 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     }
 
     private void pack(CommandSender sender) {
-        String url = plugin.getConfig().getString("resource-pack.url", "");
-        if (url.isBlank()) {
-            sender.sendRichMessage("<yellow>Resource pack-ul nu are încă un URL configurat.</yellow>");
-        } else {
-            sender.sendRichMessage("<green>Resource pack configurat:</green> <gray>" + url + "</gray>");
+        if (sender instanceof Player player) {
+            if (ResourcePackSender.send(plugin, player)) {
+                player.sendRichMessage("<green>Resource pack-ul a fost retrimis. Acceptă descărcarea.</green>");
+            }
+            return;
         }
+        String url = plugin.getConfig().getString("resource-pack.url", "");
+        sender.sendRichMessage(url.isBlank()
+                ? "<yellow>Resource pack-ul nu are încă un URL configurat.</yellow>"
+                : "<green>Resource pack configurat:</green> <gray>" + url + "</gray>");
     }
 
     private void help(CommandSender sender, String label) {
