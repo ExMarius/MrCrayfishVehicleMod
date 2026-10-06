@@ -26,11 +26,18 @@ def item_definition(model: str) -> dict[str, object]:
         "model": {
             "type": "minecraft:model",
             "model": model,
+            "tints": [
+                {
+                    "type": "minecraft:constant",
+                    "value": -1,
+                }
+            ],
         }
     }
 
 
-def convert_open_model(source: Path, destination: Path) -> None:
+def convert_model(source: Path, destination: Path) -> None:
+    """Normalize Forge/Blockbench model metadata to vanilla model JSON."""
     model = json.loads(source.read_text(encoding="utf-8"))
     components = model.pop("components", None)
     if components is not None:
@@ -69,23 +76,23 @@ def build(output: Path) -> tuple[Path, str]:
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model))
 
-        convert_open_model(
+        convert_model(
             ASSETS / "models/vehicle/go_kart/base.json",
             namespace / "models/item/go_kart_body.json",
         )
-        copy(
+        convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
         )
-        copy(
+        convert_model(
             ASSETS / "models/item/standard_wheel.json",
             namespace / "models/item/standard_wheel.json",
         )
-        copy(
+        convert_model(
             ASSETS / "models/item/small_engine.json",
             namespace / "models/item/small_engine.json",
         )
-        copy(
+        convert_model(
             ASSETS / "models/item/iron_small_engine.json",
             namespace / "models/item/iron_small_engine.json",
         )
@@ -97,6 +104,10 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ASSETS / "textures/model/wheel.png",
             namespace / "textures/model/wheel.png",
+        )
+        copy(
+            ASSETS / "textures/model/small_engine.png",
+            namespace / "textures/model/small_engine.png",
         )
         copy(
             ASSETS / "textures/model/iron_small_engine.png",
@@ -130,7 +141,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r2.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

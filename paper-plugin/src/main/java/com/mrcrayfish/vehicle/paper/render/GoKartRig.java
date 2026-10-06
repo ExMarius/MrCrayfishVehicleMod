@@ -1,6 +1,7 @@
 package com.mrcrayfish.vehicle.paper.render;
 
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import io.papermc.paper.entity.TeleportFlag;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
@@ -139,7 +140,7 @@ public final class GoKartRig {
             return;
         }
         float yaw = root.getYaw();
-        seat.teleport(local(root, 0.0F, 0.05F, -0.06F));
+        seat.teleport(local(root, 0.0F, 0.05F, -0.06F), TeleportFlag.EntityState.RETAIN_PASSENGERS);
         seat.setRotation(yaw, 0.0F);
         interaction.teleport(local(root, 0.0F, 0.45F, 0.0F));
         interaction.setRotation(yaw, 0.0F);
