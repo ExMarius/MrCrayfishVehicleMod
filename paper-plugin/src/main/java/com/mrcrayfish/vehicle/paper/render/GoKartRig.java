@@ -45,8 +45,9 @@ public final class GoKartRig {
     );
 
     /* Seat (-3) + axle (-1) + wheel offset (3.2), converted from model units. */
-    private static final float SEAT_CARRIER_Y = -0.05F;
-    private static final float SEAT_Z = -1.0F / 16.0F;
+    private static final Vector3f SEAT_OFFSET = new Vector3f(0.0F, -0.05F, -1.0F / 16.0F);
+    /* Vanilla non-player entities interpolate teleports over three client ticks. */
+    private static final int VANILLA_ENTITY_LERP_TICKS = 3;
 
     private final UUID vehicleId;
     private final ArmorStand seat;
@@ -131,7 +132,8 @@ public final class GoKartRig {
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
             display.setInterpolationDelay(0);
             display.setInterpolationDuration(1);
-            display.setTeleportDuration(1);
+            /* Match the ArmorStand seat's client interpolation so the rider cannot trail the kart. */
+            display.setTeleportDuration(VANILLA_ENTITY_LERP_TICKS);
             display.setInvulnerable(true);
             display.setPersistent(false);
             display.setShadowRadius(0.0F);
@@ -160,8 +162,13 @@ public final class GoKartRig {
         }
 
         float yaw = root.getYaw();
-        seat.teleport(local(root, new Vector3f(0.0F, SEAT_CARRIER_Y, SEAT_Z)),
-                TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        /*
+         * Every visible part uses the seat entity's exact world position as its render anchor.
+         * Their offsets stay in the ItemDisplay matrix, just like the original MatrixStack.
+         * This keeps the rider and all parts on the same three-tick client interpolation path.
+         */
+        Location renderAnchor = local(root, SEAT_OFFSET);
+        seat.teleport(renderAnchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         seat.setRotation(yaw, 0.0F);
         interaction.teleport(root);
         interaction.setRotation(yaw, 0.0F);
@@ -169,7 +176,7 @@ public final class GoKartRig {
         Quaternionf wheelieRotation = rotationX(wheelieAngle);
 
         Vector3f bodyCenter = wheelie(BODY_ORIGIN, wheelieAngle);
-        place(body, root, bodyCenter, yaw, wheelieRotation,
+        place(body, renderAnchor, relativeToSeat(bodyCenter), yaw, wheelieRotation,
                 new Vector3f(1.0F), new Quaternionf());
 
         Quaternionf engineShake = new Quaternionf();
@@ -180,7 +187,7 @@ public final class GoKartRig {
         engineShake.transform(engineRelative);
         Vector3f engineCenter = wheelie(new Vector3f(BODY_ORIGIN).add(engineRelative), wheelieAngle);
         Quaternionf engineRotation = new Quaternionf(wheelieRotation).mul(engineShake);
-        place(engine, root, engineCenter, yaw, engineRotation,
+        place(engine, renderAnchor, relativeToSeat(engineCenter), yaw, engineRotation,
                 new Vector3f(0.8F), new Quaternionf().rotateY((float) Math.PI));
 
         Vector3f steeringCenter = wheelie(STEERING_CENTER, wheelieAngle);
@@ -188,7 +195,7 @@ public final class GoKartRig {
         Quaternionf steeringRotation = new Quaternionf(wheelieRotation)
                 .rotateX(radians(-45.0F))
                 .rotateY(radians(steeringWheelRotation));
-        place(steeringWheel, root, steeringCenter, yaw, steeringRotation,
+        place(steeringWheel, renderAnchor, relativeToSeat(steeringCenter), yaw, steeringRotation,
                 new Vector3f(1.0F), new Quaternionf());
 
         for (WheelDisplay wheelDisplay : wheels) {
@@ -211,19 +218,29 @@ public final class GoKartRig {
             Quaternionf sideRotation = properties.side() > 0
                     ? new Quaternionf().rotateY((float) Math.PI)
                     : new Quaternionf();
-            place(wheelDisplay.entity, root, wheelCenter, yaw, wheelRotation,
+            place(wheelDisplay.entity, renderAnchor, relativeToSeat(wheelCenter), yaw, wheelRotation,
                     new Vector3f(properties.scaleX(), properties.scaleY(), properties.scaleZ()),
                     sideRotation);
         }
     }
 
-    private static void place(ItemDisplay display, Location root, Vector3f center, float yaw,
-                              Quaternionf leftRotation, Vector3f scale, Quaternionf rightRotation) {
-        display.teleport(local(root, center));
+    private static void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
+                              Quaternionf leftRotation, Vector3f scale, Quaternionf sourceRightRotation) {
+        display.teleport(renderAnchor);
         display.setRotation(yaw, 0.0F);
+        /*
+         * Since 23w16a, vanilla ItemDisplayRenderer injects a 180-degree Y rotation around the
+         * item-model centre. The Forge renderer does not. Post-multiply the inverse half-turn so
+         * the resulting matrix is the exact source MatrixStack matrix without moving the part.
+         */
+        Quaternionf itemDisplayCompensation = new Quaternionf(sourceRightRotation).rotateY((float) Math.PI);
         display.setTransformation(new Transformation(
-                new Vector3f(), leftRotation, scale, rightRotation
+                translation, leftRotation, scale, itemDisplayCompensation
         ));
+    }
+
+    private static Vector3f relativeToSeat(Vector3f vehiclePoint) {
+        return new Vector3f(vehiclePoint).sub(SEAT_OFFSET);
     }
 
     private static Vector3f wheelie(Vector3f point, float angle) {
