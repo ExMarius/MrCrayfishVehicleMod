@@ -38,6 +38,20 @@ jobs:
       - name: Build plugin and resource pack
         run: ./paper-plugin/gradlew -p paper-plugin clean build resourcePack
 
+      - name: Report test failures
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          for report in pathlib.Path("paper-plugin/build/test-results/test").glob("TEST-*.xml"):
+              root = ET.parse(report).getroot()
+              for case in root.iter("testcase"):
+                  for failure in case.findall("failure") + case.findall("error"):
+                      message = (failure.get("message") or failure.text or "Test failed").replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                      print(f"::error title={case.get('classname')}.{case.get('name')}::{message}")
+          PY
+
       - name: Verify resource pack
         run: |
           PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r5.zip"
