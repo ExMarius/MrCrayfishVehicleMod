@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r9 — four vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r10 — four vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -125,8 +125,11 @@ def build(output: Path) -> tuple[Path, str]:
                 "seat": "minecraft:block/black_wool",
                 "axel": "minecraft:block/light_gray_concrete",
                 "color": "minecraft:block/white_concrete",
-                "detail": "minecraft:block/anvil",
-                "cray_industries_logo": "vehicle:model/cray_industries",
+                # The source uses the anvil atlas and a tiny Cray Industries badge.
+                # Some 1.21.4 clients resolve those two legacy references as the
+                # missing-texture checkerboard. Keep the body clean and deterministic.
+                "detail": "minecraft:block/gray_concrete",
+                "cray_industries_logo": "minecraft:block/white_concrete",
                 "particle": "minecraft:block/white_concrete",
             },
         )
@@ -165,15 +168,13 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "models/item/iron_small_engine.json",
             {"small_engine": "vehicle:item/iron_small_engine"},
         )
+        # Flatten the iron engine onto the complete source geometry. This avoids
+        # relying on Forge's parent-model lookup when the item is shown by a Display.
         convert_model(
             ASSETS / "models/item/large_engine.json",
-            namespace / "models/item/large_engine.json",
-            {"large_engine": "vehicle:item/large_engine", "particle": "vehicle:item/large_engine"},
-        )
-        convert_model(
-            ASSETS / "models/item/iron_large_engine.json",
             namespace / "models/item/iron_large_engine.json",
-            {"large_engine": "vehicle:item/iron_large_engine"},
+            {"large_engine": "vehicle:item/iron_large_engine",
+             "particle": "vehicle:item/iron_large_engine"},
         )
 
         copy(
@@ -207,10 +208,6 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ASSETS / "textures/model/iron_small_engine.png",
             namespace / "textures/item/iron_small_engine.png",
-        )
-        copy(
-            ASSETS / "textures/model/large_engine.png",
-            namespace / "textures/item/large_engine.png",
         )
         copy(
             ASSETS / "textures/model/iron_large_engine.png",
@@ -258,7 +255,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r9.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r10.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")
