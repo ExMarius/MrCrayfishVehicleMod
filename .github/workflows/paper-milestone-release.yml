@@ -38,10 +38,11 @@ jobs:
           PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r4.zip"
           test -n "$JAR"
           unzip -t "$PACK"
-          jar tf "$JAR" | grep -qx 'plugin.yml'
-          jar tf "$JAR" | grep -qx 'config.yml'
-          jar tf "$JAR" | grep -qx 'LICENSE.txt'
-          jar tf "$JAR" | grep -qx 'com/mrcrayfish/vehicle/paper/VehiclePlugin.class'
+          jar tf "$JAR" > /tmp/plugin-jar-entries.txt
+          grep -Fxq 'plugin.yml' /tmp/plugin-jar-entries.txt
+          grep -Fxq 'config.yml' /tmp/plugin-jar-entries.txt
+          grep -Fxq 'LICENSE.txt' /tmp/plugin-jar-entries.txt
+          grep -Fxq 'com/mrcrayfish/vehicle/paper/VehiclePlugin.class' /tmp/plugin-jar-entries.txt
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
           CONFIG_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)
           test "$PACK_SHA1" = "$CONFIG_SHA1"
