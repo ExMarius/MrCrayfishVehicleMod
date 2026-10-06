@@ -1,5 +1,6 @@
 package com.mrcrayfish.vehicle.paper.vehicle;
 
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -60,7 +61,7 @@ final class LawnMowerBehavior {
                     continue;
                 }
                 BlockBreakEvent event = new BlockBreakEvent(block, driver);
-                world.getServer().getPluginManager().callEvent(event);
+                Bukkit.getPluginManager().callEvent(event);
                 if (event.isCancelled()) {
                     continue;
                 }
