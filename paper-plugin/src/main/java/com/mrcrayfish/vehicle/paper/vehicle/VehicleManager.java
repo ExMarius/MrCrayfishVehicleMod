@@ -61,6 +61,7 @@ public final class VehicleManager {
         if (saveTask != null) {
             saveTask.cancel();
         }
+        trailers.returnCarriedVehicles();
         save();
         trailers.stop();
         for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
@@ -86,6 +87,28 @@ public final class VehicleManager {
         pendingWorlds.remove(id);
         index(vehicle);
         updateChunkTicket(vehicle);
+        return vehicle;
+    }
+
+    public CarriedVehicle pickUp(LandVehicle vehicle) {
+        if (vehicle.occupied() || vehicles.remove(vehicle.id()) == null) {
+            return null;
+        }
+        CarriedVehicle carried = new CarriedVehicle(vehicle.spec(), vehicle.fuel(), vehicle.velocity(),
+                vehicle.traction(), vehicle.verticalVelocity());
+        unindex(vehicle);
+        releaseChunkTicket(vehicle);
+        trailers.onVehicleRemoved(vehicle.id());
+        vehicle.remove();
+        return carried;
+    }
+
+    public LandVehicle place(CarriedVehicle carried, Location location) {
+        LandVehicle vehicle = spawn(carried.spec(), location);
+        vehicle.setFuel(carried.fuel());
+        vehicle.setVelocity(carried.velocity());
+        vehicle.setTraction(carried.traction());
+        vehicle.setVerticalVelocity(carried.verticalVelocity());
         return vehicle;
     }
 
@@ -154,7 +177,10 @@ public final class VehicleManager {
             player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
             return;
         }
-        if (player.isSneaking() && trailers.attachHeldToVehicle(player, vehicle)) {
+        if (trailers.attachHeldToVehicle(player, vehicle)) {
+            return;
+        }
+        if (player.isSneaking() && trailers.pickUpVehicle(player, vehicle)) {
             return;
         }
         if (vehicle.mount(player)) {
@@ -405,6 +431,10 @@ public final class VehicleManager {
         if (removed > 0) {
             plugin.getLogger().info("Removed " + removed + " orphaned vehicle display entities.");
         }
+    }
+
+    public record CarriedVehicle(LandVehicleSpec spec, float fuel, Vector velocity,
+                                 float traction, double verticalVelocity) {
     }
 
     private record VehicleChunk(World world, int x, int z) {

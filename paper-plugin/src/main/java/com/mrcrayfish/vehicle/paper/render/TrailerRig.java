@@ -82,13 +82,13 @@ public final class TrailerRig {
         if (spec.kind() == TrailerSpec.Kind.FERTILIZER) {
             extra(world, location, trailerId, all, extras, "seed_spiker",
                     new Vector3f(0.0F, -0.5F * spec.bodyScale(), -0.4375F * spec.bodyScale()),
-                    new Vector3f(1.25F * spec.bodyScale()), true);
+                    new Vector3f(1.25F * spec.bodyScale()), true, 0.0F);
         } else if (spec.kind() == TrailerSpec.Kind.SEEDER) {
             for (int x = -12; x <= 12; x += 4) {
                 extra(world, location, trailerId, all, extras, "seed_spiker",
                         new Vector3f(x * LandVehicleSpec.MODEL_UNIT * spec.bodyScale(),
                                 -0.65F * spec.bodyScale(), 0.0F),
-                        new Vector3f(0.75F * spec.bodyScale()), true);
+                        new Vector3f(0.75F * spec.bodyScale()), true, 0.0F);
             }
         } else if (spec.kind() == TrailerSpec.Kind.STORAGE) {
             ItemDisplay chest = display(world, location, new ItemStack(Material.CHEST));
@@ -96,7 +96,15 @@ public final class TrailerRig {
             all.add(chest);
             extras.add(new ExtraDisplay(chest,
                     new Vector3f(0.0F, -6.0F * LandVehicleSpec.MODEL_UNIT * spec.bodyScale(), 0.0F),
-                    new Vector3f(0.9F * spec.bodyScale()), false));
+                    new Vector3f(0.9F * spec.bodyScale()), false, 180.0F));
+        }
+        if (spec.canTowTrailers()) {
+            LandVehicleSpec.Point tow = spec.towBarOffset();
+            extra(world, location, trailerId, all, extras, "tow_bar",
+                    new Vector3f(tow.x() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
+                            0.5F + tow.y() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
+                            tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT),
+                    new Vector3f(1.0F), false, 180.0F);
         }
 
         BlockDisplay fluid = null;
@@ -118,11 +126,11 @@ public final class TrailerRig {
 
     private static void extra(World world, Location location, UUID id, List<Entity> all,
                               List<ExtraDisplay> extras, String model, Vector3f center,
-                              Vector3f scale, boolean spins) {
+                              Vector3f scale, boolean spins, float sourceYaw) {
         ItemDisplay display = display(world, location, model(model));
         mark(display, id);
         all.add(display);
-        extras.add(new ExtraDisplay(display, center, scale, spins));
+        extras.add(new ExtraDisplay(display, center, scale, spins, sourceYaw));
     }
 
     private static ItemDisplay display(World world, Location location, ItemStack stack) {
@@ -181,7 +189,8 @@ public final class TrailerRig {
         for (ExtraDisplay extra : extras) {
             Quaternionf rotation = extra.spins
                     ? new Quaternionf().rotateX(radians(-wheelRotation)) : new Quaternionf();
-            place(extra.entity, root, extra.center, rotation, extra.scale, new Quaternionf());
+            place(extra.entity, root, extra.center, rotation, extra.scale,
+                    new Quaternionf().rotateY(radians(extra.sourceYaw)));
         }
 
         if (fluid != null) {
@@ -254,7 +263,8 @@ public final class TrailerRig {
     private record WheelDisplay(ItemDisplay entity, int side) {
     }
 
-    private record ExtraDisplay(ItemDisplay entity, Vector3f center, Vector3f scale, boolean spins) {
+    private record ExtraDisplay(ItemDisplay entity, Vector3f center, Vector3f scale,
+                                boolean spins, float sourceYaw) {
     }
 
     public record FluidVisual(Material material, float fraction) {

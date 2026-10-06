@@ -9,7 +9,10 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.block.Action;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
@@ -32,6 +35,20 @@ public final class VehicleListener implements Listener {
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
             vehicles.trailers().handleInteraction(event.getPlayer(), event.getRightClicked());
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onPlaceCarriedVehicle(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK
+                || event.getClickedBlock() == null || event.getBlockFace() == null) {
+            return;
+        }
+        org.bukkit.Location location = event.getClickedBlock().getRelative(event.getBlockFace())
+                .getLocation().add(0.5D, 0.0D, 0.5D);
+        location.setYaw(event.getPlayer().getLocation().getYaw());
+        if (vehicles.trailers().placeCarriedVehicle(event.getPlayer(), location)) {
+            event.setCancelled(true);
         }
     }
 

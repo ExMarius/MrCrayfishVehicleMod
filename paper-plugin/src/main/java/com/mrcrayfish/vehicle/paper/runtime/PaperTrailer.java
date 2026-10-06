@@ -38,6 +38,7 @@ public final class PaperTrailer {
     private final Map<Integer, String> lastWorkedBlocks = new HashMap<>();
     private Location location;
     private double verticalVelocity;
+    private final Vector horizontalVelocity = new Vector();
     private boolean onGround;
     private float wheelRotation;
     private int tickCount;
@@ -79,8 +80,8 @@ public final class PaperTrailer {
 
         if (target != null) {
             double maximumDistance = DETACH_THRESHOLD + Math.abs(spec.hitchDistance());
-            if (!Objects.equals(target.location().getWorld(), location.getWorld())
-                    || target.location().distanceSquared(location) > maximumDistance * maximumDistance) {
+            if (!Objects.equals(target.root().getWorld(), location.getWorld())
+                    || target.root().distanceSquared(location) > maximumDistance * maximumDistance) {
                 detach(true);
                 target = null;
             }
@@ -88,19 +89,21 @@ public final class PaperTrailer {
 
         if (target != null) {
             float yaw = (float) Math.toDegrees(Math.atan2(
-                    target.location().getZ() - location.getZ(),
-                    target.location().getX() - location.getX()) - Math.toRadians(90.0D));
-            Location desired = local(target.location(), 0.0D, 0.0D, spec.hitchDistance(), yaw);
+                    target.hitch().getZ() - location.getZ(),
+                    target.hitch().getX() - location.getX()) - Math.toRadians(90.0D));
+            Location desired = local(target.hitch(), 0.0D, 0.0D, spec.hitchDistance(), yaw);
             Vector requested = new Vector(desired.getX() - location.getX(), verticalVelocity - 0.08D,
                     desired.getZ() - location.getZ());
             move(requested);
             location.setYaw(yaw);
         } else {
-            move(new Vector(0.0D, verticalVelocity - 0.08D, 0.0D));
+            move(new Vector(horizontalVelocity.getX() * 0.75D, verticalVelocity - 0.08D,
+                    horizontalVelocity.getZ() * 0.75D));
         }
 
         double dx = location.getX() - previous.getX();
         double dz = location.getZ() - previous.getZ();
+        horizontalVelocity.setX(dx).setZ(dz);
         double distance = Math.sqrt(dx * dx + dz * dz);
         if (distance > 1.0E-6D) {
             double yawRadians = Math.toRadians(location.getYaw());
@@ -109,7 +112,7 @@ public final class PaperTrailer {
             double direction = Math.signum(forwardX * dx + forwardZ * dz);
             double circumference = 24.0D * spec.bodyScale() * 1.25D;
             wheelRotation -= (float) ((distance * 20.0D * direction * 16.0D / circumference) * 20.0D);
-            runEquipment();
+            runEquipment(previous);
         }
 
         TrailerRig.FluidVisual visual = fluidAmount > 0 && fluidMaterial != null
@@ -132,16 +135,16 @@ public final class PaperTrailer {
         verticalVelocity = result.verticalCollision() ? 0.0D : result.movement().getY();
     }
 
-    private void runEquipment() {
+    private void runEquipment(Location previous) {
         switch (spec.kind()) {
-            case FERTILIZER -> fertilize();
-            case SEEDER -> seed();
+            case FERTILIZER -> fertilize(previous);
+            case SEEDER -> seed(previous);
             default -> {
             }
         }
     }
 
-    private void fertilize() {
+    private void fertilize(Location previous) {
         ItemStack fertilizer = findSupply(Material.BONE_MEAL);
         if (fertilizer == null) {
             return;
@@ -153,10 +156,10 @@ public final class PaperTrailer {
         double rightZ = Math.sin(yaw);
         boolean applied = false;
         for (int lane = -1; lane <= 1; lane++) {
-            double x = location.getX() - forwardX + rightX * lane;
-            double z = location.getZ() - forwardZ + rightZ * lane;
-            Block block = location.getWorld().getBlockAt((int) Math.floor(x),
-                    (int) Math.floor(location.getY() + 0.25D), (int) Math.floor(z));
+            double x = previous.getX() - forwardX + rightX * lane;
+            double z = previous.getZ() - forwardZ + rightZ * lane;
+            Block block = previous.getWorld().getBlockAt((int) Math.floor(x),
+                    (int) Math.floor(previous.getY() + 0.25D), (int) Math.floor(z));
             String key = block.getWorld().getUID() + ":" + block.getX() + ":" + block.getY() + ":" + block.getZ();
             if (key.equals(lastWorkedBlocks.put(lane, key))) {
                 continue;
@@ -172,15 +175,15 @@ public final class PaperTrailer {
         }
     }
 
-    private void seed() {
+    private void seed(Location previous) {
         double yaw = Math.toRadians(location.getYaw());
         double rightX = Math.cos(yaw);
         double rightZ = Math.sin(yaw);
         for (int lane = -1; lane <= 1; lane++) {
-            double x = location.getX() + rightX * lane * 0.85D;
-            double z = location.getZ() + rightZ * lane * 0.85D;
-            Block target = location.getWorld().getBlockAt((int) Math.floor(x),
-                    (int) Math.floor(location.getY() + 0.25D), (int) Math.floor(z));
+            double x = previous.getX() + rightX * lane * 0.85D;
+            double z = previous.getZ() + rightZ * lane * 0.85D;
+            Block target = previous.getWorld().getBlockAt((int) Math.floor(x),
+                    (int) Math.floor(previous.getY() + 0.25D), (int) Math.floor(z));
             if (target.getType() != Material.AIR || target.getRelative(BlockFace.DOWN).getType() != Material.FARMLAND) {
                 continue;
             }
@@ -224,8 +227,6 @@ public final class PaperTrailer {
             case BEETROOT_SEEDS -> Material.BEETROOTS;
             case CARROT -> Material.CARROTS;
             case POTATO -> Material.POTATOES;
-            case TORCHFLOWER_SEEDS -> Material.TORCHFLOWER_CROP;
-            case PITCHER_POD -> Material.PITCHER_CROP;
             default -> null;
         };
     }
@@ -315,9 +316,11 @@ public final class PaperTrailer {
             return true;
         }
         return switch (spec.kind()) {
-            case FERTILIZER -> stack.getType() == Material.BONE_MEAL;
-            case SEEDER -> cropFor(stack.getType()) != null;
-            case STORAGE -> true;
+            case FERTILIZER, STORAGE -> stack.getType() == Material.BONE_MEAL;
+            case SEEDER -> switch (stack.getType()) {
+                case WHEAT_SEEDS, BEETROOT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS -> true;
+                default -> false;
+            };
             default -> false;
         };
     }
@@ -420,6 +423,6 @@ public final class PaperTrailer {
         TRAILER
     }
 
-    public record PullTarget(Location location) {
+    public record PullTarget(Location hitch, Location root) {
     }
 }

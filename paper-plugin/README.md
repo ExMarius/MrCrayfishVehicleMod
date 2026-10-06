@@ -29,10 +29,10 @@ Published prototype downloads:
 3. Put the URL and SHA-1 in `plugins/MrCrayfishVehiclePlugin/config.yml`.
 4. Restart and use `/vehicle spawn <type>` as an operator. Tab completion lists all three vehicles and five trailers.
 5. Right-click a vehicle to drive. Use W/S, A/D, Space for the handbrake, and Shift to dismount.
-6. Sneak-right-click a trailer to pull it, then sneak-right-click a Lawn Mower, Quad Bike, or Storage Trailer to hitch it. Storage Trailer is the chain-capable trailer.
+6. Sneak-right-click a trailer to pull it, then right-click a Lawn Mower, Quad Bike, or Storage Trailer to hitch it. Storage Trailer is the chain-capable trailer.
 7. Right-click Fertilizer/Seeder/Storage Trailer to open its inventory. Fertilizer accepts bone meal, Seeder accepts crop seeds, and farming equipment can consume supplies through an upstream Storage Trailer.
 8. Use water, lava, or powder-snow buckets on Fluid Trailer. Its capacity is 100 buckets.
-9. Right-click Vehicle Trailer near an unoccupied vehicle to load it; right-click again to unload it.
+9. Sneak-right-click an unoccupied vehicle to carry it, then sneak-right-click Vehicle Trailer to load it, matching the original pickup flow. To unload it, sneak-right-click the carried vehicle and right-click the ground.
 10. Operators can refill the nearest powered vehicle with `/vehicle refuel` and remove the nearest vehicle/trailer with `/vehicle remove`.
 
 The Forge project remains intact as the source of truth. Each Paper vehicle uses its original collision dimensions and property transforms with vanilla-style axis collision/stepping. The accepted Go Kart retains its 1.05-block step height so it can traverse a full block.
