@@ -314,6 +314,7 @@ public final class VehicleManager {
                     continue;
                 }
                 vehicle.tick(globalSpeedLimit, fuelFactor);
+                vehicle.updateRiderPose();
                 if (vehicle.resting()) {
                     releaseChunkTicket(vehicle);
                     if (!trailers.referencesVehicle(vehicle.id())

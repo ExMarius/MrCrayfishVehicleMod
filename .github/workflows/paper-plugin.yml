@@ -9,7 +9,6 @@ on:
       - "src/main/resources/vehicle_mod.png"
       - ".github/workflows/paper-plugin.yml"
       - ".github/falix-deploy-request"
-      - ".github/trailer-milestone-request"
   workflow_dispatch:
 
 permissions:
@@ -90,22 +89,6 @@ jobs:
               --notes "Paper 1.21.4 vanilla-client checkpoint with Go Kart, Lawn Mower, Quad Bike, improved engine audio, and all five original trailers. Requires the attached r8 resource pack." \
               --prerelease
           fi
-
-      - name: Freeze accepted trailers milestone
-        if: hashFiles('.github/trailer-milestone-request') != ''
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="paper-trailers-milestone-2026-10-06"
-          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r8.zip"
-          test "$(sha1sum "$PACK" | cut -d' ' -f1)" = "3d709a33ade14fded2fcffc33c658a2187072658"
-          gh release upload "$TAG" "$JAR" "$PACK" --clobber
-          gh release edit "$TAG" \
-            --target cdfee1f6d448b7d40e4c1b8979155811e42c2538 \
-            --title "Accepted vehicles and trailers milestone — 2026-10-06" \
-            --notes "Immutable backup accepted before experimental rider-body/head-pose work. Includes Go Kart, Lawn Mower, Quad Bike, all five trailers, source-aligned towing/transport, engine-audio r8, plugin JAR, and mandatory resource pack. Resource-pack SHA-1: 3d709a33ade14fded2fcffc33c658a2187072658."
 
       - name: One-time encrypted FalixNodes deployment
         if: hashFiles('.github/falix-deploy-request') != ''

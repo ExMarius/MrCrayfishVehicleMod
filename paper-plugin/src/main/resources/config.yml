@@ -14,5 +14,10 @@ performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.
   activation-distance: 64.0
 
+seating:
+  # Source VehicleEntity#clampYaw: torso follows the seat, camera/head remains free.
+  lock-body-to-seat: true
+  max-head-yaw: 120.0
+
 persistence:
   autosave-seconds: 300

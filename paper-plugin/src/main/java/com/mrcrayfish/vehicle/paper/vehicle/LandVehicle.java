@@ -401,6 +401,12 @@ public final class LandVehicle {
         }
         for (Entity seat : rig.seatCarriers()) {
             if (seat.getPassengers().isEmpty() && seat.addPassenger(player)) {
+                /* VehicleEntity#addPassenger faces a new rider along the vehicle before
+                 * clampYaw starts allowing head-only movement. */
+                player.setRotation(location.getYaw(), 0.0F);
+                if (plugin.getConfig().getBoolean("seating.lock-body-to-seat", true)) {
+                    player.setBodyYaw(location.getYaw());
+                }
                 return true;
             }
         }
@@ -413,6 +419,35 @@ public final class LandVehicle {
             return Optional.empty();
         }
         return Optional.of(player);
+    }
+
+    /**
+     * Paper equivalent of VehicleEntity#clampYaw: the torso remains aligned
+     * with the seat while the player's camera/head stays free inside the
+     * original -120..120 degree range. Pitch is never constrained.
+     */
+    public void updateRiderPose() {
+        if (!plugin.getConfig().getBoolean("seating.lock-body-to-seat", true)) {
+            return;
+        }
+        float bodyYaw = location.getYaw();
+        float maximumHeadYaw = clamp((float) plugin.getConfig().getDouble(
+                "seating.max-head-yaw", 120.0D), 0.0F, 180.0F);
+        for (Entity seat : rig.seatCarriers()) {
+            for (Entity passenger : seat.getPassengers()) {
+                if (!(passenger instanceof Player player)) {
+                    continue;
+                }
+                player.setBodyYaw(bodyYaw);
+                float headYaw = player.getLocation().getYaw();
+                float relativeYaw = wrapDegrees(headYaw - bodyYaw);
+                float clampedYaw = clamp(relativeYaw, -maximumHeadYaw, maximumHeadYaw);
+                if (Math.abs(clampedYaw - relativeYaw) > 0.001F) {
+                    player.setRotation(normalizeYaw(bodyYaw + clampedYaw),
+                            player.getLocation().getPitch());
+                }
+            }
+        }
     }
 
     public void remove() {
