@@ -81,12 +81,12 @@ jobs:
               -f sha="$GITHUB_SHA" -F force=true >/dev/null
             gh release edit "$TAG" --target "$GITHUB_SHA" \
               --title "Vehicle Plugin land vehicles prototype v0.1.0 (Paper 1.21.4)" \
-              --notes "Server-side Go Kart, Lawn Mower, and Quad Bike checkpoint for Paper 1.21.4. Requires the attached resource pack."
+              --notes "Paper 1.21.4 vanilla-client checkpoint with Go Kart, Lawn Mower, Quad Bike, improved engine audio, and all five original trailers. Requires the attached r8 resource pack."
           else
             gh release create "$TAG" "$JAR" "$PACK" \
               --target "$GITHUB_SHA" \
               --title "Vehicle Plugin land vehicles prototype v0.1.0 (Paper 1.21.4)" \
-              --notes "Server-side Go Kart, Lawn Mower, and Quad Bike checkpoint for Paper 1.21.4. Requires the attached resource pack." \
+              --notes "Paper 1.21.4 vanilla-client checkpoint with Go Kart, Lawn Mower, Quad Bike, improved engine audio, and all five original trailers. Requires the attached r8 resource pack." \
               --prerelease
           fi
 
@@ -97,7 +97,7 @@ jobs:
         run: |
           set -euo pipefail
           TAG="vehicle-plugin-prototype-v0.1.0"
-          CLEAN_NOTES="Server-side Go Kart, Lawn Mower, and Quad Bike checkpoint for Paper 1.21.4. Requires the attached resource pack."
+          CLEAN_NOTES="Paper 1.21.4 vanilla-client checkpoint with Go Kart, Lawn Mower, Quad Bike, improved engine audio, and all five original trailers. Requires the attached r8 resource pack."
           cleanup() {
             gh release edit "$TAG" --notes "$CLEAN_NOTES" >/dev/null 2>&1 || true
             rm -f /tmp/falix-deploy-private.pem /tmp/falix-deploy-public.pem /tmp/falix-deploy-payload.bin

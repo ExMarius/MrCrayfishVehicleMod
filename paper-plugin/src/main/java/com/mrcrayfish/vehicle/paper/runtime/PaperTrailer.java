@@ -265,7 +265,14 @@ public final class PaperTrailer {
                 if (fluidAmount == 0) {
                     fluidMaterial = null;
                 }
-                playerInventory.setItemInMainHand(new ItemStack(bucket));
+                ItemStack filled = new ItemStack(bucket);
+                if (held.getAmount() == 1) {
+                    playerInventory.setItemInMainHand(filled);
+                } else {
+                    held.setAmount(held.getAmount() - 1);
+                    playerInventory.addItem(filled).values()
+                            .forEach(stack -> player.getWorld().dropItemNaturally(player.getLocation(), stack));
+                }
                 player.getWorld().playSound(location, Sound.ITEM_BUCKET_FILL, SoundCategory.PLAYERS, 1.0F, 1.0F);
                 showFluid(player);
                 return true;

@@ -302,9 +302,19 @@ public final class TrailerManager {
             player.sendRichMessage("<green>Vehicul descărcat de pe platformă.</green>");
             return;
         }
-        LandVehicle candidate = vehicles.nearest(trailer.location(), 4.0D)
-                .filter(vehicle -> !vehicle.occupied() && !vehicle.transported())
-                .orElse(null);
+        LandVehicle candidate = null;
+        double bestDistance = 16.0D;
+        for (LandVehicle vehicle : vehicles.vehicles()) {
+            if (vehicle.occupied() || vehicle.transported() || isPullingAncestor(trailer, vehicle.id())
+                    || !java.util.Objects.equals(vehicle.location().getWorld(), trailer.location().getWorld())) {
+                continue;
+            }
+            double distance = vehicle.location().distanceSquared(trailer.location());
+            if (distance <= bestDistance) {
+                bestDistance = distance;
+                candidate = vehicle;
+            }
+        }
         if (candidate == null) {
             player.sendRichMessage("<red>Nu există un vehicul liber la maximum 4 blocuri.</red>");
             return;
@@ -396,6 +406,21 @@ public final class TrailerManager {
         if (event.getRawSlots().stream().anyMatch(slot -> slot < topSize)) {
             event.setCancelled(true);
         }
+    }
+
+    private boolean isPullingAncestor(PaperTrailer trailer, UUID vehicleId) {
+        PaperTrailer current = trailer;
+        Set<UUID> visited = new HashSet<>();
+        while (current != null && visited.add(current.id())) {
+            if (current.pullerType() == PaperTrailer.PullerType.VEHICLE) {
+                return vehicleId.equals(current.pullerId());
+            }
+            if (current.pullerType() != PaperTrailer.PullerType.TRAILER) {
+                return false;
+            }
+            current = trailers.get(current.pullerId());
+        }
+        return false;
     }
 
     private boolean hasVehicleChild(UUID vehicleId) {
