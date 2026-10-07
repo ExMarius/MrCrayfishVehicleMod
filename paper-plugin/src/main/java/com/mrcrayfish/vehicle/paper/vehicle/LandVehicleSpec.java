@@ -6,7 +6,7 @@ import java.util.Map;
 
 /**
  * Immutable Paper-side equivalent of the generated VehicleProperties,
- * PoweredProperties and LandProperties used by the original mod. Values in
+ * PoweredProperties, LandProperties, and PlaneProperties used by the original mod. Values in
  * these definitions are copied from the generated JSON and source renderers.
  */
 public record LandVehicleSpec(
@@ -502,6 +502,55 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* PlaneEntity uses the generated Sports Plane body transform (Z -8), display scale
+     * 0.85, default four-pixel wheel offset, one driver seat, and three source wheels.
+     * Complex-model children are represented as independent displays so their original
+     * propeller, aileron, elevator, and joystick actions remain animated for vanilla clients. */
+    public static final LandVehicleSpec SPORTS_PLANE = new LandVehicleSpec(
+            "sports_plane", "Sports Plane", "sports_plane_body",
+            3.0F, 1.6875F, 0.6F,
+            0.85F, 0.0F, 4.0F,
+            24.0F, 25.0F, 0.765625F, -0.40625F, 5.0F,
+            75_000.0F, 1.0F, 0.5F, 1.25F, "vehicle:entity.sports_plane.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            new Part("iron_large_engine", new Point(0.0F, 0.6375F, -0.425F),
+                    0.85F, 0.0F, 0.0F, 0.0F),
+            null,
+            new Part("fuel_door_closed", new Point(-0.23109375F, 0.53125F, -0.74375F),
+                    0.425F, 0.0F, -112.5F, 0.0F),
+            null,
+            List.of(
+                    new Part("sports_plane_wings", new Point(0.0F, 1.275F, -0.796875F),
+                            0.85F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_seat", new Point(0.0F, 0.6375F, -0.425F),
+                            0.85F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_propeller", new Point(0.0F, 0.95625F, 1.221875F),
+                            0.85F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_left_aileron",
+                            new Point(1.5307969F, 0.85F, -0.6195916F),
+                            0.85F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_right_aileron",
+                            new Point(-1.5307969F, 0.85F, -0.6195916F),
+                            0.85F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_elevator", new Point(0.0F, 1.009375F, -3.771875F),
+                            0.85F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_joystick", new Point(0.0F, 0.478125F, 0.2390625F),
+                            0.85F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    new Wheel(0, true, 0.0F, 0.16457593F, 1.000195F,
+                            0.0F, 0.0F, 0.85F, 0.65830374F, 0.65830374F),
+                    new Wheel(0, false, 0.8234375F, 0.2125F, -0.7171875F,
+                            0.0F, 0.0F, 0.85F, 0.85F, 0.85F),
+                    new Wheel(0, false, -0.8234375F, 0.2125F, -0.7171875F,
+                            0.0F, 0.0F, 0.85F, 0.85F, 0.85F)
+            ),
+            List.of(new Seat(true, new Point(0.0F, 0.53125F, -0.425F), 0.0F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
@@ -513,7 +562,8 @@ public record LandVehicleSpec(
             Map.entry(SPORTS_CAR.id, SPORTS_CAR),
             Map.entry(MINI_BUS.id, MINI_BUS),
             Map.entry(GOLF_CART.id, GOLF_CART),
-            Map.entry(JET_SKI.id, JET_SKI)
+            Map.entry(JET_SKI.id, JET_SKI),
+            Map.entry(SPORTS_PLANE.id, SPORTS_PLANE)
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -533,13 +583,24 @@ public record LandVehicleSpec(
 
     /** Boat rendering applies its body translation before scale and without the land renderer's pixel conversion. */
     public Point bodyRenderTranslation() {
-        return motionType() == MotionType.WATER
-                ? new Point(0.0F, 0.0F, 0.25F)
-                : new Point(0.0F, 0.0F, 0.0F);
+        return switch (motionType()) {
+            case WATER -> new Point(0.0F, 0.0F, 0.25F);
+            case AIR -> new Point(0.0F, 0.0F, -0.425F);
+            case LAND -> new Point(0.0F, 0.0F, 0.0F);
+        };
     }
 
     public MotionType motionType() {
-        return "jet_ski".equals(id) ? MotionType.WATER : MotionType.LAND;
+        if ("jet_ski".equals(id)) {
+            return MotionType.WATER;
+        }
+        return "sports_plane".equals(id) ? MotionType.AIR : MotionType.LAND;
+    }
+
+    public Plane plane() {
+        return motionType() == MotionType.AIR ? new Plane(
+                16.0F, 35.0F, 0.25F, 0.1F,
+                45.0F, 0.15F, 0.075F, 2.0F) : null;
     }
 
     public float steeringVisualAngle() {
@@ -559,18 +620,28 @@ public record LandVehicleSpec(
 
     /** Inverse of the resource-pack normalization required by vanilla's -16..32 model limit. */
     public float modelScaleCorrection(String model) {
-        if (!"sports_car".equals(id)) {
-            return 1.0F;
+        if ("sports_car".equals(id)) {
+            return switch (model) {
+                case "sports_car_body", "sports_car_hood", "sports_car_left_door",
+                        "sports_car_right_door", "sports_car_boot", "sports_car_seat",
+                        "sports_car_dashboard", "sports_car_roof" -> 2.0F;
+                default -> 1.0F;
+            };
         }
-        return switch (model) {
-            case "sports_car_body", "sports_car_hood", "sports_car_left_door",
-                    "sports_car_right_door", "sports_car_boot", "sports_car_seat",
-                    "sports_car_dashboard", "sports_car_roof" -> 2.0F;
-            default -> 1.0F;
-        };
+        if ("sports_plane".equals(id)) {
+            return switch (model) {
+                case "sports_plane_body", "sports_plane_wings",
+                        "sports_plane_left_aileron", "sports_plane_right_aileron" -> 3.0F;
+                default -> 1.0F;
+            };
+        }
+        return 1.0F;
     }
 
     public Point wheeliePivot() {
+        if (motionType() == MotionType.AIR) {
+            return new Point(0.0F, 0.0F, 0.0F);
+        }
         return new Point(0.0F, wheelOffset * MODEL_UNIT * bodyScale, rearAxleOffset);
     }
 
@@ -671,7 +742,14 @@ public record LandVehicleSpec(
     }
 
     public enum MotionType {
-        LAND, WATER
+        LAND, WATER, AIR
+    }
+
+    /** Exact PlaneProperties values generated for the Sports Plane. */
+    public record Plane(float minimumSpeedToTakeOff, float maxFlapAngle,
+                        float flapStrength, float flapSensitivity,
+                        float maxElevatorAngle, float elevatorStrength,
+                        float elevatorSensitivity, float maxTurnAngle) {
     }
 
     public enum Axis {

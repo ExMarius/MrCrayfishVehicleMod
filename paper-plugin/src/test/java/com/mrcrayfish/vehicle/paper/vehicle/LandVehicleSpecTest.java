@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -313,7 +314,45 @@ class LandVehicleSpecTest {
         assertEquals(180.0F, spec.seats().get(3).yawOffset(), EPSILON);
         assertFalse(spec.canTowTrailers());
         assertEquals(spec, LandVehicleSpec.byId("golf_cart"));
-        assertEquals(11, LandVehicleSpec.ids().size());
+        assertEquals(12, LandVehicleSpec.ids().size());
+    }
+
+    @Test
+    void sportsPlaneMatchesGeneratedPropertiesAndComplexModelRig() {
+        LandVehicleSpec spec = LandVehicleSpec.SPORTS_PLANE;
+        assertEquals(LandVehicleSpec.MotionType.AIR, spec.motionType());
+        assertEquals(3.0F, spec.entityWidth(), EPSILON);
+        assertEquals(1.6875F, spec.entityHeight(), EPSILON);
+        assertEquals(0.85F, spec.bodyScale(), EPSILON);
+        assertEquals(4.0F, spec.wheelOffset(), EPSILON);
+        assertPoint(spec.bodyOrigin(), 0.0F, 0.6375F, -0.425F);
+        assertEquals(24.0F, spec.enginePower(), EPSILON);
+        assertEquals(25.0F, spec.maxSteeringAngle(), EPSILON);
+        assertEquals(0.765625F, spec.frontAxleOffset(), EPSILON);
+        assertEquals(-0.40625F, spec.rearAxleOffset(), EPSILON);
+        assertEquals(75_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(1.0F, spec.energyPerTick(), EPSILON);
+        assertEquals("vehicle:entity.sports_plane.engine", spec.engineSound());
+        assertEquals(3, spec.wheels().size());
+        assertEquals(1, spec.seats().size());
+        assertPoint(spec.seats().getFirst().sourceOffset(), 0.0F, 0.53125F, -0.425F);
+        assertEquals(7, spec.bodyParts().size());
+        assertEquals(3.0F, spec.modelScaleCorrection("sports_plane_body"), EPSILON);
+        assertEquals(3.0F, spec.modelScaleCorrection("sports_plane_wings"), EPSILON);
+        assertEquals(1.0F, spec.modelScaleCorrection("sports_plane_propeller"), EPSILON);
+        assertPoint(spec.wheeliePivot(), 0.0F, 0.0F, 0.0F);
+
+        LandVehicleSpec.Plane plane = spec.plane();
+        assertNotNull(plane);
+        assertEquals(16.0F, plane.minimumSpeedToTakeOff(), EPSILON);
+        assertEquals(35.0F, plane.maxFlapAngle(), EPSILON);
+        assertEquals(0.25F, plane.flapStrength(), EPSILON);
+        assertEquals(0.1F, plane.flapSensitivity(), EPSILON);
+        assertEquals(45.0F, plane.maxElevatorAngle(), EPSILON);
+        assertEquals(0.15F, plane.elevatorStrength(), EPSILON);
+        assertEquals(0.075F, plane.elevatorSensitivity(), EPSILON);
+        assertEquals(2.0F, plane.maxTurnAngle(), EPSILON);
+        assertEquals(spec, LandVehicleSpec.byId("sports_plane"));
     }
 
     @Test

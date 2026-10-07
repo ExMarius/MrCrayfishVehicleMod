@@ -79,7 +79,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r22 — eleven vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r23 — twelve vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -125,6 +125,14 @@ def build(output: Path) -> tuple[Path, str]:
             "big_tow_bar": ("vehicle:item/big_tow_bar", 16383998),
             "golf_cart_body": ("vehicle:item/golf_cart_body", 16383998),
             "jet_ski_body": ("vehicle:item/jet_ski_body", 16383998),
+            "sports_plane_body": ("vehicle:item/sports_plane_body", 16383998),
+            "sports_plane_wings": ("vehicle:item/sports_plane_wings", 16383998),
+            "sports_plane_seat": ("vehicle:item/sports_plane_seat", 16383998),
+            "sports_plane_propeller": ("vehicle:item/sports_plane_propeller", 16383998),
+            "sports_plane_left_aileron": ("vehicle:item/sports_plane_left_aileron", 16383998),
+            "sports_plane_right_aileron": ("vehicle:item/sports_plane_right_aileron", 16383998),
+            "sports_plane_elevator": ("vehicle:item/sports_plane_elevator", 16383998),
+            "sports_plane_joystick": ("vehicle:item/sports_plane_joystick", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -293,6 +301,23 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/jet_ski_body.json",
             namespace / "models/item/jet_ski_body.json",
         )
+        for source, target, texture_key, geometry_scale in (
+            ("base", "sports_plane_body", "base", 1.0 / 3.0),
+            ("cosmetics/wings", "sports_plane_wings", "wings", 1.0 / 3.0),
+            ("cosmetics/seat", "sports_plane_seat", "seat", 1.0),
+            ("cosmetics/propeller", "sports_plane_propeller", "propeller", 1.0),
+            ("cosmetics/left_aileron", "sports_plane_left_aileron", "left_aileron", 1.0 / 3.0),
+            ("cosmetics/right_aileron", "sports_plane_right_aileron", "right_aileron", 1.0 / 3.0),
+            ("cosmetics/elevator", "sports_plane_elevator", "elevator", 1.0),
+            ("cosmetics/joystick", "sports_plane_joystick", "joystick", 1.0),
+        ):
+            convert_model(
+                ASSETS / f"models/vehicle/sports_plane/{source}.json",
+                namespace / f"models/item/{target}.json",
+                {texture_key: f"vehicle:item/{target}",
+                 "particle": f"vehicle:item/{target}"},
+                geometry_scale=geometry_scale,
+            )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
@@ -447,6 +472,20 @@ def build(output: Path) -> tuple[Path, str]:
                 ASSETS / f"textures/vehicle/sports_car/cosmetics/{source}.png",
                 namespace / f"textures/item/{target}.png",
             )
+        for source, target in {
+            "base": "sports_plane_body",
+            "wings": "sports_plane_wings",
+            "seat": "sports_plane_seat",
+            "propeller": "sports_plane_propeller",
+            "left_aileron": "sports_plane_left_aileron",
+            "right_aileron": "sports_plane_right_aileron",
+            "elevator": "sports_plane_elevator",
+            "joystick": "sports_plane_joystick",
+        }.items():
+            copy(
+                ASSETS / f"textures/vehicle/sports_plane/{source}.png",
+                namespace / f"textures/item/{target}.png",
+            )
         copy(
             ASSETS / "textures/model/spring.png",
             namespace / "textures/item/off_roader_spring.png",
@@ -524,6 +563,10 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "sounds/entity/sports_car/engine.ogg",
         )
         copy(
+            ASSETS / "sounds/entity/sports_plane/engine.ogg",
+            namespace / "sounds/entity/sports_plane/engine.ogg",
+        )
+        copy(
             ASSETS / "sounds/entity/mini_bus/engine.ogg",
             namespace / "sounds/entity/mini_bus/engine.ogg",
         )
@@ -559,6 +602,9 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.sports_car.engine": {
                 "sounds": [{"name": "vehicle:entity/sports_car/engine", "preload": True}]
+            },
+            "entity.sports_plane.engine": {
+                "sounds": [{"name": "vehicle:entity/sports_plane/engine", "preload": True}]
             },
             "entity.mini_bus.engine": {
                 "sounds": [{"name": "vehicle:entity/mini_bus/engine", "preload": True}]
@@ -598,7 +644,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r22.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r23.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

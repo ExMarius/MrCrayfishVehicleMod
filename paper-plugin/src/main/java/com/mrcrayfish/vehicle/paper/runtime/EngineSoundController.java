@@ -36,8 +36,12 @@ public final class EngineSoundController {
     }
 
     public void tick(Location location, boolean active, float targetPitch, Collection<UUID> riders) {
-        float targetVolume = active ? 1.0F : 0.0F;
-        volume += (targetVolume - volume) * INTERPOLATION;
+        tick(location, active, targetPitch, active ? 1.0F : 0.0F, riders);
+    }
+
+    public void tick(Location location, boolean active, float targetPitch, float targetVolume,
+                     Collection<UUID> riders) {
+        volume += ((active ? Math.max(0.0F, targetVolume) : 0.0F) - volume) * INTERPOLATION;
         pitch += (clampPitch(targetPitch) - pitch) * INTERPOLATION;
 
         if (!active) {
@@ -116,6 +120,8 @@ public final class EngineSoundController {
             ticksAtPitchOne = 12.363333333333333D;
         } else if (sound.endsWith("mini_bus.engine")) {
             ticksAtPitchOne = 47.3375D;
+        } else if (sound.endsWith("sports_plane.engine")) {
+            ticksAtPitchOne = 16.055416666666666D;
         } else if (sound.endsWith("vehicle.helicopter_rotor")) {
             ticksAtPitchOne = 12.663038548752834D;
         } else {

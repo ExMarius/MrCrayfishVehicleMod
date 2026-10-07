@@ -264,12 +264,17 @@ public final class VehicleManager {
         data.set(path + ".y", stored.y());
         data.set(path + ".z", stored.z());
         data.set(path + ".yaw", stored.yaw());
+        data.set(path + ".pitch", stored.pitch());
         data.set(path + ".fuel", stored.fuel());
         data.set(path + ".velocity.x", stored.velocityX());
         data.set(path + ".velocity.y", stored.velocityY());
         data.set(path + ".velocity.z", stored.velocityZ());
         data.set(path + ".traction", stored.traction());
         data.set(path + ".vertical-velocity", stored.verticalVelocity());
+        data.set(path + ".plane.roll", stored.planeRoll());
+        data.set(path + ".plane.propeller-speed", stored.propellerSpeed());
+        data.set(path + ".plane.flap-angle", stored.flapAngle());
+        data.set(path + ".plane.elevator-angle", stored.elevatorAngle());
         data.set(path + ".storage.chest-attached", stored.chestAttached());
         data.set(path + ".storage.items",
                 stored.storageContents().getOrDefault("moped_chest", List.of()));
@@ -320,6 +325,8 @@ public final class VehicleManager {
         vehicle.setVerticalVelocity(stored.verticalVelocity());
         vehicle.restoreStorage(stored.chestAttached(), stored.storageContents());
         vehicle.restoreOpenPartStates(stored.openPartStates());
+        vehicle.restorePlaneState(stored.pitch(), stored.planeRoll(), stored.propellerSpeed(),
+                stored.flapAngle(), stored.elevatorAngle());
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {
@@ -484,9 +491,11 @@ public final class VehicleManager {
     }
 
     private record StoredVehicle(UUID id, String type, String worldId, String worldName,
-                                 double x, double y, double z, float yaw, float fuel,
+                                 double x, double y, double z, float yaw, float pitch, float fuel,
                                  double velocityX, double velocityY, double velocityZ,
-                                 float traction, double verticalVelocity, boolean chestAttached,
+                                 float traction, double verticalVelocity,
+                                 float planeRoll, float propellerSpeed,
+                                 float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
                                  Map<String, Boolean> openPartStates) {
         private static StoredVehicle from(LandVehicle vehicle) {
@@ -497,9 +506,11 @@ public final class VehicleManager {
             }
             Vector velocity = vehicle.velocity();
             return new StoredVehicle(vehicle.id(), vehicle.spec().id(), world.getUID().toString(), world.getName(),
-                    location.getX(), location.getY(), location.getZ(), location.getYaw(), vehicle.fuel(),
-                    velocity.getX(), velocity.getY(), velocity.getZ(), vehicle.traction(), vehicle.verticalVelocity(),
-                    vehicle.chestAttached(), vehicle.storageContents(), vehicle.openPartStates());
+                    location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch(),
+                    vehicle.fuel(), velocity.getX(), velocity.getY(), velocity.getZ(), vehicle.traction(),
+                    vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
+                    vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
+                    vehicle.storageContents(), vehicle.openPartStates());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -513,11 +524,16 @@ public final class VehicleManager {
             return new StoredVehicle(id, type, worldId, worldName,
                     data.getDouble(path + ".x"), data.getDouble(path + ".y"), data.getDouble(path + ".z"),
                     (float) data.getDouble(path + ".yaw"),
+                    (float) data.getDouble(path + ".pitch"),
                     (float) data.getDouble(path + ".fuel", defaultFuel),
                     data.getDouble(path + ".velocity.x"), data.getDouble(path + ".velocity.y"),
                     data.getDouble(path + ".velocity.z"),
                     (float) data.getDouble(path + ".traction"),
                     data.getDouble(path + ".vertical-velocity"),
+                    (float) data.getDouble(path + ".plane.roll"),
+                    (float) data.getDouble(path + ".plane.propeller-speed"),
+                    (float) data.getDouble(path + ".plane.flap-angle"),
+                    (float) data.getDouble(path + ".plane.elevator-angle"),
                     data.getBoolean(path + ".storage.chest-attached", false),
                     readStorage(data, path), readOpenPartStates(data, path));
         }

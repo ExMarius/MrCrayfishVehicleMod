@@ -39,8 +39,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Server-side port of PoweredVehicleEntity and LandVehicleEntity for the land vehicles. Variable names, update order, forces, traction, bicycle steering,
- * charging/boosting, and wheel animation follow the original implementation.
+ * Server-side port of PoweredVehicleEntity and its land, water, and plane runtimes. Variable names, update order, forces, traction, steering,
+ * charging/boosting, aircraft controls, and part animation follow the original implementation.
  */
 public final class LandVehicle {
     private static final int MAX_WHEELIE_TICKS = 10;
@@ -85,6 +85,13 @@ public final class LandVehicle {
     private float waterSpeed;
     private WaterVehiclePhysics.State waterState = WaterVehiclePhysics.State.IN_AIR;
     private WaterVehiclePhysics.State previousWaterState = WaterVehiclePhysics.State.IN_AIR;
+    private float planeRoll;
+    private float propellerSpeed;
+    private float propellerRotation;
+    private float flapAngle;
+    private float elevatorAngle;
+    private float bodyPitch;
+    private float planeBodyRoll;
 
     private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
                         TrailerManager trailers, LandVehicleRig rig) {
@@ -134,6 +141,10 @@ public final class LandVehicle {
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
             tickWater(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            return;
+        }
+        if (spec.motionType() == LandVehicleSpec.MotionType.AIR) {
+            tickPlane(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
             return;
         }
         Player driver = driver().orElse(null);
@@ -316,6 +327,206 @@ public final class LandVehicle {
         if (driver == null && age % 20 == 0 && !openablesChanged) {
             rig.refreshBrightness(location);
         }
+    }
+
+    /** Direct server-side translation of PlaneEntity#updateVehicleMotion. */
+    private void tickPlane(double globalSpeedLimit, double fuelConsumptionFactor,
+                           boolean openablesChanged) {
+        LandVehicleSpec.Plane plane = spec.plane();
+        if (plane == null) {
+            throw new IllegalStateException("Aircraft is missing PlaneProperties: " + spec.id());
+        }
+        Player driver = driver().orElse(null);
+        boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
+        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        VehicleInput input = driver == null ? VehicleInput.idle()
+                : VehicleInput.from(driver.getCurrentInput());
+
+        throttle = driver == null ? 0.0F : clamp(input.throttle(), -1.0F, 1.0F);
+        float sideInput = driver == null ? 0.0F
+                : clamp(input.steeringDirection(), -1.0F, 1.0F);
+        float liftInput = driver == null ? 0.0F
+                : (input.handbrake() ? 1.0F : 0.0F) + (input.sprint() ? -1.0F : 0.0F);
+        float steeringStrength = sideInput != 0.0F ? 0.05F : 0.2F;
+        steeringAngle += (spec.maxSteeringAngle() * sideInput - steeringAngle) * steeringStrength;
+        float targetRenderAngle = onGround ? steeringAngle : 0.0F;
+        renderWheelAngle += (targetRenderAngle - renderWheelAngle) * 0.3F;
+
+        updatePropellerSpeed(driver != null && enginePowered);
+        propellerRotation = wrapDegrees(propellerRotation + propellerSpeed);
+
+        boolean flying = !onGround;
+        flapAngle += (sideInput * plane.maxFlapAngle() - flapAngle) * plane.flapStrength();
+        if (driver != null && flying) {
+            planeRoll = wrapDegrees(planeRoll - flapAngle * plane.flapSensitivity());
+        } else {
+            planeRoll *= 0.9F;
+        }
+
+        updateWheelPositions();
+        float friction = flying ? 0.0F : surfaceProfile().friction();
+        float forwardForce = Math.max(propellerSpeed / 200.0F - 0.4F, 0.0F);
+        float liftForce = Math.min((float) (velocity.length() * 20.0D)
+                / plane.minimumSpeedToTakeOff(), 1.0F);
+        if (driver == null) {
+            liftForce *= 0.5F;
+        }
+        float elevatorForce = flying ? liftForce : (float) Math.floor(liftForce);
+        elevatorAngle += (plane.maxElevatorAngle() * liftInput - elevatorAngle)
+                * plane.elevatorStrength();
+
+        Vector elevatorDirection = direction(
+                elevatorAngle * elevatorForce * plane.elevatorSensitivity(), 0.0F);
+        elevatorDirection = rotateZ(elevatorDirection, planeRoll);
+        location.setPitch(location.getPitch() + vectorPitch(elevatorDirection));
+        location.setYaw(normalizeYaw(location.getYaw() - yaw(elevatorDirection)));
+
+        float wrappedRoll = planeRoll % 360.0F;
+        float absoluteRoll = Math.abs(wrappedRoll);
+        if (absoluteRoll <= 90.0F) {
+            float forwardFactor = 1.0F - degreesDifferenceAbs(location.getPitch(), 0.0F) / 90.0F;
+            float turnStrength = 1.0F - degreesDifferenceAbs(absoluteRoll, 45.0F) / 45.0F;
+            turnStrength *= Math.signum(wrappedRoll);
+            location.setYaw(normalizeYaw(location.getYaw()
+                    + turnStrength * forwardFactor * plane.maxTurnAngle()));
+        }
+        float fallAmount = 1.0F - degreesDifferenceAbs(absoluteRoll, 90.0F) / 90.0F;
+        location.setPitch(location.getPitch() + Math.abs(fallAmount));
+
+        Vector forward = direction(location.getPitch(), location.getYaw());
+        Vector acceleration = forward.clone().multiply(forwardForce * spec.enginePower() * 0.05D);
+        acceleration.add(velocity.clone().multiply(velocity.length()).multiply(-0.75D));
+        acceleration.add(velocity.clone().multiply(-friction * 0.05D));
+        velocity.add(acceleration);
+        velocity.setY(velocity.getY() - 0.08D * (1.0F - liftForce));
+        clampLength(velocity, Math.max(0.0D, globalSpeedLimit) * 0.05D);
+
+        motion.zero();
+        if (onGround) {
+            Vector frontWheel = forward.clone().multiply(spec.frontAxleOffset());
+            Vector rearWheel = forward.clone().multiply(spec.rearAxleOffset());
+            frontWheel.add(rotateYLikeMinecraft(velocity, Math.toRadians(steeringAngle)));
+            rearWheel.add(velocity);
+            Vector heading = normalized(frontWheel.subtract(rearWheel));
+            if (heading.lengthSquared() < 1.0E-12D) {
+                heading = forward.clone();
+            }
+            motion.add(rearWheel.add(heading.clone().multiply(-spec.rearAxleOffset())));
+            if (heading.dot(normalized(velocity)) > 0.0D) {
+                Vector headingVelocity = heading.clone().multiply(
+                        new Vector(velocity.getX(), 0.0D, velocity.getZ()).length());
+                velocity = lerp(velocity, headingVelocity, 0.5F);
+            }
+            float vehicleDeltaYaw = wrapDegrees(yaw(forward) - yaw(heading));
+            location.setYaw(normalizeYaw(location.getYaw() - vehicleDeltaYaw));
+        } else {
+            motion.add(velocity);
+        }
+
+        if (flying) {
+            float previousYaw = location.getYaw();
+            float nextYaw = motion.getX() * motion.getX() + motion.getZ() * motion.getZ() > 0.0D
+                    ? yaw(motion) : previousYaw;
+            float yawDelta = (float) Math.floor(Math.abs(yaw(motion) - previousYaw));
+            boolean flipped = horizontalLength(motion) > 0.0D && yawDelta > 45.0F && yawDelta <= 180.0F;
+            location.setPitch(-vectorPitch(motion));
+            location.setYaw(normalizeYaw(nextYaw));
+            if (flipped) {
+                planeRoll = wrapDegrees(planeRoll + 180.0F);
+            }
+        } else {
+            location.setPitch(0.0F);
+        }
+
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        Vector requestedMovement = motion.clone();
+        VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
+                world, location, requestedMovement, onGround,
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+        location.add(collision.movement());
+        onGround = collision.onGround();
+        verticalVelocity = velocity.getY();
+
+        if (onGround && driver == null && velocity.lengthSquared() < 1.0E-8D) {
+            velocity.zero();
+            motion.zero();
+        }
+        if (driver != null && !creativeDriver && enginePowered) {
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+        }
+        updateSeatGauge();
+        updateWheelRotations();
+
+        if (!onGround) {
+            bodyPitch = location.getPitch();
+            planeBodyRoll = planeRoll;
+        } else {
+            bodyPitch *= 0.75F;
+            planeBodyRoll *= 0.75F;
+        }
+        rig.setPlaneAnimations(propellerRotation, flapAngle, elevatorAngle);
+        rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                bodyPitch, planeBodyRoll, driver != null && enginePowered, age);
+        planeEffects(driver, enginePowered);
+        if (driver == null && age % 20 == 0 && !openablesChanged) {
+            rig.refreshBrightness(location);
+        }
+    }
+
+    /** PlaneEntity#updatePropellerSpeed, including angle-of-attack limiting. */
+    private void updatePropellerSpeed(boolean canDrive) {
+        if (canDrive) {
+            float enginePower = spec.enginePower();
+            float maximum = maxPropellerSpeed();
+            float angleOfAttack = (clamp(location.getPitch(), -90.0F, 90.0F) + 90.0F) / 180.0F;
+            enginePower *= angleOfAttack;
+            if (location.getPitch() < 0.0F) {
+                float upFactor = 1.0F - (float) Math.pow(1.0F - angleOfAttack / 0.5F, 5.0D);
+                maximum = clamp(maximum * upFactor, Math.min(maximum, 90.0F),
+                        Math.max(maximum, 90.0F));
+            } else {
+                float downFactor = (float) Math.pow(angleOfAttack, 3.0D);
+                maximum += maximum * 0.4F * downFactor;
+            }
+            if (propellerSpeed <= maximum) {
+                propellerSpeed += throttle > 0.0F ? (float) Math.sqrt(enginePower) / 5.0F : 0.4F;
+                propellerSpeed = Math.min(propellerSpeed, maximum);
+            } else {
+                propellerSpeed = lerp(throttle < 0.0F ? 0.1F : 0.05F,
+                        propellerSpeed, maximum);
+            }
+        } else {
+            propellerSpeed = lerp(0.05F, propellerSpeed, onGround ? 0.0F : 90.0F);
+        }
+    }
+
+    private float maxPropellerSpeed() {
+        if (throttle > 0.0F) {
+            return 200.0F + spec.enginePower();
+        }
+        if (!onGround) {
+            return throttle < 0.0F ? 140.0F : 180.0F;
+        }
+        return 70.0F;
+    }
+
+    private void planeEffects(Player driver, boolean enginePowered) {
+        if (driver == null) {
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
+            return;
+        }
+        float targetPitch = spec.minEnginePitch() + (spec.maxEnginePitch() - spec.minEnginePitch())
+                * clamp(propellerSpeed / 200.0F, 0.0F, 2.0F);
+        float targetVolume = enginePowered ? 0.2F + 0.8F * (propellerSpeed / 80.0F) : 0.001F;
+        List<UUID> riders = rig.seatCarriers().stream()
+                .flatMap(seat -> seat.getPassengers().stream())
+                .filter(Player.class::isInstance)
+                .map(Entity::getUniqueId)
+                .toList();
+        soundController.tick(location, enginePowered, targetPitch, targetVolume, riders);
     }
 
     private void waterEffects(Player driver, boolean enginePowered) {
@@ -1008,6 +1219,10 @@ public final class LandVehicle {
             return driver().isEmpty() && supported && Math.abs(waterSpeed) < 0.001F
                     && velocity.lengthSquared() < 1.0E-6D && motion.lengthSquared() < 1.0E-6D;
         }
+        if (spec.motionType() == LandVehicleSpec.MotionType.AIR) {
+            return driver().isEmpty() && onGround && velocity.lengthSquared() < 1.0E-8D
+                    && motion.lengthSquared() < 1.0E-8D && Math.abs(propellerSpeed) < 0.01F;
+        }
         return driver().isEmpty() && onGround && verticalVelocity == 0.0D
                 && velocity.lengthSquared() < 1.0E-8D && !boosting && wheelieCount == 0;
     }
@@ -1018,9 +1233,42 @@ public final class LandVehicle {
 
     public void setVerticalVelocity(double verticalVelocity) {
         this.verticalVelocity = verticalVelocity;
-        if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
+        if (spec.motionType() != LandVehicleSpec.MotionType.LAND) {
             this.velocity.setY(verticalVelocity);
         }
+    }
+
+    public float planeRoll() {
+        return planeRoll;
+    }
+
+    public float propellerSpeed() {
+        return propellerSpeed;
+    }
+
+    public float flapAngle() {
+        return flapAngle;
+    }
+
+    public float elevatorAngle() {
+        return elevatorAngle;
+    }
+
+    public void restorePlaneState(float pitch, float roll, float restoredPropellerSpeed,
+                                  float restoredFlapAngle, float restoredElevatorAngle) {
+        if (spec.motionType() != LandVehicleSpec.MotionType.AIR) {
+            return;
+        }
+        location.setPitch(pitch);
+        planeRoll = roll;
+        propellerSpeed = restoredPropellerSpeed;
+        flapAngle = restoredFlapAngle;
+        elevatorAngle = restoredElevatorAngle;
+        bodyPitch = pitch;
+        planeBodyRoll = roll;
+        rig.setPlaneAnimations(propellerRotation, flapAngle, elevatorAngle);
+        rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                bodyPitch, planeBodyRoll, false, age);
     }
 
     private WaterStatus waterStatus() {
@@ -1198,6 +1446,23 @@ public final class LandVehicle {
         return new Vector(-Math.sin(radians), 0.0D, Math.cos(radians));
     }
 
+    /** Matches Mojang Vector3d#directionFromRotation. */
+    private static Vector direction(float pitch, float yaw) {
+        double pitchRadians = Math.toRadians(pitch);
+        double yawRadians = Math.toRadians(yaw);
+        double pitchCosine = Math.cos(pitchRadians);
+        return new Vector(-Math.sin(yawRadians) * pitchCosine,
+                -Math.sin(pitchRadians), Math.cos(yawRadians) * pitchCosine);
+    }
+
+    private static Vector rotateZ(Vector vector, float degrees) {
+        double radians = Math.toRadians(degrees);
+        double cosine = Math.cos(radians);
+        double sine = Math.sin(radians);
+        return new Vector(vector.getX() * cosine - vector.getY() * sine,
+                vector.getX() * sine + vector.getY() * cosine, vector.getZ());
+    }
+
     /** Matches Mojang Vector3d#yRot. */
     private static Vector rotateYLikeMinecraft(Vector vector, double angle) {
         double cos = Math.cos(angle);
@@ -1215,6 +1480,26 @@ public final class LandVehicle {
 
     private static Vector lerp(Vector start, Vector end, float amount) {
         return start.clone().multiply(1.0F - amount).add(end.clone().multiply(amount));
+    }
+
+    private static float lerp(float amount, float start, float end) {
+        return start + amount * (end - start);
+    }
+
+    private static double horizontalLength(Vector vector) {
+        return Math.sqrt(vector.getX() * vector.getX() + vector.getZ() * vector.getZ());
+    }
+
+    private static float vectorPitch(Vector vector) {
+        if (vector.lengthSquared() < 1.0E-12D) {
+            return 0.0F;
+        }
+        return (float) Math.toDegrees(Math.asin(clamp(
+                (float) (vector.getY() / vector.length()), -1.0F, 1.0F)));
+    }
+
+    private static float degreesDifferenceAbs(float first, float second) {
+        return Math.abs(wrapDegrees(first - second));
     }
 
     private static void clampLength(Vector vector, double maximum) {

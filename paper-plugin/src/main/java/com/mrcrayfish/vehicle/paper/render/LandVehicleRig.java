@@ -59,6 +59,9 @@ public final class LandVehicleRig {
     private final List<SeatCarrier> seats;
     private final List<Entity> entities;
     private float seatGauge = 1.0F;
+    private float propellerRotation;
+    private float flapAngle;
+    private float elevatorAngle;
     private boolean removed;
 
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
@@ -432,6 +435,7 @@ public final class LandVehicleRig {
                 case Z -> rotation.rotateZ(angle);
             }
         }
+        applyPlanePartRotation(rotation, part.model());
         Quaternionf sourceRotation = new Quaternionf()
                 .rotateX(radians(part.rotationX()))
                 .rotateY(radians(part.rotationY()))
@@ -439,6 +443,33 @@ public final class LandVehicleRig {
         float visualScale = part.scale() * spec.modelScaleCorrection(part.model());
         place(partDisplay.entity, renderAnchor, relativeToSeat(center, driverSeat), yaw, rotation,
                 new Vector3f(visualScale), sourceRotation);
+    }
+
+    /** Reproduces the actions in the two original Sports Plane complex-model files. */
+    private void applyPlanePartRotation(Quaternionf rotation, String model) {
+        switch (model) {
+            case "sports_plane_propeller" -> rotation.rotateZ(radians(propellerRotation));
+            case "sports_plane_left_aileron" -> rotation
+                    .rotateY(radians(-5.0F))
+                    .rotateX(radians(flapAngle * 0.5F))
+                    .rotateY(radians(5.0F));
+            case "sports_plane_right_aileron" -> rotation
+                    .rotateY(radians(5.0F))
+                    .rotateX(radians(flapAngle * -0.5F))
+                    .rotateY(radians(-5.0F));
+            case "sports_plane_elevator" -> rotation.rotateX(radians(elevatorAngle * 0.5F));
+            case "sports_plane_joystick" -> rotation
+                    .rotateX(radians(elevatorAngle * -0.25F))
+                    .rotateZ(radians(flapAngle * -0.25F));
+            default -> {
+            }
+        }
+    }
+
+    public void setPlaneAnimations(float propellerRotation, float flapAngle, float elevatorAngle) {
+        this.propellerRotation = propellerRotation;
+        this.flapAngle = flapAngle;
+        this.elevatorAngle = elevatorAngle;
     }
 
     private void placePropertyPart(ItemDisplay display, LandVehicleSpec.Part part,
