@@ -2,6 +2,8 @@ package com.mrcrayfish.vehicle.paper.vehicle;
 
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.physics.SurfaceProfile;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import com.mrcrayfish.vehicle.paper.physics.VehicleCollisionMover;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
 import com.mrcrayfish.vehicle.paper.runtime.EngineSoundController;
@@ -89,6 +91,9 @@ public final class LandVehicle {
         age++;
         updateSeatGauge();
         rig.tickSeats(location.getYaw());
+        if (age % 10 == 0) {
+            showFuelOverlay();
+        }
         if (transported) {
             soundController.tick(location, false, spec.minEnginePitch(), List.of());
             return;
@@ -486,6 +491,18 @@ public final class LandVehicle {
     private void updateSeatGauge() {
         float capacity = Math.max(1.0F, spec.energyCapacity());
         rig.setSeatGauge(fuel / capacity);
+    }
+
+    /** Vanilla replacement for the original mod's continuously updated fuel overlay. */
+    private void showFuelOverlay() {
+        Component overlay = Component.text(FuelGauge.overlay(fuel, spec.energyCapacity()), NamedTextColor.GOLD);
+        for (Entity carrier : rig.seatCarriers()) {
+            for (Entity passenger : carrier.getPassengers()) {
+                if (passenger instanceof Player player) {
+                    player.sendActionBar(overlay);
+                }
+            }
+        }
     }
 
     public Vector velocity() {

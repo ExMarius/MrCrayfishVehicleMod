@@ -1,5 +1,6 @@
 package com.mrcrayfish.vehicle.paper.render;
 
+import com.mrcrayfish.vehicle.paper.vehicle.FuelGauge;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import io.papermc.paper.entity.TeleportFlag;
 import org.bukkit.Bukkit;
@@ -36,7 +37,7 @@ public final class LandVehicleRig {
      * unsafe dismount-location search. */
     private static final double SEAT_CARRIER_SCALE = 0.0625D;
     private static final float PIG_PASSENGER_OFFSET = 0.7F * (float) SEAT_CARRIER_SCALE;
-    private static final double SEAT_GAUGE_MAX_HEALTH = 20.0D;
+    private static final double SEAT_GAUGE_MAX_HEALTH = FuelGauge.MAX_HALF_HEARTS;
 
     private final UUID vehicleId;
     private final LandVehicleSpec spec;
@@ -487,7 +488,7 @@ public final class LandVehicleRig {
     }
 
     private void applySeatGauge(Pig pig) {
-        double health = Math.max(1.0D, SEAT_GAUGE_MAX_HEALTH * seatGauge);
+        double health = FuelGauge.mountHealth(seatGauge);
         if (Math.abs(pig.getHealth() - health) > 0.01D) {
             pig.setHealth(health);
         }

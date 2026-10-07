@@ -10,6 +10,8 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.block.Action;
@@ -58,6 +60,20 @@ public final class VehicleListener implements Listener {
             event.setCommand(protectedCommand);
             event.getSender().sendRichMessage(
                     "<yellow>Selector protejat automat: jucătorii și vehiculele au fost excluse.</yellow>");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onVehicleEntityDamage(EntityDamageEvent event) {
+        if (event.getEntity().getScoreboardTags().contains(LandVehicleRig.ENTITY_TAG)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onVehicleEntityTransform(EntityTransformEvent event) {
+        if (event.getEntity().getScoreboardTags().contains(LandVehicleRig.ENTITY_TAG)) {
+            event.setCancelled(true);
         }
     }
 
