@@ -300,7 +300,7 @@ public final class TrailerManager {
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP,
                 SoundCategory.PLAYERS, 1.0F, 1.0F);
         String placement = vehicle.spec().motionType() == LandVehicleSpec.MotionType.WATER
-                ? "apă sau sol" : "sol";
+                ? "apă cu ambele mâini goale" : "sol";
         player.sendRichMessage("<yellow>Vehicul ridicat. Shift-click pe Vehicle Trailer sau click dreapta pe "
                 + placement + ".</yellow>");
         return true;

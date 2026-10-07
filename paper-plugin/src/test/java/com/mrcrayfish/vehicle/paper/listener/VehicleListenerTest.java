@@ -36,17 +36,27 @@ class VehicleListenerTest {
     @Test
     void carriedJetSkiAcceptsPaperPreCancelledEmptyHandWaterClick() {
         assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
-                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, true));
+                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, true, true));
         assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
-                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, false));
+                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, false, true));
         assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
-                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, false, true));
+                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, false, true, true));
         assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
-                org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, false, false));
+                org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, false, false, false));
         assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
-                org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, true, true));
+                org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, true, true, true));
         assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
-                org.bukkit.event.block.Action.LEFT_CLICK_AIR, true, false));
+                org.bukkit.event.block.Action.LEFT_CLICK_AIR, true, false, true));
+    }
+
+    @Test
+    void carriedJetSkiNeverConsumesNormalItemInteractions() {
+        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
+                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, false, false));
+        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
+                org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, true, false, false));
+        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
+                org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, true, true, false));
     }
 
     @Test

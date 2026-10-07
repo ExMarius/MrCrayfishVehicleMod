@@ -177,22 +177,24 @@ public final class VehicleListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlaceCarriedVehicle(PlayerInteractEvent event) {
         boolean carryingWaterVehicle = vehicles.trailers().isCarryingWaterVehicle(event.getPlayer());
+        boolean emptyHands = event.getPlayer().getInventory().getItemInMainHand().getType().isAir()
+                && event.getPlayer().getInventory().getItemInOffHand().getType().isAir();
         if (event.getHand() == null
                 || event.getHand() != EquipmentSlot.HAND && !carryingWaterVehicle
                 || !acceptsCarriedVehiclePlacement(
-                event.getAction(), carryingWaterVehicle, event.isCancelled())) {
+                event.getAction(), carryingWaterVehicle, event.isCancelled(), emptyHands)) {
             return;
         }
 
         Location location = carryingWaterVehicle ? waterPlacement(event.getPlayer()) : null;
-        if (location == null && !event.isCancelled() && event.getAction() == Action.RIGHT_CLICK_BLOCK
+        if (location == null && !carryingWaterVehicle && !event.isCancelled()
+                && event.getAction() == Action.RIGHT_CLICK_BLOCK
                 && event.getClickedBlock() != null && event.getBlockFace() != null) {
             location = event.getClickedBlock().getRelative(event.getBlockFace())
                     .getLocation().add(0.5D, 0.0D, 0.5D);
             location.setYaw(event.getPlayer().getLocation().getYaw());
         }
         if (location == null && carryingWaterVehicle) {
-            event.setCancelled(true);
             event.getPlayer().sendActionBar(Component.text(
                     "Țintește suprafața apei de la maximum 6 blocuri.", NamedTextColor.YELLOW));
             return;
@@ -206,10 +208,11 @@ public final class VehicleListener implements Listener {
      * Empty-hand water interaction is RIGHT_CLICK_AIR because carrying is virtual.
      * Paper can pre-cancel water/air interactions whose vanilla result is a no-op,
      * so cancelled right clicks from a carried Jet Ski still reach the fluid ray trace.
+     * Both hands must be empty, ensuring normal item and off-hand actions always win.
      */
     static boolean acceptsCarriedVehiclePlacement(Action action, boolean carryingWaterVehicle,
-                                                   boolean cancelled) {
-        if (cancelled && !carryingWaterVehicle) {
+                                                   boolean cancelled, boolean emptyHands) {
+        if ((carryingWaterVehicle && !emptyHands) || (cancelled && !carryingWaterVehicle)) {
             return false;
         }
         return action == Action.RIGHT_CLICK_BLOCK
