@@ -61,5 +61,7 @@ class EngineSoundControllerTest {
         assertEquals(2.0F, EngineSoundController.targetPitch(spec, 1.0D,
                 false, 0.0F, true, false, 1.0F, false), 0.0001F);
         assertTrue(EngineSoundController.replayTicks(spec.engineSound(), spec.minEnginePitch()) > 1.0D);
+        assertEquals(1.6F, EngineSoundController.targetPitch(LandVehicleSpec.JET_SKI, 10.0D,
+                false, 0.0F, false, false, 1.0F, false), 0.0001F);
     }
 }

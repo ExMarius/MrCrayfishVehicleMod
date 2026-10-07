@@ -291,7 +291,41 @@ class LandVehicleSpecTest {
         assertEquals(180.0F, spec.seats().get(3).yawOffset(), EPSILON);
         assertFalse(spec.canTowTrailers());
         assertEquals(spec, LandVehicleSpec.byId("golf_cart"));
-        assertEquals(10, LandVehicleSpec.ids().size());
+        assertEquals(11, LandVehicleSpec.ids().size());
+    }
+
+    @Test
+    void jetSkiMatchesGeneratedPropertiesAndBoatRenderer() {
+        LandVehicleSpec spec = LandVehicleSpec.JET_SKI;
+        assertEquals(1.5F, spec.entityWidth(), EPSILON);
+        assertEquals(1.0F, spec.entityHeight(), EPSILON);
+        assertEquals(1.25F, spec.bodyScale(), EPSILON);
+        assertEquals(2.75F, spec.axleOffset(), EPSILON);
+        assertEquals(0.0F, spec.wheelOffset(), EPSILON);
+        assertEquals(LandVehicleSpec.MotionType.WATER, spec.motionType());
+        assertPoint(spec.bodyOrigin(), 0.0F, 0.83984375F, 0.25F);
+        assertEquals(18.0F, spec.enginePower(), EPSILON);
+        assertEquals(35.0F, spec.maxSteeringAngle(), EPSILON);
+        assertEquals(0.5F, spec.energyPerTick(), EPSILON);
+        assertEquals(1.2F, spec.minEnginePitch(), EPSILON);
+        assertEquals(2.2F, spec.maxEnginePitch(), EPSILON);
+        assertEquals("vehicle:entity.jet_ski.engine", spec.engineSound());
+        assertEquals(15.0F, spec.steeringVisualAngle(), EPSILON);
+        assertPoint(spec.steering().center(), 0.0F, 1.2835938F, 0.53125F);
+        assertEquals("quad_bike_handles", spec.steering().model());
+        assertEquals(-45.0F, spec.steering().rotationX(), EPSILON);
+        assertPoint(spec.fuelFiller().center(), 0.0F, 0.9375F, 0.9140625F);
+        assertEquals("small_fuel_door_closed", spec.fuelFiller().model());
+        assertEquals(0.4375F, spec.fuelFiller().scale(), EPSILON);
+        assertTrue(spec.wheels().isEmpty());
+        assertEquals(2, spec.seats().size());
+        assertPoint(spec.seats().getFirst().sourceOffset(),
+                0.0F, 0.60546875F, 0.015625F);
+        assertPoint(spec.seats().getLast().sourceOffset(),
+                0.0F, 0.60546875F, -0.53125F);
+        assertPoint(spec.trailerOffset(), 0.0F, -0.094F, -0.65F);
+        assertFalse(spec.canTowTrailers());
+        assertEquals(spec, LandVehicleSpec.byId("jet_ski"));
     }
 
     @Test
@@ -477,6 +511,7 @@ class LandVehicleSpecTest {
         assertPoint(LandVehicleSpec.SPORTS_CAR.trailerOffset(), 0.0F, 0.0F, 0.0F);
         assertPoint(LandVehicleSpec.MINI_BUS.trailerOffset(), 0.0F, 0.0F, 0.0F);
         assertPoint(LandVehicleSpec.GOLF_CART.trailerOffset(), 0.0F, 0.0F, 0.0F);
+        assertPoint(LandVehicleSpec.JET_SKI.trailerOffset(), 0.0F, -0.094F, -0.65F);
     }
 
     private static void assertWheel(LandVehicleSpec.Wheel wheel, float centerY,

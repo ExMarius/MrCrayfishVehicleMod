@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r20 — ten vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r21 — eleven vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -107,6 +107,7 @@ def build(output: Path) -> tuple[Path, str]:
             "mini_bus_dashboard": ("vehicle:item/mini_bus_dashboard", 16383998),
             "big_tow_bar": ("vehicle:item/big_tow_bar", 16383998),
             "golf_cart_body": ("vehicle:item/golf_cart_body", 16383998),
+            "jet_ski_body": ("vehicle:item/jet_ski_body", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -268,6 +269,10 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/golf_cart_body.json",
             namespace / "models/item/golf_cart_body.json",
+        )
+        convert_model(
+            ASSETS / "models/vehicle/jet_ski_body.json",
+            namespace / "models/item/jet_ski_body.json",
         )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -574,7 +579,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r20.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r21.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

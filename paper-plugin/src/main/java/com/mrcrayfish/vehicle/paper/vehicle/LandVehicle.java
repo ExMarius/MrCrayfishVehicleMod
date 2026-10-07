@@ -16,6 +16,9 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.data.BlockData;
+import org.bukkit.block.data.Levelled;
+import org.bukkit.block.data.Waterlogged;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
@@ -77,6 +80,9 @@ public final class LandVehicle {
     private int age;
     private boolean transported;
     private boolean chestAttached;
+    private float waterSpeed;
+    private WaterVehiclePhysics.State waterState = WaterVehiclePhysics.State.IN_AIR;
+    private WaterVehiclePhysics.State previousWaterState = WaterVehiclePhysics.State.IN_AIR;
 
     private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
                         TrailerManager trailers, LandVehicleRig rig) {
@@ -103,7 +109,7 @@ public final class LandVehicle {
         Location root = location.clone();
         root.setPitch(0.0F);
         root.setYaw(normalizeYaw(root.getYaw()));
-        root.setY(findSpawnY(root));
+        root.setY(findSpawnY(root, spec.motionType()));
         LandVehicleRig rig = LandVehicleRig.spawn(id, spec, root);
         return new LandVehicle(plugin, id, root, spec, trailers, rig);
     }
@@ -122,6 +128,10 @@ public final class LandVehicle {
                 rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
                         0.0F, 0.0F, false, age);
             }
+            return;
+        }
+        if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
+            tickWater(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
             return;
         }
         Player driver = driver().orElse(null);
@@ -204,6 +214,133 @@ public final class LandVehicle {
             LawnMowerBehavior.cutBushes(location, motion, spec.entityWidth(), driver,
                     stack -> trailers.storeMowerDrop(id, stack));
         }
+    }
+
+    /**
+     * Paper translation of the last complete released BoatEntity water equations. The
+     * 1.16.X-dev method is empty, so this deliberately restores the source buoyancy,
+     * water/air transition momentum, speed damping, and steering rather than inventing
+     * land behavior for the Jet Ski.
+     */
+    private void tickWater(double globalSpeedLimit, double fuelConsumptionFactor,
+                           boolean openablesChanged) {
+        Player driver = driver().orElse(null);
+        WaterStatus status = waterStatus();
+        previousWaterState = waterState;
+        waterState = status.state();
+
+        boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
+        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        updateInput(driver);
+        renderWheelAngle += (steeringAngle - renderWheelAngle) * 0.3F;
+        if (Math.abs(renderWheelAngle) < 0.001F) {
+            renderWheelAngle = 0.0F;
+        }
+
+        boolean inPropellingWater = waterState == WaterVehiclePhysics.State.IN_WATER
+                || waterState == WaterVehiclePhysics.State.UNDER_WATER;
+        waterSpeed = WaterVehiclePhysics.updateSpeed(waterSpeed, throttle,
+                driver != null && enginePowered, inPropellingWater, globalSpeedLimit);
+        if (Math.abs(waterSpeed) < 0.001F) {
+            waterSpeed = 0.0F;
+        }
+
+        float deltaYaw = WaterVehiclePhysics.deltaYaw(steeringAngle, waterSpeed,
+                waterState == WaterVehiclePhysics.State.IN_AIR);
+        location.setYaw(normalizeYaw(location.getYaw() - deltaYaw));
+
+        if (inPropellingWater) {
+            if (waterState == WaterVehiclePhysics.State.UNDER_WATER) {
+                velocity.setY(velocity.getY() + 0.08D);
+            } else {
+                double targetY = WaterVehiclePhysics.targetSurfaceY(status.waterLevel(), waterSpeed);
+                double floatingY = (targetY - location.getY()) / spec.entityHeight();
+                velocity.setY(velocity.getY() + floatingY * 0.05D);
+                if (Math.abs(floatingY) < 0.1D && velocity.getY() > 0.0D
+                        && Math.abs(velocity.getY()) < 0.1D) {
+                    location.setY(targetY);
+                    velocity.setY(0.0D);
+                }
+                velocity.setY(velocity.getY() * 0.75D);
+            }
+
+            Vector forwardMotion = forward(location.getYaw()).multiply(waterSpeed / 20.0D);
+            motion.setX(forwardMotion.getX());
+            motion.setY(0.0D);
+            motion.setZ(forwardMotion.getZ());
+            velocity.setX(velocity.getX() * 0.5D);
+            velocity.setZ(velocity.getZ() * 0.5D);
+        } else if (waterState == WaterVehiclePhysics.State.IN_AIR) {
+            velocity.setY(velocity.getY() - 0.08D);
+            if (previousWaterState == WaterVehiclePhysics.State.IN_WATER
+                    || previousWaterState == WaterVehiclePhysics.State.UNDER_WATER) {
+                velocity.setX(motion.getX());
+                velocity.setZ(motion.getZ());
+                motion.zero();
+            }
+        } else {
+            motion.multiply(0.75D);
+        }
+
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        Vector requestedMovement = velocity.clone().add(motion);
+        VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
+                world, location, requestedMovement, onGround,
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+        location.add(collision.movement());
+        onGround = collision.onGround();
+        if (collision.verticalCollision()) {
+            velocity.setY(0.0D);
+        }
+        if (onGround) {
+            velocity.setX(velocity.getX() * 0.8D);
+            velocity.setY(velocity.getY() * 0.98D);
+            velocity.setZ(velocity.getZ() * 0.8D);
+        } else {
+            velocity.multiply(0.98D);
+        }
+        verticalVelocity = velocity.getY();
+
+        if (driver != null && !creativeDriver && enginePowered) {
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+        }
+        updateSeatGauge();
+        rig.update(location, renderWheelAngle, 0.0F, 0.0F,
+                0.0F, 0.0F, driver != null && enginePowered, age);
+        waterEffects(driver, enginePowered);
+        if (driver == null && age % 20 == 0 && !openablesChanged) {
+            rig.refreshBrightness(location);
+        }
+    }
+
+    private void waterEffects(Player driver, boolean enginePowered) {
+        if (driver == null) {
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
+            return;
+        }
+        float targetPitch = EngineSoundController.targetPitch(spec, Math.abs(waterSpeed),
+                false, 0.0F, false, false, throttle, handbraking);
+        List<UUID> riders = rig.seatCarriers().stream()
+                .flatMap(seat -> seat.getPassengers().stream())
+                .filter(Player.class::isInstance)
+                .map(Entity::getUniqueId)
+                .toList();
+        soundController.tick(location, enginePowered, targetPitch, riders);
+
+        World world = location.getWorld();
+        if (world == null || waterState != WaterVehiclePhysics.State.IN_WATER
+                || throttle <= 0.0F) {
+            return;
+        }
+        double y = location.getY() + 0.1D;
+        double spread = spec.entityWidth() * 0.5D;
+        world.spawnParticle(Particle.SPLASH, location.getX(), y, location.getZ(),
+                5, spread, 0.0D, spread, Math.max(0.05D, Math.abs(waterSpeed) * 0.02D));
+        world.spawnParticle(Particle.BUBBLE, location.getX(), y, location.getZ(),
+                5, spread, 0.0D, spread, Math.max(0.01D, Math.abs(waterSpeed) * 0.01D));
     }
 
     private void updateInput(Player driver) {
@@ -748,6 +885,9 @@ public final class LandVehicle {
                                  LandVehicleSpec.Openable openable, double distance) {
     }
 
+    private record WaterStatus(WaterVehiclePhysics.State state, double waterLevel) {
+    }
+
     public boolean mount(Player player) {
         return !transported && rig.mount(player);
     }
@@ -779,6 +919,7 @@ public final class LandVehicle {
         this.velocity.zero();
         this.motion.zero();
         this.verticalVelocity = 0.0D;
+        this.waterSpeed = 0.0F;
         this.transported = true;
         rig.update(location, 0.0F, frontWheelRotation, rearWheelRotation,
                 0.0F, 0.0F, false, age);
@@ -860,6 +1001,11 @@ public final class LandVehicle {
     }
 
     public boolean resting() {
+        if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
+            boolean supported = onGround || waterState == WaterVehiclePhysics.State.IN_WATER;
+            return driver().isEmpty() && supported && Math.abs(waterSpeed) < 0.001F
+                    && velocity.lengthSquared() < 1.0E-6D && motion.lengthSquared() < 1.0E-6D;
+        }
         return driver().isEmpty() && onGround && verticalVelocity == 0.0D
                 && velocity.lengthSquared() < 1.0E-8D && !boosting && wheelieCount == 0;
     }
@@ -870,11 +1016,103 @@ public final class LandVehicle {
 
     public void setVerticalVelocity(double verticalVelocity) {
         this.verticalVelocity = verticalVelocity;
+        if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
+            this.velocity.setY(verticalVelocity);
+        }
     }
 
-    private static double findSpawnY(Location location) {
+    private WaterStatus waterStatus() {
         World world = location.getWorld();
         if (world == null) {
+            return new WaterStatus(WaterVehiclePhysics.State.IN_AIR, Double.MIN_VALUE);
+        }
+        double halfWidth = spec.entityWidth() * 0.5D;
+        int minX = floor(location.getX() - halfWidth);
+        int maxX = (int) Math.ceil(location.getX() + halfWidth);
+        int minZ = floor(location.getZ() - halfWidth);
+        int maxZ = (int) Math.ceil(location.getZ() + halfWidth);
+
+        double top = location.getY() + spec.entityHeight() + 0.001D;
+        boolean underSourceWater = false;
+        for (int x = minX; x < maxX; x++) {
+            for (int y = floor(location.getY() + spec.entityHeight()); y < Math.ceil(top); y++) {
+                for (int z = minZ; z < maxZ; z++) {
+                    Block block = world.getBlockAt(x, y, z);
+                    double surface = fluidSurface(block);
+                    if (Double.isNaN(surface) || top >= surface) {
+                        continue;
+                    }
+                    if (!sourceWater(block)) {
+                        return new WaterStatus(WaterVehiclePhysics.State.UNDER_FLOWING_WATER, surface);
+                    }
+                    underSourceWater = true;
+                }
+            }
+        }
+        if (underSourceWater) {
+            return new WaterStatus(WaterVehiclePhysics.State.UNDER_WATER, top);
+        }
+
+        double waterLevel = Double.MIN_VALUE;
+        boolean inWater = false;
+        int bottomY = floor(location.getY());
+        int bottomMaxY = (int) Math.ceil(location.getY() + 0.001D);
+        for (int x = minX; x < maxX; x++) {
+            for (int y = bottomY; y < bottomMaxY; y++) {
+                for (int z = minZ; z < maxZ; z++) {
+                    double surface = fluidSurface(world.getBlockAt(x, y, z));
+                    if (!Double.isNaN(surface)) {
+                        waterLevel = Math.max(waterLevel, surface);
+                        inWater |= location.getY() < surface;
+                    }
+                }
+            }
+        }
+        if (inWater) {
+            return new WaterStatus(WaterVehiclePhysics.State.IN_WATER, waterLevel);
+        }
+        return new WaterStatus(onGround ? WaterVehiclePhysics.State.ON_LAND
+                : WaterVehiclePhysics.State.IN_AIR, waterLevel);
+    }
+
+    private static double fluidSurface(Block block) {
+        BlockData data = block.getBlockData();
+        if (data instanceof Waterlogged waterlogged && waterlogged.isWaterlogged()) {
+            return block.getY() + 1.0D;
+        }
+        if (block.getType() == Material.BUBBLE_COLUMN) {
+            return block.getY() + 1.0D;
+        }
+        if (block.getType() != Material.WATER) {
+            return Double.NaN;
+        }
+        if (!(data instanceof Levelled levelled)) {
+            return block.getY() + 1.0D;
+        }
+        int level = levelled.getLevel();
+        double height = level == 0 ? 1.0D : level >= 8 ? 8.0D / 9.0D
+                : (8.0D - level) / 9.0D;
+        return block.getY() + height;
+    }
+
+    private static boolean sourceWater(Block block) {
+        BlockData data = block.getBlockData();
+        if (data instanceof Waterlogged waterlogged && waterlogged.isWaterlogged()) {
+            return true;
+        }
+        return block.getType() == Material.BUBBLE_COLUMN
+                || block.getType() == Material.WATER
+                && (!(data instanceof Levelled levelled) || levelled.getLevel() == 0);
+    }
+
+    private static double findSpawnY(Location location, LandVehicleSpec.MotionType motionType) {
+        World world = location.getWorld();
+        if (world == null) {
+            return location.getY();
+        }
+        if (motionType == LandVehicleSpec.MotionType.WATER
+                && (!Double.isNaN(fluidSurface(location.getBlock()))
+                || !Double.isNaN(fluidSurface(location.clone().subtract(0.0D, 1.0D, 0.0D).getBlock())))) {
             return location.getY();
         }
 

@@ -15,7 +15,7 @@ Let `u = 1/16`, `S = bodyScale`, `A = offsetToGround` (called `axleOffset` in Ja
 - A visual tow bar is rendered before axle/wheel translation and before the wheelie matrix: `(S * x * u, 0.5 + S * y * u, S * z * u)`. Trailer physics uses the same point without visual `+0.5 Y`.
 - `ItemDisplay`'s intrinsic 180-degree Y presentation is cancelled on the right rotation. Source-side right-wheel, tow-bar, engine, filler, and ignition rotations are then reapplied in the same matrix order.
 
-All currently implemented body transforms have zero body translation/rotation, so there is no hidden non-zero body-transform term in these tables.
+All implemented land vehicles have zero body translation/rotation. The Jet Ski is the exception: its boat-specific renderer applies body Z `0.25` directly before scale, and its separate seat equation is documented below.
 
 ## Vehicle audit
 
@@ -31,6 +31,7 @@ All currently implemented body transforms have zero body translation/rotation, s
 | Sports Car | 0.662500 | 0.350000 / 0.350000 | 0.037500, 0.037500 | (0, 0.763125, 1.187500) | (-0.250000, 0.59399375, 0.1023625) | n/a |
 | Mini Bus | 1.118000 | 0.386750 / 0.386750 | 0.711750 (all five) | n/a (source sets `renderEngine=false`) | (-0.406250, 1.516441875, 1.27057125) | -2.031250 |
 | Golf Cart | 0.8553125 | 0.316250 / 0.316250 | 0.6396875 (all four; rear pair yaw `180°`) | n/a (source does not enable engine rendering) | (-0.396750, 1.3277991, 0.13126346) | n/a |
+| Jet Ski | 0.83984375 (visual Z `0.25`) | n/a | 0.60546875 (both) | n/a (source does not enable engine rendering) | (0, 1.2835938, 0.531250) handles | n/a |
 
 Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt Bike wheel X scales now use serialized `0.938`; the other generated and auto-scaled wheel values match their property equations.
 
@@ -48,8 +49,9 @@ Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt B
 | Sports Car | (-0.625000, 0.568750, -0.875000) | (-0.312500, 0.443750, 0.406250) |
 | Mini Bus | (-0.975000, 1.280500, -0.7109375) | (0, 1.0164375, 1.584375) |
 | Golf Cart | (-0.934375, 0.675625, -0.431250) | (-0.6109375, 0.47796875, 0.6109375) |
+| Jet Ski | (0, 0.937500, 0.9140625), small type | none (`canLockWithKey=false`) |
 
-The r20 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
+The r21 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
 
 ### Dirt Bike fork
 
@@ -114,6 +116,16 @@ The authoritative `GolfCartEntity` is an empty subclass of `HelicopterEntity` ex
 
 The generated sound is unusually `vehicle:entity.vehicle.helicopter_rotor`; r20 retains its original 27,922-sample OGG rather than inventing an electric-motor sample. The land-compatible pitch follows the powered vehicle's generated `0.5–1.0` range. The body has no source cosmetic models or open actions, does not tow, does not render an engine, and does not emit exhaust.
 
+### Jet Ski renderer and aquatic source recovery
+
+The Jet Ski has a 42-element body, body scale `1.25`, ground offset `2.75`, two source seats, no wheels, small fuel filler, and generated power/pitch/consumption values `18`, `1.2–2.2`, and `0.5/tick`. Its `AbstractBoatRenderer` is materially different from the common land matrix: body translation Z `0.25` is applied directly before the scale rather than converted from model pixels. The visual body origin is therefore `(0, 0.83984375, 0.25)`. The renderer places inherited Quad Bike handles at `(0, 1.2835938, 0.53125)`, with scale `1.25`, local X `-45°`, and up to `15°` dynamic Y steering. The small filler center is `(0, 0.9375, 0.9140625)` at scale `0.4375`.
+
+Source seat placement uses the separate common player equation, which does convert the body translation as model units. The driver is `(0, 0.60546875, 0.015625)` and passenger `(0, 0.60546875, -0.53125)` before the accepted rider correction. This apparent Z mismatch with the body is present in the source renderer/entity equations and is preserved rather than silently aligned.
+
+The audited 1.16.X-dev `BoatEntity#updateVehicleMotion` is completely empty and its former implementation remains commented with `TODO fix boat movement`; exact dev-branch movement would leave the Jet Ski unusable. The parent repository's released `1.16.X` branch contains the last complete implementation of the same class. r21 restores its water-state scanning, source/flowing-water distinction, `waterLevel - 0.35 + 0.25 * min(1, normalSpeed)` surface target, `0.05` buoyancy correction, `0.75` vertical damping, `0.08` underwater lift/gravity, `0.5` in-water momentum damping, water-exit momentum transfer, `0.75` on-land commanded-motion decay, and doubled in-air yaw. Its released speed constants (`10` forward, `-4` reverse, `0.5/tick` acceleration) and damping (`0.9`, `0.85`, `0.98`) are retained, while steering uses the dev generated `35°` maximum rather than resurrecting the released constructor's obsolete `65°` override. Splash and bubble wakes preserve the source five-plus-five particle counts while using the closest Paper particle spread API.
+
+The original 46,434-sample Jet Ski engine is replayed at its pitch-adjusted duration and attached to the moving rig. The source has no boat body lean at this checkpoint: `AbstractBoatRenderer` explicitly leaves both speed pitch and turning roll commented under `TODO add back boat rotation`, so r21 does not invent either animation.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -127,7 +139,8 @@ The serialized or source-default offsets are:
 - Off Roader `(0, 0, 0)` (source default);
 - Sports Car `(0, 0, 0)` (source default);
 - Mini Bus `(0, 0, 0)` (source default);
-- Golf Cart `(0, 0, 0)` (source default).
+- Golf Cart `(0, 0, 0)` (source default);
+- Jet Ski `(0, -0.094, -0.650)` (serialized from generator input `-0.09375`).
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -164,6 +177,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 15. The Sports Car steering Y center was corrected from `0.59400625` to the exact renderer result `0.59399375` after re-evaluating the source `-1.0961`-pixel translation.
 16. The r19 Mini Bus port adds five-seat generated geometry, eight default cosmetics, front-door/sliding-door actions, exact filler/ignition/tow transforms, the source big tow bar, and the 113,610-sample original engine loop. The missing dedicated source steering asset is replaced only with the Go Kart wheel named by the original Mini Bus ray transforms.
 17. The r20 Golf Cart port adds the complete body, four wheels, four seats including both generated rear-facing yaw offsets, exact steering/filler/ignition transforms, and original rotor sample. It documents and narrowly repairs the source entity's unfinished helicopter inheritance by applying its generated cart geometry and power to land motion.
+18. The r21 Jet Ski port adds its complete body, two seats, boat-specific render matrix, handles/filler transforms, original engine sample, wakes, and released aquatic state/buoyancy/momentum equations. This recovers the last complete upstream behavior while explicitly recording that the audited dev method is empty.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -175,7 +189,8 @@ Exact matrix/equation ports:
 - source cargo layout equations and trailer work-point positions;
 - Sports Car cosmetic pivots/open angles/easing, storage capacities and interaction bounds, and persistent action/inventory state;
 - Mini Bus wheel/seat/cosmetic/openable/filler/ignition/tow geometry and big-tow-bar selection;
-- Golf Cart body/wheel/seat/rear-yaw/steering/filler/ignition geometry and source-selected rotor sample.
+- Golf Cart body/wheel/seat/rear-yaw/steering/filler/ignition geometry and source-selected rotor sample;
+- Jet Ski boat-renderer/body/seat/handle/filler coordinates, released water-state and buoyancy equations, and original engine sample.
 
 Vanilla-client adaptations that intentionally remain:
 
@@ -186,4 +201,5 @@ Vanilla-client adaptations that intentionally remain:
 - ItemDisplays, interpolation, native item models, and vanilla interaction hitboxes replace Forge client render/ray-trace objects;
 - the Mini Bus uses the original Go Kart steering-wheel asset named by its source ray transforms because the renderer's separately registered Mini Bus steering model is absent from the repository;
 - the Golf Cart uses the source land-motion equations with its generated wheel/axle/electric-power values because its original entity is an explicitly unfinished `HelicopterEntity` subclass that cannot move horizontally while grounded; rear-seat `180°` facing is applied to the native mount carrier without forcing player camera or body yaw APIs;
+- the Jet Ski restores the parent repository's last complete released `1.16.X` boat motion because the audited dev method is empty. Fluid heights and source/flowing classification are mapped to Paper `Levelled`/`Waterlogged` block data, and directional wake velocity is represented with Paper's closest particle spread controls;
 - custom per-limb player pose animation, damage wobble/destroy overlays, open fuel-door animation, and inserted-key animation are not representable with the current vanilla-client rig. These limitations do not change the audited static part coordinates.

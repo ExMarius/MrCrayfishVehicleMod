@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r20_pack(self):
+    def test_configured_sha1_matches_deterministic_r21_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -122,6 +122,16 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertIn("entity.vehicle.helicopter_rotor", sounds)
         rotor = self.archive.read("assets/vehicle/sounds/entity/vehicle/helicopter_rotor.ogg")
         self.assertEqual(27_922, self.last_ogg_granule(rotor))
+
+    def test_jet_ski_body_and_engine_are_complete(self):
+        model = self.read_json("assets/vehicle/models/item/jet_ski_body.json")
+        self.assertEqual(42, len(model["elements"]))
+        self.assertIn("assets/vehicle/items/jet_ski_body.json", self.entries)
+        self.assertEqual("vehicle:model/cray_industries", model["textures"]["logo"])
+        sounds = self.read_json("assets/vehicle/sounds.json")
+        self.assertIn("entity.jet_ski.engine", sounds)
+        engine = self.archive.read("assets/vehicle/sounds/entity/jet_ski/engine.ogg")
+        self.assertEqual(46_434, self.last_ogg_granule(engine))
 
     @staticmethod
     def last_ogg_granule(data):

@@ -304,7 +304,8 @@ public final class LandVehicleRig {
                     new Vector3f(part.scale()), sourceRotation);
         }
 
-        float steeringRotation = renderSteeringAngle / spec.maxSteeringAngle() * 25.0F;
+        float steeringRotation = renderSteeringAngle / spec.maxSteeringAngle()
+                * spec.steeringVisualAngle();
         Quaternionf forkRotation = SourceTransforms.motorcycleSteering(spec.motorcycle(), steeringRotation);
         if (steering != null) {
             LandVehicleSpec.Part part = spec.steering();

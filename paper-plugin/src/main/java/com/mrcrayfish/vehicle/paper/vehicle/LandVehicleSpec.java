@@ -477,6 +477,31 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* BoatEntity's motion is empty in 1.16.X-dev. Runtime uses its last complete released
+     * water-state/buoyancy equations while preserving these dev properties and transforms. */
+    public static final LandVehicleSpec JET_SKI = new LandVehicleSpec(
+            "jet_ski", "Jet Ski", "jet_ski_body",
+            1.5F, 1.0F, 0.0F,
+            1.25F, 2.75F, 0.0F,
+            18.0F, 35.0F, 0.0F, 0.0F, 4.0F,
+            15_000.0F, 0.5F, 1.2F, 2.2F, "vehicle:entity.jet_ski.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("quad_bike_handles",
+                    new Point(0.0F, 1.2835938F, 0.53125F),
+                    1.25F, -45.0F, 0.0F, 0.0F),
+            new Part("small_fuel_door_closed",
+                    new Point(0.0F, 0.9375F, 0.9140625F),
+                    0.4375F, -90.0F, 0.0F, 0.0F),
+            null, List.of(), List.of(),
+            List.of(
+                    new Seat(true, new Point(0.0F, 0.60546875F, 0.015625F), 0.0F),
+                    new Seat(false, new Point(0.0F, 0.60546875F, -0.53125F), 0.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, -0.094F, -0.65F),
+            null, null, List.of(), false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
@@ -487,7 +512,8 @@ public record LandVehicleSpec(
             Map.entry(OFF_ROADER.id, OFF_ROADER),
             Map.entry(SPORTS_CAR.id, SPORTS_CAR),
             Map.entry(MINI_BUS.id, MINI_BUS),
-            Map.entry(GOLF_CART.id, GOLF_CART)
+            Map.entry(GOLF_CART.id, GOLF_CART),
+            Map.entry(JET_SKI.id, JET_SKI)
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -499,7 +525,25 @@ public record LandVehicleSpec(
     }
 
     public Point bodyOrigin() {
-        return new Point(0.0F, (0.5F + (axleOffset + wheelOffset) * MODEL_UNIT) * bodyScale, 0.0F);
+        Point translation = bodyRenderTranslation();
+        return new Point(translation.x(),
+                translation.y() + (0.5F + (axleOffset + wheelOffset) * MODEL_UNIT) * bodyScale,
+                translation.z());
+    }
+
+    /** Boat rendering applies its body translation before scale and without the land renderer's pixel conversion. */
+    public Point bodyRenderTranslation() {
+        return motionType() == MotionType.WATER
+                ? new Point(0.0F, 0.0F, 0.25F)
+                : new Point(0.0F, 0.0F, 0.0F);
+    }
+
+    public MotionType motionType() {
+        return "jet_ski".equals(id) ? MotionType.WATER : MotionType.LAND;
+    }
+
+    public float steeringVisualAngle() {
+        return motionType() == MotionType.WATER ? 15.0F : 25.0F;
     }
 
     public Point wheeliePivot() {
@@ -600,6 +644,10 @@ public record LandVehicleSpec(
                     float rotationX, float rotationY, float rotationZ) {
             this(model, center, scale, rotationX, rotationY, rotationZ, null);
         }
+    }
+
+    public enum MotionType {
+        LAND, WATER
     }
 
     public enum Axis {
