@@ -26,6 +26,14 @@ Published prototype downloads:
 - [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
 - [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r13.zip) (`SHA-1: 70a90204b0589b9b06b29e0a19ad36df5a622a34`; includes the GPLv3 license)
 
+## FalixNodes deployment
+
+The deployment job reads `FALIX_SFTP_HOST`, `FALIX_SFTP_PORT`,
+`FALIX_SFTP_USERNAME`, and `FALIX_SFTP_PASSWORD` exclusively from GitHub
+Actions repository secrets. It runs only while the temporary
+`.github/falix-deploy-request` marker exists. Secret values must never be
+committed, written to release notes, or supplied as workflow inputs.
+
 ## Test
 
 1. Install the JAR in a Paper 1.21.4 server's `plugins/` directory.
