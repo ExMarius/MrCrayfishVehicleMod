@@ -25,14 +25,12 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
-import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
-import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.world.WorldLoadEvent;
@@ -265,8 +263,6 @@ public final class VehicleListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
-        // Removes a marker left in the inventory by an unclean server stop.
-        vehicles.trailers().removeWaterPlacementTokens(event.getPlayer());
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (event.getPlayer().isOnline() && !ResourcePackSender.suppliedByServer(plugin)) {
                 ResourcePackSender.send(plugin, event.getPlayer());
@@ -300,41 +296,16 @@ public final class VehicleListener implements Listener {
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
-        event.getDrops().removeIf(vehicles.trailers()::isWaterPlacementToken);
         vehicles.trailers().onPlayerQuit(event.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onDrop(PlayerDropItemEvent event) {
-        if (vehicles.trailers().isWaterPlacementToken(event.getItemDrop().getItemStack())) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true)
-    public void onSwapHands(PlayerSwapHandItemsEvent event) {
-        if (vehicles.trailers().isWaterPlacementToken(event.getMainHandItem())
-                || vehicles.trailers().isWaterPlacementToken(event.getOffHandItem())) {
-            event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true)
     public void onInventoryClick(InventoryClickEvent event) {
-        if (vehicles.trailers().isWaterPlacementToken(event.getCurrentItem())
-                || vehicles.trailers().isWaterPlacementToken(event.getCursor())) {
-            event.setCancelled(true);
-            return;
-        }
         vehicles.trailers().handleInventoryClick(event);
     }
 
     @EventHandler(ignoreCancelled = true)
     public void onInventoryDrag(InventoryDragEvent event) {
-        if (vehicles.trailers().isWaterPlacementToken(event.getOldCursor())) {
-            event.setCancelled(true);
-            return;
-        }
         vehicles.trailers().handleInventoryDrag(event);
     }
 

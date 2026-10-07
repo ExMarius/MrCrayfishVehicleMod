@@ -7,13 +7,9 @@ import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.NamespacedKey;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
@@ -23,8 +19,6 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.persistence.PersistentDataType;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -44,7 +38,6 @@ public final class TrailerManager {
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
     private final TrailerStore store;
-    private final NamespacedKey waterPlacementTokenKey;
     private final Map<UUID, PaperTrailer> trailers = new HashMap<>();
     private final Map<UUID, PaperTrailer> entities = new HashMap<>();
     private final Map<Inventory, PaperTrailer> inventories = new HashMap<>();
@@ -56,7 +49,6 @@ public final class TrailerManager {
         this.plugin = plugin;
         this.vehicles = vehicles;
         this.store = new TrailerStore(plugin);
-        this.waterPlacementTokenKey = new NamespacedKey(plugin, "water_vehicle_placement");
     }
 
     public void start() {
@@ -305,9 +297,6 @@ public final class TrailerManager {
             return true;
         }
         playerHeldVehicle.put(player.getUniqueId(), carried);
-        if (vehicle.spec().motionType() == LandVehicleSpec.MotionType.WATER) {
-            ensureWaterPlacementInput(player);
-        }
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP,
                 SoundCategory.PLAYERS, 1.0F, 1.0F);
         String placement = vehicle.spec().motionType() == LandVehicleSpec.MotionType.WATER
@@ -322,57 +311,12 @@ public final class TrailerManager {
         return carried != null && carried.spec().motionType() == LandVehicleSpec.MotionType.WATER;
     }
 
-    /**
-     * Guarantees that a vanilla client sends a use-item packet even when both
-     * hands were empty when the virtual Jet Ski was picked up.
-     */
-    private void ensureWaterPlacementInput(Player player) {
-        if (!needsWaterPlacementToken(
-                player.getInventory().getItemInMainHand().getType().isAir(),
-                player.getInventory().getItemInOffHand().getType().isAir())) {
-            return;
-        }
-        ItemStack token = new ItemStack(Material.HEART_OF_THE_SEA);
-        ItemMeta meta = token.getItemMeta();
-        meta.displayName(Component.text("Jet Ski transportat", NamedTextColor.AQUA)
-                .decoration(TextDecoration.ITALIC, false));
-        meta.lore(java.util.List.of(Component.text("Click dreapta pe apă pentru a-l așeza",
-                        NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
-        meta.getPersistentDataContainer().set(waterPlacementTokenKey, PersistentDataType.BYTE, (byte) 1);
-        token.setItemMeta(meta);
-        player.getInventory().setItemInOffHand(token);
-    }
-
-    static boolean needsWaterPlacementToken(boolean mainHandEmpty, boolean offHandEmpty) {
-        return mainHandEmpty && offHandEmpty;
-    }
-
-    public boolean isWaterPlacementToken(ItemStack stack) {
-        if (stack == null || stack.getType().isAir()) {
-            return false;
-        }
-        return stack.getItemMeta().getPersistentDataContainer()
-                .has(waterPlacementTokenKey, PersistentDataType.BYTE);
-    }
-
-    public void removeWaterPlacementTokens(Player player) {
-        for (int slot = 0; slot < player.getInventory().getSize(); slot++) {
-            if (isWaterPlacementToken(player.getInventory().getItem(slot))) {
-                player.getInventory().setItem(slot, null);
-            }
-        }
-        if (isWaterPlacementToken(player.getInventory().getItemInOffHand())) {
-            player.getInventory().setItemInOffHand(null);
-        }
-    }
-
     public boolean placeCarriedVehicle(Player player, Location location) {
         VehicleManager.CarriedVehicle carried = playerHeldVehicle.remove(player.getUniqueId());
         if (carried == null) {
             return false;
         }
         vehicles.place(carried, location);
-        removeWaterPlacementTokens(player);
         player.getWorld().playSound(location, Sound.ENTITY_PLAYER_ATTACK_STRONG,
                 SoundCategory.PLAYERS, 1.0F, 1.0F);
         player.sendRichMessage("<green>Vehicul așezat.</green>");
@@ -390,7 +334,6 @@ public final class TrailerManager {
         }
         LandVehicle vehicle = vehicles.place(carried, trailer.location());
         playerHeldVehicle.remove(player.getUniqueId());
-        removeWaterPlacementTokens(player);
         trailer.setLoadedVehicleId(vehicle.id());
         positionLoadedVehicle(trailer, vehicle.id());
         playHitch(trailer.location());
@@ -550,7 +493,6 @@ public final class TrailerManager {
         if (carried != null) {
             vehicles.place(carried, player.getLocation());
         }
-        removeWaterPlacementTokens(player);
     }
 
     public void returnCarriedVehicles() {
@@ -567,7 +509,6 @@ public final class TrailerManager {
             Player player = Bukkit.getPlayer(entry.getKey());
             if (player != null) {
                 vehicles.place(entry.getValue(), player.getLocation());
-                removeWaterPlacementTokens(player);
             }
         }
         playerHeldVehicle.clear();
