@@ -12,7 +12,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Horse;
+import org.bukkit.entity.Pig;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -31,10 +31,11 @@ import java.util.UUID;
 public final class LandVehicleRig {
     public static final String ENTITY_TAG = "mcv_plugin_vehicle";
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
-    /* A minimum-scale invisible horse gives vanilla clients their native mounted
-     * player pose without adding a visible or colliding animal to the rig. */
-    private static final double HORSE_CARRIER_SCALE = 0.0625D;
-    private static final float HORSE_PASSENGER_OFFSET = 1.4F * (float) HORSE_CARRIER_SCALE;
+    /* A minimum-scale invisible living carrier gives vanilla clients the same
+     * native seated rider pose and mount-heart HUD without using AbstractHorse's
+     * unsafe dismount-location search. */
+    private static final double SEAT_CARRIER_SCALE = 0.0625D;
+    private static final float PIG_PASSENGER_OFFSET = 0.7F * (float) SEAT_CARRIER_SCALE;
     private static final double SEAT_GAUGE_MAX_HEALTH = 20.0D;
 
     private final UUID vehicleId;
@@ -154,12 +155,10 @@ public final class LandVehicleRig {
         });
     }
 
-    private static Horse horseCarrier(World world, Location location, UUID vehicleId) {
-        Horse horse = world.spawn(location, Horse.class, carrier -> {
+    private static Pig pigCarrier(World world, Location location, UUID vehicleId) {
+        Pig pig = world.spawn(location, Pig.class, carrier -> {
             carrier.setAdult();
-            carrier.setTamed(true);
-            carrier.setDomestication(carrier.getMaxDomestication());
-            carrier.setJumpStrength(0.0D);
+            carrier.setSaddle(true);
             carrier.setAI(false);
             carrier.setGravity(false);
             carrier.setCollidable(false);
@@ -170,7 +169,7 @@ public final class LandVehicleRig {
             carrier.setRemoveWhenFarAway(false);
             AttributeInstance scale = carrier.getAttribute(Attribute.SCALE);
             if (scale != null) {
-                scale.setBaseValue(HORSE_CARRIER_SCALE);
+                scale.setBaseValue(SEAT_CARRIER_SCALE);
             }
             AttributeInstance maximumHealth = carrier.getAttribute(Attribute.MAX_HEALTH);
             if (maximumHealth != null) {
@@ -178,32 +177,32 @@ public final class LandVehicleRig {
             }
             carrier.setHealth(SEAT_GAUGE_MAX_HEALTH);
         });
-        mark(horse, vehicleId);
-        return horse;
+        mark(pig, vehicleId);
+        return pig;
     }
 
-    private Horse createHorse(SeatCarrier carrier) {
+    private Pig createPig(SeatCarrier carrier) {
         if (removed || !carrier.anchor.isValid()) {
             return null;
         }
         Location location = carrier.anchor.getLocation();
-        Horse horse = horseCarrier(location.getWorld(), location, vehicleId);
-        if (!carrier.anchor.addPassenger(horse)) {
-            horse.remove();
+        Pig pig = pigCarrier(location.getWorld(), location, vehicleId);
+        if (!carrier.anchor.addPassenger(pig)) {
+            pig.remove();
             return null;
         }
-        carrier.horse = horse;
-        entities.add(horse);
-        applySeatGauge(horse);
-        return horse;
+        carrier.pig = pig;
+        entities.add(pig);
+        applySeatGauge(pig);
+        return pig;
     }
 
-    private void discardHorse(SeatCarrier carrier) {
-        Horse horse = carrier.horse;
-        carrier.horse = null;
-        if (horse != null) {
-            entities.remove(horse);
-            horse.remove();
+    private void discardPig(SeatCarrier carrier) {
+        Pig pig = carrier.pig;
+        carrier.pig = null;
+        if (pig != null) {
+            entities.remove(pig);
+            pig.remove();
         }
     }
 
@@ -232,7 +231,7 @@ public final class LandVehicleRig {
                 .rotateZ(radians(bodyRoll))
                 .rotateX(radians(wheelieAngle));
         Vector3f bodyOrigin = point(spec.bodyOrigin());
-        Vector3f driverSeat = horseAnchor(chassis(driverSeatOffset(), wheelieAngle, bodyRoll));
+        Vector3f driverSeat = pigAnchor(chassis(driverSeatOffset(), wheelieAngle, bodyRoll));
         Location renderAnchor = local(root, driverSeat);
 
         interaction.teleport(root);
@@ -332,52 +331,52 @@ public final class LandVehicleRig {
 
         for (SeatCarrier carrier : seats) {
             if (carrier.anchor != body) {
-                Vector3f seatPoint = horseAnchor(chassis(
+                Vector3f seatPoint = pigAnchor(chassis(
                         seatOffset(carrier.properties), wheelieAngle, bodyRoll));
                 Location seatLocation = local(root, seatPoint);
                 carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
                 carrier.anchor.setRotation(yaw, 0.0F);
             }
-            maintainHorse(carrier, yaw);
+            maintainPig(carrier, yaw);
         }
     }
 
-    private void maintainHorse(SeatCarrier carrier, float yaw) {
-        Horse horse = carrier.horse;
-        if (horse == null) {
+    private void maintainPig(SeatCarrier carrier, float yaw) {
+        Pig pig = carrier.pig;
+        if (pig == null) {
             return;
         }
-        if (!horse.isValid()) {
+        if (!pig.isValid()) {
             UUID riderId = carrier.rider;
-            entities.remove(horse);
-            carrier.horse = null;
+            entities.remove(pig);
+            carrier.pig = null;
             if (!removed && riderId != null) {
                 Player rider = Bukkit.getPlayer(riderId);
                 if (rider != null && rider.isOnline() && !rider.isDead()) {
-                    Horse replacement = createHorse(carrier);
+                    Pig replacement = createPig(carrier);
                     if (replacement != null && replacement.addPassenger(rider)) {
                         carrier.rider = riderId;
                         replacement.setRotation(yaw, 0.0F);
                         return;
                     }
-                    discardHorse(carrier);
+                    discardPig(carrier);
                 }
             }
             carrier.rider = null;
             return;
         }
 
-        Player rider = horse.getPassengers().stream()
+        Player rider = pig.getPassengers().stream()
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
         if (rider == null) {
             carrier.rider = null;
-            discardHorse(carrier);
+            discardPig(carrier);
             return;
         }
         carrier.rider = rider.getUniqueId();
-        horse.setRotation(yaw, 0.0F);
+        pig.setRotation(yaw, 0.0F);
     }
 
     private Quaternionf motorcycleSteering(float steeringRotation) {
@@ -437,8 +436,8 @@ public final class LandVehicleRig {
         return point(seat.sourceOffset()).add(0.0F, LandVehicleSpec.RIDER_HEIGHT_CORRECTION, 0.0F);
     }
 
-    private static Vector3f horseAnchor(Vector3f seatPoint) {
-        return new Vector3f(seatPoint).sub(0.0F, HORSE_PASSENGER_OFFSET, 0.0F);
+    private static Vector3f pigAnchor(Vector3f seatPoint) {
+        return new Vector3f(seatPoint).sub(0.0F, PIG_PASSENGER_OFFSET, 0.0F);
     }
 
     private Vector3f chassis(Vector3f point, float wheelieAngle, float bodyRoll) {
@@ -481,16 +480,16 @@ public final class LandVehicleRig {
     public void setSeatGauge(float fraction) {
         seatGauge = Float.isFinite(fraction) ? Math.max(0.0F, Math.min(1.0F, fraction)) : 1.0F;
         for (SeatCarrier carrier : seats) {
-            if (carrier.horse != null && carrier.horse.isValid()) {
-                applySeatGauge(carrier.horse);
+            if (carrier.pig != null && carrier.pig.isValid()) {
+                applySeatGauge(carrier.pig);
             }
         }
     }
 
-    private void applySeatGauge(Horse horse) {
+    private void applySeatGauge(Pig pig) {
         double health = Math.max(1.0D, SEAT_GAUGE_MAX_HEALTH * seatGauge);
-        if (Math.abs(horse.getHealth() - health) > 0.01D) {
-            horse.setHealth(health);
+        if (Math.abs(pig.getHealth() - health) > 0.01D) {
+            pig.setHealth(health);
         }
     }
 
@@ -499,7 +498,7 @@ public final class LandVehicleRig {
             return;
         }
         for (SeatCarrier carrier : seats) {
-            maintainHorse(carrier, yaw);
+            maintainPig(carrier, yaw);
         }
     }
 
@@ -508,19 +507,19 @@ public final class LandVehicleRig {
             return false;
         }
         for (SeatCarrier carrier : seats) {
-            Horse horse = carrier.horse;
-            if (horse != null && horse.isValid() && !horse.getPassengers().isEmpty()) {
+            Pig pig = carrier.pig;
+            if (pig != null && pig.isValid() && !pig.getPassengers().isEmpty()) {
                 continue;
             }
-            if (horse != null) {
-                discardHorse(carrier);
+            if (pig != null) {
+                discardPig(carrier);
             }
-            horse = createHorse(carrier);
-            if (horse != null && horse.addPassenger(player)) {
+            pig = createPig(carrier);
+            if (pig != null && pig.addPassenger(player)) {
                 carrier.rider = player.getUniqueId();
                 return true;
             }
-            discardHorse(carrier);
+            discardPig(carrier);
         }
         return false;
     }
@@ -528,12 +527,12 @@ public final class LandVehicleRig {
     public Entity driverSeat() {
         SeatCarrier driver = seats.stream().filter(seat -> seat.properties.driver())
                 .findFirst().orElseThrow();
-        return driver.horse != null && driver.horse.isValid() ? driver.horse : driver.anchor;
+        return driver.pig != null && driver.pig.isValid() ? driver.pig : driver.anchor;
     }
 
     public List<Entity> seatCarriers() {
         return seats.stream()
-                .map(SeatCarrier::horse)
+                .map(SeatCarrier::pig)
                 .filter(java.util.Objects::nonNull)
                 .filter(Entity::isValid)
                 .map(Entity.class::cast)
@@ -559,26 +558,25 @@ public final class LandVehicleRig {
 
     public void remove() {
         removed = true;
-        /* Never invalidate a minimum-scale Horse while it still has a player.
-         * Paper's next ride tick may otherwise loop inside
-         * AbstractHorse#getDismountLocationInDirection. Restore an ordinary
-         * bounding box and detach synchronously before removing the rig. */
+        /* Detach riders synchronously while the living carrier is still valid.
+         * Restoring an ordinary bounding box also keeps the fallback dismount
+         * location independent of the carrier's minimum render scale. */
         for (SeatCarrier carrier : seats) {
-            Horse horse = carrier.horse;
-            if (horse == null || !horse.isValid() || horse.getPassengers().isEmpty()) {
+            Pig pig = carrier.pig;
+            if (pig == null || !pig.isValid() || pig.getPassengers().isEmpty()) {
                 continue;
             }
-            AttributeInstance scale = horse.getAttribute(Attribute.SCALE);
+            AttributeInstance scale = pig.getAttribute(Attribute.SCALE);
             if (scale != null) {
                 scale.setBaseValue(1.0D);
             }
-            horse.eject();
-            if (!horse.getPassengers().isEmpty()) {
+            pig.eject();
+            if (!pig.getPassengers().isEmpty()) {
                 /* Failing open is safer than deleting a still-ridden carrier. */
-                entities.remove(horse);
-                horse.setInvisible(false);
-                horse.setInvulnerable(false);
-                horse.setGravity(true);
+                entities.remove(pig);
+                pig.setInvisible(false);
+                pig.setInvulnerable(false);
+                pig.setGravity(true);
             }
         }
         for (Entity entity : new ArrayList<>(entities)) {
@@ -586,7 +584,7 @@ public final class LandVehicleRig {
         }
         entities.clear();
         for (SeatCarrier carrier : seats) {
-            carrier.horse = null;
+            carrier.pig = null;
             carrier.rider = null;
         }
     }
@@ -597,7 +595,7 @@ public final class LandVehicleRig {
     private static final class SeatCarrier {
         private final ItemDisplay anchor;
         private final LandVehicleSpec.Seat properties;
-        private Horse horse;
+        private Pig pig;
         private UUID rider;
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
@@ -605,8 +603,8 @@ public final class LandVehicleRig {
             this.properties = properties;
         }
 
-        private Horse horse() {
-            return horse;
+        private Pig pig() {
+            return pig;
         }
     }
 }

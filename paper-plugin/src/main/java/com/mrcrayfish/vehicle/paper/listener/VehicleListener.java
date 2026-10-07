@@ -63,7 +63,7 @@ public final class VehicleListener implements Listener {
 
     /**
      * Paper can loop in AbstractHorse's dismount-location search if a ridden
-     * ordinary horse is removed directly by /kill. Plugin seat horses are
+     * ordinary horse is removed directly by /kill. Plugin seat carriers are
      * excluded by the rewritten selector; riders of every other mount are
      * detached while that mount is still valid, before the command executes.
      */
