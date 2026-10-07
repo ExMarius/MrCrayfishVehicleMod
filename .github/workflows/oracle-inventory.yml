@@ -1,4 +1,4 @@
-name: Oracle Cloud Shell inventory
+name: Oracle and Falix migration inventory
 
 on:
   workflow_dispatch:
@@ -13,9 +13,14 @@ permissions:
 
 jobs:
   inventory:
-    name: Inspect existing Cloud Shell server safely
+    name: Inspect existing servers safely
     runs-on: self-hosted
-    timeout-minutes: 5
+    timeout-minutes: 10
+    env:
+      FALIX_SFTP_HOST: ${{ secrets.FALIX_SFTP_HOST }}
+      FALIX_SFTP_PORT: ${{ secrets.FALIX_SFTP_PORT }}
+      FALIX_SFTP_USERNAME: ${{ secrets.FALIX_SFTP_USERNAME }}
+      FALIX_SFTP_PASSWORD: ${{ secrets.FALIX_SFTP_PASSWORD }}
     steps:
       - name: Inventory without reading configuration contents
         shell: bash
@@ -27,12 +32,10 @@ jobs:
             value="${value//'%'/'%25'}"
             value="${value//$'\r'/'%0D'}"
             value="${value//$'\n'/'%0A'}"
-            echo "::notice title=Oracle inventory::$value"
+            echo "::notice title=Migration inventory::$value"
           }
 
-          notice "user=$(id -un) home=$HOME arch=$(uname -m)"
-          notice "home-disk=$(df -hP "$HOME" | tail -1 | awk '{print $2" total, "$3" used, "$4" free ("$5")"}')"
-          notice "java=$(java -version 2>&1 | head -1 || true)"
+          notice "user=$(id -un) home=$HOME arch=$(uname -m); disk=$(df -hP "$HOME" | tail -1 | awk '{print $2" total, "$3" used, "$4" free ("$5")"}'); java=$(java -version 2>&1 | head -1 || true)"
 
           candidates=$(find "$HOME" -maxdepth 6 -type f \
             \( -name server.properties -o -name eula.txt -o -iname 'paper*.jar' \
@@ -44,31 +47,56 @@ jobs:
           while IFS= read -r pid; do
             [ -n "$pid" ] || continue
             cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || echo unknown)
-            java_processes+="pid=$pid cwd=$cwd|"
+            parent=$(awk '/^PPid:/{print $2}' "/proc/$pid/status" 2>/dev/null || echo unknown)
+            parent_name=$(cat "/proc/$parent/comm" 2>/dev/null || echo unknown)
+            java_processes+="pid=$pid cwd=$cwd parent=$parent/$parent_name|"
           done < <(pgrep -x java 2>/dev/null || true)
           notice "java-processes=${java_processes:-none}"
 
-          tmux_sessions=none
-          if command -v tmux >/dev/null 2>&1; then
-            tmux_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | paste -sd, - || true)
-            tmux_sessions=${tmux_sessions:-none}
-          fi
-          screen_sessions=none
-          if command -v screen >/dev/null 2>&1; then
-            screen_sessions=$(screen -ls 2>/dev/null | sed -n 's/^[[:space:]]*[0-9][0-9]*\.\([^[:space:]]*\).*/\1/p' | paste -sd, - || true)
-            screen_sessions=${screen_sessions:-none}
-          fi
-          notice "tmux-sessions=$tmux_sessions screen-sessions=$screen_sessions"
+          wrapper_entries=$(find "$HOME/minecraft-server" -maxdepth 2 -mindepth 1 \
+            -not -path '*/mc/*' -printf '%y %p\n' 2>/dev/null | sort | paste -sd'|' -)
+          notice "minecraft-wrapper-entries=${wrapper_entries:-none}"
 
-          entries=$(du -sh "$HOME"/* 2>/dev/null | sort -h | tail -20 | tr '\n' '|')
-          notice "home-entries=${entries:-none}"
+          server_sizes=$(du -sh "$HOME/minecraft-server/mc"/* 2>/dev/null | sort -h | tr '\n' '|')
+          notice "current-server-sizes=${server_sizes:-none}"
 
-          tools=""
-          for tool in tmux screen sshpass sftp rsync tar python3 curl; do
-            if command -v "$tool" >/dev/null 2>&1; then
-              tools+="$tool=$(command -v "$tool")|"
-            else
-              tools+="$tool=missing|"
+          plugin_names=$(find "$HOME/minecraft-server/mc/plugins" -maxdepth 1 -mindepth 1 \
+            -printf '%f\n' 2>/dev/null | sort | paste -sd, -)
+          notice "current-plugins=${plugin_names:-none}"
+
+          home_visible=$(du -sh "$HOME"/* 2>/dev/null | sort -h | tail -20 | tr '\n' '|')
+          home_hidden=$(du -sh "$HOME"/.[!.]* 2>/dev/null | sort -h | tail -20 | tr '\n' '|')
+          notice "home-visible=${home_visible:-none}"
+          notice "home-hidden=${home_hidden:-none}"
+
+          for variable in FALIX_SFTP_HOST FALIX_SFTP_PORT FALIX_SFTP_USERNAME FALIX_SFTP_PASSWORD; do
+            if [ -z "${!variable:-}" ]; then
+              echo "::error title=Missing Falix migration secret::$variable is not configured"
+              exit 1
             fi
           done
-          notice "tools=$tools"
+          SFTP_HOST="${FALIX_SFTP_HOST#sftp://}"
+          SFTP_HOST="${SFTP_HOST%%/*}"
+          SFTP_HOST="${SFTP_HOST%%:*}"
+          export SSHPASS="$FALIX_SFTP_PASSWORD"
+          cat > /tmp/falix-inventory.batch <<'EOF'
+          ls -l
+          ls -l plugins
+          EOF
+          if timeout 60 sshpass -e sftp \
+              -oBatchMode=no \
+              -oPreferredAuthentications=password \
+              -oPubkeyAuthentication=no \
+              -oStrictHostKeyChecking=accept-new \
+              -oConnectTimeout=20 \
+              -P "$FALIX_SFTP_PORT" \
+              -b /tmp/falix-inventory.batch \
+              "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" > /tmp/falix-inventory.txt 2>/tmp/falix-inventory.err; then
+            listing=$(sed '/^sftp>/d;/^Connected to /d;/^[[:space:]]*$/d' /tmp/falix-inventory.txt | head -80 | tr '\n' '|')
+            notice "falix-sftp=reachable; listing=${listing:-empty}"
+          else
+            status=$?
+            reason=$(sed -E 's#([[:alnum:]_.-]+)@([[:alnum:]_.-]+)#<redacted>@<redacted>#g' /tmp/falix-inventory.err | tail -5 | tr '\n' '|')
+            notice "falix-sftp=unreachable status=$status reason=${reason:-none}"
+          fi
+          unset SSHPASS FALIX_SFTP_PASSWORD
