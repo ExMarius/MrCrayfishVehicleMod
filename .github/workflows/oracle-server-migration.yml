@@ -47,6 +47,7 @@ jobs:
             value="${value//$'\n'/'%0A'}"
             echo "::notice title=Oracle migration::$value"
           }
+          trap 'rc=$?; notice "failure line=$LINENO exit=$rc"; exit $rc' ERR
 
           for variable in FALIX_SFTP_HOST FALIX_SFTP_PORT FALIX_SFTP_USERNAME FALIX_SFTP_PASSWORD; do
             if [ -z "${!variable:-}" ]; then
@@ -66,10 +67,10 @@ jobs:
 
           # Remove only known disposable caches and obsolete duplicate installations.
           # The running server and FRP installation remain untouched until the Falix copy verifies.
-          rm -rf "$HOME/.cache"/*
-          rm -rf "$HOME/mcsv" "$HOME/jms-java-download"
-          rm -rf "$HOME/cache" "$HOME/libraries" "$HOME/versions" "$HOME/logs"
-          rm -f "$HOME/eula.txt" "$HOME/keepalive.log" "$HOME/minecraft-panel" "$HOME/br"
+          rm -rf "$HOME/.cache"/* 2>/dev/null || true
+          rm -rf "$HOME/mcsv" "$HOME/jms-java-download" 2>/dev/null || true
+          rm -rf "$HOME/cache" "$HOME/libraries" "$HOME/versions" "$HOME/logs" 2>/dev/null || true
+          rm -f "$HOME/eula.txt" "$HOME/keepalive.log" "$HOME/minecraft-panel" "$HOME/br" 2>/dev/null || true
           mkdir -p "$STAGE"
           notice "space-before-download=$(df -hP "$HOME" | tail -1 | awk '{print $4" free of "$2}')"
 
