@@ -116,6 +116,8 @@ public final class EngineSoundController {
             ticksAtPitchOne = 12.363333333333333D;
         } else if (sound.endsWith("mini_bus.engine")) {
             ticksAtPitchOne = 47.3375D;
+        } else if (sound.endsWith("vehicle.helicopter_rotor")) {
+            ticksAtPitchOne = 12.663038548752834D;
         } else {
             ticksAtPitchOne = 4.022675736961451D;
         }

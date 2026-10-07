@@ -30,6 +30,7 @@ All currently implemented body transforms have zero body translation/rotation, s
 | Off Roader | 1.102500 | 0.490000 / 0.490000 | 0.752500, 0.752500, 0.708750, 0.708750 (vanilla rear-seat adaptation) | n/a (source sets `renderEngine=false`) | (-0.437500, 1.572701, 0.299799) | n/a |
 | Sports Car | 0.662500 | 0.350000 / 0.350000 | 0.037500, 0.037500 | (0, 0.763125, 1.187500) | (-0.250000, 0.59399375, 0.1023625) | n/a |
 | Mini Bus | 1.118000 | 0.386750 / 0.386750 | 0.711750 (all five) | n/a (source sets `renderEngine=false`) | (-0.406250, 1.516441875, 1.27057125) | -2.031250 |
+| Golf Cart | 0.8553125 | 0.316250 / 0.316250 | 0.6396875 (all four; rear pair yaw `180°`) | n/a (source does not enable engine rendering) | (-0.396750, 1.3277991, 0.13126346) | n/a |
 
 Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt Bike wheel X scales now use serialized `0.938`; the other generated and auto-scaled wheel values match their property equations.
 
@@ -46,8 +47,9 @@ Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt B
 | Off Roader | (-1.050000, 1.321250, -0.568750) | (0, 1.015000, 0.542500) |
 | Sports Car | (-0.625000, 0.568750, -0.875000) | (-0.312500, 0.443750, 0.406250) |
 | Mini Bus | (-0.975000, 1.280500, -0.7109375) | (0, 1.0164375, 1.584375) |
+| Golf Cart | (-0.934375, 0.675625, -0.431250) | (-0.6109375, 0.47796875, 0.6109375) |
 
-The r19 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
+The r20 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
 
 ### Dirt Bike fork
 
@@ -104,6 +106,14 @@ All eight default cosmetics are rendered: stock roof, roof racks, left/right fro
 
 The source renderer places the steering wheel at `(-5, 4.9039, 15.6378)` pixels, scale `0.7`, and X `-67.5°`, producing center `(-0.40625, 1.516441875, 1.27057125)` and display scale `0.91`. The repository registers `vehicle/mini_bus/steering_wheel` but contains no such model or texture; its own Mini Bus ray transforms instead explicitly select `GO_KART_STEERING_WHEEL`. The Paper pack therefore reuses that original model rather than exposing a missing-model fallback. Mini Bus alone overrides the standard tow model with the source `BIG_TOW_BAR`, centered at `(0, 0.5, -2.03125)`.
 
+### Golf Cart source defect and compatible behavior
+
+The complete source body has 86 elements and uses vanilla white/light-gray concrete, white wool, and anvil textures. Its four 1.265-scale wheels are centered at outside X `±0.805`, Y `0.31625`, front Z `1.15`, and rear Z `-0.8984375`, with exact ground contact. The front seat centers are X `±0.3953125`, Y `0.6396875`, Z `-0.43125`; rear centers keep the same X/Y at Z `-1.078125` and preserve the generated `180°` yaw offsets. The renderer's steering sequence produces center `(-0.39675, 1.3277991, 0.13126346)`, X rotation `-45°`, and scale `1.0925`.
+
+The authoritative `GolfCartEntity` is an empty subclass of `HelicopterEntity` except for the comment `TODO figure out electric vehicles`. This is not merely a naming oddity: helicopter motion applies horizontal input only while `isFlying()`, limits its grounded rotor speed below the lift needed to leave the ground, and never executes land turning. Consequently the original class cannot drive as a golf cart on level ground. The generated properties nevertheless define four wheels, front/rear axles `16/-12.5`, electric engine power `25`, and ordinary steering geometry. For a useful vanilla-compatible vehicle, r20 deliberately applies those exact generated geometry/power values to the already ported source land equations, using the source-default `35°` steering angle, `0.25` energy per tick, and `15,000` energy capacity. This is an explicit repair of unfinished source behavior, not a claim that the original Golf Cart has complete land physics.
+
+The generated sound is unusually `vehicle:entity.vehicle.helicopter_rotor`; r20 retains its original 27,922-sample OGG rather than inventing an electric-motor sample. The land-compatible pitch follows the powered vehicle's generated `0.5–1.0` range. The body has no source cosmetic models or open actions, does not tow, does not render an engine, and does not emit exhaust.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -116,7 +126,8 @@ The serialized or source-default offsets are:
 - Moped `(0, -0.031, -0.65)`;
 - Off Roader `(0, 0, 0)` (source default);
 - Sports Car `(0, 0, 0)` (source default);
-- Mini Bus `(0, 0, 0)` (source default).
+- Mini Bus `(0, 0, 0)` (source default);
+- Golf Cart `(0, 0, 0)` (source default).
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -152,6 +163,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 14. The obsolete r4-only milestone workflow was repaired and advanced to validate and publish the current r19 artifact instead of referencing a pack the current build no longer produced.
 15. The Sports Car steering Y center was corrected from `0.59400625` to the exact renderer result `0.59399375` after re-evaluating the source `-1.0961`-pixel translation.
 16. The r19 Mini Bus port adds five-seat generated geometry, eight default cosmetics, front-door/sliding-door actions, exact filler/ignition/tow transforms, the source big tow bar, and the 113,610-sample original engine loop. The missing dedicated source steering asset is replaced only with the Go Kart wheel named by the original Mini Bus ray transforms.
+17. The r20 Golf Cart port adds the complete body, four wheels, four seats including both generated rear-facing yaw offsets, exact steering/filler/ignition transforms, and original rotor sample. It documents and narrowly repairs the source entity's unfinished helicopter inheritance by applying its generated cart geometry and power to land motion.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -162,7 +174,8 @@ Exact matrix/equation ports:
 - source Vehicle Trailer passenger offsets and trailer hitch distances;
 - source cargo layout equations and trailer work-point positions;
 - Sports Car cosmetic pivots/open angles/easing, storage capacities and interaction bounds, and persistent action/inventory state;
-- Mini Bus wheel/seat/cosmetic/openable/filler/ignition/tow geometry and big-tow-bar selection.
+- Mini Bus wheel/seat/cosmetic/openable/filler/ignition/tow geometry and big-tow-bar selection;
+- Golf Cart body/wheel/seat/rear-yaw/steering/filler/ignition geometry and source-selected rotor sample.
 
 Vanilla-client adaptations that intentionally remain:
 
@@ -172,4 +185,5 @@ Vanilla-client adaptations that intentionally remain:
 - the fluid uses a `BlockDisplay` with exact source cuboid bounds rather than the source custom translucent tessellator;
 - ItemDisplays, interpolation, native item models, and vanilla interaction hitboxes replace Forge client render/ray-trace objects;
 - the Mini Bus uses the original Go Kart steering-wheel asset named by its source ray transforms because the renderer's separately registered Mini Bus steering model is absent from the repository;
+- the Golf Cart uses the source land-motion equations with its generated wheel/axle/electric-power values because its original entity is an explicitly unfinished `HelicopterEntity` subclass that cannot move horizontally while grounded; rear-seat `180°` facing is applied to the native mount carrier without forcing player camera or body yaw APIs;
 - custom per-limb player pose animation, damage wobble/destroy overlays, open fuel-door animation, and inserted-key animation are not representable with the current vanilla-client rig. These limitations do not change the audited static part coordinates.

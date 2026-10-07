@@ -436,6 +436,47 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* GolfCartEntity inherits unfinished helicopter motion in the 1.16 source and is unable
+     * to drive on the ground (the class itself is marked TODO). The generated wheel, axle,
+     * steering and four-seat definition is therefore run through the source land equations
+     * so the intended cart remains usable by vanilla clients. */
+    public static final LandVehicleSpec GOLF_CART = new LandVehicleSpec(
+            "golf_cart", "Golf Cart", "golf_cart_body",
+            2.0F, 1.0F, 1.0F,
+            1.15F, -0.5F, 4.4F,
+            25.0F, 35.0F, 16.0F * MODEL_UNIT * 1.15F,
+            -12.5F * MODEL_UNIT * 1.15F, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 1.0F, "vehicle:entity.vehicle.helicopter_rotor",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.39675F, 1.3277991F, 0.13126346F),
+                    1.0925F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -13.0F, 5.5F, -6.0F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.15F, -0.5F, 4.4F),
+            itemPart("key_hole", -8.5F, 2.75F, 8.5F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.15F, -0.5F, 4.4F),
+            List.of(),
+            List.of(
+                    wheel(-1, true, 9.0F, 0.0F, 16.0F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F),
+                    wheel(1, true, 9.0F, 0.0F, 16.0F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F),
+                    wheel(-1, false, 9.0F, 0.0F, -12.5F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F),
+                    wheel(1, false, 9.0F, 0.0F, -12.5F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F)
+            ),
+            List.of(
+                    seat(true, 5.5F, 5.0F, -6.0F, 1.15F, -0.5F, 4.4F),
+                    seat(false, -5.5F, 5.0F, -6.0F, 1.15F, -0.5F, 4.4F),
+                    seat(false, 5.5F, 5.0F, -15.0F, 1.15F, -0.5F, 4.4F, 180.0F),
+                    seat(false, -5.5F, 5.0F, -15.0F, 1.15F, -0.5F, 4.4F, 180.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
@@ -445,7 +486,8 @@ public record LandVehicleSpec(
             Map.entry(MOPED.id, MOPED),
             Map.entry(OFF_ROADER.id, OFF_ROADER),
             Map.entry(SPORTS_CAR.id, SPORTS_CAR),
-            Map.entry(MINI_BUS.id, MINI_BUS)
+            Map.entry(MINI_BUS.id, MINI_BUS),
+            Map.entry(GOLF_CART.id, GOLF_CART)
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -535,11 +577,17 @@ public record LandVehicleSpec(
 
     private static Seat seat(boolean driver, float x, float y, float z,
                              float bodyScale, float axleOffset, float wheelOffset) {
+        return seat(driver, x, y, z, bodyScale, axleOffset, wheelOffset, 0.0F);
+    }
+
+    private static Seat seat(boolean driver, float x, float y, float z,
+                             float bodyScale, float axleOffset, float wheelOffset,
+                             float yawOffset) {
         return new Seat(driver, new Point(
                 -x * MODEL_UNIT * bodyScale,
                 (y + axleOffset + wheelOffset) * MODEL_UNIT * bodyScale,
                 z * MODEL_UNIT * bodyScale
-        ));
+        ), yawOffset);
     }
 
     public record Point(float x, float y, float z) {
@@ -622,6 +670,6 @@ public record LandVehicleSpec(
         }
     }
 
-    public record Seat(boolean driver, Point sourceOffset) {
+    public record Seat(boolean driver, Point sourceOffset, float yawOffset) {
     }
 }

@@ -409,7 +409,7 @@ public final class LandVehicleRig {
                         seatOffset(carrier.properties), wheelieAngle, bodyRoll));
                 Location seatLocation = local(root, seatPoint);
                 carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-                carrier.anchor.setRotation(yaw, 0.0F);
+                carrier.anchor.setRotation(yaw + carrier.properties.yawOffset(), 0.0F);
             }
             maintainPig(carrier, yaw);
         }
@@ -453,6 +453,7 @@ public final class LandVehicleRig {
     }
 
     private void maintainPig(SeatCarrier carrier, float yaw) {
+        float seatYaw = yaw + carrier.properties.yawOffset();
         Pig pig = carrier.pig;
         if (pig == null) {
             return;
@@ -467,7 +468,7 @@ public final class LandVehicleRig {
                     Pig replacement = createPig(carrier);
                     if (replacement != null && replacement.addPassenger(rider)) {
                         carrier.rider = riderId;
-                        replacement.setRotation(yaw, 0.0F);
+                        replacement.setRotation(seatYaw, 0.0F);
                         return;
                     }
                     discardPig(carrier);
@@ -487,7 +488,7 @@ public final class LandVehicleRig {
             return;
         }
         carrier.rider = rider.getUniqueId();
-        pig.setRotation(yaw, 0.0F);
+        pig.setRotation(seatYaw, 0.0F);
     }
 
     private void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,

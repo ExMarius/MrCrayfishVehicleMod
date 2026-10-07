@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ResourcePackSenderTest {
-    private static final String PACK = "https://example.invalid/vehicle-r19.zip";
+    private static final String PACK = "https://example.invalid/vehicle-r20.zip";
 
     @Test
     void identicalServerPackSuppressesTheDuplicatePostJoinSend() {

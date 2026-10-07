@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r19 — nine vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r20 — ten vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -106,6 +106,7 @@ def build(output: Path) -> tuple[Path, str]:
             "mini_bus_seat": ("vehicle:item/mini_bus_seat", 16383998),
             "mini_bus_dashboard": ("vehicle:item/mini_bus_dashboard", 16383998),
             "big_tow_bar": ("vehicle:item/big_tow_bar", 16383998),
+            "golf_cart_body": ("vehicle:item/golf_cart_body", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -263,6 +264,10 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/big_tow_bar.json",
             namespace / "models/item/big_tow_bar.json",
             {"texture": "vehicle:item/big_tow_bar", "particle": "vehicle:item/big_tow_bar"},
+        )
+        convert_model(
+            ASSETS / "models/vehicle/golf_cart_body.json",
+            namespace / "models/item/golf_cart_body.json",
         )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -498,6 +503,10 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/entity/mini_bus/engine.ogg",
             namespace / "sounds/entity/mini_bus/engine.ogg",
         )
+        copy(
+            ASSETS / "sounds/entity/vehicle/helicopter_rotor.ogg",
+            namespace / "sounds/entity/vehicle/helicopter_rotor.ogg",
+        )
         for source in (
             "entity/vehicle/door/open.ogg",
             "entity/vehicle/door/close.ogg",
@@ -529,6 +538,9 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.mini_bus.engine": {
                 "sounds": [{"name": "vehicle:entity/mini_bus/engine", "preload": True}]
+            },
+            "entity.vehicle.helicopter_rotor": {
+                "sounds": [{"name": "vehicle:entity/vehicle/helicopter_rotor", "preload": True}]
             },
             "entity.vehicle.door.open": {
                 "sounds": [{"name": "vehicle:entity/vehicle/door/open", "preload": True}]
@@ -562,7 +574,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r19.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r20.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")
