@@ -13,6 +13,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
@@ -193,7 +194,7 @@ public final class VehicleListener implements Listener {
     public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
         switch (event.getStatus()) {
             case SUCCESSFULLY_LOADED -> event.getPlayer().sendRichMessage(
-                    "<green>[Vehicle] Resource pack-ul r15 a fost încărcat.</green>");
+                    "<green>[Vehicle] Resource pack-ul r16 a fost încărcat.</green>");
             case DECLINED, FAILED_DOWNLOAD, FAILED_RELOAD, INVALID_URL, DISCARDED -> {
                 plugin.getLogger().warning("Resource pack " + event.getStatus() + " for "
                         + event.getPlayer().getName());
@@ -221,6 +222,11 @@ public final class VehicleListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onInventoryDrag(InventoryDragEvent event) {
         vehicles.trailers().handleInventoryDrag(event);
+    }
+
+    @EventHandler
+    public void onInventoryClose(InventoryCloseEvent event) {
+        vehicles.handleInventoryClose(event.getInventory());
     }
 
     @EventHandler

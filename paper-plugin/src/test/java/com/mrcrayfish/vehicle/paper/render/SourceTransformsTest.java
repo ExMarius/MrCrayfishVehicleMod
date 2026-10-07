@@ -39,6 +39,27 @@ class SourceTransformsTest {
     }
 
     @Test
+    void mopedForkSteersHandlesMudGuardAndFrontWheelAroundScaledElevenAndAHalfPixelPivot() {
+        LandVehicleSpec spec = LandVehicleSpec.MOPED;
+        Quaternionf fork = SourceTransforms.motorcycleSteering(spec.motorcycle(), 25.0F);
+
+        Vector3f handles = SourceTransforms.forkPoint(
+                point(spec.steering().center()), point(spec.bodyOrigin()), spec.motorcycle(), fork);
+        assertVector(handles, -0.03873031F, 1.0888283F, 0.6384652F);
+
+        Vector3f mudGuard = SourceTransforms.forkPoint(
+                point(spec.mopedParts().forkParts().getFirst().center()),
+                point(spec.bodyOrigin()), spec.motorcycle(), fork);
+        assertVector(mudGuard, -0.037937243F, 0.47604856F, 0.8941278F);
+
+        LandVehicleSpec.Wheel front = spec.firstFrontWheel();
+        Vector3f wheel = SourceTransforms.forkPoint(
+                new Vector3f(front.axleX(), front.centerY(), front.axleZ()),
+                point(spec.bodyOrigin()), spec.motorcycle(), fork);
+        assertVector(wheel, -0.009121702F, 0.24077387F, 1.0584683F);
+    }
+
+    @Test
     void zeroSteeringLeavesDirtBikeHandlesAndForkWheelAtSourceCenters() {
         LandVehicleSpec spec = LandVehicleSpec.DIRT_BIKE;
         Quaternionf fork = SourceTransforms.motorcycleSteering(spec.motorcycle(), 0.0F);

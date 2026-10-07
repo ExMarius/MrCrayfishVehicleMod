@@ -8,16 +8,25 @@ import com.mrcrayfish.vehicle.paper.physics.VehicleCollisionMover;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
 import com.mrcrayfish.vehicle.paper.runtime.EngineSoundController;
 import com.mrcrayfish.vehicle.paper.runtime.TrailerManager;
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.HumanEntity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,6 +47,7 @@ public final class LandVehicle {
     private final LandVehicleRig rig;
     private final EngineSoundController soundController;
     private final double[] wheelPositions;
+    private final Inventory storageInventory;
 
     private Location location;
     private Vector velocity = new Vector();
@@ -63,6 +73,7 @@ public final class LandVehicle {
     private int wheelieCount;
     private int age;
     private boolean transported;
+    private boolean chestAttached;
 
     private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
                         TrailerManager trailers, LandVehicleRig rig) {
@@ -74,6 +85,8 @@ public final class LandVehicle {
         this.rig = rig;
         this.soundController = new EngineSoundController(spec, rig);
         this.wheelPositions = new double[spec.wheels().size() * 3];
+        this.storageInventory = spec.mopedParts() == null ? null
+                : Bukkit.createInventory(null, 27, Component.text("Moped Chest"));
         this.fuel = spec.energyCapacity();
     }
 
@@ -408,6 +421,147 @@ public final class LandVehicle {
         }
     }
 
+    /**
+     * Vanilla interaction replacement for MopedEntity's client ray-traced chest boxes.
+     * Attaching preserves the source behavior of not consuming the selected chest.
+     */
+    public boolean handleStorageInteraction(Player player, Entity clicked) {
+        if (storageInventory == null) {
+            return false;
+        }
+        ItemStack held = player.getInventory().getItemInMainHand();
+        if (!chestAttached && held.getType() == Material.CHEST) {
+            attachChest(held);
+            player.getWorld().playSound(location, Sound.BLOCK_WOOD_PLACE, 1.0F, 1.0F);
+            player.sendRichMessage("<green>Lada a fost atașată Moped-ului.</green> "
+                    + "<gray>Apasă pe lada din spate pentru inventar.</gray>");
+            return true;
+        }
+        if (!rig.isStorageInteraction(clicked) && !aimingAtStorage(player)) {
+            return false;
+        }
+        if (!chestAttached) {
+            player.sendRichMessage("<yellow>Ține o ladă în mână pentru a o atașa Moped-ului.</yellow>");
+            return true;
+        }
+        if (player.isSneaking()) {
+            detachChest();
+            player.sendRichMessage("<green>Lada Moped-ului a fost detașată.</green>");
+            return true;
+        }
+        player.getWorld().playSound(chestRuntimeLocation(), Sound.BLOCK_CHEST_OPEN, 0.5F, 0.9F);
+        player.openInventory(storageInventory);
+        return true;
+    }
+
+    private void attachChest(ItemStack chestItem) {
+        storageInventory.clear();
+        if (chestItem.getItemMeta() instanceof BlockStateMeta meta
+                && meta.getBlockState() instanceof InventoryHolder holder) {
+            ItemStack[] stored = holder.getInventory().getContents();
+            for (int slot = 0; slot < Math.min(stored.length, storageInventory.getSize()); slot++) {
+                ItemStack stack = stored[slot];
+                if (stack != null && !stack.getType().isAir()) {
+                    storageInventory.setItem(slot, stack.clone());
+                }
+            }
+        }
+        chestAttached = true;
+        rig.setStorageChestAttached(true);
+    }
+
+    private void detachChest() {
+        closeStorageViewers();
+        World world = location.getWorld();
+        Location target = chestRuntimeLocation();
+        if (world != null) {
+            for (ItemStack stack : storageInventory.getContents()) {
+                if (stack != null && !stack.getType().isAir()) {
+                    world.dropItemNaturally(target, stack.clone());
+                }
+            }
+            world.dropItemNaturally(target, new ItemStack(Material.CHEST));
+            world.playSound(location, Sound.ENTITY_ITEM_BREAK, 1.0F, 1.0F);
+        }
+        storageInventory.clear();
+        chestAttached = false;
+        rig.setStorageChestAttached(false);
+    }
+
+    public boolean ownsStorage(Inventory inventory) {
+        return storageInventory != null && storageInventory == inventory;
+    }
+
+    public void storageClosed() {
+        if (storageInventory != null && chestAttached && storageInventory.getViewers().size() <= 1) {
+            World world = location.getWorld();
+            if (world != null) {
+                world.playSound(chestRuntimeLocation(), Sound.BLOCK_CHEST_CLOSE, 0.5F, 0.9F);
+            }
+        }
+    }
+
+    public boolean chestAttached() {
+        return chestAttached;
+    }
+
+    public List<ItemStack> storageContents() {
+        if (storageInventory == null || !chestAttached) {
+            return List.of();
+        }
+        List<ItemStack> contents = new ArrayList<>(storageInventory.getSize());
+        for (ItemStack stack : storageInventory.getContents()) {
+            contents.add(stack == null || stack.getType().isAir() ? null : stack.clone());
+        }
+        return contents;
+    }
+
+    public void restoreStorage(boolean attached, List<ItemStack> contents) {
+        if (storageInventory == null) {
+            return;
+        }
+        storageInventory.clear();
+        chestAttached = attached;
+        if (attached && contents != null) {
+            for (int slot = 0; slot < Math.min(contents.size(), storageInventory.getSize()); slot++) {
+                ItemStack stack = contents.get(slot);
+                if (stack != null && !stack.getType().isAir()) {
+                    storageInventory.setItem(slot, stack.clone());
+                }
+            }
+        }
+        rig.setStorageChestAttached(attached);
+    }
+
+    private Location chestRuntimeLocation() {
+        LandVehicleSpec.Point offset = spec.mopedParts().chestInteractionOffset();
+        return local(location, offset.x(), offset.y(), offset.z());
+    }
+
+    private boolean aimingAtStorage(Player player) {
+        Location eye = player.getEyeLocation();
+        if (eye.getWorld() == null || !eye.getWorld().equals(location.getWorld())) {
+            return false;
+        }
+        Vector direction = eye.getDirection().normalize();
+        Vector toChest = chestRuntimeLocation().toVector().subtract(eye.toVector());
+        double distanceAlongRay = toChest.dot(direction);
+        if (distanceAlongRay < 0.0D || distanceAlongRay > 6.0D) {
+            return false;
+        }
+        Vector closest = eye.toVector().add(direction.multiply(distanceAlongRay));
+        return closest.distanceSquared(chestRuntimeLocation().toVector()) <= 0.36D;
+    }
+
+    private void closeStorageViewers() {
+        if (storageInventory == null) {
+            return;
+        }
+        for (HumanEntity viewer : new ArrayList<>(storageInventory.getViewers())) {
+            viewer.closeInventory();
+        }
+    }
+
     public boolean mount(Player player) {
         return !transported && rig.mount(player);
     }
@@ -421,6 +575,7 @@ public final class LandVehicle {
     }
 
     public void remove() {
+        closeStorageViewers();
         soundController.stop(location);
         rig.remove();
     }

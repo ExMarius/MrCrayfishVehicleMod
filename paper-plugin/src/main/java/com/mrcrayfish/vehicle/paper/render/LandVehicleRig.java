@@ -47,6 +47,10 @@ public final class LandVehicleRig {
     private final ItemDisplay steering;
     private final ItemDisplay fuelFiller;
     private final ItemDisplay towBar;
+    private final List<PartDisplay> chassisParts;
+    private final List<PartDisplay> forkParts;
+    private final ItemDisplay storageChest;
+    private final Interaction storageInteraction;
     private final List<WheelDisplay> wheels;
     private final List<SeatCarrier> seats;
     private final List<Entity> entities;
@@ -56,6 +60,8 @@ public final class LandVehicleRig {
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
                            ItemDisplay body, ItemDisplay engine, ItemDisplay steering,
                            ItemDisplay fuelFiller, ItemDisplay towBar,
+                           List<PartDisplay> chassisParts, List<PartDisplay> forkParts,
+                           ItemDisplay storageChest, Interaction storageInteraction,
                            List<WheelDisplay> wheels, List<SeatCarrier> seats, List<Entity> entities) {
         this.vehicleId = vehicleId;
         this.spec = spec;
@@ -65,6 +71,10 @@ public final class LandVehicleRig {
         this.steering = steering;
         this.fuelFiller = fuelFiller;
         this.towBar = towBar;
+        this.chassisParts = chassisParts;
+        this.forkParts = forkParts;
+        this.storageChest = storageChest;
+        this.storageInteraction = storageInteraction;
         this.wheels = wheels;
         this.seats = seats;
         this.entities = entities;
@@ -98,6 +108,34 @@ public final class LandVehicleRig {
                 spec.towBarVisualCenter(), 1.0F, 0.0F, 180.0F, 0.0F), vehicleId, all)
                 : null;
 
+        List<PartDisplay> chassisParts = new ArrayList<>();
+        List<PartDisplay> forkParts = new ArrayList<>();
+        ItemDisplay storageChest = null;
+        Interaction storageInteraction = null;
+        if (spec.mopedParts() != null) {
+            for (LandVehicleSpec.Part part : spec.mopedParts().chassisParts()) {
+                chassisParts.add(new PartDisplay(
+                        partDisplay(world, location, part, vehicleId, all), part));
+            }
+            for (LandVehicleSpec.Part part : spec.mopedParts().forkParts()) {
+                forkParts.add(new PartDisplay(
+                        partDisplay(world, location, part, vehicleId, all), part));
+            }
+            storageChest = display(world, location, new ItemStack(Material.CHEST));
+            storageChest.setVisibleByDefault(false);
+            mark(storageChest, vehicleId);
+            all.add(storageChest);
+
+            storageInteraction = world.spawn(location, Interaction.class, hitbox -> {
+                hitbox.setInteractionWidth(0.8F);
+                hitbox.setInteractionHeight(0.8F);
+                hitbox.setResponsive(true);
+                hitbox.setPersistent(false);
+            });
+            mark(storageInteraction, vehicleId);
+            all.add(storageInteraction);
+        }
+
         List<WheelDisplay> wheels = new ArrayList<>();
         for (LandVehicleSpec.Wheel properties : spec.wheels()) {
             ItemDisplay wheel = display(world, location, model("standard_wheel"));
@@ -125,8 +163,9 @@ public final class LandVehicleRig {
         }
 
         LandVehicleRig rig = new LandVehicleRig(vehicleId, spec, interaction, body, engine, steering,
-                fuelFiller, towBar, Collections.unmodifiableList(wheels),
-                Collections.unmodifiableList(seats), all);
+                fuelFiller, towBar, Collections.unmodifiableList(chassisParts),
+                Collections.unmodifiableList(forkParts), storageChest, storageInteraction,
+                Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats), all);
         rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
         return rig;
     }
@@ -284,6 +323,34 @@ public final class LandVehicleRig {
             }
             place(steering, renderAnchor, relativeToSeat(center, driverSeat), yaw, rotation,
                     new Vector3f(part.scale()), new Quaternionf());
+        }
+
+        for (PartDisplay partDisplay : chassisParts) {
+            placePropertyPart(partDisplay.entity, partDisplay.properties, renderAnchor, driverSeat,
+                    yaw, wheelieAngle, bodyRoll, chassisRotation);
+        }
+
+        for (PartDisplay partDisplay : forkParts) {
+            LandVehicleSpec.Part part = partDisplay.properties;
+            Vector3f center = SourceTransforms.forkPoint(
+                    point(part.center()), bodyOrigin, spec.motorcycle(), forkRotation);
+            center = chassis(center, wheelieAngle, bodyRoll);
+            Quaternionf rotation = new Quaternionf(chassisRotation).mul(forkRotation);
+            Quaternionf sourceRotation = new Quaternionf()
+                    .rotateX(radians(part.rotationX()))
+                    .rotateY(radians(part.rotationY()))
+                    .rotateZ(radians(part.rotationZ()));
+            place(partDisplay.entity, renderAnchor, relativeToSeat(center, driverSeat), yaw, rotation,
+                    new Vector3f(part.scale()), sourceRotation);
+        }
+
+        if (storageChest != null && spec.mopedParts() != null) {
+            placePropertyPart(storageChest, spec.mopedParts().chest(), renderAnchor, driverSeat,
+                    yaw, wheelieAngle, bodyRoll, chassisRotation);
+            Vector3f interactionPoint = chassis(point(spec.mopedParts().chest().center()),
+                    wheelieAngle, bodyRoll);
+            storageInteraction.teleport(local(root, interactionPoint));
+            storageInteraction.setRotation(yaw, 0.0F);
         }
 
         placePropertyPart(fuelFiller, spec.fuelFiller(), renderAnchor, driverSeat,
@@ -526,6 +593,16 @@ public final class LandVehicleRig {
         return Collections.unmodifiableList(entities);
     }
 
+    public boolean isStorageInteraction(Entity entity) {
+        return storageInteraction != null && storageInteraction.getUniqueId().equals(entity.getUniqueId());
+    }
+
+    public void setStorageChestAttached(boolean attached) {
+        if (storageChest != null && storageChest.isValid()) {
+            storageChest.setVisibleByDefault(attached);
+        }
+    }
+
     public UUID vehicleId() {
         return vehicleId;
     }
@@ -536,6 +613,10 @@ public final class LandVehicleRig {
                 && (steering == null || steering.isValid())
                 && (fuelFiller == null || fuelFiller.isValid())
                 && (towBar == null || towBar.isValid())
+                && chassisParts.stream().allMatch(part -> part.entity.isValid())
+                && forkParts.stream().allMatch(part -> part.entity.isValid())
+                && (storageChest == null || storageChest.isValid())
+                && (storageInteraction == null || storageInteraction.isValid())
                 && wheels.stream().allMatch(wheel -> wheel.entity.isValid())
                 && seats.stream().allMatch(seat -> seat.anchor.isValid());
     }
@@ -574,6 +655,9 @@ public final class LandVehicleRig {
     }
 
     private record WheelDisplay(ItemDisplay entity, LandVehicleSpec.Wheel properties) {
+    }
+
+    private record PartDisplay(ItemDisplay entity, LandVehicleSpec.Part properties) {
     }
 
     private static final class SeatCarrier {

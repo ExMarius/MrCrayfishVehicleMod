@@ -11,6 +11,8 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -95,7 +97,8 @@ public final class VehicleManager {
             return null;
         }
         CarriedVehicle carried = new CarriedVehicle(vehicle.spec(), vehicle.fuel(), vehicle.velocity(),
-                vehicle.traction(), vehicle.verticalVelocity());
+                vehicle.traction(), vehicle.verticalVelocity(), vehicle.chestAttached(),
+                vehicle.storageContents());
         unindex(vehicle);
         releaseChunkTicket(vehicle);
         trailers.onVehicleRemoved(vehicle.id());
@@ -109,6 +112,7 @@ public final class VehicleManager {
         vehicle.setVelocity(carried.velocity());
         vehicle.setTraction(carried.traction());
         vehicle.setVerticalVelocity(carried.verticalVelocity());
+        vehicle.restoreStorage(carried.chestAttached(), carried.storageContents());
         return vehicle;
     }
 
@@ -177,6 +181,10 @@ public final class VehicleManager {
             player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
             return;
         }
+        if (vehicle.handleStorageInteraction(player, clicked)) {
+            save();
+            return;
+        }
         if (trailers.attachHeldToVehicle(player, vehicle)) {
             return;
         }
@@ -188,6 +196,16 @@ public final class VehicleManager {
                     + "Inimile monturii indică nivelul combustibilului.</gray>");
         } else {
             player.sendRichMessage("<red>Nu mai este niciun loc liber în acest vehicul.</red>");
+        }
+    }
+
+    public void handleInventoryClose(Inventory inventory) {
+        for (LandVehicle vehicle : vehicles.values()) {
+            if (vehicle.ownsStorage(inventory)) {
+                vehicle.storageClosed();
+                save();
+                return;
+            }
         }
     }
 
@@ -239,6 +257,8 @@ public final class VehicleManager {
         data.set(path + ".velocity.z", stored.velocityZ());
         data.set(path + ".traction", stored.traction());
         data.set(path + ".vertical-velocity", stored.verticalVelocity());
+        data.set(path + ".storage.chest-attached", stored.chestAttached());
+        data.set(path + ".storage.items", stored.storageContents());
     }
 
     private void load() {
@@ -280,6 +300,7 @@ public final class VehicleManager {
         vehicle.setVelocity(new Vector(stored.velocityX(), stored.velocityY(), stored.velocityZ()));
         vehicle.setTraction(stored.traction());
         vehicle.setVerticalVelocity(stored.verticalVelocity());
+        vehicle.restoreStorage(stored.chestAttached(), stored.storageContents());
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {
@@ -435,7 +456,8 @@ public final class VehicleManager {
     }
 
     public record CarriedVehicle(LandVehicleSpec spec, float fuel, Vector velocity,
-                                 float traction, double verticalVelocity) {
+                                 float traction, double verticalVelocity, boolean chestAttached,
+                                 List<ItemStack> storageContents) {
     }
 
     private record VehicleChunk(World world, int x, int z) {
@@ -444,7 +466,8 @@ public final class VehicleManager {
     private record StoredVehicle(UUID id, String type, String worldId, String worldName,
                                  double x, double y, double z, float yaw, float fuel,
                                  double velocityX, double velocityY, double velocityZ,
-                                 float traction, double verticalVelocity) {
+                                 float traction, double verticalVelocity, boolean chestAttached,
+                                 List<ItemStack> storageContents) {
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
             World world = location.getWorld();
@@ -454,7 +477,8 @@ public final class VehicleManager {
             Vector velocity = vehicle.velocity();
             return new StoredVehicle(vehicle.id(), vehicle.spec().id(), world.getUID().toString(), world.getName(),
                     location.getX(), location.getY(), location.getZ(), location.getYaw(), vehicle.fuel(),
-                    velocity.getX(), velocity.getY(), velocity.getZ(), vehicle.traction(), vehicle.verticalVelocity());
+                    velocity.getX(), velocity.getY(), velocity.getZ(), vehicle.traction(), vehicle.verticalVelocity(),
+                    vehicle.chestAttached(), vehicle.storageContents());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -472,7 +496,18 @@ public final class VehicleManager {
                     data.getDouble(path + ".velocity.x"), data.getDouble(path + ".velocity.y"),
                     data.getDouble(path + ".velocity.z"),
                     (float) data.getDouble(path + ".traction"),
-                    data.getDouble(path + ".vertical-velocity"));
+                    data.getDouble(path + ".vertical-velocity"),
+                    data.getBoolean(path + ".storage.chest-attached", false),
+                    readStorage(data, path + ".storage.items"));
+        }
+
+        private static List<ItemStack> readStorage(YamlConfiguration data, String path) {
+            List<?> serialized = data.getList(path, List.of());
+            List<ItemStack> contents = new ArrayList<>(serialized.size());
+            for (Object value : serialized) {
+                contents.add(value instanceof ItemStack stack ? stack.clone() : null);
+            }
+            return contents;
         }
     }
 }

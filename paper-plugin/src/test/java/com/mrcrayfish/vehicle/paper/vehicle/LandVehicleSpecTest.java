@@ -94,6 +94,36 @@ class LandVehicleSpecTest {
     }
 
     @Test
+    void mopedMatchesSerializedPropertiesAndRendererParts() {
+        LandVehicleSpec spec = LandVehicleSpec.MOPED;
+        assertEquals(1.2F, spec.bodyScale(), EPSILON);
+        assertEquals(-1.0F, spec.axleOffset(), EPSILON);
+        assertEquals(3.2F, spec.wheelOffset(), EPSILON);
+        assertEquals(12.0F, spec.enginePower(), EPSILON);
+        assertEquals(12_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(0.225F, spec.energyPerTick(), EPSILON);
+        assertEquals(14.0F / 16.0F * 1.2F, spec.frontAxleOffset(), EPSILON);
+        assertEquals(-6.7F / 16.0F * 1.2F, spec.rearAxleOffset(), EPSILON);
+        assertEquals(0.72F, spec.firstFrontWheel().scaleX(), EPSILON);
+        assertEquals(0.96F, spec.firstFrontWheel().scaleY(), EPSILON);
+        assertEquals(1.2F, spec.firstRearWheel().scaleX(), EPSILON);
+        assertEquals(0.96F, spec.firstRearWheel().scaleY(), EPSILON);
+        assertEquals(0.0F, spec.firstFrontWheel().contactY(), EPSILON);
+        assertEquals(0.0F, spec.firstRearWheel().contactY(), EPSILON);
+        assertEquals(0.465F, spec.seats().getFirst().sourceOffset().y(), EPSILON);
+        assertEquals(11.5F / 16.0F * 1.2F, spec.motorcycle().steeringPivotZ(), EPSILON);
+        assertFalse(spec.motorcycle().frontWheelYaw180());
+        assertPoint(spec.steering().center(), 0.0F, 1.0855425F, 0.6305325F);
+        assertPoint(spec.fuelFiller().center(), 0.0F, 0.165F, 0.0F);
+        assertPoint(spec.trailerOffset(), 0.0F, -0.031F, -0.65F);
+        assertEquals(3, spec.mopedParts().chassisParts().size());
+        assertPoint(spec.mopedParts().forkParts().getFirst().center(),
+                0.0F, 0.47283F, 0.8863575F);
+        assertPoint(spec.mopedParts().chest().center(), 0.0F, 1.065F, -0.7875F);
+        assertPoint(spec.mopedParts().chestInteractionOffset(), 0.0F, 1.0F, -0.75F);
+    }
+
+    @Test
     void lawnMowerMatchesGeneratedProperties() {
         LandVehicleSpec spec = LandVehicleSpec.LAWN_MOWER;
         assertEquals(1.25F, spec.bodyScale(), EPSILON);
@@ -121,6 +151,7 @@ class LandVehicleSpecTest {
         assertEquals(0.818125F, LandVehicleSpec.QUAD_BIKE.bodyOrigin().y(), EPSILON);
         assertEquals(0.66875F, LandVehicleSpec.TRACTOR.bodyOrigin().y(), EPSILON);
         assertEquals(0.85F, LandVehicleSpec.DIRT_BIKE.bodyOrigin().y(), EPSILON);
+        assertEquals(0.765F, LandVehicleSpec.MOPED.bodyOrigin().y(), EPSILON);
     }
 
     @Test
@@ -135,6 +166,8 @@ class LandVehicleSpecTest {
         assertWheel(LandVehicleSpec.TRACTOR.firstRearWheel(), 0.7F, 2.8F, 0.0F);
         assertWheel(LandVehicleSpec.DIRT_BIKE.firstFrontWheel(), 0.35F, 1.4F, 0.0F);
         assertWheel(LandVehicleSpec.DIRT_BIKE.firstRearWheel(), 0.35F, 1.4F, 0.0F);
+        assertWheel(LandVehicleSpec.MOPED.firstFrontWheel(), 0.24F, 0.96F, 0.0F);
+        assertWheel(LandVehicleSpec.MOPED.firstRearWheel(), 0.24F, 0.96F, 0.0F);
 
         /* Runtime reads generated JSON, where 0.9375 is serialized as 0.938. */
         assertEquals(0.11725F,
@@ -158,6 +191,8 @@ class LandVehicleSpecTest {
         assertPoint(LandVehicleSpec.TRACTOR.steering().center(),
                 0.0F, 1.3210963F, -0.4565224F);
         assertPoint(LandVehicleSpec.DIRT_BIKE.steering().center(), 0.0F, 0.85F, 0.0F);
+        assertPoint(LandVehicleSpec.MOPED.steering().center(),
+                0.0F, 1.0855425F, 0.6305325F);
     }
 
     @Test
@@ -171,6 +206,7 @@ class LandVehicleSpecTest {
                 -0.375F, 0.91875F, -0.03125F);
         assertPoint(LandVehicleSpec.DIRT_BIKE.fuelFiller().center(),
                 0.0F, 1.2734375F, 0.2251875F);
+        assertPoint(LandVehicleSpec.MOPED.fuelFiller().center(), 0.0F, 0.165F, 0.0F);
 
         assertPoint(LandVehicleSpec.QUAD_BIKE.ignition().center(),
                 -0.34375F, 0.5775F, 0.446875F);
@@ -189,6 +225,7 @@ class LandVehicleSpecTest {
         assertEquals(0.73125F, LandVehicleSpec.TRACTOR.seats().getFirst().sourceOffset().y(), EPSILON);
         assertEquals(0.85F, LandVehicleSpec.DIRT_BIKE.seats().getFirst().sourceOffset().y(), EPSILON);
         assertEquals(0.9125F, LandVehicleSpec.DIRT_BIKE.seats().getLast().sourceOffset().y(), EPSILON);
+        assertEquals(0.465F, LandVehicleSpec.MOPED.seats().getFirst().sourceOffset().y(), EPSILON);
         assertEquals(0.25F, LandVehicleSpec.RIDER_HEIGHT_CORRECTION, EPSILON);
     }
 
@@ -206,6 +243,7 @@ class LandVehicleSpecTest {
         assertPoint(LandVehicleSpec.QUAD_BIKE.trailerOffset(), 0.0F, 0.0F, -0.55F);
         assertPoint(LandVehicleSpec.TRACTOR.trailerOffset(), 0.0F, 0.0F, 0.0F);
         assertPoint(LandVehicleSpec.DIRT_BIKE.trailerOffset(), 0.0F, -0.062F, -0.312F);
+        assertPoint(LandVehicleSpec.MOPED.trailerOffset(), 0.0F, -0.031F, -0.65F);
     }
 
     private static void assertWheel(LandVehicleSpec.Wheel wheel, float centerY,

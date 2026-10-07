@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r15 — five vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r16 — six vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -79,6 +79,12 @@ def build(output: Path) -> tuple[Path, str]:
             "tractor_body": ("vehicle:item/tractor_body", 16383998),
             "dirt_bike_body": ("vehicle:item/dirt_bike_body", 16383998),
             "dirt_bike_handles": ("vehicle:item/dirt_bike_handles", 16383998),
+            "moped_body": ("vehicle:item/moped_body", 16383998),
+            "moped_handles": ("vehicle:item/moped_handles", 16383998),
+            "moped_mud_guard": ("vehicle:item/moped_mud_guard", 16383998),
+            "moped_stock_seat": ("vehicle:item/moped_stock_seat", 16383998),
+            "moped_stock_tray": ("vehicle:item/moped_stock_tray", 16383998),
+            "moped_stock_front_light": ("vehicle:item/moped_stock_front_light", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -148,6 +154,20 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "models/item/dirt_bike_handles.json",
             {"2": "vehicle:item/dirt_bike_handles", "particle": "vehicle:item/dirt_bike_handles"},
         )
+        for source, target in {
+            "body": "moped_body",
+            "handles": "moped_handles",
+            "mud_guard": "moped_mud_guard",
+            "cosmetics/stock_seat": "moped_stock_seat",
+            "cosmetics/stock_tray": "moped_stock_tray",
+            "cosmetics/stock_front_light": "moped_stock_front_light",
+        }.items():
+            convert_model(
+                ASSETS / f"models/vehicle/moped/{source}.json",
+                namespace / f"models/item/{target}.json",
+                {"1": f"vehicle:item/{target}", "2": f"vehicle:item/{target}",
+                 "particle": f"vehicle:item/{target}"},
+            )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
@@ -246,6 +266,18 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "textures/vehicle/dirt_bike/handles.png",
             namespace / "textures/item/dirt_bike_handles.png",
         )
+        for source, target in {
+            "body.png": "moped_body.png",
+            "handles.png": "moped_handles.png",
+            "mud_guard.png": "moped_mud_guard.png",
+            "cosmetics/stock_seat.png": "moped_stock_seat.png",
+            "cosmetics/stock_tray.png": "moped_stock_tray.png",
+            "cosmetics/stock_front_light.png": "moped_stock_front_light.png",
+        }.items():
+            copy(
+                ASSETS / f"textures/vehicle/moped/{source}",
+                namespace / f"textures/item/{target}",
+            )
         copy(
             ASSETS / "textures/model/cray_industries.png",
             namespace / "textures/item/lawn_mower_logo.png",
@@ -298,6 +330,10 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/entity/dirt_bike/engine.ogg",
             namespace / "sounds/entity/dirt_bike/engine.ogg",
         )
+        copy(
+            ASSETS / "sounds/entity/moped/engine.ogg",
+            namespace / "sounds/entity/moped/engine.ogg",
+        )
         write_json(namespace / "sounds.json", {
             "entity.go_kart.engine": {
                 "sounds": [{"name": "vehicle:entity/go_kart/engine", "preload": True}]
@@ -310,6 +346,9 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.dirt_bike.engine": {
                 "sounds": [{"name": "vehicle:entity/dirt_bike/engine", "preload": True}]
+            },
+            "entity.moped.engine": {
+                "sounds": [{"name": "vehicle:entity/moped/engine", "preload": True}]
             },
         })
 
@@ -331,7 +370,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r15.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r16.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

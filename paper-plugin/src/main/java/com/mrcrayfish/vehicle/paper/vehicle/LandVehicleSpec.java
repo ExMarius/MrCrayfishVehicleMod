@@ -41,6 +41,7 @@ public record LandVehicleSpec(
         Point towBarOffset,
         Point trailerOffset,
         Motorcycle motorcycle,
+        MopedParts mopedParts,
         boolean lawnMower
 ) {
     public static final float MODEL_UNIT = 1.0F / 16.0F;
@@ -73,7 +74,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, -3.0F, -1.0F, 1.0F, -1.0F, 3.2F)),
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.375F),
-            null, false
+            null, null, false
     );
 
     /* wheelOffset = (8 * 0.97 / 2) - 0.8 = 3.08; auto-scaled front wheels become 0.77. */
@@ -99,7 +100,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, 7.0F, -9.0F, 1.25F, -2.0F, 3.08F)),
             true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, -0.01F, -1.0F),
-            null, true
+            null, null, true
     );
 
     public static final LandVehicleSpec QUAD_BIKE = new LandVehicleSpec(
@@ -128,7 +129,7 @@ public record LandVehicleSpec(
                     seat(false, 0.0F, 5.5F, -12.0F, 1.1F, -0.5F, 4.4F)
             ),
             true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, -0.55F),
-            null, false
+            null, null, false
     );
 
     /* Source wheelOffset = (8 * 2.8 / 2) - 5.5 = 5.7. The front wheel's
@@ -163,7 +164,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, 9.0F, -14.0F, 1.0F, -3.0F, 5.7F)),
             true, new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
-            null, false
+            null, null, false
     );
 
     /* DirtBikeRenderer steers both the handle assembly and the separately rendered
@@ -193,7 +194,48 @@ public record LandVehicleSpec(
                     seat(false, 0.0F, 9.0F, -9.0F, 1.0F, 0.0F, 5.6F)
             ),
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.312F),
-            new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), false
+            new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), null, false
+    );
+
+    /* The Moped renderer steers its handles, mud guard, and manually rendered
+     * front wheel around a fork axis tilted 22.5 degrees toward the rider. */
+    public static final LandVehicleSpec MOPED = new LandVehicleSpec(
+            "moped", "Moped", "moped_body",
+            1.0F, 1.0F, 1.0F,
+            1.2F, -1.0F, 3.2F,
+            12.0F, 45.0F, 14.0F * MODEL_UNIT * 1.2F, -6.7F * MODEL_UNIT * 1.2F, 5.0F,
+            12_000.0F, 0.225F, 0.5F, 1.2F, "vehicle:entity.moped.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("moped_handles", new Point(0.0F, 1.0855425F, 0.6305325F),
+                    1.2F, 0.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", 0.0F, 0.0F, 0.0F,
+                    1.0F, 0.0F, 0.0F, 0.0F, 1.2F, -1.0F, 3.2F),
+            null,
+            List.of(
+                    wheel(0, true, 0.0F, 0.0F, 14.088F,
+                            0.6F, 0.8F, 0.8F, 1.2F, -1.0F, 3.2F),
+                    wheel(0, false, 0.0F, 0.0F, -6.7F,
+                            1.0F, 0.8F, 0.8F, 1.2F, -1.0F, 3.2F)
+            ),
+            List.of(seat(true, 0.0F, 4.0F, -1.0F, 1.2F, -1.0F, 3.2F)),
+            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.65F),
+            new Motorcycle(45.0F, 11.5F * MODEL_UNIT * 1.2F, -22.5F, false),
+            new MopedParts(
+                    List.of(
+                            new Part("moped_stock_seat", new Point(0.0F, 0.69F, -0.4875F),
+                                    1.2F, 0.0F, 0.0F, 0.0F),
+                            new Part("moped_stock_tray", new Point(0.0F, 0.69F, -0.4875F),
+                                    1.2F, 0.0F, 0.0F, 0.0F),
+                            new Part("moped_stock_front_light", new Point(0.0F, 0.915F, 0.7629F),
+                                    1.2F, 0.0F, 0.0F, 0.0F)
+                    ),
+                    List.of(new Part("moped_mud_guard", new Point(0.0F, 0.47283F, 0.8863575F),
+                            1.2F, 0.0F, 0.0F, 0.0F)),
+                    new Part("minecraft:chest", new Point(0.0F, 1.065F, -0.7875F),
+                            0.6F, 0.0F, 180.0F, 0.0F),
+                    new Point(0.0F, 1.0F, -0.75F)
+            ),
+            false
     );
 
     private static final Map<String, LandVehicleSpec> BY_ID = Map.of(
@@ -201,7 +243,8 @@ public record LandVehicleSpec(
             LAWN_MOWER.id, LAWN_MOWER,
             QUAD_BIKE.id, QUAD_BIKE,
             TRACTOR.id, TRACTOR,
-            DIRT_BIKE.id, DIRT_BIKE
+            DIRT_BIKE.id, DIRT_BIKE,
+            MOPED.id, MOPED
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -307,6 +350,10 @@ public record LandVehicleSpec(
 
     public record Motorcycle(float maxLeanAngle, float steeringPivotZ,
                              float steeringAxisTilt, boolean frontWheelYaw180) {
+    }
+
+    public record MopedParts(List<Part> chassisParts, List<Part> forkParts,
+                             Part chest, Point chestInteractionOffset) {
     }
 
     public record Wheel(int side, boolean front, float axleX, float centerY, float axleZ,

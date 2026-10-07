@@ -26,6 +26,7 @@ All currently implemented body transforms have zero body translation/rotation, s
 | Quad Bike | 0.818125 | 0.302500 / 0.302500 | 0.611875, 0.646250 | (0, 0.611875, -0.068750) | (0, 1.230625, 0.206250) | -1.100000 |
 | Tractor | 0.668750 | 0.356250 / 0.700000 | 0.731250 | (0, 0.968750, 0.468750) | (0, 1.3210963, -0.4565224) | -1.531250 |
 | Dirt Bike | 0.850000 | 0.350000 / 0.350000 | 0.850000, 0.912500 | (0, 0.712500, 0) | (0, 0.850000, 0) before fork steering | n/a |
+| Moped | 0.765000 | 0.240000 / 0.240000 | 0.465000 | n/a (source sets `renderEngine=false`) | handles `(0, 1.0855425, 0.6305325)` before fork steering | n/a |
 
 Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt Bike wheel X scales now use serialized `0.938`; the other generated and auto-scaled wheel values match their property equations.
 
@@ -38,8 +39,9 @@ Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt B
 | Quad Bike | (0, 1.044175, 0.515625) | (-0.343750, 0.577500, 0.446875) |
 | Tractor | (-0.375000, 0.918750, -0.031250) | (-0.171875, 0.918750, -0.109375) |
 | Dirt Bike | (0, 1.2734375, 0.2251875) | none (`canLockWithKey=false`) |
+| Moped | (0, 0.165000, 0) | hidden (`canLockWithKey=false`) |
 
-The r15 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
+The r16 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
 
 ### Dirt Bike fork
 
@@ -50,6 +52,14 @@ The exact source fork matrix is `Rx(-22.5) * Ry(steeringRatio * 25) * Rx(+22.5)`
 
 The rear wheel remains outside the fork matrix. The front wheel retains the source renderer's explicit 180-degree Y rotation.
 
+The Moped uses the same tilted-axis equation around its renderer's `11.5/16 * 1.2 = 0.8625` block pivot. Its handles, mud guard, and manually rendered front wheel all share this fork matrix; unlike the Dirt Bike, the Moped front wheel has no extra 180-degree Y rotation. At a 25-degree visual steering angle their centers are:
+
+- handles `(-0.03873031, 1.0888283, 0.6384652)`;
+- mud guard `(-0.037937243, 0.47604856, 0.8941278)`;
+- front wheel `(-0.009121702, 0.24077387, 1.0584683)`.
+
+The stock seat/tray center is `(0, 0.69, -0.4875)` and the stock front-light center is `(0, 0.915, 0.7629)`. The closed vanilla chest display is centered at `(0, 1.065, -0.7875)` with scale `0.6`; its center compensates for the vanilla chest item's center anchor while preserving the source renderer's bottom position and 180-degree orientation.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized source offsets are:
@@ -58,7 +68,8 @@ The serialized source offsets are:
 - Lawn Mower `(0, -0.010, -1.000)`;
 - Quad Bike `(0, 0, -0.550)`;
 - Tractor `(0, 0, 0)`;
-- Dirt Bike `(0, -0.062, -0.312)`.
+- Dirt Bike `(0, -0.062, -0.312)`;
+- Moped `(0, -0.031, -0.65)`.
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -84,7 +95,8 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 4. Source-positioned closed fuel fillers were added to the rig and r15 pack; ignition transforms/assets were audited without incorrectly forcing source-default-hidden key holes visible.
 5. Fertilizer/Seeder source cargo-pile transforms were added.
 6. Fertilizer/Seeder work points now run every tick, matching the original entities while stationary.
-7. Independent regression tests now cover common body equations, wheel centers/scales/contact, seats, engines, steering, fuel/ignition parts, tow bars, Vehicle Trailer offsets, rear-axle wheelie order, Dirt Bike fork matrices, every trailer hitch/wheel/part equation, and cargo layouts.
+7. Independent regression tests now cover common body equations, wheel centers/scales/contact, seats, engines, steering, fuel/ignition parts, tow bars, Vehicle Trailer offsets, rear-axle wheelie order, motorcycle fork matrices, every trailer hitch/wheel/part equation, and cargo layouts.
+8. The r16 Moped port adds its serialized physics, all body/cosmetic parts, exact fork-linked handles/mud guard/front wheel, original engine sample, fuel filler, Vehicle Trailer offset, and persistent attachable 27-slot chest.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -99,6 +111,7 @@ Vanilla-client adaptations that intentionally remain:
 
 - riders use invisible minimum-scale Pigs rather than modded seat rendering. The source seat coordinate is preserved, then the accepted global `+0.25` block rider correction and the Pig passenger-offset compensation are applied;
 - the Storage Trailer chest keeps the user-requested additional `+0.5` block centered-item correction because vanilla's chest item anchor differs from the source bottom-anchored `ChestModel`;
+- the Moped's attached chest uses a closed vanilla chest item at the source-compensated center. Its 27-slot inventory, attachment state, contents, open/close sounds, content drops, and runtime drop point are ported; attachment also preserves the source's selected-chest behavior (the stack is not decremented), but the vanilla display cannot animate the custom source lid; sneak-right-click replaces the unavailable mod-wrench removal packet;
 - the fluid uses a `BlockDisplay` with exact source cuboid bounds rather than the source custom translucent tessellator;
 - ItemDisplays, interpolation, native item models, and vanilla interaction hitboxes replace Forge client render/ray-trace objects;
 - custom per-limb player pose animation, damage wobble/destroy overlays, open fuel-door animation, and inserted-key animation are not representable with the current vanilla-client rig. These limitations do not change the audited static part coordinates.

@@ -108,6 +108,8 @@ public final class EngineSoundController {
             ticksAtPitchOne = 36.833958333333335D;
         } else if (sound.endsWith("dirt_bike.engine")) {
             ticksAtPitchOne = 25.310833333333335D;
+        } else if (sound.endsWith("moped.engine")) {
+            ticksAtPitchOne = 20.074376417233562D;
         } else {
             ticksAtPitchOne = 4.022675736961451D;
         }
