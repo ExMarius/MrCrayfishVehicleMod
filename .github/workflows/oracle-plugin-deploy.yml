@@ -17,8 +17,24 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      requested: ${{ steps.request.outputs.requested }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: request
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = workflow_dispatch ] || [ -f .github/oracle-deploy-request ]; then
+            echo "requested=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "requested=false" >> "$GITHUB_OUTPUT"
+          fi
+
   build:
-    if: github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.added, '.github/oracle-deploy-request') || contains(github.event.head_commit.modified, '.github/oracle-deploy-request')
+    needs: gate
+    if: needs.gate.outputs.requested == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
