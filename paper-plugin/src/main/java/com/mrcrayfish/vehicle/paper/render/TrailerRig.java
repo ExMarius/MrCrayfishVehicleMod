@@ -258,7 +258,27 @@ public final class TrailerRig {
 
     /** Exact item-pile matrices from FertilizerTrailerRenderer and SeederTrailerRenderer. */
     static List<InventoryLayout> inventoryLayout(TrailerSpec spec, ItemStack[] contents) {
-        if (contents == null || (spec.kind() != TrailerSpec.Kind.FERTILIZER
+        if (contents == null) {
+            return List.of();
+        }
+        int[] amounts = new int[contents.length];
+        for (int slot = 0; slot < contents.length; slot++) {
+            ItemStack stack = contents[slot];
+            if (stack != null && !stack.getType().isAir()) {
+                amounts[slot] = stack.getAmount();
+            }
+        }
+        List<InventoryLayout> layouts = new ArrayList<>();
+        for (InventoryTransform transform : inventoryTransforms(spec, amounts)) {
+            layouts.add(new InventoryLayout(contents[transform.slot()].clone(), transform.center(),
+                    transform.scale(), transform.rotation()));
+        }
+        return List.copyOf(layouts);
+    }
+
+    /** Pure source-matrix path, kept independent of Bukkit registry initialization for regression tests. */
+    static List<InventoryTransform> inventoryTransforms(TrailerSpec spec, int... amounts) {
+        if (amounts == null || (spec.kind() != TrailerSpec.Kind.FERTILIZER
                 && spec.kind() != TrailerSpec.Kind.SEEDER)) {
             return List.of();
         }
@@ -276,14 +296,14 @@ public final class TrailerRig {
         float nestedScale = 0.45F;
         float worldScale = spec.bodyScale() * nestedScale;
 
-        List<InventoryLayout> layouts = new ArrayList<>();
+        List<InventoryTransform> transforms = new ArrayList<>();
         int layer = 0;
         int index = 0;
-        for (ItemStack stack : contents) {
-            if (stack == null || stack.getType().isAir() || stack.getAmount() <= 0) {
+        for (int slot = 0; slot < amounts.length; slot++) {
+            if (amounts[slot] <= 0) {
                 continue;
             }
-            int count = Math.max(1, stack.getAmount() / divisor);
+            int count = Math.max(1, amounts[slot] / divisor);
             for (int j = 0; j < count; j++) {
                 int layerIndex = index % maxLayerCount;
                 float localX = (layerIndex % width) * xSpacing + stagger * (layer % 2);
@@ -303,7 +323,7 @@ public final class TrailerRig {
                         spec.bodyPartX(baseX + nestedScale * localX),
                         spec.bodyPartY(baseY + nestedScale * localY),
                         spec.bodyPartZ(baseZ + nestedScale * localZ));
-                layouts.add(new InventoryLayout(stack.clone(), center,
+                transforms.add(new InventoryTransform(slot, center,
                         new Vector3f(worldScale), rotation));
                 index++;
                 if (index % maxLayerCount == 0) {
@@ -311,7 +331,7 @@ public final class TrailerRig {
                 }
             }
         }
-        return List.copyOf(layouts);
+        return List.copyOf(transforms);
     }
 
     private static int inventoryFingerprint(ItemStack[] contents) {
@@ -402,6 +422,9 @@ public final class TrailerRig {
     }
 
     record InventoryLayout(ItemStack stack, Vector3f center, Vector3f scale, Quaternionf rotation) {
+    }
+
+    record InventoryTransform(int slot, Vector3f center, Vector3f scale, Quaternionf rotation) {
     }
 
     public record FluidVisual(Material material, float fraction) {
