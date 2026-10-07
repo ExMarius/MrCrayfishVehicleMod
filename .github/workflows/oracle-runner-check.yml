@@ -14,7 +14,7 @@ permissions:
 jobs:
   probe:
     name: Verify Oracle Cloud Shell runner
-    runs-on: [self-hosted, oracle-cloud-shell]
+    runs-on: self-hosted
     timeout-minutes: 5
     steps:
       - name: Report safe runtime details
