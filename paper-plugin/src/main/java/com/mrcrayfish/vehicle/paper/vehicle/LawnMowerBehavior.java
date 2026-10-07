@@ -77,7 +77,10 @@ final class LawnMowerBehavior {
         BlockData data = block.getBlockData();
         Collection<ItemStack> drops = block.getDrops();
         Location center = block.getLocation().add(0.5D, 0.5D, 0.5D);
-        block.setType(Material.AIR, false);
+        /* Source uses setBlockAndUpdate, so neighbor physics must run. Without it,
+         * the upper half of TALL_GRASS/LARGE_FERN remains floating after the lower
+         * half is cut. Physics also removes connected plant sections naturally. */
+        block.setType(Material.AIR, true);
         world.playSound(center, data.getSoundGroup().getBreakSound(), SoundCategory.BLOCKS, 1.0F, 1.0F);
         world.spawnParticle(Particle.BLOCK, center, 12, 0.25D, 0.25D, 0.25D, 0.0D, data);
         for (ItemStack stack : drops) {
