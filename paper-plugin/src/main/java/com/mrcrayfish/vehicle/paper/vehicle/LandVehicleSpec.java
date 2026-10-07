@@ -238,13 +238,51 @@ public record LandVehicleSpec(
             false
     );
 
+    /* Generated Off Roader geometry uses four 1.4-scale wheels inside a 1.4-scale body.
+     * OffRoaderRenderer applies the local -45 degree steering-wheel transform before
+     * its final -0.02 local-Y translation. */
+    public static final LandVehicleSpec OFF_ROADER = new LandVehicleSpec(
+            "off_roader", "Off Roader", "off_roader_body",
+            2.0F, 1.0F, 1.0F,
+            1.4F, -1.0F, 5.6F,
+            16.0F, 35.0F, 14.5F * MODEL_UNIT * 1.4F, -14.5F * MODEL_UNIT * 1.4F, 5.0F,
+            25_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.jet_ski.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.4375F, 1.572701F, 0.299799F),
+                    1.05F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -12.0F, 10.5F, -6.5F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.4F, -1.0F, 5.6F),
+            itemPart("key_hole", 0.0F, 7.0F, 6.2F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.4F, -1.0F, 5.6F),
+            List.of(
+                    wheel(-1, true, 10.0F, 0.0F, 14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(1, true, 10.0F, 0.0F, 14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(-1, false, 10.0F, 0.0F, -14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(1, false, 10.0F, 0.0F, -14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F)
+            ),
+            List.of(
+                    seat(true, 5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
+                    seat(false, -5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
+                    seat(false, 5.0F, 11.5F, -14.5F, 1.4F, -1.0F, 5.6F),
+                    seat(false, -5.0F, 3.5F, -18.9F, 1.4F, -1.0F, 5.6F)
+            ),
+            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.of(
             GO_KART.id, GO_KART,
             LAWN_MOWER.id, LAWN_MOWER,
             QUAD_BIKE.id, QUAD_BIKE,
             TRACTOR.id, TRACTOR,
             DIRT_BIKE.id, DIRT_BIKE,
-            MOPED.id, MOPED
+            MOPED.id, MOPED,
+            OFF_ROADER.id, OFF_ROADER
     );
 
     public static LandVehicleSpec byId(String id) {

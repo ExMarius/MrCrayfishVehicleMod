@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r16 — six vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r17 — seven vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -85,6 +85,7 @@ def build(output: Path) -> tuple[Path, str]:
             "moped_stock_seat": ("vehicle:item/moped_stock_seat", 16383998),
             "moped_stock_tray": ("vehicle:item/moped_stock_tray", 16383998),
             "moped_stock_front_light": ("vehicle:item/moped_stock_front_light", 16383998),
+            "off_roader_body": ("vehicle:item/off_roader_body", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -168,6 +169,30 @@ def build(output: Path) -> tuple[Path, str]:
                 {"1": f"vehicle:item/{target}", "2": f"vehicle:item/{target}",
                  "particle": f"vehicle:item/{target}"},
             )
+        convert_model(
+            ASSETS / "models/vehicle/off_roader_body.json",
+            namespace / "models/item/off_roader_body.json",
+            {
+                "indicator_light": "minecraft:block/orange_stained_glass",
+                "brake_light": "minecraft:block/red_stained_glass",
+                "headlight_glass": "minecraft:block/white_stained_glass",
+                "headlight": "minecraft:block/redstone_lamp",
+                "body": "minecraft:block/white_concrete",
+                "seat": "minecraft:block/black_wool",
+                "spring": "vehicle:item/off_roader_spring",
+                "axel": "minecraft:block/light_gray_concrete",
+                "trim": "minecraft:block/white_concrete",
+                "logo": "vehicle:item/off_roader_logo",
+                "window_frame": "minecraft:block/black_concrete",
+                "windshield": "minecraft:block/glass",
+                "bumper": "minecraft:block/iron_block",
+                "grill": "vehicle:item/off_roader_grill",
+                # Keep the source's dark metal look without relying on the
+                # legacy anvil atlas path that can become missing-texture art.
+                "frame": "minecraft:block/gray_concrete",
+                "particle": "minecraft:block/white_concrete",
+            },
+        )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
@@ -279,6 +304,18 @@ def build(output: Path) -> tuple[Path, str]:
                 namespace / f"textures/item/{target}",
             )
         copy(
+            ASSETS / "textures/model/spring.png",
+            namespace / "textures/item/off_roader_spring.png",
+        )
+        copy(
+            ASSETS / "textures/model/white_mesh.png",
+            namespace / "textures/item/off_roader_grill.png",
+        )
+        copy(
+            ASSETS / "textures/model/cray_industries.png",
+            namespace / "textures/item/off_roader_logo.png",
+        )
+        copy(
             ASSETS / "textures/model/cray_industries.png",
             namespace / "textures/item/lawn_mower_logo.png",
         )
@@ -334,6 +371,10 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/entity/moped/engine.ogg",
             namespace / "sounds/entity/moped/engine.ogg",
         )
+        copy(
+            ASSETS / "sounds/entity/jet_ski/engine.ogg",
+            namespace / "sounds/entity/jet_ski/engine.ogg",
+        )
         write_json(namespace / "sounds.json", {
             "entity.go_kart.engine": {
                 "sounds": [{"name": "vehicle:entity/go_kart/engine", "preload": True}]
@@ -349,6 +390,9 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.moped.engine": {
                 "sounds": [{"name": "vehicle:entity/moped/engine", "preload": True}]
+            },
+            "entity.jet_ski.engine": {
+                "sounds": [{"name": "vehicle:entity/jet_ski/engine", "preload": True}]
             },
         })
 
@@ -370,7 +414,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r16.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r17.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

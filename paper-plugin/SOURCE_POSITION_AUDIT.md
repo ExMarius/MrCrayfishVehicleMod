@@ -27,6 +27,7 @@ All currently implemented body transforms have zero body translation/rotation, s
 | Tractor | 0.668750 | 0.356250 / 0.700000 | 0.731250 | (0, 0.968750, 0.468750) | (0, 1.3210963, -0.4565224) | -1.531250 |
 | Dirt Bike | 0.850000 | 0.350000 / 0.350000 | 0.850000, 0.912500 | (0, 0.712500, 0) | (0, 0.850000, 0) before fork steering | n/a |
 | Moped | 0.765000 | 0.240000 / 0.240000 | 0.465000 | n/a (source sets `renderEngine=false`) | handles `(0, 1.0855425, 0.6305325)` before fork steering | n/a |
+| Off Roader | 1.102500 | 0.490000 / 0.490000 | 0.752500, 0.752500, 1.408750, 0.708750 | n/a (source sets `renderEngine=false`) | (-0.437500, 1.572701, 0.299799) | n/a |
 
 Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt Bike wheel X scales now use serialized `0.938`; the other generated and auto-scaled wheel values match their property equations.
 
@@ -40,8 +41,9 @@ Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt B
 | Tractor | (-0.375000, 0.918750, -0.031250) | (-0.171875, 0.918750, -0.109375) |
 | Dirt Bike | (0, 1.2734375, 0.2251875) | none (`canLockWithKey=false`) |
 | Moped | (0, 0.165000, 0) | hidden (`canLockWithKey=false`) |
+| Off Roader | (-1.050000, 1.321250, -0.568750) | (0, 1.015000, 0.542500) |
 
-The r16 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
+The r17 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
 
 ### Dirt Bike fork
 
@@ -60,16 +62,25 @@ The Moped uses the same tilted-axis equation around its renderer's `11.5/16 * 1.
 
 The stock seat/tray center is `(0, 0.69, -0.4875)` and the stock front-light center is `(0, 0.915, 0.7629)`. The closed vanilla chest display is centered at `(0, 1.065, -0.7875)` with scale `0.6`; its center compensates for the vanilla chest item's center anchor while preserving the source renderer's bottom position and 180-degree orientation.
 
+### Off Roader renderer
+
+The generated body scale is `1.4`; each wheel's generated scale is another `1.4`, producing display scale `1.96`. Wheel centers are at outside X `±1.12`, Y `0.49`, and Z `±1.26875`, so every tire has exact ground contact at Y `0`.
+
+`OffRoaderRenderer` translates its steering wheel to `(-0.3125, 0.35, 0.2)`, rotates local X by `-45` degrees, translates local Y by `-0.02`, and scales by `0.75`. After body scaling and the rotated local translation, the world center is `(-0.4375, 1.572701, 0.299799)` with scale `1.05`. Runtime steering then rotates it around its local Y axis by `steering / 35 * 25`, preserving the source call order.
+
+The four source seat centers are `(-0.4375, 0.7525, -0.2625)`, `(0.4375, 0.7525, -0.2625)`, `(-0.4375, 1.40875, -1.26875)`, and `(0.4375, 0.70875, -1.65375)`. The source-specific per-limb poses for the unusual rear seats remain a vanilla-client limitation; the accepted horse-style pose and exact seat roots are retained.
+
 ### Vehicle Trailer passenger offsets
 
-The serialized source offsets are:
+The serialized or source-default offsets are:
 
 - Go Kart `(0, -0.031, -0.375)`;
 - Lawn Mower `(0, -0.010, -1.000)`;
 - Quad Bike `(0, 0, -0.550)`;
 - Tractor `(0, 0, 0)`;
 - Dirt Bike `(0, -0.062, -0.312)`;
-- Moped `(0, -0.031, -0.65)`.
+- Moped `(0, -0.031, -0.65)`;
+- Off Roader `(0, 0, 0)` (source default).
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -97,12 +108,13 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 6. Fertilizer/Seeder work points now run every tick, matching the original entities while stationary.
 7. Independent regression tests now cover common body equations, wheel centers/scales/contact, seats, engines, steering, fuel/ignition parts, tow bars, Vehicle Trailer offsets, rear-axle wheelie order, motorcycle fork matrices, every trailer hitch/wheel/part equation, and cargo layouts.
 8. The r16 Moped port adds its serialized physics, all body/cosmetic parts, exact fork-linked handles/mud guard/front wheel, original engine sample, fuel filler, Vehicle Trailer offset, and persistent attachable 27-slot chest.
+9. The r17 Off Roader port adds its four-seat geometry, nested `1.4 * 1.4` wheel scaling, exact rotated-local steering transform, fuel/ignition transforms, 25,000-unit tank, and original shared Jet Ski engine sample.
 
 ## Exact ports versus vanilla-client adaptations
 
 Exact matrix/equation ports:
 
-- generated body, wheel, seat, hitch, tow, engine, steering, filler, ignition, trailer-part, fluid-bound, wheelie, motorcycle-roll, and Dirt Bike fork coordinates;
+- generated body, wheel, seat, hitch, tow, engine, steering, filler, ignition, trailer-part, fluid-bound, wheelie, motorcycle-roll, and motorcycle fork coordinates;
 - source renderer translation/rotation order and generated-property scaling;
 - source Vehicle Trailer passenger offsets and trailer hitch distances;
 - source cargo layout equations and trailer work-point positions.
