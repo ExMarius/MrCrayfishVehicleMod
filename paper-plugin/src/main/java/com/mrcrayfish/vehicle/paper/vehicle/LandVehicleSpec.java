@@ -33,6 +33,8 @@ public record LandVehicleSpec(
         Point exhaustPosition,
         Part engine,
         Part steering,
+        Part fuelFiller,
+        Part ignition,
         List<Wheel> wheels,
         List<Seat> seats,
         boolean canTowTrailers,
@@ -60,6 +62,9 @@ public record LandVehicleSpec(
                     new Point(0.0F, 0.5F + (-1.0F + 3.2F) * MODEL_UNIT + 0.6814F * MODEL_UNIT,
                             8.0426F * MODEL_UNIT),
                     1.0F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", 0.0F, 0.0F, 0.0F,
+                    1.0F, 0.0F, 0.0F, 0.0F, 1.0F, -1.0F, 3.2F),
+            null,
             List.of(
                     wheel(-1, true, 7.0F, 0.0F, 8.75F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
                     wheel(1, true, 7.0F, 0.0F, 8.75F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
@@ -83,6 +88,9 @@ public record LandVehicleSpec(
                     new Point(0.0F, (0.5F + (-2.0F + 3.08F) * MODEL_UNIT + 0.4F) * 1.25F,
                             -0.15F * 1.25F),
                     0.9F * 1.25F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -4.5F, 10.0F, 4.5F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.25F, -2.0F, 3.08F),
+            null,
             List.of(
                     wheel(-1, true, 6.0F, 0.0F, 13.5F, 0.77F, 0.77F, 0.77F, 1.25F, -2.0F, 3.08F),
                     wheel(1, true, 6.0F, 0.0F, 13.5F, 0.77F, 0.77F, 0.77F, 1.25F, -2.0F, 3.08F),
@@ -105,6 +113,10 @@ public record LandVehicleSpec(
                     0.55F, 0.0F, 180.0F, 0.0F),
             new Part("quad_bike_handles", new Point(0.0F, 1.230625F, 0.20625F),
                     1.1F, -35.0F, 0.0F, 0.0F),
+            itemPart("small_fuel_door_closed", 0.0F, 11.288F, 7.5F,
+                    0.6F, -90.0F, 0.0F, 0.0F, 1.1F, -0.5F, 4.4F),
+            itemPart("key_hole", -5.0F, 4.5F, 6.5F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.1F, -0.5F, 4.4F),
             List.of(
                     wheel(-1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
                     wheel(1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
@@ -120,7 +132,8 @@ public record LandVehicleSpec(
     );
 
     /* Source wheelOffset = (8 * 2.8 / 2) - 5.5 = 5.7. The front wheel's
-     * auto-scaled Y/Z axes become 5.7 / 4 = 1.425 while X stays 0.9375. */
+     * auto-scaled Y/Z axes become 5.7 / 4 = 1.425 while X stays at the
+     * generated property's serialized 0.938 value. */
     public static final LandVehicleSpec TRACTOR = new LandVehicleSpec(
             "tractor", "Tractor", "tractor_body",
             1.5F, 1.5F, 1.0F,
@@ -134,11 +147,15 @@ public record LandVehicleSpec(
              * then translates another -.02 on its local Y axis. */
             new Part("go_kart_steering_wheel", new Point(0.0F, 1.3210963F, -0.4565224F),
                     0.9F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -6.0F, 12.0F, -0.5F,
+                    0.6F, 0.0F, -90.0F, 0.0F, 1.0F, -3.0F, 5.7F),
+            itemPart("key_hole", -2.75F, 12.0F, -1.75F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.0F, -3.0F, 5.7F),
             List.of(
                     wheel(-1, true, 8.0F, 0.0F, 14.0F,
-                            0.9375F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
+                            0.938F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
                     wheel(1, true, 8.0F, 0.0F, 14.0F,
-                            0.9375F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
+                            0.938F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
                     wheel(-1, false, 8.0F, 5.5F, -14.5F,
                             1.875F, 2.8F, 2.8F, 1.0F, -3.0F, 5.7F),
                     wheel(1, false, 8.0F, 5.5F, -14.5F,
@@ -162,17 +179,20 @@ public record LandVehicleSpec(
                     0.6F, 0.0F, 180.0F, 0.0F),
             new Part("dirt_bike_handles", new Point(0.0F, 0.85F, 0.0F),
                     1.0F, 0.0F, 0.0F, 0.0F),
+            itemPart("small_fuel_door_closed", 0.0F, 14.775F, 3.603F,
+                    0.6F, 67.5F, 180.0F, 0.0F, 1.0F, 0.0F, 5.6F),
+            null,
             List.of(
                     wheel(0, true, 0.0F, 0.0F, 14.08F,
-                            0.9375F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F),
+                            0.938F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F),
                     wheel(0, false, 0.0F, 0.0F, -11.61F,
-                            0.9375F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F)
+                            0.938F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F)
             ),
             List.of(
                     seat(true, 0.0F, 8.0F, -2.0F, 1.0F, 0.0F, 5.6F),
                     seat(false, 0.0F, 9.0F, -9.0F, 1.0F, 0.0F, 5.6F)
             ),
-            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.0625F, -0.3125F),
+            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.312F),
             new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), false
     );
 
@@ -200,6 +220,29 @@ public record LandVehicleSpec(
         return new Point(0.0F, wheelOffset * MODEL_UNIT * bodyScale, rearAxleOffset);
     }
 
+    /**
+     * The common source renderer draws the tow bar after cancelling body scale,
+     * but before the axle/wheel translations and wheelie matrix. Its model origin
+     * therefore keeps the renderer's standalone +0.5 Y correction and never
+     * follows a boost wheelie.
+     */
+    public Point towBarVisualCenter() {
+        return new Point(
+                towBarOffset.x * bodyScale * MODEL_UNIT,
+                0.5F + towBarOffset.y * bodyScale * MODEL_UNIT,
+                towBarOffset.z * bodyScale * MODEL_UNIT
+        );
+    }
+
+    /** Source trailer physics uses the same X/Z offset without visual +0.5 Y. */
+    public Point towBarPhysicsOffset() {
+        return new Point(
+                towBarOffset.x * bodyScale * MODEL_UNIT,
+                towBarOffset.y * bodyScale * MODEL_UNIT,
+                towBarOffset.z * bodyScale * MODEL_UNIT
+        );
+    }
+
     public Wheel firstFrontWheel() {
         return wheels.stream().filter(Wheel::front).findFirst().orElseThrow();
     }
@@ -215,6 +258,22 @@ public record LandVehicleSpec(
         }
         double speedFactor = Math.max(0.0D, Math.min(1.0D, speed / 30.0D));
         return (float) (-motorcycle.maxLeanAngle() * (steeringAngle / maxSteeringAngle) * speedFactor);
+    }
+
+    /**
+     * AbstractPoweredRenderer#renderPart translation order for fuel fillers and
+     * ignition models: common body origin, property translation, then -0.5 Y,
+     * then the property's uniform scale and XYZ rotations.
+     */
+    private static Part itemPart(String model, float x, float y, float z,
+                                 float scale, float rotationX, float rotationY, float rotationZ,
+                                 float bodyScale, float axleOffset, float wheelOffset) {
+        float bodyY = (0.5F + (axleOffset + wheelOffset) * MODEL_UNIT) * bodyScale;
+        return new Part(model, new Point(
+                x * MODEL_UNIT * bodyScale,
+                bodyY + (y * MODEL_UNIT - 0.5F) * bodyScale,
+                z * MODEL_UNIT * bodyScale
+        ), scale * bodyScale, rotationX, rotationY, rotationZ);
     }
 
     private static Wheel wheel(int side, boolean front, float offsetX, float offsetY, float offsetZ,

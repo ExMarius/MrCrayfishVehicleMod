@@ -64,7 +64,7 @@ public final class PaperTrailer {
         if (inventory != null && contents != null) {
             inventory.setContents(normalizeContents(contents));
         }
-        this.rig = TrailerRig.spawn(id, spec, this.location);
+        this.rig = TrailerRig.spawn(id, spec, this.location, inventoryContents());
     }
 
     public void tick() {
@@ -112,12 +112,15 @@ public final class PaperTrailer {
             double direction = Math.signum(forwardX * dx + forwardZ * dz);
             double circumference = 24.0D * spec.bodyScale() * 1.25D;
             wheelRotation -= (float) ((distance * 20.0D * direction * 16.0D / circumference) * 20.0D);
-            runEquipment(previous);
         }
+        /* FertilizerTrailerEntity and SeederTrailerEntity evaluate their three
+         * source work points every vehicle tick, even when the trailer did not
+         * move. Fertilizer's last-position guard prevents duplicate work. */
+        runEquipment(previous);
 
         TrailerRig.FluidVisual visual = fluidAmount > 0 && fluidMaterial != null
                 ? new TrailerRig.FluidVisual(fluidMaterial, fluidAmount / (float) FLUID_CAPACITY) : null;
-        rig.update(location, wheelRotation, visual, tickCount);
+        rig.update(location, wheelRotation, visual, inventoryContents(), tickCount);
         if (loadedVehicleId != null) {
             manager.positionLoadedVehicle(this, loadedVehicleId);
         }
@@ -231,6 +234,14 @@ public final class PaperTrailer {
         };
     }
 
+    static boolean isSeederSupply(Material material) {
+        /* Forge's built-in seeds tag used by SeederTrailerEntity's inventory. */
+        return switch (material) {
+            case WHEAT_SEEDS, BEETROOT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS -> true;
+            default -> false;
+        };
+    }
+
     public void interact(Player player) {
         if (spec.kind() == TrailerSpec.Kind.FLUID && exchangeFluid(player)) {
             return;
@@ -317,10 +328,7 @@ public final class PaperTrailer {
         }
         return switch (spec.kind()) {
             case FERTILIZER, STORAGE -> stack.getType() == Material.BONE_MEAL;
-            case SEEDER -> switch (stack.getType()) {
-                case WHEAT_SEEDS, BEETROOT_SEEDS, MELON_SEEDS, PUMPKIN_SEEDS -> true;
-                default -> false;
-            };
+            case SEEDER -> isSeederSupply(stack.getType());
             default -> false;
         };
     }

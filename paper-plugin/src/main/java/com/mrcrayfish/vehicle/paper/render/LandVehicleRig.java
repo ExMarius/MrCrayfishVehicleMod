@@ -45,6 +45,7 @@ public final class LandVehicleRig {
     private final ItemDisplay body;
     private final ItemDisplay engine;
     private final ItemDisplay steering;
+    private final ItemDisplay fuelFiller;
     private final ItemDisplay towBar;
     private final List<WheelDisplay> wheels;
     private final List<SeatCarrier> seats;
@@ -53,7 +54,8 @@ public final class LandVehicleRig {
     private boolean removed;
 
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
-                           ItemDisplay body, ItemDisplay engine, ItemDisplay steering, ItemDisplay towBar,
+                           ItemDisplay body, ItemDisplay engine, ItemDisplay steering,
+                           ItemDisplay fuelFiller, ItemDisplay towBar,
                            List<WheelDisplay> wheels, List<SeatCarrier> seats, List<Entity> entities) {
         this.vehicleId = vehicleId;
         this.spec = spec;
@@ -61,6 +63,7 @@ public final class LandVehicleRig {
         this.body = body;
         this.engine = engine;
         this.steering = steering;
+        this.fuelFiller = fuelFiller;
         this.towBar = towBar;
         this.wheels = wheels;
         this.seats = seats;
@@ -89,14 +92,10 @@ public final class LandVehicleRig {
 
         ItemDisplay engine = partDisplay(world, location, spec.engine(), vehicleId, all);
         ItemDisplay steering = partDisplay(world, location, spec.steering(), vehicleId, all);
-        LandVehicleSpec.Point tow = spec.towBarOffset();
+        ItemDisplay fuelFiller = partDisplay(world, location, spec.fuelFiller(), vehicleId, all);
         ItemDisplay towBar = spec.canTowTrailers()
                 ? partDisplay(world, location, new LandVehicleSpec.Part("tow_bar",
-                new LandVehicleSpec.Point(
-                        tow.x() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
-                        0.5F + tow.y() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
-                        tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT),
-                1.0F, 0.0F, 180.0F, 0.0F), vehicleId, all)
+                spec.towBarVisualCenter(), 1.0F, 0.0F, 180.0F, 0.0F), vehicleId, all)
                 : null;
 
         List<WheelDisplay> wheels = new ArrayList<>();
@@ -125,8 +124,9 @@ public final class LandVehicleRig {
             throw new IllegalArgumentException("Land vehicle " + spec.id() + " has no driver seat");
         }
 
-        LandVehicleRig rig = new LandVehicleRig(vehicleId, spec, interaction, body, engine, steering, towBar,
-                Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats), all);
+        LandVehicleRig rig = new LandVehicleRig(vehicleId, spec, interaction, body, engine, steering,
+                fuelFiller, towBar, Collections.unmodifiableList(wheels),
+                Collections.unmodifiableList(seats), all);
         rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
         return rig;
     }
@@ -228,9 +228,7 @@ public final class LandVehicleRig {
         }
 
         float yaw = root.getYaw();
-        Quaternionf chassisRotation = new Quaternionf()
-                .rotateZ(radians(bodyRoll))
-                .rotateX(radians(wheelieAngle));
+        Quaternionf chassisRotation = SourceTransforms.chassisRotation(wheelieAngle, bodyRoll);
         Vector3f bodyOrigin = point(spec.bodyOrigin());
         Vector3f driverSeat = pigAnchor(chassis(driverSeatOffset(), wheelieAngle, bodyRoll));
         Location renderAnchor = local(root, driverSeat);
@@ -264,13 +262,14 @@ public final class LandVehicleRig {
         }
 
         float steeringRotation = renderSteeringAngle / spec.maxSteeringAngle() * 25.0F;
-        Quaternionf forkRotation = motorcycleSteering(steeringRotation);
+        Quaternionf forkRotation = SourceTransforms.motorcycleSteering(spec.motorcycle(), steeringRotation);
         if (steering != null) {
             LandVehicleSpec.Part part = spec.steering();
             Vector3f center;
             Quaternionf rotation;
             if (spec.motorcycle() != null) {
-                center = forkPoint(point(part.center()), bodyOrigin, forkRotation);
+                center = SourceTransforms.forkPoint(
+                        point(part.center()), bodyOrigin, spec.motorcycle(), forkRotation);
                 center = chassis(center, wheelieAngle, bodyRoll);
                 rotation = new Quaternionf(chassisRotation).mul(forkRotation)
                         .rotateX(radians(part.rotationX()))
@@ -287,13 +286,15 @@ public final class LandVehicleRig {
                     new Vector3f(part.scale()), new Quaternionf());
         }
 
+        placePropertyPart(fuelFiller, spec.fuelFiller(), renderAnchor, driverSeat,
+                yaw, wheelieAngle, bodyRoll, chassisRotation);
+
         if (towBar != null) {
-            LandVehicleSpec.Point tow = spec.towBarOffset();
-            Vector3f center = chassis(new Vector3f(
-                    tow.x() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
-                    0.5F + tow.y() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
-                    tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT), wheelieAngle, bodyRoll);
-            place(towBar, renderAnchor, relativeToSeat(center, driverSeat), yaw, chassisRotation,
+            /* AbstractLandVehicleRenderer renders the tow bar before applying the
+             * axle/wheel translations and wheelie matrix. Keep its root-space
+             * center and orientation fixed while the chassis wheelies. */
+            Vector3f center = point(spec.towBarVisualCenter());
+            place(towBar, renderAnchor, relativeToSeat(center, driverSeat), yaw, new Quaternionf(),
                     new Vector3f(1.0F), new Quaternionf().rotateY((float) Math.PI));
         }
 
@@ -305,7 +306,8 @@ public final class LandVehicleRig {
             Quaternionf sourceRotation;
             if (wheel.front() && spec.motorcycle() != null) {
                 Vector3f unsteeredCenter = new Vector3f(wheel.axleX(), wheel.centerY(), wheel.axleZ());
-                center = forkPoint(unsteeredCenter, bodyOrigin, forkRotation);
+                center = SourceTransforms.forkPoint(
+                        unsteeredCenter, bodyOrigin, spec.motorcycle(), forkRotation);
                 center = chassis(center, wheelieAngle, bodyRoll);
                 rotation = new Quaternionf(chassisRotation).mul(forkRotation)
                         .rotateX(radians(-spin));
@@ -340,6 +342,21 @@ public final class LandVehicleRig {
             }
             maintainPig(carrier, yaw);
         }
+    }
+
+    private void placePropertyPart(ItemDisplay display, LandVehicleSpec.Part part,
+                                   Location renderAnchor, Vector3f driverSeat, float yaw,
+                                   float wheelieAngle, float bodyRoll, Quaternionf chassisRotation) {
+        if (display == null || part == null) {
+            return;
+        }
+        Vector3f center = chassis(point(part.center()), wheelieAngle, bodyRoll);
+        Quaternionf sourceRotation = new Quaternionf()
+                .rotateX(radians(part.rotationX()))
+                .rotateY(radians(part.rotationY()))
+                .rotateZ(radians(part.rotationZ()));
+        place(display, renderAnchor, relativeToSeat(center, driverSeat), yaw, chassisRotation,
+                new Vector3f(part.scale()), sourceRotation);
     }
 
     private void maintainPig(SeatCarrier carrier, float yaw) {
@@ -378,28 +395,6 @@ public final class LandVehicleRig {
         }
         carrier.rider = rider.getUniqueId();
         pig.setRotation(yaw, 0.0F);
-    }
-
-    private Quaternionf motorcycleSteering(float steeringRotation) {
-        LandVehicleSpec.Motorcycle motorcycle = spec.motorcycle();
-        if (motorcycle == null) {
-            return new Quaternionf();
-        }
-        return new Quaternionf()
-                .rotateX(radians(motorcycle.steeringAxisTilt()))
-                .rotateY(radians(steeringRotation))
-                .rotateX(radians(-motorcycle.steeringAxisTilt()));
-    }
-
-    private Vector3f forkPoint(Vector3f unsteered, Vector3f bodyOrigin, Quaternionf forkRotation) {
-        LandVehicleSpec.Motorcycle motorcycle = spec.motorcycle();
-        if (motorcycle == null) {
-            return new Vector3f(unsteered);
-        }
-        Vector3f pivot = new Vector3f(bodyOrigin).add(0.0F, 0.0F, motorcycle.steeringPivotZ());
-        Vector3f relative = new Vector3f(unsteered).sub(pivot);
-        forkRotation.transform(relative);
-        return relative.add(pivot);
     }
 
     private void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
@@ -441,18 +436,9 @@ public final class LandVehicleRig {
         return new Vector3f(seatPoint).sub(0.0F, PIG_PASSENGER_OFFSET, 0.0F);
     }
 
-    private Vector3f chassis(Vector3f point, float wheelieAngle, float bodyRoll) {
-        Vector3f transformed = new Vector3f(point);
-        if (wheelieAngle != 0.0F) {
-            Vector3f pivot = point(spec.wheeliePivot());
-            transformed.sub(pivot);
-            rotationX(wheelieAngle).transform(transformed);
-            transformed.add(pivot);
-        }
-        if (bodyRoll != 0.0F) {
-            new Quaternionf().rotateZ(radians(bodyRoll)).transform(transformed);
-        }
-        return transformed;
+    private Vector3f chassis(Vector3f sourcePoint, float wheelieAngle, float bodyRoll) {
+        return SourceTransforms.chassisPoint(
+                sourcePoint, point(spec.wheeliePivot()), wheelieAngle, bodyRoll);
     }
 
     private static Vector3f relativeToSeat(Vector3f point, Vector3f seat) {
@@ -461,10 +447,6 @@ public final class LandVehicleRig {
 
     private static Vector3f point(LandVehicleSpec.Point point) {
         return new Vector3f(point.x(), point.y(), point.z());
-    }
-
-    private static Quaternionf rotationX(float degrees) {
-        return new Quaternionf().rotateX(radians(degrees));
     }
 
     private static float radians(float degrees) {
@@ -552,6 +534,7 @@ public final class LandVehicleRig {
         return interaction.isValid() && body.isValid()
                 && (engine == null || engine.isValid())
                 && (steering == null || steering.isValid())
+                && (fuelFiller == null || fuelFiller.isValid())
                 && (towBar == null || towBar.isValid())
                 && wheels.stream().allMatch(wheel -> wheel.entity.isValid())
                 && seats.stream().allMatch(seat -> seat.anchor.isValid());

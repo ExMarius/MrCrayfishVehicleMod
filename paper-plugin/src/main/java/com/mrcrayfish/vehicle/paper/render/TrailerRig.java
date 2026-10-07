@@ -35,8 +35,10 @@ public final class TrailerRig {
     private final ItemDisplay body;
     private final List<WheelDisplay> wheels;
     private final List<ExtraDisplay> extras;
+    private final List<InventoryDisplay> inventoryDisplays = new ArrayList<>();
     private final BlockDisplay fluid;
     private final List<Entity> entities;
+    private int inventoryFingerprint = Integer.MIN_VALUE;
 
     private TrailerRig(UUID trailerId, TrailerSpec spec, Interaction interaction, ItemDisplay body,
                        List<WheelDisplay> wheels, List<ExtraDisplay> extras,
@@ -51,7 +53,8 @@ public final class TrailerRig {
         this.entities = entities;
     }
 
-    public static TrailerRig spawn(UUID trailerId, TrailerSpec spec, Location location) {
+    public static TrailerRig spawn(UUID trailerId, TrailerSpec spec, Location location,
+                                   ItemStack[] inventoryContents) {
         World world = location.getWorld();
         if (world == null) {
             throw new IllegalArgumentException("Cannot spawn a trailer without a world");
@@ -131,9 +134,8 @@ public final class TrailerRig {
         }
 
         TrailerRig rig = new TrailerRig(trailerId, spec, interaction, body,
-                Collections.unmodifiableList(wheels), Collections.unmodifiableList(extras), fluid,
-                Collections.unmodifiableList(all));
-        rig.update(location, 0.0F, null, 0);
+                Collections.unmodifiableList(wheels), Collections.unmodifiableList(extras), fluid, all);
+        rig.update(location, 0.0F, null, inventoryContents, 0);
         return rig;
     }
 
@@ -177,10 +179,12 @@ public final class TrailerRig {
         entity.addScoreboardTag("mcv_" + id);
     }
 
-    public void update(Location root, float wheelRotation, FluidVisual fluidVisual, int tickCount) {
+    public void update(Location root, float wheelRotation, FluidVisual fluidVisual,
+                       ItemStack[] inventoryContents, int tickCount) {
         if (!valid()) {
             return;
         }
+        syncInventoryDisplays(root, inventoryContents);
         float yaw = root.getYaw();
         interaction.teleport(root);
         interaction.setRotation(yaw, 0.0F);
@@ -210,12 +214,114 @@ public final class TrailerRig {
                     new Quaternionf().rotateY(radians(extra.sourceYaw)));
         }
 
+        for (InventoryDisplay inventoryDisplay : inventoryDisplays) {
+            InventoryLayout layout = inventoryDisplay.layout;
+            place(inventoryDisplay.entity, root, layout.center, layout.rotation, layout.scale,
+                    new Quaternionf());
+        }
+
         if (fluid != null) {
             updateFluid(root, fluidVisual);
         }
         if (tickCount % 5 == 0) {
             updateBrightness(root);
         }
+    }
+
+    private void syncInventoryDisplays(Location root, ItemStack[] contents) {
+        if (spec.kind() != TrailerSpec.Kind.FERTILIZER && spec.kind() != TrailerSpec.Kind.SEEDER) {
+            return;
+        }
+        int fingerprint = inventoryFingerprint(contents);
+        if (fingerprint == inventoryFingerprint
+                && inventoryDisplays.stream().allMatch(display -> display.entity.isValid())) {
+            return;
+        }
+        for (InventoryDisplay display : inventoryDisplays) {
+            entities.remove(display.entity);
+            display.entity.remove();
+        }
+        inventoryDisplays.clear();
+        inventoryFingerprint = fingerprint;
+
+        World world = root.getWorld();
+        if (world == null) {
+            return;
+        }
+        for (InventoryLayout layout : inventoryLayout(spec, contents)) {
+            ItemDisplay entity = display(world, root, layout.stack.clone());
+            mark(entity, trailerId);
+            entities.add(entity);
+            inventoryDisplays.add(new InventoryDisplay(entity, layout));
+        }
+    }
+
+    /** Exact item-pile matrices from FertilizerTrailerRenderer and SeederTrailerRenderer. */
+    static List<InventoryLayout> inventoryLayout(TrailerSpec spec, ItemStack[] contents) {
+        if (contents == null || (spec.kind() != TrailerSpec.Kind.FERTILIZER
+                && spec.kind() != TrailerSpec.Kind.SEEDER)) {
+            return List.of();
+        }
+        boolean fertilizer = spec.kind() == TrailerSpec.Kind.FERTILIZER;
+        float baseX = (fertilizer ? -5.5F : -10.5F) * LandVehicleSpec.MODEL_UNIT;
+        float baseY = -3.0F * LandVehicleSpec.MODEL_UNIT;
+        float baseZ = (fertilizer ? -3.0F : -2.0F) * LandVehicleSpec.MODEL_UNIT;
+        int divisor = fertilizer ? 32 : 16;
+        int width = fertilizer ? 3 : 4;
+        int maxLayerCount = fertilizer ? 6 : 8;
+        float layerHeight = fertilizer ? 0.1F : 0.05F;
+        float xSpacing = fertilizer ? 0.5F : 0.75F;
+        float zSpacing = fertilizer ? 0.75F : 0.5F;
+        float stagger = fertilizer ? 0.5F : 0.7F;
+        float nestedScale = 0.45F;
+        float worldScale = spec.bodyScale() * nestedScale;
+
+        List<InventoryLayout> layouts = new ArrayList<>();
+        int layer = 0;
+        int index = 0;
+        for (ItemStack stack : contents) {
+            if (stack == null || stack.getType().isAir() || stack.getAmount() <= 0) {
+                continue;
+            }
+            int count = Math.max(1, stack.getAmount() / divisor);
+            for (int j = 0; j < count; j++) {
+                int layerIndex = index % maxLayerCount;
+                float localX = (layerIndex % width) * xSpacing + stagger * (layer % 2);
+                float localY = layer * layerHeight + (fertilizer ? j * 0.0625F : 0.0F);
+                float localZ = (layerIndex / width) * zSpacing;
+                Quaternionf rotation = new Quaternionf()
+                        .rotateX(radians(90.0F))
+                        .rotateZ(radians(47.0F * index))
+                        .rotateX(radians(2.0F * layerIndex));
+                Vector3f zFight = new Vector3f(layer * 0.001F, layer * 0.001F, layer * 0.001F);
+                rotation.transform(zFight);
+                localX += zFight.x;
+                localY += zFight.y;
+                localZ += zFight.z;
+
+                Vector3f center = new Vector3f(
+                        spec.bodyPartX(baseX + nestedScale * localX),
+                        spec.bodyPartY(baseY + nestedScale * localY),
+                        spec.bodyPartZ(baseZ + nestedScale * localZ));
+                layouts.add(new InventoryLayout(stack.clone(), center,
+                        new Vector3f(worldScale), rotation));
+                index++;
+                if (index % maxLayerCount == 0) {
+                    layer++;
+                }
+            }
+        }
+        return List.copyOf(layouts);
+    }
+
+    private static int inventoryFingerprint(ItemStack[] contents) {
+        int result = 1;
+        if (contents != null) {
+            for (ItemStack stack : contents) {
+                result = 31 * result + (stack == null ? 0 : stack.hashCode());
+            }
+        }
+        return result;
     }
 
     private void updateFluid(Location root, FluidVisual visual) {
@@ -267,7 +373,7 @@ public final class TrailerRig {
     }
 
     public List<Entity> entities() {
-        return entities;
+        return Collections.unmodifiableList(entities);
     }
 
     public boolean valid() {
@@ -290,6 +396,12 @@ public final class TrailerRig {
 
     private record ExtraDisplay(ItemDisplay entity, Vector3f center, Vector3f scale,
                                 boolean spins, float preSpinZ, float sourceYaw) {
+    }
+
+    private record InventoryDisplay(ItemDisplay entity, InventoryLayout layout) {
+    }
+
+    record InventoryLayout(ItemStack stack, Vector3f center, Vector3f scale, Quaternionf rotation) {
     }
 
     public record FluidVisual(Material material, float fraction) {

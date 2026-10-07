@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r14 — five vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r15 — five vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -90,6 +90,9 @@ def build(output: Path) -> tuple[Path, str]:
             "standard_wheel": ("vehicle:item/standard_wheel", 0xFFFFFF),
             "iron_small_engine": ("vehicle:item/iron_small_engine", 0xFFFFFF),
             "iron_large_engine": ("vehicle:item/iron_large_engine", 0xFFFFFF),
+            "fuel_door_closed": ("vehicle:item/fuel_door_closed", 16383998),
+            "small_fuel_door_closed": ("vehicle:item/small_fuel_door_closed", 16383998),
+            "key_hole": ("vehicle:item/key_hole", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -152,6 +155,27 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/tow_bar.json",
             namespace / "models/item/tow_bar.json",
+        )
+        convert_model(
+            ASSETS / "models/vehicle/fuel_door_closed.json",
+            namespace / "models/item/fuel_door_closed.json",
+            {"1": "vehicle:item/fuel_port_closed", "particle": "vehicle:item/fuel_port_closed"},
+        )
+        convert_model(
+            ASSETS / "models/vehicle/small_fuel_door_closed.json",
+            namespace / "models/item/small_fuel_door_closed.json",
+            {"1": "vehicle:item/small_fuel_port_closed",
+             "particle": "vehicle:item/small_fuel_port_closed"},
+        )
+        convert_model(
+            ASSETS / "models/vehicle/key_hole.json",
+            namespace / "models/item/key_hole.json",
+            {
+                "detail": "minecraft:block/gray_concrete",
+                "inner": "minecraft:block/black_concrete",
+                "base": "minecraft:block/white_concrete",
+                "particle": "minecraft:block/white_concrete",
+            },
         )
         for source, target in {
             "trailer_fertilizer_body": "fertilizer_body",
@@ -251,6 +275,14 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "textures/item/iron_large_engine.png",
         )
         copy(
+            ASSETS / "textures/model/fuel_port_closed.png",
+            namespace / "textures/item/fuel_port_closed.png",
+        )
+        copy(
+            ASSETS / "textures/model/small_fuel_port_closed.png",
+            namespace / "textures/item/small_fuel_port_closed.png",
+        )
+        copy(
             ASSETS / "sounds/entity/go_kart/engine.ogg",
             namespace / "sounds/entity/go_kart/engine.ogg",
         )
@@ -299,7 +331,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r14.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r15.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

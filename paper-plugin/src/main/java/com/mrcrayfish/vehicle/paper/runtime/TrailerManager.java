@@ -40,6 +40,7 @@ public final class TrailerManager {
     private final Map<Inventory, PaperTrailer> inventories = new HashMap<>();
     private final Map<UUID, UUID> playerHeldTrailer = new HashMap<>();
     private final Map<UUID, VehicleManager.CarriedVehicle> playerHeldVehicle = new HashMap<>();
+    private int entityIndexTicks;
 
     public TrailerManager(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -102,6 +103,18 @@ public final class TrailerManager {
             } catch (RuntimeException exception) {
                 plugin.getLogger().severe("Trailer tick failed for " + trailer.id() + ": " + exception.getMessage());
                 exception.printStackTrace();
+            }
+        }
+        /* Fertilizer/Seeder cargo displays are rebuilt only when inventory
+         * contents change. Refresh the reverse index periodically so newly
+         * created tagged displays participate in normal lifecycle handling. */
+        if (++entityIndexTicks >= 20) {
+            entityIndexTicks = 0;
+            entities.clear();
+            for (PaperTrailer trailer : trailers.values()) {
+                for (Entity entity : trailer.rig().entities()) {
+                    entities.put(entity.getUniqueId(), trailer);
+                }
             }
         }
     }

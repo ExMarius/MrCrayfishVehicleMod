@@ -426,11 +426,8 @@ public final class LandVehicle {
     }
 
     public Location towBarLocation() {
-        LandVehicleSpec.Point tow = spec.towBarOffset();
-        return local(location,
-                tow.x() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
-                tow.y() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
-                tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT);
+        LandVehicleSpec.Point tow = spec.towBarPhysicsOffset();
+        return local(location, tow.x(), tow.y(), tow.z());
     }
 
     public void placeOnTrailer(Location trailerLocation) {

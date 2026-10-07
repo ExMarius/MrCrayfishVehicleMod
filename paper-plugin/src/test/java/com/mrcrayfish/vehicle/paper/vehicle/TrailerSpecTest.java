@@ -63,4 +63,49 @@ class TrailerSpecTest {
                 0.000001F);
         assertEquals(1.837F, spec.bodyScale() * 1.67F, 0.000001F);
     }
+
+    @Test
+    void everyTrailerWheelUsesTheCommonCancellationMatrixAndTouchesGround() {
+        assertWheel(TrailerSpec.FERTILIZER, 0.790625F, 0.0F);
+        assertWheel(TrailerSpec.SEEDER, 1.203125F, 0.0F);
+        assertWheel(TrailerSpec.STORAGE_TRAILER, 0.790625F, 0.0F);
+        assertWheel(TrailerSpec.FLUID_TRAILER, 0.790625F, -0.171875F);
+        assertWheel(TrailerSpec.VEHICLE_TRAILER, 0.996875F, -0.171875F);
+        assertEquals(0.34375F, TrailerSpec.FERTILIZER.wheelCenterY(), 0.000001F);
+        assertEquals(0.34375F, TrailerSpec.FERTILIZER.wheelRadius(), 0.000001F);
+    }
+
+    @Test
+    void everyHitchDistanceIncludesTheGeneratedBodyScale() {
+        assertEquals(-1.16875F, TrailerSpec.FERTILIZER.hitchDistance(), 0.000001F);
+        assertEquals(-1.1F, TrailerSpec.SEEDER.hitchDistance(), 0.000001F);
+        assertEquals(-1.1F, TrailerSpec.STORAGE_TRAILER.hitchDistance(), 0.000001F);
+        assertEquals(-1.71875F, TrailerSpec.FLUID_TRAILER.hitchDistance(), 0.000001F);
+        assertEquals(-1.58125F, TrailerSpec.VEHICLE_TRAILER.hitchDistance(), 0.000001F);
+    }
+
+    @Test
+    void movableTrailerPartsRetainIndependentRendererCenters() {
+        TrailerSpec fertilizer = TrailerSpec.FERTILIZER;
+        assertEquals(0.309375F, fertilizer.bodyPartY(-0.5F), 0.000001F);
+        assertEquals(-0.48125F, fertilizer.bodyPartZ(-0.4375F), 0.000001F);
+
+        TrailerSpec seeder = TrailerSpec.SEEDER;
+        assertEquals(-0.825F, seeder.bodyPartX(-12.0F / 16.0F), 0.000001F);
+        assertEquals(0.825F, seeder.bodyPartX(12.0F / 16.0F), 0.000001F);
+        assertEquals(0.144375F, seeder.bodyPartY(-0.65F), 0.000001F);
+
+        assertEquals(-0.825F,
+                TrailerSpec.STORAGE_TRAILER.towBarOffset().z()
+                        * TrailerSpec.STORAGE_TRAILER.bodyScale() * LandVehicleSpec.MODEL_UNIT,
+                0.000001F);
+    }
+
+    private static void assertWheel(TrailerSpec spec, float outsideX, float z) {
+        float wheelX = spec.wheelX() * LandVehicleSpec.MODEL_UNIT * spec.bodyScale();
+        float halfWidth = 2.0F * LandVehicleSpec.MODEL_UNIT * spec.bodyScale();
+        assertEquals(outsideX, wheelX + halfWidth, 0.000001F);
+        assertEquals(z, spec.wheelZ() * LandVehicleSpec.MODEL_UNIT * spec.bodyScale(), 0.000001F);
+        assertEquals(0.0F, spec.wheelCenterY() - spec.wheelRadius(), 0.000001F);
+    }
 }
