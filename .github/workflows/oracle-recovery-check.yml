@@ -1,4 +1,4 @@
-name: Oracle migration recovery check v2
+name: Oracle migration recovery check v3
 
 on:
   workflow_dispatch:
