@@ -48,7 +48,7 @@ jobs:
             echo "Minecraft is already running in screen session $SESSION."
             exit 0
           fi
-          env -u RUNNER_TRACKING_ID screen -DmS "$SESSION" bash -lc "cd '$SERVER' && exec java -Xms512M -Xmx2G -XX:+UseG1GC -jar server.jar --nogui >> '$LOGS/server-console.log' 2>&1"
+          env -u RUNNER_TRACKING_ID screen -dmS "$SESSION" bash -lc "cd '$SERVER' && exec java -Xms512M -Xmx2G -XX:+UseG1GC -jar server.jar --nogui >> '$LOGS/server-console.log' 2>&1"
           echo "Started Minecraft in screen session $SESSION."
           SCRIPT
 
