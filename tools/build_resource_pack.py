@@ -7,10 +7,8 @@ import argparse
 import hashlib
 import json
 import shutil
-import struct
 import tempfile
 import zipfile
-import zlib
 from pathlib import Path
 
 
@@ -58,39 +56,18 @@ def copy(source: Path, destination: Path) -> None:
     shutil.copy2(source, destination)
 
 
-def write_transparent_png(path: Path, width: int = 9, height: int = 9) -> None:
-    """Write a deterministic transparent RGBA sprite without external image tools."""
-    def chunk(kind: bytes, data: bytes) -> bytes:
-        checksum = zlib.crc32(kind + data) & 0xFFFFFFFF
-        return struct.pack(">I", len(data)) + kind + data + struct.pack(">I", checksum)
-
-    header = struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)
-    rows = b"".join(b"\x00" + bytes(width * 4) for _ in range(height))
-    image = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header)
-             + chunk(b"IDAT", zlib.compress(rows, level=9)) + chunk(b"IEND", b""))
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_bytes(image)
-
-
 def build(output: Path) -> tuple[Path, str]:
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="vehicle-resource-pack-") as temporary:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r12 — five vehicles, five trailers, clean vehicle HUD",
+                "description": "MrCrayfish Vehicle Plugin r13 — five vehicles and five trailers",
                 "pack_format": 46,
             }
         })
         copy(ROOT / "src/main/resources/vehicle_mod.png", pack / "pack.png")
         copy(ROOT / "MOD-LICENSE.txt", pack / "LICENSE.txt")
-
-        # Vanilla renders mount health whenever the player's direct vehicle is a
-        # LivingEntity. The horse-style pose needs that mount, so hide only the
-        # three dedicated vehicle-heart sprites; player hearts remain untouched.
-        heart_sprites = pack / "assets/minecraft/textures/gui/sprites/hud/heart"
-        for sprite in ("vehicle_container", "vehicle_full", "vehicle_half"):
-            write_transparent_png(heart_sprites / f"{sprite}.png")
 
         namespace = pack / "assets/vehicle"
         for item, (model, tint) in {
@@ -305,7 +282,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r12.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r13.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

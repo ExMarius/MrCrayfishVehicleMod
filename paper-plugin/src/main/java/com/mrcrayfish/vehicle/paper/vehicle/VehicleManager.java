@@ -184,7 +184,8 @@ public final class VehicleManager {
             return;
         }
         if (vehicle.mount(player)) {
-            player.sendRichMessage("<gray>W/S accelerație, A/D direcție, Space frână de mână, Shift coborâre.</gray>");
+            player.sendRichMessage("<gray>W/S accelerație, A/D direcție, Space frână de mână, Shift coborâre. "
+                    + "Inimile monturii indică nivelul combustibilului.</gray>");
         } else {
             player.sendRichMessage("<red>Nu mai este niciun loc liber în acest vehicul.</red>");
         }

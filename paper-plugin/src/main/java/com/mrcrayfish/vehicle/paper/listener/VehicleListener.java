@@ -25,7 +25,7 @@ import java.util.regex.Pattern;
 
 public final class VehicleListener implements Listener {
     private static final Pattern GLOBAL_ENTITY_KILL = Pattern.compile(
-            "(?:^|\\s)(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
+            "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
 
@@ -36,43 +36,79 @@ public final class VehicleListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
-        if (unsafeGlobalKill(event.getMessage())) {
-            event.setCancelled(true);
+        String protectedCommand = protectEntityKill(event.getMessage());
+        if (!protectedCommand.equals(event.getMessage())) {
+            event.setMessage(protectedCommand);
             event.getPlayer().sendRichMessage(
-                    "<red>Comanda a fost blocată: ar elimina scaunele vehiculelor și jucătorii.</red> "
-                            + "<yellow>Exclude tag-ul cu tag=!mcv_plugin_vehicle.</yellow>");
-            plugin.getLogger().warning("Blocked an unsafe entity-wide kill command from "
-                    + event.getPlayer().getName());
+                    "<yellow>Selector protejat automat:</yellow> "
+                            + "<gray>jucătorii și entitățile vehiculelor au fost excluse.</gray>");
         }
     }
 
     @EventHandler(priority = EventPriority.HIGHEST)
     public void onServerCommand(ServerCommandEvent event) {
-        if (unsafeGlobalKill(event.getCommand())) {
-            event.setCancelled(true);
+        String protectedCommand = protectEntityKill(event.getCommand());
+        if (!protectedCommand.equals(event.getCommand())) {
+            event.setCommand(protectedCommand);
             event.getSender().sendRichMessage(
-                    "<red>Comanda a fost blocată. Folosește tag=!mcv_plugin_vehicle în selector.</red>");
-            plugin.getLogger().warning("Blocked an unsafe entity-wide kill command from "
-                    + event.getSender().getName());
+                    "<yellow>Selector protejat automat: jucătorii și vehiculele au fost excluse.</yellow>");
         }
     }
 
-    static boolean unsafeGlobalKill(String command) {
-        String normalized = command.startsWith("/") ? command.substring(1) : command;
-        java.util.regex.Matcher matcher = GLOBAL_ENTITY_KILL.matcher(normalized);
+    static String protectEntityKill(String command) {
+        String lower = command.toLowerCase(Locale.ROOT);
+        java.util.regex.Matcher matcher = GLOBAL_ENTITY_KILL.matcher(command);
+        StringBuilder protectedCommand = new StringBuilder(command.length() + 80);
+        int copiedUntil = 0;
+        boolean changed = false;
         while (matcher.find()) {
-            int selectorStart = normalized.toLowerCase(Locale.ROOT).indexOf("@e", matcher.start());
+            int selectorStart = lower.indexOf("@e", matcher.start());
             int selectorEnd = selectorStart + 2;
-            if (selectorEnd < normalized.length() && normalized.charAt(selectorEnd) == '[') {
-                int closingBracket = normalized.indexOf(']', selectorEnd + 1);
-                selectorEnd = closingBracket < 0 ? normalized.length() : closingBracket + 1;
+            if (selectorEnd < command.length() && command.charAt(selectorEnd) == '[') {
+                int closingBracket = command.indexOf(']', selectorEnd + 1);
+                if (closingBracket < 0) {
+                    continue;
+                }
+                selectorEnd = closingBracket + 1;
             }
-            String selector = normalized.substring(selectorStart, selectorEnd).toLowerCase(Locale.ROOT);
-            if (!selector.contains("tag=!mcv_plugin_vehicle")) {
-                return true;
+            String selector = command.substring(selectorStart, selectorEnd);
+            String replacement = protectSelector(selector);
+            if (!replacement.equals(selector)) {
+                protectedCommand.append(command, copiedUntil, selectorStart).append(replacement);
+                copiedUntil = selectorEnd;
+                changed = true;
             }
         }
-        return false;
+        if (!changed) {
+            return command;
+        }
+        return protectedCommand.append(command, copiedUntil, command.length()).toString();
+    }
+
+    private static String protectSelector(String selector) {
+        String lower = selector.toLowerCase(Locale.ROOT);
+        boolean excludesVehicles = lower.contains("tag=!mcv_plugin_vehicle");
+        boolean excludesPlayers = lower.contains("type=!minecraft:player")
+                || lower.contains("type=!player");
+        if (excludesVehicles && excludesPlayers) {
+            return selector;
+        }
+
+        StringBuilder additions = new StringBuilder();
+        if (!excludesVehicles) {
+            additions.append("tag=!mcv_plugin_vehicle");
+        }
+        if (!excludesPlayers) {
+            if (!additions.isEmpty()) {
+                additions.append(',');
+            }
+            additions.append("type=!minecraft:player");
+        }
+        if (selector.length() == 2) {
+            return "@e[" + additions + "]";
+        }
+        String content = selector.substring(3, selector.length() - 1);
+        return "@e[" + content + (content.isEmpty() ? "" : ",") + additions + "]";
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -113,7 +149,7 @@ public final class VehicleListener implements Listener {
     public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
         switch (event.getStatus()) {
             case SUCCESSFULLY_LOADED -> event.getPlayer().sendRichMessage(
-                    "<green>[Vehicle] Resource pack-ul r12 a fost încărcat.</green>");
+                    "<green>[Vehicle] Resource pack-ul r13 a fost încărcat.</green>");
             case DECLINED, FAILED_DOWNLOAD, FAILED_RELOAD, INVALID_URL, DISCARDED -> {
                 plugin.getLogger().warning("Resource pack " + event.getStatus() + " for "
                         + event.getPlayer().getName());

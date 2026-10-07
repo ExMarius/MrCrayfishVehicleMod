@@ -35,6 +35,7 @@ public final class LandVehicleRig {
      * player pose without adding a visible or colliding animal to the rig. */
     private static final double HORSE_CARRIER_SCALE = 0.0625D;
     private static final float HORSE_PASSENGER_OFFSET = 1.4F * (float) HORSE_CARRIER_SCALE;
+    private static final double SEAT_GAUGE_MAX_HEALTH = 20.0D;
 
     private final UUID vehicleId;
     private final LandVehicleSpec spec;
@@ -46,6 +47,7 @@ public final class LandVehicleRig {
     private final List<WheelDisplay> wheels;
     private final List<SeatCarrier> seats;
     private final List<Entity> entities;
+    private float seatGauge = 1.0F;
     private boolean removed;
 
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
@@ -170,6 +172,11 @@ public final class LandVehicleRig {
             if (scale != null) {
                 scale.setBaseValue(HORSE_CARRIER_SCALE);
             }
+            AttributeInstance maximumHealth = carrier.getAttribute(Attribute.MAX_HEALTH);
+            if (maximumHealth != null) {
+                maximumHealth.setBaseValue(SEAT_GAUGE_MAX_HEALTH);
+            }
+            carrier.setHealth(SEAT_GAUGE_MAX_HEALTH);
         });
         mark(horse, vehicleId);
         return horse;
@@ -187,6 +194,7 @@ public final class LandVehicleRig {
         }
         carrier.horse = horse;
         entities.add(horse);
+        applySeatGauge(horse);
         return horse;
     }
 
@@ -468,6 +476,22 @@ public final class LandVehicleRig {
         double sin = Math.sin(radians);
         double cos = Math.cos(radians);
         return root.clone().add(point.x * cos - point.z * sin, point.y, point.x * sin + point.z * cos);
+    }
+
+    public void setSeatGauge(float fraction) {
+        seatGauge = Float.isFinite(fraction) ? Math.max(0.0F, Math.min(1.0F, fraction)) : 1.0F;
+        for (SeatCarrier carrier : seats) {
+            if (carrier.horse != null && carrier.horse.isValid()) {
+                applySeatGauge(carrier.horse);
+            }
+        }
+    }
+
+    private void applySeatGauge(Horse horse) {
+        double health = Math.max(1.0D, SEAT_GAUGE_MAX_HEALTH * seatGauge);
+        if (Math.abs(horse.getHealth() - health) > 0.01D) {
+            horse.setHealth(health);
+        }
     }
 
     public void tickSeats(float yaw) {

@@ -87,6 +87,7 @@ public final class LandVehicle {
 
     public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
         age++;
+        updateSeatGauge();
         rig.tickSeats(location.getYaw());
         if (transported) {
             soundController.tick(location, false, spec.minEnginePitch(), List.of());
@@ -160,6 +161,7 @@ public final class LandVehicle {
         if (driver != null && !creativeDriver && enginePowered) {
             fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
         }
+        updateSeatGauge();
 
         updateWheelRotations();
         float wheelieAngle = -30.0F * boostStrength * wheelieProgress();
@@ -478,6 +480,12 @@ public final class LandVehicle {
 
     public void setFuel(float fuel) {
         this.fuel = clamp(fuel, 0.0F, spec.energyCapacity());
+        updateSeatGauge();
+    }
+
+    private void updateSeatGauge() {
+        float capacity = Math.max(1.0F, spec.energyCapacity());
+        rig.setSeatGauge(fuel / capacity);
     }
 
     public Vector velocity() {

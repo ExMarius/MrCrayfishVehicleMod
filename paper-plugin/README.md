@@ -4,9 +4,9 @@ Paper 1.21.4 server-side port for unmodified (vanilla) clients. The current chec
 
 The engine controller uses the original OGG assets, original pitch equations and 0.2 interpolation. Because a vanilla client does not expose Forge's continuously mutable `TickableSound`, the server replays each source sample at its actual pitch-adjusted duration and attaches it to the moving vehicle entity. This avoids the former overlapping fixed-position 18-tick impulses while remaining honest about the protocol limitation.
 
-The current rider-pose experiment mounts every seat occupant on a minimum-scale invisible horse carried by the existing smooth display anchor. This asks an unmodified client to use its native horse-riding posture while preserving each source seat position and the accepted rider-height correction. Carriers exist only while a seat is occupied and are removed on dismount. Entity-wide `/kill @e` commands are blocked while the plugin is active because removing a mounted horse forces Minecraft's expensive horse dismount search; administrative selectors must include `tag=!mcv_plugin_vehicle`.
+The current rider-pose experiment mounts every seat occupant on a minimum-scale invisible horse carried by the existing smooth display anchor. This asks an unmodified client to use its native horse-riding posture while preserving each source seat position and the accepted rider-height correction. Carriers exist only while a seat is occupied and are removed on dismount. Entity-wide kill selectors are rewritten automatically: the plugin adds `tag=!mcv_plugin_vehicle` and `type=!minecraft:player` to the `/kill @e` target, protecting vehicle rigs and players while allowing the command to remove other entities.
 
-Resource pack r12 makes Minecraft's three dedicated vehicle-heart HUD sprites transparent, so the invisible carrier's health is not shown. Player health remains unchanged. This vanilla resource-pack mechanism also hides mount hearts while riding an ordinary horse with the mandatory pack active.
+The vanilla mount-heart HUD is retained in resource pack r13 and acts as a shared ten-heart fuel gauge. Every occupied seat receives the same value from its vehicle's persisted fuel level, so the driver and passengers see matching hearts. Ordinary horses retain their normal health display. Because a living carrier dies at zero health, an empty tank is represented by the final half-heart rather than no hearts.
 
 ## Build
 
@@ -19,12 +19,12 @@ Requires Java 21 and Gradle 9+.
 Outputs:
 
 - `paper-plugin/build/libs/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar`
-- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r12.zip`
+- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r13.zip`
 
 Published prototype downloads:
 
 - [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
-- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r12.zip) (`SHA-1: 20ca3d9d063d4d2a17e8d6524ae1b0ec13a71ef8`; includes the GPLv3 license)
+- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r13.zip) (`SHA-1: 70a90204b0589b9b06b29e0a19ad36df5a622a34`; includes the GPLv3 license)
 
 ## Test
 

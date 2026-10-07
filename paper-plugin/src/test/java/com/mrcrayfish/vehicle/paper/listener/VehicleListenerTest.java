@@ -2,25 +2,47 @@ package com.mrcrayfish.vehicle.paper.listener;
 
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class VehicleListenerTest {
     @Test
-    void blocksEntityWideKillCommandsThatCanRemoveSeatCarriers() {
-        assertTrue(VehicleListener.unsafeGlobalKill("/kill @e"));
-        assertTrue(VehicleListener.unsafeGlobalKill("kill @e[type=minecraft:horse]"));
-        assertTrue(VehicleListener.unsafeGlobalKill("minecraft:kill @e[distance=..10]"));
-        assertTrue(VehicleListener.unsafeGlobalKill("execute at @s run kill @e[type=horse]"));
-        assertTrue(VehicleListener.unsafeGlobalKill(
-                "execute as @e[tag=!mcv_plugin_vehicle] run kill @e"));
+    void protectsBareEntityWideKillCommands() {
+        assertEquals(
+                "/kill @e[tag=!mcv_plugin_vehicle,type=!minecraft:player]",
+                VehicleListener.protectEntityKill("/kill @e")
+        );
+        assertEquals(
+                "minecraft:kill @e[distance=..10,tag=!mcv_plugin_vehicle,type=!minecraft:player]",
+                VehicleListener.protectEntityKill("minecraft:kill @e[distance=..10]")
+        );
     }
 
     @Test
-    void allowsSafeTargetsAndExplicitVehicleTagExclusion() {
-        assertFalse(VehicleListener.unsafeGlobalKill("/kill @a"));
-        assertFalse(VehicleListener.unsafeGlobalKill("/kill SomePlayer"));
-        assertFalse(VehicleListener.unsafeGlobalKill(
-                "/kill @e[type=minecraft:horse,tag=!mcv_plugin_vehicle]"));
+    void preservesFiltersAndProtectsOnlyTheKillTarget() {
+        assertEquals(
+                "kill @e[type=minecraft:horse,tag=!mcv_plugin_vehicle,type=!minecraft:player]",
+                VehicleListener.protectEntityKill("kill @e[type=minecraft:horse]")
+        );
+        assertEquals(
+                "execute as @e[tag=!mcv_plugin_vehicle] run kill "
+                        + "@e[tag=!mcv_plugin_vehicle,type=!minecraft:player]",
+                VehicleListener.protectEntityKill(
+                        "execute as @e[tag=!mcv_plugin_vehicle] run kill @e")
+        );
+    }
+
+    @Test
+    void leavesSafeOrMalformedCommandsUntouched() {
+        assertEquals("/kill @a", VehicleListener.protectEntityKill("/kill @a"));
+        assertEquals("/kill SomePlayer", VehicleListener.protectEntityKill("/kill SomePlayer"));
+        assertEquals(
+                "/kill @e[tag=!mcv_plugin_vehicle,type=!minecraft:player]",
+                VehicleListener.protectEntityKill(
+                        "/kill @e[tag=!mcv_plugin_vehicle,type=!minecraft:player]")
+        );
+        assertEquals(
+                "/kill @e[type=minecraft:horse",
+                VehicleListener.protectEntityKill("/kill @e[type=minecraft:horse")
+        );
     }
 }
