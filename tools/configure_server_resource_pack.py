@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Synchronize Minecraft's login-time resource pack with the Paper plugin config."""
 
-from __future__ import annotations
-
 import argparse
 import json
 import re
 import uuid
 from pathlib import Path
+from typing import Dict, List, Set
 
 
 RESOURCE_KEYS = (
@@ -19,14 +18,14 @@ RESOURCE_KEYS = (
 )
 
 
-def plugin_pack(config_text: str) -> dict[str, str]:
+def plugin_pack(config_text: str) -> Dict[str, str]:
     """Read the deliberately simple resource-pack section without a YAML dependency."""
     lines = config_text.splitlines()
     try:
         start = next(index for index, line in enumerate(lines) if line.strip() == "resource-pack:")
     except StopIteration as error:
         raise ValueError("config.yml has no resource-pack section") from error
-    section_lines: list[str] = []
+    section_lines = []  # type: List[str]
     for line in lines[start + 1:]:
         if line and not line[0].isspace():
             break
@@ -61,10 +60,10 @@ def plugin_pack(config_text: str) -> dict[str, str]:
     }
 
 
-def synchronize(properties_text: str, values: dict[str, str]) -> str:
+def synchronize(properties_text: str, values: Dict[str, str]) -> str:
     """Replace only resource-pack properties while preserving every unrelated line."""
-    output: list[str] = []
-    seen: set[str] = set()
+    output = []  # type: List[str]
+    seen = set()  # type: Set[str]
     for line in properties_text.splitlines():
         stripped = line.lstrip()
         if stripped and not stripped.startswith(("#", "!")):
@@ -93,7 +92,8 @@ def main() -> None:
     properties = args.server_properties.read_text(encoding="utf-8", errors="strict")
     config = args.plugin_config.read_text(encoding="utf-8", errors="strict")
     result = synchronize(properties, plugin_pack(config))
-    args.output.write_text(result, encoding="utf-8", newline="\n")
+    with args.output.open("w", encoding="utf-8", newline="\n") as output:
+        output.write(result)
 
 
 if __name__ == "__main__":

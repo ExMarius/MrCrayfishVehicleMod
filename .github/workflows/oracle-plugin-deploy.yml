@@ -8,6 +8,9 @@ on:
     paths:
       - .github/oracle-deploy-request
       - .github/workflows/oracle-plugin-deploy.yml
+      - paper-plugin/**
+      - tools/build_resource_pack.py
+      - tools/configure_server_resource_pack.py
 
 permissions:
   contents: read
@@ -26,11 +29,15 @@ jobs:
       - id: request
         shell: bash
         run: |
+          set -euo pipefail
+          requested=false
           if [ "${{ github.event_name }}" = workflow_dispatch ] || [ -f .github/oracle-deploy-request ]; then
-            echo "requested=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "requested=false" >> "$GITHUB_OUTPUT"
+            requested=true
+          elif git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" \
+              | grep -Eq '^(paper-plugin/|tools/(build_resource_pack|configure_server_resource_pack)\.py$)'; then
+            requested=true
           fi
+          echo "requested=$requested" >> "$GITHUB_OUTPUT"
 
   build:
     needs: gate
