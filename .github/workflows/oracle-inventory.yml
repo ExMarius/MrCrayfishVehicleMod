@@ -87,6 +87,7 @@ jobs:
               -oBatchMode=no \
               -oPreferredAuthentications=password \
               -oPubkeyAuthentication=no \
+              -oHostKeyAlgorithms=+ssh-ed25519 \
               -oStrictHostKeyChecking=accept-new \
               -oConnectTimeout=20 \
               -P "$FALIX_SFTP_PORT" \
