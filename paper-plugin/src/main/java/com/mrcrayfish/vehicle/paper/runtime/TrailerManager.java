@@ -29,6 +29,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.logging.Level;
 
 /** Lifecycle, hitch graph, persistence and interactions for all five trailers. */
 public final class TrailerManager {
