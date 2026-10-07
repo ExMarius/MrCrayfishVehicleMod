@@ -268,7 +268,10 @@ public record LandVehicleSpec(
             List.of(
                     seat(true, 5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
                     seat(false, -5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
-                    seat(false, 5.0F, 11.5F, -14.5F, 1.4F, -1.0F, 5.6F),
+                    /* The source's 11.5-pixel Y relies on a custom standing/hanging
+                     * limb pose. Vanilla renders every mounted player seated, so
+                     * keep both user-facing rear positions at the lower 3.5-pixel Y. */
+                    seat(false, 5.0F, 3.5F, -14.5F, 1.4F, -1.0F, 5.6F),
                     seat(false, -5.0F, 3.5F, -18.9F, 1.4F, -1.0F, 5.6F)
             ),
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),

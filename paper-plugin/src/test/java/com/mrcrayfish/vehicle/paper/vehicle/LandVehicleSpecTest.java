@@ -124,7 +124,7 @@ class LandVehicleSpecTest {
     }
 
     @Test
-    void offRoaderMatchesGeneratedPropertiesAndRendererTransforms() {
+    void offRoaderMatchesGeneratedPropertiesAndDocumentedVanillaSeatAdaptation() {
         LandVehicleSpec spec = LandVehicleSpec.OFF_ROADER;
         assertEquals(1.4F, spec.bodyScale(), EPSILON);
         assertEquals(-1.0F, spec.axleOffset(), EPSILON);
@@ -142,7 +142,9 @@ class LandVehicleSpecTest {
         assertTrue(spec.seats().getFirst().driver());
         assertPoint(spec.seats().getFirst().sourceOffset(), -0.4375F, 0.7525F, -0.2625F);
         assertPoint(spec.seats().get(1).sourceOffset(), 0.4375F, 0.7525F, -0.2625F);
-        assertPoint(spec.seats().get(2).sourceOffset(), -0.4375F, 1.40875F, -1.26875F);
+        /* Vanilla cannot apply the source's standing/hanging player limb pose,
+         * so both rear riders intentionally share the accepted lower Y. */
+        assertPoint(spec.seats().get(2).sourceOffset(), -0.4375F, 0.70875F, -1.26875F);
         assertPoint(spec.seats().get(3).sourceOffset(), 0.4375F, 0.70875F, -1.65375F);
         assertPoint(spec.steering().center(), -0.4375F, 1.572701F, 0.299799F);
         assertEquals(1.05F, spec.steering().scale(), EPSILON);
@@ -269,7 +271,7 @@ class LandVehicleSpecTest {
         assertEquals(0.9125F, LandVehicleSpec.DIRT_BIKE.seats().getLast().sourceOffset().y(), EPSILON);
         assertEquals(0.465F, LandVehicleSpec.MOPED.seats().getFirst().sourceOffset().y(), EPSILON);
         assertEquals(0.7525F, LandVehicleSpec.OFF_ROADER.seats().getFirst().sourceOffset().y(), EPSILON);
-        assertEquals(1.40875F, LandVehicleSpec.OFF_ROADER.seats().get(2).sourceOffset().y(), EPSILON);
+        assertEquals(0.70875F, LandVehicleSpec.OFF_ROADER.seats().get(2).sourceOffset().y(), EPSILON);
         assertEquals(0.70875F, LandVehicleSpec.OFF_ROADER.seats().get(3).sourceOffset().y(), EPSILON);
         assertEquals(0.25F, LandVehicleSpec.RIDER_HEIGHT_CORRECTION, EPSILON);
     }

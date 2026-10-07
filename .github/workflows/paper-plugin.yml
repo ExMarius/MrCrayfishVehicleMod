@@ -5,6 +5,8 @@ on:
     paths:
       - "paper-plugin/**"
       - "tools/build_resource_pack.py"
+      - "tools/configure_server_resource_pack.py"
+      - "tools/test_configure_server_resource_pack.py"
       - "src/main/resources/assets/vehicle/**"
       - "src/main/resources/vehicle_mod.png"
       - ".github/workflows/paper-plugin.yml"
@@ -34,6 +36,9 @@ jobs:
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
+
+      - name: Test server resource-pack synchronization
+        run: python3 -m unittest tools.test_configure_server_resource_pack
 
       - name: Build plugin and resource pack
         run: ./paper-plugin/gradlew -p paper-plugin clean build resourcePack
@@ -142,6 +147,45 @@ jobs:
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
           CONFIG="paper-plugin/src/main/resources/config.yml"
           export SSHPASS="$FALIX_SFTP_PASSWORD"
+
+          # Supply the vehicle pack once, during login, through server.properties.
+          # The plugin detects the same URL and skips its delayed post-join send.
+          sshpass -e sftp \
+            -oBatchMode=no \
+            -oPreferredAuthentications=password \
+            -oPubkeyAuthentication=no \
+            -oStrictHostKeyChecking=accept-new \
+            -oConnectTimeout=20 \
+            -P "$FALIX_SFTP_PORT" \
+            "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" <<EOF
+          get server.properties /tmp/falix-server.properties
+          EOF
+          test -s /tmp/falix-server.properties
+          python3 tools/configure_server_resource_pack.py \
+            --server-properties /tmp/falix-server.properties \
+            --plugin-config "$CONFIG" \
+            --output /tmp/falix-server.properties.updated
+          if cmp -s /tmp/falix-server.properties /tmp/falix-server.properties.updated; then
+            echo "FalixNodes login-time resource pack is already synchronized."
+          else
+            sshpass -e sftp \
+              -oBatchMode=no \
+              -oPreferredAuthentications=password \
+              -oPubkeyAuthentication=no \
+              -oStrictHostKeyChecking=accept-new \
+              -oConnectTimeout=20 \
+              -P "$FALIX_SFTP_PORT" \
+              "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" <<EOF
+            put /tmp/falix-server.properties server.properties.mcv-backup-$GITHUB_RUN_ID
+            -rm server.properties.uploading
+            put /tmp/falix-server.properties.updated server.properties.uploading
+            -rm server.properties
+            rename server.properties.uploading server.properties
+            ls -l server.properties
+          EOF
+            echo "FalixNodes login-time resource pack synchronized; original settings backed up."
+          fi
+
           sshpass -e sftp \
             -oBatchMode=no \
             -oPreferredAuthentications=password \

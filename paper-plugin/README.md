@@ -31,8 +31,13 @@ Published prototype downloads:
 The deployment job reads `FALIX_SFTP_HOST`, `FALIX_SFTP_PORT`,
 `FALIX_SFTP_USERNAME`, and `FALIX_SFTP_PASSWORD` exclusively from GitHub
 Actions repository secrets. It runs only while the temporary
-`.github/falix-deploy-request` marker exists. Secret values must never be
-committed, written to release notes, or supplied as workflow inputs.
+`.github/falix-deploy-request` marker exists. The job also synchronizes the same
+pack URL, SHA-1, stable pack ID, prompt, and required flag into `server.properties`
+and keeps a remote backup before any change. Paper then supplies the pack once
+during login; when the plugin detects that same server-level URL, it suppresses
+its delayed post-join send so clients do not perform two resource reloads. Secret
+values must never be committed, written to release notes, or supplied as workflow
+inputs.
 
 ## Test
 
@@ -43,7 +48,7 @@ committed, written to release notes, or supplied as workflow inputs.
 5. Right-click a vehicle to drive. Use W/S, A/D, Space for the handbrake, and Shift to dismount.
 6. Spawn a Moped and verify its source-positioned body, cosmetics, steering-linked handles/mud guard/front wheel, lean, fuel filler, and original engine sample. Right-click it while holding a vanilla Chest to attach storage; matching the source, attachment does not decrement the selected chest stack. Click the rear chest to open its 27 slots, or sneak-right-click that chest to detach it and drop its contents.
 7. On the Dirt Bike, verify both seats, steering-linked handles/front wheel, wheel spin, speed-dependent body lean, full-block traversal, exhaust, and the original engine sample.
-8. Spawn an Off Roader and verify all four seats, large wheels, steering wheel, source fuel-filler position, wheelie/boost behavior, and the original shared Jet Ski engine sample. Approach and right-click it from the rear to select the closest free hanging seat, matching the original seat tracker.
+8. Spawn an Off Roader and verify all four seats, large wheels, steering wheel, source fuel-filler position, wheelie/boost behavior, and the original shared Jet Ski engine sample. Approach and right-click it from the rear to select the closest free rear seat. Because vanilla cannot render the source standing/hanging limb pose, both rear riders intentionally use the same lower Y and accepted horse-style posture.
 9. Sneak-right-click a trailer to pull it, then right-click a Lawn Mower, Quad Bike, Tractor, or Storage Trailer to hitch it. Press Shift again to release a player-pulled trailer at its current position, matching the original crouch-to-release behavior. Storage Trailer is the chain-capable trailer.
 10. Right-click Fertilizer/Seeder/Storage Trailer to open its inventory. Fertilizer accepts bone meal, Seeder accepts crop seeds, and farming equipment can consume supplies through an upstream Storage Trailer. While planting or fertilizing, verify that the visible seed/bone-meal pile remains attached to the trailer instead of jumping outward when an item is consumed.
 11. Use water, lava, or powder-snow buckets on Fluid Trailer. Its capacity is 100 buckets.
