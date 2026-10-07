@@ -98,6 +98,17 @@ jobs:
               if len(incidents) == 40:
                   break
 
+          watchdog_index = next(
+              (index for index, line in enumerate(lines) if "server has not responded" in line.lower()),
+              None,
+          )
+          if watchdog_index is not None:
+              context = "\n".join(lines[max(0, watchdog_index - 30):watchdog_index + 2])
+              context = redact_ip.sub("<ip-redacted>", context)
+              context = redact_uuid.sub("<uuid-redacted>", context)
+              escaped = context.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::warning title=Falix pre-watchdog context::{escaped[:6000]}")
+
           if not incidents:
               print("::notice title=Falix diagnostics::No WARN, ERROR, exception, or watchdog lines found in latest.log.")
           for number, message in enumerate(incidents, 1):
