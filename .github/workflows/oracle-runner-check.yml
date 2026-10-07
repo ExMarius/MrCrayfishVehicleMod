@@ -1,0 +1,29 @@
+name: Oracle Cloud Shell runner check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/workflows/oracle-runner-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Verify Oracle Cloud Shell runner
+    runs-on: [self-hosted, oracle-cloud-shell]
+    timeout-minutes: 5
+    steps:
+      - name: Report safe runtime details
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Runner connected successfully."
+          printf 'User: %s\n' "$(id -un)"
+          printf 'Architecture: %s\n' "$(uname -m)"
+          printf 'Working directory: %s\n' "$PWD"
+          java -version
+          df -h "$HOME"
