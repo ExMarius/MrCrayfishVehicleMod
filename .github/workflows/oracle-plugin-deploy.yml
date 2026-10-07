@@ -102,14 +102,16 @@ jobs:
           CONFIG="$GITHUB_WORKSPACE/oracle-deployment/config.yml"
           CONFIGURE="$GITHUB_WORKSPACE/oracle-deployment/configure_server_resource_pack.py"
 
+          phase() { echo "::notice title=Oracle deploy phase::$1"; }
           test -s "$JAR"
           test -s "$CONFIG"
-          test -x "$ROOT/bin/stop-minecraft.sh"
-          test -x "$ROOT/bin/start-minecraft.sh"
-          mkdir -p "$BACKUP" "$DATA"
-          [ ! -f "$TARGET" ] || cp -p "$TARGET" "$BACKUP/MrCrayfishVehiclePlugin.jar"
+          test -s "$ROOT/bin/stop-minecraft.sh"
+          test -s "$ROOT/bin/start-minecraft.sh"
+          mkdir -p "$BACKUP/plugins" "$DATA"
+          find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -exec cp -p {} "$BACKUP/plugins/" \;
           [ ! -f "$DATA/config.yml" ] || cp -p "$DATA/config.yml" "$BACKUP/config.yml"
           cp -p "$SERVER/server.properties" "$BACKUP/server.properties"
+          phase "Backup created"
 
           PACK_URL=$(sed -n 's/^[[:space:]]*url: *"\([^"]*\)".*/\1/p' "$CONFIG")
           PACK_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' "$CONFIG")
@@ -128,8 +130,11 @@ jobs:
             echo "::error title=Resource pack unavailable::The published pack did not match the configured SHA-1"
             exit 1
           fi
+          phase "Resource pack URL and SHA-1 verified"
 
-          "$ROOT/bin/stop-minecraft.sh"
+          bash "$ROOT/bin/stop-minecraft.sh"
+          phase "Minecraft stopped cleanly"
+          find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
           install -m 600 "$JAR" "$TARGET"
           install -m 600 "$CONFIG" "$DATA/config.yml"
           python3 "$CONFIGURE" \
@@ -140,7 +145,8 @@ jobs:
 
           start_epoch=$(date +%s)
           : > "$ROOT/logs/server-console.log"
-          "$ROOT/bin/start-minecraft.sh"
+          bash "$ROOT/bin/start-minecraft.sh"
+          phase "Updated plugin installed and Minecraft started"
           ready=0
           for _ in $(seq 1 120); do
             latest_mtime=$(stat -c %Y "$SERVER/logs/latest.log" 2>/dev/null || echo 0)
@@ -159,11 +165,12 @@ jobs:
 
           if [ "$ready" -ne 1 ]; then
             echo "::error title=Oracle deployment failed::Rolling back the plugin and server.properties"
-            "$ROOT/bin/stop-minecraft.sh" || true
-            [ ! -f "$BACKUP/MrCrayfishVehiclePlugin.jar" ] || cp -p "$BACKUP/MrCrayfishVehiclePlugin.jar" "$TARGET"
+            bash "$ROOT/bin/stop-minecraft.sh" || true
+            find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
+            find "$BACKUP/plugins" -maxdepth 1 -type f -name '*.jar' -exec cp -p {} "$PLUGINS/" \;
             [ ! -f "$BACKUP/config.yml" ] || cp -p "$BACKUP/config.yml" "$DATA/config.yml"
             cp -p "$BACKUP/server.properties" "$SERVER/server.properties"
-            "$ROOT/bin/start-minecraft.sh" || true
+            bash "$ROOT/bin/start-minecraft.sh" || true
             tail -80 "$ROOT/logs/server-console.log" || true
             exit 1
           fi
