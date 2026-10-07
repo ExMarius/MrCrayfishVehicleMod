@@ -71,6 +71,26 @@ public record TrailerSpec(
         return (0.5F + (axleOffset + wheelOffset) * LandVehicleSpec.MODEL_UNIT) * bodyScale;
     }
 
+    /**
+     * Converts a block-space translation made by a source trailer renderer into
+     * the Paper rig's root space. Source renderers run after the common body
+     * scale and axle/wheel translations, so every supplemental body part must
+     * inherit both. The first Paper trailer renderer only applied the scale,
+     * which left spikers, the storage chest, and the fluid surface almost one
+     * block below their original positions.
+     */
+    public float bodyPartX(float sourceBlocks) {
+        return sourceBlocks * bodyScale;
+    }
+
+    public float bodyPartY(float sourceBlocks) {
+        return bodyOriginY() + sourceBlocks * bodyScale;
+    }
+
+    public float bodyPartZ(float sourceBlocks) {
+        return sourceBlocks * bodyScale;
+    }
+
     public float wheelCenterY() {
         return wheelOffset * LandVehicleSpec.MODEL_UNIT * bodyScale;
     }

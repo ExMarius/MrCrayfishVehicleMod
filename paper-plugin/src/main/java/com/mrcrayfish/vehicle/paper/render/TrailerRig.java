@@ -80,31 +80,42 @@ public final class TrailerRig {
 
         List<ExtraDisplay> extras = new ArrayList<>();
         if (spec.kind() == TrailerSpec.Kind.FERTILIZER) {
+            /* FertilizerTrailerRenderer: body root, translate(0, -.5, -.4375),
+             * rotate Z +90, then rotate X by wheel travel. */
             extra(world, location, trailerId, all, extras, "seed_spiker",
-                    new Vector3f(0.0F, -0.5F * spec.bodyScale(), -0.4375F * spec.bodyScale()),
-                    new Vector3f(1.25F * spec.bodyScale()), true, 0.0F);
+                    new Vector3f(spec.bodyPartX(0.0F), spec.bodyPartY(-0.5F),
+                            spec.bodyPartZ(-0.4375F)),
+                    new Vector3f(1.25F * spec.bodyScale()), true, 90.0F, 0.0F);
         } else if (spec.kind() == TrailerSpec.Kind.SEEDER) {
+            /* SeederTrailerRenderer places seven independently spinning spikers
+             * at source X offsets -12 through +12 model pixels. */
             for (int x = -12; x <= 12; x += 4) {
                 extra(world, location, trailerId, all, extras, "seed_spiker",
-                        new Vector3f(x * LandVehicleSpec.MODEL_UNIT * spec.bodyScale(),
-                                -0.65F * spec.bodyScale(), 0.0F),
-                        new Vector3f(0.75F * spec.bodyScale()), true, 0.0F);
+                        new Vector3f(spec.bodyPartX(x * LandVehicleSpec.MODEL_UNIT),
+                                spec.bodyPartY(-0.65F), spec.bodyPartZ(0.0F)),
+                        new Vector3f(0.75F * spec.bodyScale()), true, 0.0F, 0.0F);
             }
         } else if (spec.kind() == TrailerSpec.Kind.STORAGE) {
             ItemDisplay chest = display(world, location, new ItemStack(Material.CHEST));
             mark(chest, trailerId);
             all.add(chest);
+            /* StorageTrailerRenderer translates the closed chest -6 model pixels
+             * inside the already transformed body matrix. */
             extras.add(new ExtraDisplay(chest,
-                    new Vector3f(0.0F, -6.0F * LandVehicleSpec.MODEL_UNIT * spec.bodyScale(), 0.0F),
-                    new Vector3f(0.9F * spec.bodyScale()), false, 180.0F));
+                    new Vector3f(spec.bodyPartX(0.0F),
+                            spec.bodyPartY(-6.0F * LandVehicleSpec.MODEL_UNIT),
+                            spec.bodyPartZ(0.0F)),
+                    new Vector3f(0.9F * spec.bodyScale()), false, 0.0F, 180.0F));
         }
         if (spec.canTowTrailers()) {
             LandVehicleSpec.Point tow = spec.towBarOffset();
+            /* The common source renderer cancels bodyScale before drawing a tow
+             * bar, so this transform intentionally does not use bodyPartY(). */
             extra(world, location, trailerId, all, extras, "tow_bar",
                     new Vector3f(tow.x() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
                             0.5F + tow.y() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT,
                             tow.z() * spec.bodyScale() * LandVehicleSpec.MODEL_UNIT),
-                    new Vector3f(1.0F), false, 180.0F);
+                    new Vector3f(1.0F), false, 0.0F, 180.0F);
         }
 
         BlockDisplay fluid = null;
@@ -126,11 +137,11 @@ public final class TrailerRig {
 
     private static void extra(World world, Location location, UUID id, List<Entity> all,
                               List<ExtraDisplay> extras, String model, Vector3f center,
-                              Vector3f scale, boolean spins, float sourceYaw) {
+                              Vector3f scale, boolean spins, float preSpinZ, float sourceYaw) {
         ItemDisplay display = display(world, location, model(model));
         mark(display, id);
         all.add(display);
-        extras.add(new ExtraDisplay(display, center, scale, spins, sourceYaw));
+        extras.add(new ExtraDisplay(display, center, scale, spins, preSpinZ, sourceYaw));
     }
 
     private static ItemDisplay display(World world, Location location, ItemStack stack) {
@@ -187,8 +198,12 @@ public final class TrailerRig {
         }
 
         for (ExtraDisplay extra : extras) {
-            Quaternionf rotation = extra.spins
-                    ? new Quaternionf().rotateX(radians(-wheelRotation)) : new Quaternionf();
+            /* Preserve source call order: the fertilizer roller's Z quarter-turn
+             * is applied before its wheel-driven local X rotation. */
+            Quaternionf rotation = new Quaternionf().rotateZ(radians(extra.preSpinZ));
+            if (extra.spins) {
+                rotation.rotateX(radians(-wheelRotation));
+            }
             place(extra.entity, root, extra.center, rotation, extra.scale,
                     new Quaternionf().rotateY(radians(extra.sourceYaw)));
         }
@@ -211,12 +226,20 @@ public final class TrailerRig {
         if (!data.matches(fluid.getBlock())) {
             fluid.setBlock(data);
         }
-        float height = 0.62F * Math.min(1.0F, visual.fraction());
+        /* FluidTrailerRenderer#drawFluid source cuboid:
+         * x=-.3875, y=-.1875, z=-.99, width=.7625, max height=9.9/16,
+         * depth=1.67. It is drawn inside the common body transform. */
+        float height = spec.bodyScale() * 9.9F * LandVehicleSpec.MODEL_UNIT
+                * Math.min(1.0F, visual.fraction());
         fluid.teleport(root, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         fluid.setRotation(root.getYaw(), 0.0F);
         fluid.setTransformation(new Transformation(
-                new Vector3f(-0.38F, 0.18F, -0.82F), new Quaternionf(),
-                new Vector3f(0.76F, height, 1.64F), new Quaternionf()));
+                new Vector3f(spec.bodyPartX(-0.3875F), spec.bodyPartY(-0.1875F),
+                        spec.bodyPartZ(-0.99F)),
+                new Quaternionf(),
+                new Vector3f(spec.bodyScale() * 0.7625F, height,
+                        spec.bodyScale() * 1.67F),
+                new Quaternionf()));
     }
 
     private static void place(ItemDisplay display, Location root, Vector3f center,
@@ -264,7 +287,7 @@ public final class TrailerRig {
     }
 
     private record ExtraDisplay(ItemDisplay entity, Vector3f center, Vector3f scale,
-                                boolean spins, float sourceYaw) {
+                                boolean spins, float preSpinZ, float sourceYaw) {
     }
 
     public record FluidVisual(Material material, float fraction) {
