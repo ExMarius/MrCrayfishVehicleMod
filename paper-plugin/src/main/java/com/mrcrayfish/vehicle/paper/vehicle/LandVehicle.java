@@ -9,6 +9,7 @@ import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
 import com.mrcrayfish.vehicle.paper.runtime.EngineSoundController;
 import com.mrcrayfish.vehicle.paper.runtime.TrailerManager;
 import org.bukkit.Bukkit;
+import org.bukkit.FluidCollisionMode;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -27,6 +28,7 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.BlockStateMeta;
 import org.bukkit.util.BoundingBox;
+import org.bukkit.util.RayTraceResult;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
@@ -1086,6 +1088,38 @@ public final class LandVehicle {
         }
         double surface = fluidSurface(block);
         return Double.isNaN(surface) ? Double.NaN : WaterVehiclePhysics.restingSurfaceY(surface);
+    }
+
+    /** Finds open water under the player's crosshair without relying on held items. */
+    public static Location tracedWaterPlacement(Player player, double maximumDistance) {
+        RayTraceResult result = player.rayTraceBlocks(maximumDistance, FluidCollisionMode.ALWAYS);
+        Block hit = result == null ? null : result.getHitBlock();
+        Block water = hit != null && !Double.isNaN(restingWaterRootY(hit)) ? hit : null;
+
+        if (water == null) {
+            Location eye = player.getEyeLocation();
+            Vector direction = eye.getDirection().normalize();
+            Block previous = null;
+            for (double distance = 0.0D; distance <= maximumDistance; distance += 0.1D) {
+                Block sampled = eye.clone().add(direction.clone().multiply(distance)).getBlock();
+                if (sampled.equals(previous)) {
+                    continue;
+                }
+                previous = sampled;
+                if (!Double.isNaN(restingWaterRootY(sampled))) {
+                    water = sampled;
+                    break;
+                }
+                if (!sampled.isPassable()) {
+                    break;
+                }
+            }
+        }
+        if (water == null) {
+            return null;
+        }
+        return new Location(water.getWorld(), water.getX() + 0.5D, restingWaterRootY(water),
+                water.getZ() + 0.5D, player.getLocation().getYaw(), 0.0F);
     }
 
     private static double fluidSurface(Block block) {

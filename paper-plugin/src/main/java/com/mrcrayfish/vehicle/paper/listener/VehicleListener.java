@@ -8,9 +8,7 @@ import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
-import org.bukkit.FluidCollisionMode;
 import org.bukkit.Location;
-import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -34,8 +32,6 @@ import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.world.WorldLoadEvent;
-import org.bukkit.util.RayTraceResult;
-import org.bukkit.util.Vector;
 
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -165,7 +161,10 @@ public final class VehicleListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onInteract(PlayerInteractEntityEvent event) {
-        if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
+        if (vehicles.trailers().handleWaterPlacementInteraction(
+                event.getPlayer(), event.getRightClicked())) {
+            event.setCancelled(true);
+        } else if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
             vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
@@ -177,12 +176,10 @@ public final class VehicleListener implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlaceCarriedVehicle(PlayerInteractEvent event) {
         boolean carryingWaterVehicle = vehicles.trailers().isCarryingWaterVehicle(event.getPlayer());
-        boolean emptyHands = event.getPlayer().getInventory().getItemInMainHand().getType().isAir()
-                && event.getPlayer().getInventory().getItemInOffHand().getType().isAir();
         if (event.getHand() == null
                 || event.getHand() != EquipmentSlot.HAND && !carryingWaterVehicle
                 || !acceptsCarriedVehiclePlacement(
-                event.getAction(), carryingWaterVehicle, event.isCancelled(), emptyHands)) {
+                event.getAction(), carryingWaterVehicle, event.isCancelled(), event.getPlayer().isSneaking())) {
             return;
         }
 
@@ -205,14 +202,14 @@ public final class VehicleListener implements Listener {
     }
 
     /**
-     * Empty-hand water interaction is RIGHT_CLICK_AIR because carrying is virtual.
-     * Paper can pre-cancel water/air interactions whose vanilla result is a no-op,
-     * so cancelled right clicks from a carried Jet Ski still reach the fluid ray trace.
-     * Both hands must be empty, ensuring normal item and off-hand actions always win.
+     * Sneaking is the explicit placement gesture; normal right clicks always keep
+     * their original item, block, and roleplay-plugin behavior. Cancelled events
+     * are never overridden. Empty-hand placement is delivered by the private
+     * interaction target instead of bypassing another plugin's cancellation.
      */
     static boolean acceptsCarriedVehiclePlacement(Action action, boolean carryingWaterVehicle,
-                                                   boolean cancelled, boolean emptyHands) {
-        if ((carryingWaterVehicle && !emptyHands) || (cancelled && !carryingWaterVehicle)) {
+                                                   boolean cancelled, boolean sneaking) {
+        if (cancelled || (carryingWaterVehicle && !sneaking)) {
             return false;
         }
         return action == Action.RIGHT_CLICK_BLOCK
@@ -220,41 +217,7 @@ public final class VehicleListener implements Listener {
     }
 
     private static Location waterPlacement(Player player) {
-        Block block = tracedWaterBlock(player);
-        if (block == null) {
-            return null;
-        }
-        double y = LandVehicle.restingWaterRootY(block);
-        return new Location(block.getWorld(), block.getX() + 0.5D, y, block.getZ() + 0.5D,
-                player.getLocation().getYaw(), 0.0F);
-    }
-
-    private static Block tracedWaterBlock(Player player) {
-        RayTraceResult result = player.rayTraceBlocks(6.0D, FluidCollisionMode.ALWAYS);
-        Block hit = result == null ? null : result.getHitBlock();
-        if (hit != null && !Double.isNaN(LandVehicle.restingWaterRootY(hit))) {
-            return hit;
-        }
-
-        // Fall back to explicit eye-ray sampling. This is independent of how a
-        // particular Paper build classifies passable fluid collision shapes.
-        Location eye = player.getEyeLocation();
-        Vector direction = eye.getDirection().normalize();
-        Block previous = null;
-        for (double distance = 0.0D; distance <= 6.0D; distance += 0.1D) {
-            Block sampled = eye.clone().add(direction.clone().multiply(distance)).getBlock();
-            if (sampled.equals(previous)) {
-                continue;
-            }
-            previous = sampled;
-            if (!Double.isNaN(LandVehicle.restingWaterRootY(sampled))) {
-                return sampled;
-            }
-            if (!sampled.isPassable()) {
-                return null;
-            }
-        }
-        return null;
+        return LandVehicle.tracedWaterPlacement(player, 6.0D);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -266,6 +229,7 @@ public final class VehicleListener implements Listener {
 
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
+        vehicles.trailers().hideWaterPlacementTargetsFrom(event.getPlayer());
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (event.getPlayer().isOnline() && !ResourcePackSender.suppliedByServer(plugin)) {
                 ResourcePackSender.send(plugin, event.getPlayer());

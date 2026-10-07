@@ -3,6 +3,7 @@ package com.mrcrayfish.vehicle.paper.runtime;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.persistence.StoredTrailer;
 import com.mrcrayfish.vehicle.paper.persistence.TrailerStore;
+import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
@@ -14,6 +15,7 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryDragEvent;
@@ -43,6 +45,8 @@ public final class TrailerManager {
     private final Map<Inventory, PaperTrailer> inventories = new HashMap<>();
     private final Map<UUID, UUID> playerHeldTrailer = new HashMap<>();
     private final Map<UUID, VehicleManager.CarriedVehicle> playerHeldVehicle = new HashMap<>();
+    private final Map<UUID, Interaction> waterPlacementTargets = new HashMap<>();
+    private final Map<UUID, UUID> waterPlacementTargetOwners = new HashMap<>();
     private int entityIndexTicks;
 
     public TrailerManager(VehiclePlugin plugin, VehicleManager vehicles) {
@@ -80,6 +84,7 @@ public final class TrailerManager {
 
     public void stop() {
         save();
+        clearWaterPlacementTargets();
         for (PaperTrailer trailer : new ArrayList<>(trailers.values())) {
             trailer.remove();
         }
@@ -111,6 +116,7 @@ public final class TrailerManager {
     }
 
     public void tick() {
+        refreshWaterPlacementTargets();
         for (PaperTrailer trailer : new ArrayList<>(trailers.values())) {
             try {
                 trailer.tick();
@@ -299,10 +305,11 @@ public final class TrailerManager {
         playerHeldVehicle.put(player.getUniqueId(), carried);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP,
                 SoundCategory.PLAYERS, 1.0F, 1.0F);
-        String placement = vehicle.spec().motionType() == LandVehicleSpec.MotionType.WATER
-                ? "apă cu ambele mâini goale" : "sol";
-        player.sendRichMessage("<yellow>Vehicul ridicat. Shift-click pe Vehicle Trailer sau click dreapta pe "
-                + placement + ".</yellow>");
+        if (vehicle.spec().motionType() == LandVehicleSpec.MotionType.WATER) {
+            player.sendRichMessage("<yellow>Jet Ski ridicat. Ține Shift și folosește click dreapta pe apă; inventarul și itemele din mâini nu sunt modificate.</yellow>");
+        } else {
+            player.sendRichMessage("<yellow>Vehicul ridicat. Shift-click pe Vehicle Trailer sau click dreapta pe sol.</yellow>");
+        }
         return true;
     }
 
@@ -311,11 +318,110 @@ public final class TrailerManager {
         return carried != null && carried.spec().motionType() == LandVehicleSpec.MotionType.WATER;
     }
 
+    /**
+     * Keeps a short-lived, invisible vanilla interaction hitbox on the water
+     * selected by a sneaking player. It supplies an empty-hand right-click
+     * target without adding or replacing any inventory item.
+     */
+    private void refreshWaterPlacementTargets() {
+        Set<UUID> active = new HashSet<>();
+        for (Map.Entry<UUID, VehicleManager.CarriedVehicle> entry : playerHeldVehicle.entrySet()) {
+            if (entry.getValue().spec().motionType() != LandVehicleSpec.MotionType.WATER) {
+                continue;
+            }
+            Player player = Bukkit.getPlayer(entry.getKey());
+            if (player == null || !player.isOnline() || !player.isSneaking()) {
+                continue;
+            }
+            Location placement = LandVehicle.tracedWaterPlacement(player, 6.0D);
+            if (placement == null) {
+                continue;
+            }
+            active.add(entry.getKey());
+            updateWaterPlacementTarget(player, placement);
+        }
+        for (UUID playerId : new HashSet<>(waterPlacementTargets.keySet())) {
+            if (!active.contains(playerId)) {
+                removeWaterPlacementTarget(playerId);
+            }
+        }
+    }
+
+    private void updateWaterPlacementTarget(Player owner, Location placement) {
+        Location cursor = placement.clone().add(0.0D, 0.10D, 0.0D);
+        Interaction target = waterPlacementTargets.get(owner.getUniqueId());
+        if (target == null || !target.isValid()
+                || !Objects.equals(target.getWorld(), cursor.getWorld())) {
+            removeWaterPlacementTarget(owner.getUniqueId());
+            target = cursor.getWorld().spawn(cursor, Interaction.class, interaction -> {
+                interaction.setInteractionWidth(1.0F);
+                interaction.setInteractionHeight(0.5F);
+                interaction.setResponsive(true);
+                interaction.setGravity(false);
+                interaction.setInvulnerable(true);
+                interaction.setPersistent(false);
+                interaction.addScoreboardTag(LandVehicleRig.ENTITY_TAG);
+                interaction.addScoreboardTag("mcv_water_placement_target");
+            });
+            waterPlacementTargets.put(owner.getUniqueId(), target);
+            waterPlacementTargetOwners.put(target.getUniqueId(), owner.getUniqueId());
+            for (Player viewer : Bukkit.getOnlinePlayers()) {
+                if (!viewer.getUniqueId().equals(owner.getUniqueId())) {
+                    viewer.hideEntity(plugin, target);
+                }
+            }
+        } else if (target.getLocation().distanceSquared(cursor) > 0.0025D) {
+            target.teleport(cursor);
+        }
+    }
+
+    public boolean handleWaterPlacementInteraction(Player player, Entity clicked) {
+        UUID ownerId = waterPlacementTargetOwners.get(clicked.getUniqueId());
+        if (ownerId == null) {
+            return false;
+        }
+        if (!ownerId.equals(player.getUniqueId()) || !player.isSneaking()
+                || !isCarryingWaterVehicle(player)) {
+            return true;
+        }
+        Location placement = LandVehicle.tracedWaterPlacement(player, 6.0D);
+        if (placement == null) {
+            return true;
+        }
+        return placeCarriedVehicle(player, placement);
+    }
+
+    public void hideWaterPlacementTargetsFrom(Player viewer) {
+        for (Map.Entry<UUID, Interaction> entry : waterPlacementTargets.entrySet()) {
+            if (!entry.getKey().equals(viewer.getUniqueId()) && entry.getValue().isValid()) {
+                viewer.hideEntity(plugin, entry.getValue());
+            }
+        }
+    }
+
+    private void removeWaterPlacementTarget(UUID playerId) {
+        Interaction target = waterPlacementTargets.remove(playerId);
+        if (target != null) {
+            waterPlacementTargetOwners.remove(target.getUniqueId());
+            target.remove();
+        }
+    }
+
+    private void clearWaterPlacementTargets() {
+        for (Interaction target : waterPlacementTargets.values()) {
+            waterPlacementTargetOwners.remove(target.getUniqueId());
+            target.remove();
+        }
+        waterPlacementTargets.clear();
+        waterPlacementTargetOwners.clear();
+    }
+
     public boolean placeCarriedVehicle(Player player, Location location) {
         VehicleManager.CarriedVehicle carried = playerHeldVehicle.remove(player.getUniqueId());
         if (carried == null) {
             return false;
         }
+        removeWaterPlacementTarget(player.getUniqueId());
         vehicles.place(carried, location);
         player.getWorld().playSound(location, Sound.ENTITY_PLAYER_ATTACK_STRONG,
                 SoundCategory.PLAYERS, 1.0F, 1.0F);
@@ -334,6 +440,7 @@ public final class TrailerManager {
         }
         LandVehicle vehicle = vehicles.place(carried, trailer.location());
         playerHeldVehicle.remove(player.getUniqueId());
+        removeWaterPlacementTarget(player.getUniqueId());
         trailer.setLoadedVehicleId(vehicle.id());
         positionLoadedVehicle(trailer, vehicle.id());
         playHitch(trailer.location());
@@ -483,6 +590,7 @@ public final class TrailerManager {
     }
 
     public void onPlayerQuit(Player player) {
+        removeWaterPlacementTarget(player.getUniqueId());
         UUID trailerId = playerHeldTrailer.remove(player.getUniqueId());
         PaperTrailer trailer = trailerId == null ? null : trailers.get(trailerId);
         if (trailer != null && trailer.pullerType() == PaperTrailer.PullerType.PLAYER
@@ -496,6 +604,7 @@ public final class TrailerManager {
     }
 
     public void returnCarriedVehicles() {
+        clearWaterPlacementTargets();
         // Player pull links are transient. Clear every such link, including any
         // orphan created by an older version overwriting playerHeldTrailer.
         for (PaperTrailer trailer : trailers.values()) {

@@ -34,8 +34,8 @@ class VehicleListenerTest {
     }
 
     @Test
-    void carriedJetSkiAcceptsPaperPreCancelledEmptyHandWaterClick() {
-        assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
+    void carriedJetSkiAcceptsOnlyUncancelledSneakRightClickFallback() {
+        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, true, true));
         assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, false, true));
@@ -43,14 +43,14 @@ class VehicleListenerTest {
                 org.bukkit.event.block.Action.RIGHT_CLICK_AIR, false, true, true));
         assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, false, false, false));
-        assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
+        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, true, true, true));
         assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.LEFT_CLICK_AIR, true, false, true));
     }
 
     @Test
-    void carriedJetSkiNeverConsumesNormalItemInteractions() {
+    void carriedJetSkiNeverConsumesNormalNonSneakingInteractions() {
         assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true, false, false));
         assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
