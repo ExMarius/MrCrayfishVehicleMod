@@ -180,12 +180,12 @@ class LandVehicleSpecTest {
         assertPoint(spec.engine().center(), 0.0F, 0.763125F, 1.1875F);
         assertEquals(0.825F, spec.engine().scale(), EPSILON);
         assertPoint(spec.steering().center(), -0.25F, 0.59399375F, 0.1023625F);
-        assertPoint(spec.steeringDisplayOffset(), -0.1875F, 0.375F, -0.25F);
+        assertPoint(spec.steeringDisplayOffset(), -0.1875F, 0.375F, 0.125F);
         assertPoint(new LandVehicleSpec.Point(
                         spec.steering().center().x() + spec.steeringDisplayOffset().x(),
                         spec.steering().center().y() + spec.steeringDisplayOffset().y(),
                         spec.steering().center().z() + spec.steeringDisplayOffset().z()),
-                -0.4375F, 0.96899375F, -0.1476375F);
+                -0.4375F, 0.96899375F, 0.2273625F);
         assertEquals(-67.5F, spec.steering().rotationX(), EPSILON);
         assertPoint(spec.fuelFiller().center(), -0.625F, 0.56875F, -0.875F);
         assertPoint(spec.ignition().center(), -0.3125F, 0.44375F, 0.40625F);
@@ -199,6 +199,22 @@ class LandVehicleSpecTest {
         assertEquals("trunk", spec.storageCompartments().getLast().key());
         assertEquals(27, spec.storageCompartments().getLast().size());
         assertFalse(spec.canTowTrailers());
+    }
+
+    @Test
+    void sportsCarSteeringDisplayOverlapsDashboardColumn() {
+        LandVehicleSpec spec = LandVehicleSpec.SPORTS_CAR;
+        LandVehicleSpec.Point source = spec.steering().center();
+        LandVehicleSpec.Point offset = spec.steeringDisplayOffset();
+        float x = source.x() + offset.x();
+        float y = source.y() + offset.y();
+        float z = source.z() + offset.z();
+
+        // Bounds are transformed from the source steering-wheel and dashboard JSON.
+        assertTrue(x - 0.175F <= -0.4062F && x + 0.175F >= -0.4688F);
+        assertTrue(y - 0.1533F <= 0.9650F && y + 0.1868F >= 0.8834F);
+        assertTrue(z - 0.1276F <= 0.2472F && z + 0.0467F >= 0.1656F);
+        assertEquals(spec.seats().getFirst().sourceOffset().x(), x, EPSILON);
     }
 
     @Test
