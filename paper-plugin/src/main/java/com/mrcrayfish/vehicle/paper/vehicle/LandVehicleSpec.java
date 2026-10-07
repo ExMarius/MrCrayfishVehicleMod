@@ -548,12 +548,12 @@ public record LandVehicleSpec(
 
     /**
      * Vanilla ItemDisplay presentation needs this small Sports Car cabin correction
-     * to align the wheel with the dashboard and driver: four model pixels upward
-     * and four model pixels toward the driver's right in the rendered orientation.
+     * relative to the exact source center: six model pixels upward, four toward the
+     * driver's right, and one rearward. Model, scale, angle, and animation stay exact.
      */
     public Point steeringDisplayOffset() {
         return "sports_car".equals(id)
-                ? new Point(-4.0F * MODEL_UNIT, 4.0F * MODEL_UNIT, 0.0F)
+                ? new Point(-4.0F * MODEL_UNIT, 6.0F * MODEL_UNIT, -1.0F * MODEL_UNIT)
                 : new Point(0.0F, 0.0F, 0.0F);
     }
 

@@ -180,12 +180,12 @@ class LandVehicleSpecTest {
         assertPoint(spec.engine().center(), 0.0F, 0.763125F, 1.1875F);
         assertEquals(0.825F, spec.engine().scale(), EPSILON);
         assertPoint(spec.steering().center(), -0.25F, 0.59399375F, 0.1023625F);
-        assertPoint(spec.steeringDisplayOffset(), -0.25F, 0.25F, 0.0F);
+        assertPoint(spec.steeringDisplayOffset(), -0.25F, 0.375F, -0.0625F);
         assertPoint(new LandVehicleSpec.Point(
                         spec.steering().center().x() + spec.steeringDisplayOffset().x(),
                         spec.steering().center().y() + spec.steeringDisplayOffset().y(),
                         spec.steering().center().z() + spec.steeringDisplayOffset().z()),
-                -0.5F, 0.84399375F, 0.1023625F);
+                -0.5F, 0.96899375F, 0.0398625F);
         assertEquals(-67.5F, spec.steering().rotationX(), EPSILON);
         assertPoint(spec.fuelFiller().center(), -0.625F, 0.56875F, -0.875F);
         assertPoint(spec.ignition().center(), -0.3125F, 0.44375F, 0.40625F);
