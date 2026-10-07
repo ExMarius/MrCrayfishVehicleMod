@@ -546,6 +546,17 @@ public record LandVehicleSpec(
         return motionType() == MotionType.WATER ? 15.0F : 25.0F;
     }
 
+    /**
+     * Vanilla ItemDisplay presentation needs this small Sports Car cabin correction
+     * to align the wheel with the dashboard and driver: four model pixels upward
+     * and four model pixels toward the driver's right in the rendered orientation.
+     */
+    public Point steeringDisplayOffset() {
+        return "sports_car".equals(id)
+                ? new Point(-4.0F * MODEL_UNIT, 4.0F * MODEL_UNIT, 0.0F)
+                : new Point(0.0F, 0.0F, 0.0F);
+    }
+
     /** Inverse of the resource-pack normalization required by vanilla's -16..32 model limit. */
     public float modelScaleCorrection(String model) {
         if (!"sports_car".equals(id)) {

@@ -180,6 +180,12 @@ class LandVehicleSpecTest {
         assertPoint(spec.engine().center(), 0.0F, 0.763125F, 1.1875F);
         assertEquals(0.825F, spec.engine().scale(), EPSILON);
         assertPoint(spec.steering().center(), -0.25F, 0.59399375F, 0.1023625F);
+        assertPoint(spec.steeringDisplayOffset(), -0.25F, 0.25F, 0.0F);
+        assertPoint(new LandVehicleSpec.Point(
+                        spec.steering().center().x() + spec.steeringDisplayOffset().x(),
+                        spec.steering().center().y() + spec.steeringDisplayOffset().y(),
+                        spec.steering().center().z() + spec.steeringDisplayOffset().z()),
+                -0.5F, 0.84399375F, 0.1023625F);
         assertEquals(-67.5F, spec.steering().rotationX(), EPSILON);
         assertPoint(spec.fuelFiller().center(), -0.625F, 0.56875F, -0.875F);
         assertPoint(spec.ignition().center(), -0.3125F, 0.44375F, 0.40625F);
@@ -427,6 +433,12 @@ class LandVehicleSpecTest {
                 -0.40625F, 1.516441875F, 1.27057125F);
         assertPoint(LandVehicleSpec.GOLF_CART.steering().center(),
                 -0.39675F, 1.3277991F, 0.13126346F);
+        for (String id : LandVehicleSpec.ids()) {
+            LandVehicleSpec spec = LandVehicleSpec.byId(id);
+            if (spec != LandVehicleSpec.SPORTS_CAR) {
+                assertPoint(spec.steeringDisplayOffset(), 0.0F, 0.0F, 0.0F);
+            }
+        }
     }
 
     @Test

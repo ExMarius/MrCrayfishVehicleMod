@@ -310,18 +310,19 @@ public final class LandVehicleRig {
         Quaternionf forkRotation = SourceTransforms.motorcycleSteering(spec.motorcycle(), steeringRotation);
         if (steering != null) {
             LandVehicleSpec.Part part = spec.steering();
+            Vector3f unsteeredCenter = point(part.center()).add(point(spec.steeringDisplayOffset()));
             Vector3f center;
             Quaternionf rotation;
             if (spec.motorcycle() != null) {
                 center = SourceTransforms.forkPoint(
-                        point(part.center()), bodyOrigin, spec.motorcycle(), forkRotation);
+                        unsteeredCenter, bodyOrigin, spec.motorcycle(), forkRotation);
                 center = chassis(center, wheelieAngle, bodyRoll);
                 rotation = new Quaternionf(chassisRotation).mul(forkRotation)
                         .rotateX(radians(part.rotationX()))
                         .rotateY(radians(part.rotationY()))
                         .rotateZ(radians(part.rotationZ()));
             } else {
-                center = chassis(point(part.center()), wheelieAngle, bodyRoll);
+                center = chassis(unsteeredCenter, wheelieAngle, bodyRoll);
                 rotation = new Quaternionf(chassisRotation)
                         .rotateX(radians(part.rotationX()))
                         .rotateY(radians(part.rotationY() + steeringRotation))
