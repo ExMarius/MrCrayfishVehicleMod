@@ -45,6 +45,12 @@ jobs:
           latest=$(tail -25 "$ROOT/mc/logs/latest.log" 2>/dev/null | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' | tr '\n' '|' || true)
           notice "server-port=${configured_port:-unset} frp-local-port=${frp_local_port:-unset} listeners=${listening:-none} latest-tail=${latest:-empty}"
 
+          plugin_config="$ROOT/mc/plugins/MrCrayfishVehiclePlugin/config.yml"
+          plugin_pack_url=$(sed -n 's/^[[:space:]]*url: *"\([^"]*\)".*/\1/p' "$plugin_config")
+          plugin_pack_sha1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' "$plugin_config")
+          server_pack_url=$(sed -n 's/^resource-pack=//p' "$ROOT/mc/server.properties" | tail -1)
+          server_pack_sha1=$(sed -n 's/^resource-pack-sha1=//p' "$ROOT/mc/server.properties" | tail -1)
+
           test "$configured_port" = 25565
           printf '%s\n' "$frp_local_port" | grep -Eq '(^|,)25565(,|$)'
           pgrep -x frpc >/dev/null
@@ -52,4 +58,8 @@ jobs:
           ss -ltn 2>/dev/null | grep -q ':25565'
           grep -q 'MrCrayfishVehiclePlugin.*Enabling\|Enabling MrCrayfishVehiclePlugin' "$ROOT/mc/logs/latest.log"
           grep -q 'Done (' "$ROOT/mc/logs/latest.log"
-          notice "health=ready port=25565 frp=running screen=detached plugin=enabled"
+          test -n "$plugin_pack_url"
+          test "$plugin_pack_url" = "$server_pack_url"
+          test "$plugin_pack_sha1" = "$server_pack_sha1"
+          grep -q '^require-resource-pack=true$' "$ROOT/mc/server.properties"
+          notice "health=ready port=25565 frp=running screen=detached plugin=enabled pack=$(basename "$plugin_pack_url") sha1=$plugin_pack_sha1"
