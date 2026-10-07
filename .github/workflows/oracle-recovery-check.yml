@@ -39,5 +39,6 @@ jobs:
           notice "sizes=${sizes:-none}"
           notice "java=${java:-none} screen=${sessions:-none}"
           notice "$checks frpc=$(pgrep -x frpc >/dev/null 2>&1 && echo running || echo stopped)"
-          latest=$(tail -30 "$ROOT/logs/server-console.log" 2>/dev/null | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' | tr '\n' '|' || true)
-          notice "console-tail=${latest:-empty}"
+          listening=$(ss -ltn 2>/dev/null | awk '$4 ~ /:25565$/ {print $4}' | paste -sd, - || true)
+          latest=$(tail -25 "$ROOT/mc/logs/latest.log" 2>/dev/null | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' | tr '\n' '|' || true)
+          notice "minecraft-listening=${listening:-no} latest-tail=${latest:-empty}"
