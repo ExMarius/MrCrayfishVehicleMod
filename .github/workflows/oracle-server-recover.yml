@@ -67,14 +67,28 @@ jobs:
           SCRIPT
           chmod 700 "$ROOT/bin/"*.sh "$ROOT/start.sh"
 
+          current_port=$(sed -n 's/^server-port=//p' "$SERVER/server.properties" | tail -1)
+          if [ "$current_port" != 25565 ]; then
+            "$ROOT/bin/stop-minecraft.sh" || true
+            if grep -q '^server-port=' "$SERVER/server.properties"; then
+              sed -i 's/^server-port=.*/server-port=25565/' "$SERVER/server.properties"
+            else
+              printf '\nserver-port=25565\n' >> "$SERVER/server.properties"
+            fi
+          fi
+
           screen -wipe >/dev/null 2>&1 || true
           : > "$ROOT/logs/server-console.log"
           "$ROOT/bin/start-frp.sh"
+          start_epoch=$(date +%s)
           "$ROOT/bin/start-minecraft.sh"
 
           ready=0
           for _ in $(seq 1 120); do
-            if grep -Eq 'Done \([0-9.,]+s\)!|Done \(' "$SERVER/logs/latest.log" 2>/dev/null \
+            latest_mtime=$(stat -c %Y "$SERVER/logs/latest.log" 2>/dev/null || echo 0)
+            if [ "$latest_mtime" -ge "$start_epoch" ] \
+                && grep -Eq 'Done \([0-9.,]+s\)!|Done \(' "$SERVER/logs/latest.log" 2>/dev/null \
+                && ss -ltn 2>/dev/null | grep -q ':25565' \
                 && screen -list 2>/dev/null | grep -q "[.]$SESSION[[:space:]]"; then
               ready=1
               break

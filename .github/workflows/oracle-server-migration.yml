@@ -183,6 +183,11 @@ jobs:
           fi
           mv "$STAGE" "$SERVER_DIR"
           chmod -R u+rwX,go-rwx "$SERVER_DIR"
+          if grep -q '^server-port=' "$SERVER_DIR/server.properties"; then
+            sed -i 's/^server-port=.*/server-port=25565/' "$SERVER_DIR/server.properties"
+          else
+            printf '\nserver-port=25565\n' >> "$SERVER_DIR/server.properties"
+          fi
 
           cat > "$SERVER_ROOT/bin/start-minecraft.sh" <<'SCRIPT'
           #!/usr/bin/env bash
