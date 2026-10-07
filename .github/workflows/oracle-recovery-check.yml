@@ -40,7 +40,7 @@ jobs:
           notice "java=${java:-none} screen=${sessions:-none}"
           notice "$checks frpc=$(pgrep -x frpc >/dev/null 2>&1 && echo running || echo stopped)"
           configured_port=$(sed -n 's/^server-port=//p' "$ROOT/mc/server.properties" | tail -1)
-          frp_local_port=$(sed -nE 's/^[[:space:]]*(localPort|local_port)[[:space:]]*=[[:space:]]*([0-9]+).*/\2/p' "$ROOT/frp/frpc.toml" "$ROOT/frp/frpc.yaml" 2>/dev/null | sort -nu | paste -sd, -)
+          frp_local_port=$(sed -nE 's/^[[:space:]]*(localPort|local_port)[[:space:]]*[:=][[:space:]]*([0-9]+).*/\2/p' "$ROOT/frp/frpc.toml" "$ROOT/frp/frpc.yaml" 2>/dev/null | sort -nu | paste -sd, -)
           listening=$(ss -ltn 2>/dev/null | awk 'NR > 1 {print $4}' | paste -sd, - || true)
           latest=$(tail -25 "$ROOT/mc/logs/latest.log" 2>/dev/null | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' | tr '\n' '|' || true)
           notice "server-port=${configured_port:-unset} frp-local-port=${frp_local_port:-unset} listeners=${listening:-none} latest-tail=${latest:-empty}"
