@@ -1,4 +1,4 @@
-name: Oracle migration recovery check v3
+name: Oracle migration recovery check v4
 
 on:
   workflow_dispatch:
@@ -44,3 +44,12 @@ jobs:
           listening=$(ss -ltn 2>/dev/null | awk 'NR > 1 {print $4}' | paste -sd, - || true)
           latest=$(tail -25 "$ROOT/mc/logs/latest.log" 2>/dev/null | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' | tr '\n' '|' || true)
           notice "server-port=${configured_port:-unset} frp-local-port=${frp_local_port:-unset} listeners=${listening:-none} latest-tail=${latest:-empty}"
+
+          test "$configured_port" = 25565
+          printf '%s\n' "$frp_local_port" | grep -Eq '(^|,)25565(,|$)'
+          pgrep -x frpc >/dev/null
+          screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'
+          ss -ltn 2>/dev/null | grep -q ':25565'
+          grep -q 'MrCrayfishVehiclePlugin.*Enabling\|Enabling MrCrayfishVehiclePlugin' "$ROOT/mc/logs/latest.log"
+          grep -q 'Done (' "$ROOT/mc/logs/latest.log"
+          notice "health=ready port=25565 frp=running screen=detached plugin=enabled"
