@@ -1,0 +1,43 @@
+name: Oracle migration recovery check
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/workflows/oracle-recovery-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Inspect migration state
+        shell: bash
+        run: |
+          set -euo pipefail
+          notice() {
+            local value="$1"
+            value="${value//'%'/'%25'}"; value="${value//$'\r'/'%0D'}"; value="${value//$'\n'/'%0A'}"
+            echo "::notice title=Oracle recovery::$value"
+          }
+          ROOT="$HOME/minecraft-server"
+          entries=$(find "$ROOT" -maxdepth 1 -mindepth 1 -printf '%f\n' 2>/dev/null | sort | paste -sd, -)
+          sizes=$(du -sh "$ROOT"/* "$ROOT"/.[!.]* 2>/dev/null | sort -h | tr '\n' '|')
+          java=""
+          while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            java+="pid=$pid cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || echo unknown)|"
+          done < <(pgrep -x java 2>/dev/null || true)
+          sessions=$(screen -ls 2>/dev/null | tr '\n' '|' || true)
+          checks="server.jar=$(test -s "$ROOT/mc/server.jar" && echo yes || echo no) world=$(test -f "$ROOT/mc/world/level.dat" && echo yes || echo no) vehicle=$(test -s "$ROOT/mc/plugins/MrCrayfishVehiclePlugin.jar" && echo yes || echo no) scripts=$(test -x "$ROOT/bin/start-minecraft.sh" && echo yes || echo no)"
+          notice "disk=$(df -hP "$HOME" | tail -1 | awk '{print $3" used, "$4" free of "$2}') entries=${entries:-none}"
+          notice "sizes=${sizes:-none}"
+          notice "java=${java:-none} screen=${sessions:-none}"
+          notice "$checks frpc=$(pgrep -x frpc >/dev/null 2>&1 && echo running || echo stopped)"
+          latest=$(tail -30 "$ROOT/logs/server-console.log" 2>/dev/null | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' | tr '\n' '|' || true)
+          notice "console-tail=${latest:-empty}"
