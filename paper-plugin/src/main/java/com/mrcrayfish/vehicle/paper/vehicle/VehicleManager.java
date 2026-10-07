@@ -282,27 +282,25 @@ public final class VehicleManager {
     }
 
     private void load() {
-        if (!storageFile.isFile()) {
-            return;
-        }
-        YamlConfiguration data = YamlConfiguration.loadConfiguration(storageFile);
-        ConfigurationSection section = data.getConfigurationSection("vehicles");
-        if (section == null) {
-            return;
-        }
-        for (String key : section.getKeys(false)) {
-            try {
-                StoredVehicle stored = StoredVehicle.read(data, key);
-                LandVehicleSpec spec = LandVehicleSpec.byId(stored.type());
-                pendingWorlds.put(stored.id(), stored);
-                if (spec == null) {
-                    plugin.getLogger().warning("Keeping unsupported vehicle " + stored.id()
-                            + " in storage until its type is implemented: " + stored.type());
-                } else if (world(stored.worldId(), stored.worldName()) == null) {
-                    plugin.getLogger().warning("Deferring vehicle " + stored.id() + ": its world is not loaded");
+        if (storageFile.isFile()) {
+            YamlConfiguration data = YamlConfiguration.loadConfiguration(storageFile);
+            ConfigurationSection section = data.getConfigurationSection("vehicles");
+            if (section != null) {
+                for (String key : section.getKeys(false)) {
+                    try {
+                        StoredVehicle stored = StoredVehicle.read(data, key);
+                        LandVehicleSpec spec = LandVehicleSpec.byId(stored.type());
+                        pendingWorlds.put(stored.id(), stored);
+                        if (spec == null) {
+                            plugin.getLogger().warning("Keeping unsupported vehicle " + stored.id()
+                                    + " in storage until its type is implemented: " + stored.type());
+                        } else if (world(stored.worldId(), stored.worldName()) == null) {
+                            plugin.getLogger().warning("Deferring vehicle " + stored.id() + ": its world is not loaded");
+                        }
+                    } catch (RuntimeException exception) {
+                        plugin.getLogger().log(Level.WARNING, "Could not load vehicle entry " + key, exception);
+                    }
                 }
-            } catch (RuntimeException exception) {
-                plugin.getLogger().log(Level.WARNING, "Could not load vehicle entry " + key, exception);
             }
         }
         plugin.getLogger().info("Loaded " + vehicles.size() + " vehicle(s); "

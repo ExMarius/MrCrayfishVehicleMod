@@ -546,6 +546,19 @@ public record LandVehicleSpec(
         return motionType() == MotionType.WATER ? 15.0F : 25.0F;
     }
 
+    /** Inverse of the resource-pack normalization required by vanilla's -16..32 model limit. */
+    public float modelScaleCorrection(String model) {
+        if (!"sports_car".equals(id)) {
+            return 1.0F;
+        }
+        return switch (model) {
+            case "sports_car_body", "sports_car_hood", "sports_car_left_door",
+                    "sports_car_right_door", "sports_car_boot", "sports_car_seat",
+                    "sports_car_dashboard", "sports_car_roof" -> 2.0F;
+            default -> 1.0F;
+        };
+    }
+
     public Point wheeliePivot() {
         return new Point(0.0F, wheelOffset * MODEL_UNIT * bodyScale, rearAxleOffset);
     }

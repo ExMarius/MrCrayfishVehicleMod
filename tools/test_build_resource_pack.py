@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r21_pack(self):
+    def test_configured_sha1_matches_deterministic_r22_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -49,6 +49,34 @@ class ResourcePackBuildTest(unittest.TestCase):
                 _, texture_path = texture.split(":", 1)
                 self.assertIn(f"assets/vehicle/textures/{texture_path}.png", self.entries,
                               f"{model_entry}: {texture}")
+
+    def test_every_generated_element_stays_inside_vanilla_model_bounds(self):
+        for entry in sorted(path for path in self.entries
+                            if path.startswith("assets/vehicle/models/") and path.endswith(".json")):
+            model = self.read_json(entry)
+            textures = model.get("textures", {})
+            for index, element in enumerate(model.get("elements", [])):
+                for key in ("from", "to"):
+                    vector = element[key]
+                    self.assertEqual(3, len(vector), f"{entry} element {index} {key}")
+                    for coordinate in vector:
+                        self.assertGreaterEqual(coordinate, -16.0,
+                                                f"{entry} element {index} {key}")
+                        self.assertLessEqual(coordinate, 32.0,
+                                             f"{entry} element {index} {key}")
+                for face, definition in element.get("faces", {}).items():
+                    texture = definition.get("texture", "")
+                    if texture.startswith("#"):
+                        self.assertIn(texture[1:], textures,
+                                      f"{entry} element {index} face {face}: {texture}")
+
+    def test_every_pack_png_has_a_valid_nonempty_ihdr(self):
+        for entry in sorted(path for path in self.entries if path.endswith(".png")):
+            data = self.archive.read(entry)
+            self.assertTrue(data.startswith(b"\x89PNG\r\n\x1a\n"), entry)
+            self.assertGreaterEqual(len(data), 24, entry)
+            self.assertGreater(int.from_bytes(data[16:20], "big"), 0, entry)
+            self.assertGreater(int.from_bytes(data[20:24], "big"), 0, entry)
 
     def test_every_custom_sound_event_resolves_to_an_ogg(self):
         for event, definition in self.read_json("assets/vehicle/sounds.json").items():

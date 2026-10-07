@@ -101,8 +101,7 @@ public final class TrailerManager {
             try {
                 trailer.tick();
             } catch (RuntimeException exception) {
-                plugin.getLogger().severe("Trailer tick failed for " + trailer.id() + ": " + exception.getMessage());
-                exception.printStackTrace();
+                plugin.getLogger().log(Level.SEVERE, "Trailer tick failed for " + trailer.id(), exception);
             }
         }
         /* Fertilizer/Seeder cargo displays are rebuilt only when inventory

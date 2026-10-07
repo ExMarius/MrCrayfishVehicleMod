@@ -6,7 +6,7 @@ The engine controller uses the original OGG assets, original pitch equations and
 
 The current rider-pose implementation mounts every seat occupant on a minimum-scale invisible living carrier carried by the existing smooth display anchor. This asks an unmodified client to use its native mounted posture while preserving each source seat position and the accepted rider-height correction. The technical carrier is deliberately not an `AbstractHorse`: Paper 1.21.4 can loop indefinitely in its horse-only dismount-location search when a scaled carrier is invalidated. Carriers exist only while a seat is occupied and are removed on dismount. Entity-wide kill selectors are rewritten automatically: the plugin adds `tag=!mcv_plugin_vehicle` and `type=!minecraft:player` to the `/kill @e` target, protecting vehicle rigs and players while allowing the command to remove other entities. Players riding an unprotected ordinary mount are detached before that mount can be killed.
 
-The vanilla mount-heart HUD is retained in resource pack r21 and acts as a shared ten-heart fuel gauge. Every occupied seat receives the same value from its vehicle's persisted fuel level, so the driver and passengers see matching hearts. Half-hearts round down, making the first fuel use visible immediately; the final half-heart represents empty because a living carrier cannot remain alive at zero health. A source-style action-bar overlay also reports the continuously changing `Fuel: current / capacity (percent)` value to every occupant. As in the original mod, Creative-mode drivers do not consume fuel. Ordinary horses retain their normal health display.
+The vanilla mount-heart HUD is retained in resource pack r22 and acts as a shared ten-heart fuel gauge. Every occupied seat receives the same value from its vehicle's persisted fuel level, so the driver and passengers see matching hearts. Half-hearts round down, making the first fuel use visible immediately; the final half-heart represents empty because a living carrier cannot remain alive at zero health. A source-style action-bar overlay also reports the continuously changing `Fuel: current / capacity (percent)` value to every occupant. As in the original mod, Creative-mode drivers do not consume fuel. Ordinary horses retain their normal health display.
 
 ## Build
 
@@ -19,12 +19,12 @@ Requires Java 21 and Gradle 9+.
 Outputs:
 
 - `paper-plugin/build/libs/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar`
-- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r21.zip`
+- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r22.zip`
 
 Published prototype downloads:
 
 - [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
-- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r21.zip) (`SHA-1: 7190152d7a45d927064f57e82acabe85ddd8dc96`; includes the GPLv3 license)
+- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r22.zip) (`SHA-1: c04f232358f1c2ac77a6f7243bab3cdc8d9db0cb`; includes the GPLv3 license)
 
 ## FalixNodes deployment
 

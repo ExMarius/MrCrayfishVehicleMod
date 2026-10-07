@@ -284,7 +284,8 @@ public final class LandVehicleRig {
 
         Vector3f bodyCenter = chassis(bodyOrigin, wheelieAngle, bodyRoll);
         place(body, renderAnchor, relativeToSeat(bodyCenter, driverSeat), yaw, chassisRotation,
-                new Vector3f(spec.bodyScale()), new Quaternionf());
+                new Vector3f(spec.bodyScale() * spec.modelScaleCorrection(spec.bodyModel())),
+                new Quaternionf());
 
         if (engine != null) {
             LandVehicleSpec.Part part = spec.engine();
@@ -434,8 +435,9 @@ public final class LandVehicleRig {
                 .rotateX(radians(part.rotationX()))
                 .rotateY(radians(part.rotationY()))
                 .rotateZ(radians(part.rotationZ()));
+        float visualScale = part.scale() * spec.modelScaleCorrection(part.model());
         place(partDisplay.entity, renderAnchor, relativeToSeat(center, driverSeat), yaw, rotation,
-                new Vector3f(part.scale()), sourceRotation);
+                new Vector3f(visualScale), sourceRotation);
     }
 
     private void placePropertyPart(ItemDisplay display, LandVehicleSpec.Part part,
