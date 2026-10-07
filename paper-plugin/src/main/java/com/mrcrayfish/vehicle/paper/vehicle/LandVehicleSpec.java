@@ -553,7 +553,7 @@ public record LandVehicleSpec(
      */
     public Point steeringDisplayOffset() {
         return "sports_car".equals(id)
-                ? new Point(-3.0F * MODEL_UNIT, 6.0F * MODEL_UNIT, 2.0F * MODEL_UNIT)
+                ? new Point(-3.0F * MODEL_UNIT, 5.0F * MODEL_UNIT, 2.0F * MODEL_UNIT)
                 : new Point(0.0F, 0.0F, 0.0F);
     }
 
