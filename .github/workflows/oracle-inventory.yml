@@ -34,36 +34,41 @@ jobs:
           notice "home-disk=$(df -hP "$HOME" | tail -1 | awk '{print $2" total, "$3" used, "$4" free ("$5")"}')"
           notice "java=$(java -version 2>&1 | head -1 || true)"
 
-          for tool in tmux screen sshpass sftp rsync tar python3 curl; do
-            if command -v "$tool" >/dev/null 2>&1; then
-              notice "tool $tool: $(command -v "$tool")"
-            else
-              notice "tool $tool: missing"
-            fi
-          done
-
-          while IFS= read -r -d '' file; do
-            notice "server-candidate=$file"
-          done < <(find "$HOME" -maxdepth 6 -type f \
+          candidates=$(find "$HOME" -maxdepth 6 -type f \
             \( -name server.properties -o -name eula.txt -o -iname 'paper*.jar' \
                -o -iname 'purpur*.jar' -o -iname 'spigot*.jar' -o -name start.sh \) \
-            -not -path '*/actions-runner/_work/*' -print0 2>/dev/null)
+            -not -path '*/actions-runner/_work/*' -print 2>/dev/null | sort | paste -sd'|' -)
+          notice "server-candidates=${candidates:-none}"
 
+          java_processes=""
           while IFS= read -r pid; do
             [ -n "$pid" ] || continue
             cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || echo unknown)
-            notice "java-process pid=$pid cwd=$cwd"
+            java_processes+="pid=$pid cwd=$cwd|"
           done < <(pgrep -x java 2>/dev/null || true)
+          notice "java-processes=${java_processes:-none}"
 
+          tmux_sessions=none
           if command -v tmux >/dev/null 2>&1; then
-            sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | paste -sd, - || true)
-            notice "tmux-sessions=${sessions:-none}"
+            tmux_sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | paste -sd, - || true)
+            tmux_sessions=${tmux_sessions:-none}
           fi
+          screen_sessions=none
           if command -v screen >/dev/null 2>&1; then
-            sessions=$(screen -ls 2>/dev/null | sed -n 's/^[[:space:]]*[0-9][0-9]*\.\([^[:space:]]*\).*/\1/p' | paste -sd, - || true)
-            notice "screen-sessions=${sessions:-none}"
+            screen_sessions=$(screen -ls 2>/dev/null | sed -n 's/^[[:space:]]*[0-9][0-9]*\.\([^[:space:]]*\).*/\1/p' | paste -sd, - || true)
+            screen_sessions=${screen_sessions:-none}
           fi
+          notice "tmux-sessions=$tmux_sessions screen-sessions=$screen_sessions"
 
-          while IFS= read -r directory; do
-            [ -n "$directory" ] && notice "home-entry=$directory"
-          done < <(du -sh "$HOME"/* 2>/dev/null | sort -h | tail -20)
+          entries=$(du -sh "$HOME"/* 2>/dev/null | sort -h | tail -20 | tr '\n' '|')
+          notice "home-entries=${entries:-none}"
+
+          tools=""
+          for tool in tmux screen sshpass sftp rsync tar python3 curl; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              tools+="$tool=$(command -v "$tool")|"
+            else
+              tools+="$tool=missing|"
+            fi
+          done
+          notice "tools=$tools"
