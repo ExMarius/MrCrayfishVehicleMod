@@ -6,7 +6,7 @@ The engine controller uses the original OGG assets, original pitch equations and
 
 The current rider-pose experiment mounts every seat occupant on a minimum-scale invisible horse carried by the existing smooth display anchor. This asks an unmodified client to use its native horse-riding posture while preserving each source seat position and the accepted rider-height correction. Carriers exist only while a seat is occupied and are removed on dismount. Entity-wide kill selectors are rewritten automatically: the plugin adds `tag=!mcv_plugin_vehicle` and `type=!minecraft:player` to the `/kill @e` target, protecting vehicle rigs and players while allowing the command to remove other entities.
 
-The vanilla mount-heart HUD is retained in resource pack r13 and acts as a shared ten-heart fuel gauge. Every occupied seat receives the same value from its vehicle's persisted fuel level, so the driver and passengers see matching hearts. Ordinary horses retain their normal health display. Because a living carrier dies at zero health, an empty tank is represented by the final half-heart rather than no hearts.
+The vanilla mount-heart HUD is retained in resource pack r14 and acts as a shared ten-heart fuel gauge. Every occupied seat receives the same value from its vehicle's persisted fuel level, so the driver and passengers see matching hearts. Ordinary horses retain their normal health display. Because a living carrier dies at zero health, an empty tank is represented by the final half-heart rather than no hearts.
 
 ## Build
 
@@ -19,12 +19,12 @@ Requires Java 21 and Gradle 9+.
 Outputs:
 
 - `paper-plugin/build/libs/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar`
-- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r13.zip`
+- `paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r14.zip`
 
 Published prototype downloads:
 
 - [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
-- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r13.zip) (`SHA-1: 70a90204b0589b9b06b29e0a19ad36df5a622a34`; includes the GPLv3 license)
+- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r14.zip) (`SHA-1: e5314212b81ee1921d91ce692b382111c17757cb`; includes the GPLv3 license)
 
 ## FalixNodes deployment
 
@@ -42,7 +42,7 @@ committed, written to release notes, or supplied as workflow inputs.
 4. Restart and use `/vehicle spawn <type>` as an operator. Tab completion lists all five vehicles and five trailers.
 5. Right-click a vehicle to drive. Use W/S, A/D, Space for the handbrake, and Shift to dismount.
 6. On the Dirt Bike, verify both seats, steering-linked handles/front wheel, wheel spin, speed-dependent body lean, full-block traversal, exhaust, and the original engine sample.
-7. Sneak-right-click a trailer to pull it, then right-click a Lawn Mower, Quad Bike, Tractor, or Storage Trailer to hitch it. Storage Trailer is the chain-capable trailer.
+7. Sneak-right-click a trailer to pull it, then right-click a Lawn Mower, Quad Bike, Tractor, or Storage Trailer to hitch it. Press Shift again to release a player-pulled trailer at its current position, matching the original crouch-to-release behavior. Storage Trailer is the chain-capable trailer.
 8. Right-click Fertilizer/Seeder/Storage Trailer to open its inventory. Fertilizer accepts bone meal, Seeder accepts crop seeds, and farming equipment can consume supplies through an upstream Storage Trailer.
 9. Use water, lava, or powder-snow buckets on Fluid Trailer. Its capacity is 100 buckets.
 10. Sneak-right-click an unoccupied vehicle to carry it, then sneak-right-click Vehicle Trailer to load it, matching the original pickup flow. To unload it, sneak-right-click the carried vehicle and right-click the ground.

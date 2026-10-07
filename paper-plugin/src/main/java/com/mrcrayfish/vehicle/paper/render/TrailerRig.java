@@ -103,8 +103,10 @@ public final class TrailerRig {
              * inside the already transformed body matrix. */
             extras.add(new ExtraDisplay(chest,
                     new Vector3f(spec.bodyPartX(0.0F),
-                            spec.bodyPartY(-6.0F * LandVehicleSpec.MODEL_UNIT),
-                            spec.bodyPartZ(0.0F)),
+                            /* The source ChestModel is bottom-anchored after its
+                             * -0.5 X/Z translation. A vanilla chest item model is
+                             * center-anchored, so compensate by half a block. */
+                            spec.storageChestCenterY(), spec.bodyPartZ(0.0F)),
                     new Vector3f(0.9F * spec.bodyScale()), false, 0.0F, 180.0F));
         }
         if (spec.canTowTrailers()) {

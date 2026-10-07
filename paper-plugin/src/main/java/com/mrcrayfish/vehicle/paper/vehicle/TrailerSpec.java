@@ -91,6 +91,11 @@ public record TrailerSpec(
         return sourceBlocks * bodyScale;
     }
 
+    /** Source uses a bottom-anchored ChestModel; ItemDisplay uses a centered item. */
+    public float storageChestCenterY() {
+        return bodyPartY(-6.0F * LandVehicleSpec.MODEL_UNIT) + 0.5F;
+    }
+
     public float wheelCenterY() {
         return wheelOffset * LandVehicleSpec.MODEL_UNIT * bodyScale;
     }

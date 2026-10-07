@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r13 — five vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r14 — five vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -161,9 +161,22 @@ def build(output: Path) -> tuple[Path, str]:
             "trailer_body": "vehicle_trailer_body",
             "seed_spiker": "seed_spiker",
         }.items():
+            textures = None
+            if source == "trailer_fluid_body":
+                # The four Cray Industries side panels use the original pixels,
+                # but move them from the legacy model/ path to a normal item
+                # texture path that 1.21.4 ItemDisplay resolves reliably.
+                textures = {
+                    "glass": "minecraft:block/glass",
+                    "cray_industries": "vehicle:item/fluid_trailer_logo",
+                    "tank": "minecraft:block/white_concrete",
+                    "base": "minecraft:block/anvil",
+                    "frame": "minecraft:block/light_gray_concrete",
+                }
             convert_model(
                 ASSETS / f"models/vehicle/{source}.json",
                 namespace / f"models/item/{target}.json",
+                textures,
             )
         convert_model(
             ASSETS / "models/item/standard_wheel.json",
@@ -212,6 +225,10 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ASSETS / "textures/model/cray_industries.png",
             namespace / "textures/item/lawn_mower_logo.png",
+        )
+        copy(
+            ASSETS / "textures/model/cray_industries.png",
+            namespace / "textures/item/fluid_trailer_logo.png",
         )
         copy(
             ASSETS / "textures/model/cray_industries.png",
@@ -282,7 +299,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r13.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r14.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

@@ -207,8 +207,32 @@ public final class TrailerManager {
         clicked.detach(false);
         clicked.attach(PaperTrailer.PullerType.PLAYER, player.getUniqueId());
         playerHeldTrailer.put(player.getUniqueId(), clicked.id());
-        player.sendRichMessage("<yellow>Tragi remorca. Click dreapta pe Lawn Mower, Quad Bike, Tractor sau Storage Trailer pentru atașare.</yellow>");
+        player.sendRichMessage("<yellow>Tragi remorca. Click dreapta pe Lawn Mower, Quad Bike, Tractor sau Storage Trailer pentru atașare; apasă din nou Shift pentru a o lăsa jos.</yellow>");
         playHitch(clicked.location());
+    }
+
+    /**
+     * Mirrors CommonEvents#onPlayerTick from the original mod: pressing crouch
+     * while pulling a trailer clears the player/trailer link and leaves the
+     * trailer at its current physical position.
+     */
+    public boolean releaseHeldTrailer(Player player) {
+        UUID trailerId = playerHeldTrailer.remove(player.getUniqueId());
+        if (trailerId == null) {
+            return false;
+        }
+        PaperTrailer trailer = trailers.get(trailerId);
+        if (trailer == null) {
+            return false;
+        }
+        if (trailer.pullerType() == PaperTrailer.PullerType.PLAYER
+                && player.getUniqueId().equals(trailer.pullerId())) {
+            trailer.detach(false);
+            save();
+            player.sendRichMessage("<green>Remorca a fost lăsată jos.</green>");
+            return true;
+        }
+        return false;
     }
 
     public boolean pickUpVehicle(Player player, LandVehicle vehicle) {

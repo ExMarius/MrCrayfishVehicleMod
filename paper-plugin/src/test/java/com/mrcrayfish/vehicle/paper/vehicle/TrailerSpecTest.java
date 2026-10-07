@@ -48,6 +48,7 @@ class TrailerSpecTest {
         assertEquals(0.446875F,
                 TrailerSpec.STORAGE_TRAILER.bodyPartY(-6.0F * LandVehicleSpec.MODEL_UNIT),
                 0.000001F);
+        assertEquals(0.946875F, TrailerSpec.STORAGE_TRAILER.storageChestCenterY(), 0.000001F);
     }
 
     @Test
