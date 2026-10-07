@@ -1,0 +1,69 @@
+name: Oracle Cloud Shell inventory
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/workflows/oracle-inventory.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    name: Inspect existing Cloud Shell server safely
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Inventory without reading configuration contents
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          notice() {
+            local value="$1"
+            value="${value//'%'/'%25'}"
+            value="${value//$'\r'/'%0D'}"
+            value="${value//$'\n'/'%0A'}"
+            echo "::notice title=Oracle inventory::$value"
+          }
+
+          notice "user=$(id -un) home=$HOME arch=$(uname -m)"
+          notice "home-disk=$(df -hP "$HOME" | tail -1 | awk '{print $2" total, "$3" used, "$4" free ("$5")"}')"
+          notice "java=$(java -version 2>&1 | head -1 || true)"
+
+          for tool in tmux screen sshpass sftp rsync tar python3 curl; do
+            if command -v "$tool" >/dev/null 2>&1; then
+              notice "tool $tool: $(command -v "$tool")"
+            else
+              notice "tool $tool: missing"
+            fi
+          done
+
+          while IFS= read -r -d '' file; do
+            notice "server-candidate=$file"
+          done < <(find "$HOME" -maxdepth 6 -type f \
+            \( -name server.properties -o -name eula.txt -o -iname 'paper*.jar' \
+               -o -iname 'purpur*.jar' -o -iname 'spigot*.jar' -o -name start.sh \) \
+            -not -path '*/actions-runner/_work/*' -print0 2>/dev/null)
+
+          while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || echo unknown)
+            notice "java-process pid=$pid cwd=$cwd"
+          done < <(pgrep -x java 2>/dev/null || true)
+
+          if command -v tmux >/dev/null 2>&1; then
+            sessions=$(tmux list-sessions -F '#{session_name}' 2>/dev/null | paste -sd, - || true)
+            notice "tmux-sessions=${sessions:-none}"
+          fi
+          if command -v screen >/dev/null 2>&1; then
+            sessions=$(screen -ls 2>/dev/null | sed -n 's/^[[:space:]]*[0-9][0-9]*\.\([^[:space:]]*\).*/\1/p' | paste -sd, - || true)
+            notice "screen-sessions=${sessions:-none}"
+          fi
+
+          while IFS= read -r directory; do
+            [ -n "$directory" ] && notice "home-entry=$directory"
+          done < <(du -sh "$HOME"/* 2>/dev/null | sort -h | tail -20)
