@@ -2,10 +2,6 @@ name: Falix diagnostics
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - ".github/workflows/falix-diagnostics.yml"
-      - ".github/falix-log-request"
 
 permissions:
   contents: read
