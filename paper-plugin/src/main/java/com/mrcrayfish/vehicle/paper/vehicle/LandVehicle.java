@@ -1075,6 +1075,19 @@ public final class LandVehicle {
                 : WaterVehiclePhysics.State.IN_AIR, waterLevel);
     }
 
+    /**
+     * Returns the Jet Ski root height which is already in equilibrium with the
+     * released boat buoyancy equation. Waterlogged solid blocks are excluded:
+     * they are fluid for physics, but are not an open placement cell.
+     */
+    public static double restingWaterRootY(Block block) {
+        if (block.getType() != Material.WATER && block.getType() != Material.BUBBLE_COLUMN) {
+            return Double.NaN;
+        }
+        double surface = fluidSurface(block);
+        return Double.isNaN(surface) ? Double.NaN : WaterVehiclePhysics.restingSurfaceY(surface);
+    }
+
     private static double fluidSurface(Block block) {
         BlockData data = block.getBlockData();
         if (data instanceof Waterlogged waterlogged && waterlogged.isWaterlogged()) {

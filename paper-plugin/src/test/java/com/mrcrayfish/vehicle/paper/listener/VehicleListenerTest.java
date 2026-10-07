@@ -3,6 +3,8 @@ package com.mrcrayfish.vehicle.paper.listener;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VehicleListenerTest {
     @Test
@@ -29,6 +31,18 @@ class VehicleListenerTest {
                 VehicleListener.protectEntityKill(
                         "execute as @e[tag=!mcv_plugin_vehicle] run kill @e")
         );
+    }
+
+    @Test
+    void carriedJetSkiAcceptsEmptyHandWaterClickAction() {
+        assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
+                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, true));
+        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
+                org.bukkit.event.block.Action.RIGHT_CLICK_AIR, false));
+        assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
+                org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, false));
+        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
+                org.bukkit.event.block.Action.LEFT_CLICK_AIR, true));
     }
 
     @Test

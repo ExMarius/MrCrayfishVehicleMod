@@ -41,6 +41,11 @@ class WaterVehiclePhysicsTest {
     }
 
     @Test
+    void carriedJetSkiStartsAtItsRestingWaterline() {
+        assertEquals(64.65D, WaterVehiclePhysics.restingSurfaceY(65.0D), 0.000001D);
+    }
+
+    @Test
     void releasedBoatSurfaceTargetRisesWithForwardSpeed() {
         assertEquals(64.65D, WaterVehiclePhysics.targetSurfaceY(65.0D, 0.0F), 0.000001D);
         assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F), 0.000001D);

@@ -4,6 +4,7 @@ import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.persistence.StoredTrailer;
 import com.mrcrayfish.vehicle.paper.persistence.TrailerStore;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
+import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
@@ -25,6 +26,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -50,6 +52,7 @@ public final class TrailerManager {
     }
 
     public void start() {
+        int releasedPlayerLinks = 0;
         for (StoredTrailer stored : store.loadAll()) {
             TrailerSpec spec = TrailerSpec.byId(stored.type());
             World world = Bukkit.getWorld(stored.worldId());
@@ -57,12 +60,22 @@ public final class TrailerManager {
                 plugin.getLogger().warning("Deferring unsupported/unavailable trailer " + stored.id());
                 continue;
             }
+            PaperTrailer.PullerType pullerType = stored.pullerType();
+            UUID pullerId = stored.pullerId();
+            // A player-held link is session state and has no owner-map entry after restart.
+            if (pullerType == PaperTrailer.PullerType.PLAYER) {
+                pullerType = PaperTrailer.PullerType.NONE;
+                pullerId = null;
+                releasedPlayerLinks++;
+            }
             spawn(stored.id(), spec,
                     new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F),
-                    stored.pullerType(), stored.pullerId(), stored.loadedVehicleId(),
+                    pullerType, pullerId, stored.loadedVehicleId(),
                     stored.fluidMaterial(), stored.fluidAmount(), stored.inventory());
         }
-        plugin.getLogger().info("Loaded " + trailers.size() + " trailer(s).");
+        plugin.getLogger().info("Loaded " + trailers.size() + " trailer(s)."
+                + (releasedPlayerLinks == 0 ? "" : " Released " + releasedPlayerLinks
+                + " stale player-held link(s)."));
     }
 
     public void stop() {
@@ -193,8 +206,7 @@ public final class TrailerManager {
     }
 
     private boolean attachHeldToTrailer(Player player, PaperTrailer clicked) {
-        UUID heldId = playerHeldTrailer.get(player.getUniqueId());
-        PaperTrailer held = heldId == null ? null : trailers.get(heldId);
+        PaperTrailer held = heldTrailer(player.getUniqueId());
         if (held == null || held == clicked || !clicked.spec().canTowTrailers()) {
             return false;
         }
@@ -217,11 +229,37 @@ public final class TrailerManager {
         if (clicked.spec().kind() == TrailerSpec.Kind.VEHICLE && mountCarriedVehicle(player, clicked)) {
             return;
         }
+        PaperTrailer held = heldTrailer(player.getUniqueId());
+        if (!canPlayerClaimTrailer(held == null ? null : held.id(), clicked.id())) {
+            player.sendRichMessage("<red>Tragi deja o remorcă. Las-o jos sau atașeaz-o înainte să ridici alta.</red>");
+            return;
+        }
         clicked.detach(false);
         clicked.attach(PaperTrailer.PullerType.PLAYER, player.getUniqueId());
         playerHeldTrailer.put(player.getUniqueId(), clicked.id());
         player.sendRichMessage("<yellow>Tragi remorca. Click dreapta pe Lawn Mower, Quad Bike, Tractor sau Storage Trailer pentru atașare; apasă din nou Shift pentru a o lăsa jos.</yellow>");
         playHitch(clicked.location());
+    }
+
+    private PaperTrailer heldTrailer(UUID playerId) {
+        UUID heldId = playerHeldTrailer.get(playerId);
+        PaperTrailer held = heldId == null ? null : trailers.get(heldId);
+        if (held == null || held.pullerType() != PaperTrailer.PullerType.PLAYER
+                || !playerId.equals(held.pullerId())) {
+            if (heldId != null) {
+                playerHeldTrailer.remove(playerId, heldId);
+            }
+            return null;
+        }
+        return held;
+    }
+
+    static boolean canPlayerClaimTrailer(UUID currentlyHeldId, UUID clickedId) {
+        return currentlyHeldId == null || currentlyHeldId.equals(clickedId);
+    }
+
+    static boolean ownsPlayerPullLink(UUID trackedTrailerId, UUID trailerId) {
+        return Objects.equals(trackedTrailerId, trailerId);
     }
 
     /**
@@ -261,8 +299,16 @@ public final class TrailerManager {
         playerHeldVehicle.put(player.getUniqueId(), carried);
         player.getWorld().playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP,
                 SoundCategory.PLAYERS, 1.0F, 1.0F);
-        player.sendRichMessage("<yellow>Vehicul ridicat. Shift-click pe Vehicle Trailer sau click dreapta pe sol.</yellow>");
+        String placement = vehicle.spec().motionType() == LandVehicleSpec.MotionType.WATER
+                ? "apă sau sol" : "sol";
+        player.sendRichMessage("<yellow>Vehicul ridicat. Shift-click pe Vehicle Trailer sau click dreapta pe "
+                + placement + ".</yellow>");
         return true;
+    }
+
+    public boolean isCarryingWaterVehicle(Player player) {
+        VehicleManager.CarriedVehicle carried = playerHeldVehicle.get(player.getUniqueId());
+        return carried != null && carried.spec().motionType() == LandVehicleSpec.MotionType.WATER;
     }
 
     public boolean placeCarriedVehicle(Player player, Location location) {
@@ -296,13 +342,8 @@ public final class TrailerManager {
     }
 
     public boolean attachHeldToVehicle(Player player, LandVehicle vehicle) {
-        UUID heldId = playerHeldTrailer.get(player.getUniqueId());
-        if (heldId == null) {
-            return false;
-        }
-        PaperTrailer trailer = trailers.get(heldId);
+        PaperTrailer trailer = heldTrailer(player.getUniqueId());
         if (trailer == null) {
-            playerHeldTrailer.remove(player.getUniqueId());
             return false;
         }
         if (!vehicle.spec().canTowTrailers()) {
@@ -334,6 +375,9 @@ public final class TrailerManager {
         }
         return switch (trailer.pullerType()) {
             case PLAYER -> {
+                if (!ownsPlayerPullLink(playerHeldTrailer.get(pullerId), trailer.id())) {
+                    yield null;
+                }
                 Player player = Bukkit.getPlayer(pullerId);
                 yield player == null || !player.isOnline() ? null
                         : new PaperTrailer.PullTarget(player.getLocation(), player.getLocation());
@@ -452,6 +496,14 @@ public final class TrailerManager {
     }
 
     public void returnCarriedVehicles() {
+        // Player pull links are transient. Clear every such link, including any
+        // orphan created by an older version overwriting playerHeldTrailer.
+        for (PaperTrailer trailer : trailers.values()) {
+            if (trailer.pullerType() == PaperTrailer.PullerType.PLAYER) {
+                trailer.detach(false);
+            }
+        }
+        playerHeldTrailer.clear();
         for (Map.Entry<UUID, VehicleManager.CarriedVehicle> entry
                 : new ArrayList<>(playerHeldVehicle.entrySet())) {
             Player player = Bukkit.getPlayer(entry.getKey());

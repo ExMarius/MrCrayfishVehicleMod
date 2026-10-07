@@ -45,6 +45,10 @@ final class WaterVehiclePhysics {
                 + 0.25D * Math.min(1.0F, speed / MAX_FORWARD_SPEED);
     }
 
+    static double restingSurfaceY(double waterLevel) {
+        return targetSurfaceY(waterLevel, 0.0F);
+    }
+
     enum State {
         IN_WATER,
         UNDER_WATER,

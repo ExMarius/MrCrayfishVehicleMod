@@ -3,8 +3,12 @@ package com.mrcrayfish.vehicle.paper.listener;
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
+import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
+import org.bukkit.FluidCollisionMode;
+import org.bukkit.Location;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -27,6 +31,7 @@ import org.bukkit.event.player.PlayerResourcePackStatusEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
 import org.bukkit.event.server.ServerCommandEvent;
 import org.bukkit.event.world.WorldLoadEvent;
+import org.bukkit.util.RayTraceResult;
 
 import java.util.Locale;
 import java.util.regex.Pattern;
@@ -167,16 +172,44 @@ public final class VehicleListener implements Listener {
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onPlaceCarriedVehicle(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_BLOCK
-                || event.getClickedBlock() == null || event.getBlockFace() == null) {
+        if (event.getHand() != EquipmentSlot.HAND) {
             return;
         }
-        org.bukkit.Location location = event.getClickedBlock().getRelative(event.getBlockFace())
-                .getLocation().add(0.5D, 0.0D, 0.5D);
-        location.setYaw(event.getPlayer().getLocation().getYaw());
-        if (vehicles.trailers().placeCarriedVehicle(event.getPlayer(), location)) {
+        boolean carryingWaterVehicle = vehicles.trailers().isCarryingWaterVehicle(event.getPlayer());
+        if (!acceptsCarriedVehiclePlacement(event.getAction(), carryingWaterVehicle)) {
+            return;
+        }
+
+        Location location = carryingWaterVehicle ? waterPlacement(event.getPlayer()) : null;
+        if (location == null && event.getAction() == Action.RIGHT_CLICK_BLOCK
+                && event.getClickedBlock() != null && event.getBlockFace() != null) {
+            location = event.getClickedBlock().getRelative(event.getBlockFace())
+                    .getLocation().add(0.5D, 0.0D, 0.5D);
+            location.setYaw(event.getPlayer().getLocation().getYaw());
+        }
+        if (location != null && vehicles.trailers().placeCarriedVehicle(event.getPlayer(), location)) {
             event.setCancelled(true);
         }
+    }
+
+    /** Empty-hand water interaction is RIGHT_CLICK_AIR because carrying is virtual. */
+    static boolean acceptsCarriedVehiclePlacement(Action action, boolean carryingWaterVehicle) {
+        return action == Action.RIGHT_CLICK_BLOCK
+                || carryingWaterVehicle && action == Action.RIGHT_CLICK_AIR;
+    }
+
+    private static Location waterPlacement(Player player) {
+        RayTraceResult result = player.rayTraceBlocks(6.0D, FluidCollisionMode.ALWAYS);
+        Block block = result == null ? null : result.getHitBlock();
+        if (block == null) {
+            return null;
+        }
+        double y = LandVehicle.restingWaterRootY(block);
+        if (Double.isNaN(y)) {
+            return null;
+        }
+        return new Location(block.getWorld(), block.getX() + 0.5D, y, block.getZ() + 0.5D,
+                player.getLocation().getYaw(), 0.0F);
     }
 
     @EventHandler(ignoreCancelled = true)
