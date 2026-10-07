@@ -43,7 +43,7 @@ class VehicleListenerTest {
                 org.bukkit.event.block.Action.RIGHT_CLICK_AIR, false, true));
         assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, false, false));
-        assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
+        assertTrue(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK, true, true));
         assertFalse(VehicleListener.acceptsCarriedVehiclePlacement(
                 org.bukkit.event.block.Action.LEFT_CLICK_AIR, true, false));

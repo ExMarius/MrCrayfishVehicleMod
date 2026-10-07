@@ -9,6 +9,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TrailerManagerTest {
     @Test
+    void emptyHandsReceiveAJetSkiPlacementInputToken() {
+        assertTrue(TrailerManager.needsWaterPlacementToken(true, true));
+        assertFalse(TrailerManager.needsWaterPlacementToken(false, true));
+        assertFalse(TrailerManager.needsWaterPlacementToken(true, false));
+        assertFalse(TrailerManager.needsWaterPlacementToken(false, false));
+    }
+
+    @Test
     void playerCannotClaimASecondDistinctTrailer() {
         UUID held = UUID.randomUUID();
         UUID second = UUID.randomUUID();
