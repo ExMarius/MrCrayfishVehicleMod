@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r18_pack(self):
+    def test_configured_sha1_matches_deterministic_r19_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -88,6 +88,30 @@ class ResourcePackBuildTest(unittest.TestCase):
             self.assertIn(event, sounds)
         engine = self.archive.read("assets/vehicle/sounds/entity/sports_car/engine.ogg")
         self.assertEqual(29_672, self.last_ogg_granule(engine))
+
+    def test_mini_bus_models_and_audio_are_complete(self):
+        expected_elements = {
+            "mini_bus_body": 58,
+            "mini_bus_stock_roof": 36,
+            "mini_bus_front_roof": 20,
+            "mini_bus_roof_racks": 9,
+            "mini_bus_left_door": 5,
+            "mini_bus_right_door": 5,
+            "mini_bus_sliding_door": 2,
+            "mini_bus_rear": 13,
+            "mini_bus_seat": 6,
+            "mini_bus_dashboard": 11,
+            "big_tow_bar": 4,
+        }
+        for model, count in expected_elements.items():
+            data = self.read_json(f"assets/vehicle/models/item/{model}.json")
+            self.assertEqual(count, len(data["elements"]), model)
+            self.assertIn(f"assets/vehicle/items/{model}.json", self.entries)
+            self.assertIn(f"assets/vehicle/textures/item/{model}.png", self.entries)
+        sounds = self.read_json("assets/vehicle/sounds.json")
+        self.assertIn("entity.mini_bus.engine", sounds)
+        engine = self.archive.read("assets/vehicle/sounds/entity/mini_bus/engine.ogg")
+        self.assertEqual(113_610, self.last_ogg_granule(engine))
 
     @staticmethod
     def last_ogg_granule(data):

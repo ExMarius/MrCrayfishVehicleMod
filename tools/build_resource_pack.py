@@ -62,7 +62,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r18 — eight vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r19 — nine vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -95,6 +95,17 @@ def build(output: Path) -> tuple[Path, str]:
             "sports_car_seat": ("vehicle:item/sports_car_seat", 16383998),
             "sports_car_dashboard": ("vehicle:item/sports_car_dashboard", 16383998),
             "sports_car_roof": ("vehicle:item/sports_car_roof", 16383998),
+            "mini_bus_body": ("vehicle:item/mini_bus_body", 16383998),
+            "mini_bus_stock_roof": ("vehicle:item/mini_bus_stock_roof", 16383998),
+            "mini_bus_front_roof": ("vehicle:item/mini_bus_front_roof", 16383998),
+            "mini_bus_roof_racks": ("vehicle:item/mini_bus_roof_racks", 16383998),
+            "mini_bus_left_door": ("vehicle:item/mini_bus_left_door", 16383998),
+            "mini_bus_right_door": ("vehicle:item/mini_bus_right_door", 16383998),
+            "mini_bus_sliding_door": ("vehicle:item/mini_bus_sliding_door", 16383998),
+            "mini_bus_rear": ("vehicle:item/mini_bus_rear", 16383998),
+            "mini_bus_seat": ("vehicle:item/mini_bus_seat", 16383998),
+            "mini_bus_dashboard": ("vehicle:item/mini_bus_dashboard", 16383998),
+            "big_tow_bar": ("vehicle:item/big_tow_bar", 16383998),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -228,6 +239,32 @@ def build(output: Path) -> tuple[Path, str]:
                 {texture_key: f"vehicle:item/{target}", "particle": f"vehicle:item/{target}"},
             )
         convert_model(
+            ASSETS / "models/vehicle/mini_bus/body.json",
+            namespace / "models/item/mini_bus_body.json",
+            {"2": "vehicle:item/mini_bus_body", "particle": "vehicle:item/mini_bus_body"},
+        )
+        for source, target, texture_key in (
+            ("stock_roof", "mini_bus_stock_roof", "1"),
+            ("front_roof", "mini_bus_front_roof", "1"),
+            ("roof_racks", "mini_bus_roof_racks", "2"),
+            ("stock_left_door", "mini_bus_left_door", "2"),
+            ("stock_right_door", "mini_bus_right_door", "2"),
+            ("stock_sliding_door", "mini_bus_sliding_door", "1"),
+            ("aircon_ladder", "mini_bus_rear", "2"),
+            ("stock_seat", "mini_bus_seat", "2"),
+            ("stock_dashboard", "mini_bus_dashboard", "2"),
+        ):
+            convert_model(
+                ASSETS / f"models/vehicle/mini_bus/cosmetics/{source}.json",
+                namespace / f"models/item/{target}.json",
+                {texture_key: f"vehicle:item/{target}", "particle": f"vehicle:item/{target}"},
+            )
+        convert_model(
+            ASSETS / "models/vehicle/big_tow_bar.json",
+            namespace / "models/item/big_tow_bar.json",
+            {"texture": "vehicle:item/big_tow_bar", "particle": "vehicle:item/big_tow_bar"},
+        )
+        convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
         )
@@ -338,6 +375,29 @@ def build(output: Path) -> tuple[Path, str]:
                 namespace / f"textures/item/{target}",
             )
         copy(
+            ASSETS / "textures/vehicle/mini_bus/body.png",
+            namespace / "textures/item/mini_bus_body.png",
+        )
+        for source, target in {
+            "stock_roof": "mini_bus_stock_roof",
+            "front_roof": "mini_bus_front_roof",
+            "roof_racks": "mini_bus_roof_racks",
+            "stock_left_door": "mini_bus_left_door",
+            "stock_right_door": "mini_bus_right_door",
+            "stock_sliding_door": "mini_bus_sliding_door",
+            "aircon_ladder": "mini_bus_rear",
+            "stock_seats": "mini_bus_seat",
+            "stock_dashboard": "mini_bus_dashboard",
+        }.items():
+            copy(
+                ASSETS / f"textures/vehicle/mini_bus/cosmetics/{source}.png",
+                namespace / f"textures/item/{target}.png",
+            )
+        copy(
+            ASSETS / "textures/vehicle/big_tow_bar.png",
+            namespace / "textures/item/big_tow_bar.png",
+        )
+        copy(
             ASSETS / "textures/vehicle/sports_car/base.png",
             namespace / "textures/item/sports_car_body.png",
         )
@@ -434,6 +494,10 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/entity/sports_car/engine.ogg",
             namespace / "sounds/entity/sports_car/engine.ogg",
         )
+        copy(
+            ASSETS / "sounds/entity/mini_bus/engine.ogg",
+            namespace / "sounds/entity/mini_bus/engine.ogg",
+        )
         for source in (
             "entity/vehicle/door/open.ogg",
             "entity/vehicle/door/close.ogg",
@@ -462,6 +526,9 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.sports_car.engine": {
                 "sounds": [{"name": "vehicle:entity/sports_car/engine", "preload": True}]
+            },
+            "entity.mini_bus.engine": {
+                "sounds": [{"name": "vehicle:entity/mini_bus/engine", "preload": True}]
             },
             "entity.vehicle.door.open": {
                 "sounds": [{"name": "vehicle:entity/vehicle/door/open", "preload": True}]
@@ -495,7 +562,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r18.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r19.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

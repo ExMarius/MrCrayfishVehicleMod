@@ -28,7 +28,8 @@ All currently implemented body transforms have zero body translation/rotation, s
 | Dirt Bike | 0.850000 | 0.350000 / 0.350000 | 0.850000, 0.912500 | (0, 0.712500, 0) | (0, 0.850000, 0) before fork steering | n/a |
 | Moped | 0.765000 | 0.240000 / 0.240000 | 0.465000 | n/a (source sets `renderEngine=false`) | handles `(0, 1.0855425, 0.6305325)` before fork steering | n/a |
 | Off Roader | 1.102500 | 0.490000 / 0.490000 | 0.752500, 0.752500, 0.708750, 0.708750 (vanilla rear-seat adaptation) | n/a (source sets `renderEngine=false`) | (-0.437500, 1.572701, 0.299799) | n/a |
-| Sports Car | 0.662500 | 0.350000 / 0.350000 | 0.037500, 0.037500 | (0, 0.763125, 1.187500) | (-0.250000, 0.59400625, 0.1023625) | n/a |
+| Sports Car | 0.662500 | 0.350000 / 0.350000 | 0.037500, 0.037500 | (0, 0.763125, 1.187500) | (-0.250000, 0.59399375, 0.1023625) | n/a |
+| Mini Bus | 1.118000 | 0.386750 / 0.386750 | 0.711750 (all five) | n/a (source sets `renderEngine=false`) | (-0.406250, 1.516441875, 1.27057125) | -2.031250 |
 
 Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt Bike wheel X scales now use serialized `0.938`; the other generated and auto-scaled wheel values match their property equations.
 
@@ -44,8 +45,9 @@ Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt B
 | Moped | (0, 0.165000, 0) | hidden (`canLockWithKey=false`) |
 | Off Roader | (-1.050000, 1.321250, -0.568750) | (0, 1.015000, 0.542500) |
 | Sports Car | (-0.625000, 0.568750, -0.875000) | (-0.312500, 0.443750, 0.406250) |
+| Mini Bus | (-0.975000, 1.280500, -0.7109375) | (0, 1.0164375, 1.584375) |
 
-The r18 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
+The r19 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
 
 ### Dirt Bike fork
 
@@ -76,7 +78,7 @@ The authoritative source seat centers are `(-0.4375, 0.7525, -0.2625)`, `(0.4375
 
 The generated wheel offset is `2.6` model pixels. All four 1.4-scale wheels are centered at outside X `±0.875`, Y `0.35`, front Z `1.25`, and rear Z `-1.1875`; their contact Y is exactly zero. The two source seat centers are `(-0.4375, 0.0375, -0.3125)` and `(0.4375, 0.0375, -0.3125)` before the accepted global rider correction.
 
-`SportsCarRenderer` places the steering wheel at source translation `(-4, -1.0961, 1.6378)` pixels, scale `0.7`, and local X rotation `-67.5` degrees. After the common body matrix its center is `(-0.25, 0.59400625, 0.1023625)`. The rendered large engine preserves the generated `(0, 3.01, 19)`-pixel transform, `0.825` scale, and renderer half-scale Y correction, yielding center `(0, 0.763125, 1.1875)`.
+`SportsCarRenderer` places the steering wheel at source translation `(-4, -1.0961, 1.6378)` pixels, scale `0.7`, and local X rotation `-67.5` degrees. After the common body matrix its center is `(-0.25, 0.59399375, 0.1023625)`. The rendered large engine preserves the generated `(0, 3.01, 19)`-pixel transform, `0.825` scale, and renderer half-scale Y correction, yielding center `(0, 0.763125, 1.1875)`.
 
 The base model is not a complete car by itself. The Paper rig therefore renders all seven generated default cosmetics at their source pivots:
 
@@ -94,6 +96,14 @@ Openable parts use the source `easeOutBack` curve and original door/hood open-cl
 
 The Glove Box is a persistent 9-slot inventory with source interaction bounds `(0.125, 0.38125, 0.1875)` through `(0.5, 0.63125, 0.3125)`. The Trunk is a persistent 27-slot inventory with bounds `(-0.4375, 0.4125, -1.1875)` through `(0.4375, 0.6, -0.75)`. As in the source ray tracer, the closed boot is closer when approached from the rear: opening it exposes the trunk interaction region behind it.
 
+### Mini Bus renderer and cosmetics
+
+The serialized wheel X scale is `0.938`; wheel Y/Z scale is `1.19`, giving generated wheel offset `4.76` pixels. With body scale `1.3`, the four wheel centers are at outside X `±0.883675`, Y `0.38675`, and Z `±1.096875`; each wheel has exact ground contact. The five seat centers preserve the source two-front/two-middle/one-rear arrangement at X `±0.40625`, Y `0.71175`, and Z `0.73125`, `-0.24375`, or `-1.21875` as applicable.
+
+All eight default cosmetics are rendered: stock roof, roof racks, left/right front doors, left sliding door, air-conditioner/ladder rear decoration, seats, and dashboard. The source alternative front-roof model is also packaged but is not the generated default selection. Cosmetic pivots include front doors `(±0.934375, 0.87425, 1.665625)` and sliding door `(0.934375, 0.87425, -0.609375)`. The front doors use `±75°` Y rotations over 12 ticks; the sliding door uses `+105°` Y over 20 ticks. All retain source `easeOutBack`, sounds, persisted target state, and rotated nearest-hit boxes.
+
+The source renderer places the steering wheel at `(-5, 4.9039, 15.6378)` pixels, scale `0.7`, and X `-67.5°`, producing center `(-0.40625, 1.516441875, 1.27057125)` and display scale `0.91`. The repository registers `vehicle/mini_bus/steering_wheel` but contains no such model or texture; its own Mini Bus ray transforms instead explicitly select `GO_KART_STEERING_WHEEL`. The Paper pack therefore reuses that original model rather than exposing a missing-model fallback. Mini Bus alone overrides the standard tow model with the source `BIG_TOW_BAR`, centered at `(0, 0.5, -2.03125)`.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -105,7 +115,8 @@ The serialized or source-default offsets are:
 - Dirt Bike `(0, -0.062, -0.312)`;
 - Moped `(0, -0.031, -0.65)`;
 - Off Roader `(0, 0, 0)` (source default);
-- Sports Car `(0, 0, 0)` (source default).
+- Sports Car `(0, 0, 0)` (source default);
+- Mini Bus `(0, 0, 0)` (source default).
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -138,7 +149,9 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 11. Fertilizer/Seeder cargo entities are reconciled in place while supplies are consumed, removing movement-induced visual jumps without changing the source pile matrices.
 12. The source Off Roader's elevated standing/hanging rear seat is lowered to the other rear seat's Y because vanilla forces every mounted player into a seated pose.
 13. The r18 Sports Car port adds its two-seat generated physics, complete base plus seven-cosmetic body, rendered large engine, steering/filler transforms, four source open actions and samples, original engine loop, and persistent independent Glove Box/Trunk inventories.
-14. The obsolete r4-only milestone workflow was repaired and advanced to validate and publish the current r18 artifact instead of referencing a pack the current build no longer produced.
+14. The obsolete r4-only milestone workflow was repaired and advanced to validate and publish the current r19 artifact instead of referencing a pack the current build no longer produced.
+15. The Sports Car steering Y center was corrected from `0.59400625` to the exact renderer result `0.59399375` after re-evaluating the source `-1.0961`-pixel translation.
+16. The r19 Mini Bus port adds five-seat generated geometry, eight default cosmetics, front-door/sliding-door actions, exact filler/ignition/tow transforms, the source big tow bar, and the 113,610-sample original engine loop. The missing dedicated source steering asset is replaced only with the Go Kart wheel named by the original Mini Bus ray transforms.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -148,7 +161,8 @@ Exact matrix/equation ports:
 - source renderer translation/rotation order and generated-property scaling;
 - source Vehicle Trailer passenger offsets and trailer hitch distances;
 - source cargo layout equations and trailer work-point positions;
-- Sports Car cosmetic pivots/open angles/easing, storage capacities and interaction bounds, and persistent action/inventory state.
+- Sports Car cosmetic pivots/open angles/easing, storage capacities and interaction bounds, and persistent action/inventory state;
+- Mini Bus wheel/seat/cosmetic/openable/filler/ignition/tow geometry and big-tow-bar selection.
 
 Vanilla-client adaptations that intentionally remain:
 
@@ -157,4 +171,5 @@ Vanilla-client adaptations that intentionally remain:
 - the Moped's attached chest uses a closed vanilla chest item at the source-compensated center. Its 27-slot inventory, attachment state, contents, open/close sounds, content drops, and runtime drop point are ported; attachment also preserves the source's selected-chest behavior (the stack is not decremented), but the vanilla display cannot animate the custom source lid; sneak-right-click replaces the unavailable mod-wrench removal packet;
 - the fluid uses a `BlockDisplay` with exact source cuboid bounds rather than the source custom translucent tessellator;
 - ItemDisplays, interpolation, native item models, and vanilla interaction hitboxes replace Forge client render/ray-trace objects;
+- the Mini Bus uses the original Go Kart steering-wheel asset named by its source ray transforms because the renderer's separately registered Mini Bus steering model is absent from the repository;
 - custom per-limb player pose animation, damage wobble/destroy overlays, open fuel-door animation, and inserted-key animation are not representable with the current vanilla-client rig. These limitations do not change the audited static part coordinates.

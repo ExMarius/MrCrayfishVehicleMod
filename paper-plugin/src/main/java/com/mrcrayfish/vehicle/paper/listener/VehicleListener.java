@@ -10,6 +10,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityTransformEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
@@ -67,6 +68,10 @@ public final class VehicleListener implements Listener {
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onVehicleEntityDamage(EntityDamageEvent event) {
         if (event.getEntity().getScoreboardTags().contains(LandVehicleRig.ENTITY_TAG)) {
+            if (event instanceof EntityDamageByEntityEvent damage
+                    && damage.getDamager() instanceof Player player) {
+                vehicles.handleAttack(player, event.getEntity());
+            }
             event.setCancelled(true);
         }
     }
@@ -194,7 +199,7 @@ public final class VehicleListener implements Listener {
     public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
         switch (event.getStatus()) {
             case SUCCESSFULLY_LOADED -> event.getPlayer().sendRichMessage(
-                    "<green>[Vehicle] Resource pack-ul r18 a fost încărcat.</green>");
+                    "<green>[Vehicle] Resource pack-ul r19 a fost încărcat.</green>");
             case DECLINED, FAILED_DOWNLOAD, FAILED_RELOAD, INVALID_URL, DISCARDED -> {
                 plugin.getLogger().warning("Resource pack " + event.getStatus() + " for "
                         + event.getPlayer().getName());

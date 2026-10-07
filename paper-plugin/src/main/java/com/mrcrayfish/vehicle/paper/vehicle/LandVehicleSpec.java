@@ -39,6 +39,7 @@ public record LandVehicleSpec(
         List<Wheel> wheels,
         List<Seat> seats,
         boolean canTowTrailers,
+        String towBarModel,
         Point towBarOffset,
         Point trailerOffset,
         Motorcycle motorcycle,
@@ -76,7 +77,7 @@ public record LandVehicleSpec(
                     wheel(1, false, 7.0F, 0.25F, -9.5F, 1.0F, 0.8625F, 0.8625F, 1.0F, -1.0F, 3.2F)
             ),
             List.of(seat(true, 0.0F, -3.0F, -1.0F, 1.0F, -1.0F, 3.2F)),
-            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.375F),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.375F),
             null, null, List.of(), false
     );
 
@@ -103,7 +104,7 @@ public record LandVehicleSpec(
                     wheel(1, false, 5.0F, 0.8F, -10.7F, 0.97F, 0.97F, 0.97F, 1.25F, -2.0F, 3.08F)
             ),
             List.of(seat(true, 0.0F, 7.0F, -9.0F, 1.25F, -2.0F, 3.08F)),
-            true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, -0.01F, -1.0F),
+            true, "tow_bar", new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, -0.01F, -1.0F),
             null, null, List.of(), true
     );
 
@@ -133,7 +134,7 @@ public record LandVehicleSpec(
                     seat(true, 0.0F, 5.0F, -4.0F, 1.1F, -0.5F, 4.4F),
                     seat(false, 0.0F, 5.5F, -12.0F, 1.1F, -0.5F, 4.4F)
             ),
-            true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, -0.55F),
+            true, "tow_bar", new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, -0.55F),
             null, null, List.of(), false
     );
 
@@ -169,7 +170,7 @@ public record LandVehicleSpec(
                             1.875F, 2.8F, 2.8F, 1.0F, -3.0F, 5.7F)
             ),
             List.of(seat(true, 0.0F, 9.0F, -14.0F, 1.0F, -3.0F, 5.7F)),
-            true, new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
+            true, "tow_bar", new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
             null, null, List.of(), false
     );
 
@@ -200,7 +201,7 @@ public record LandVehicleSpec(
                     seat(true, 0.0F, 8.0F, -2.0F, 1.0F, 0.0F, 5.6F),
                     seat(false, 0.0F, 9.0F, -9.0F, 1.0F, 0.0F, 5.6F)
             ),
-            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.312F),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.312F),
             new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), null,
             List.of(), false
     );
@@ -234,7 +235,7 @@ public record LandVehicleSpec(
                             1.0F, 0.8F, 0.8F, 1.2F, -1.0F, 3.2F)
             ),
             List.of(seat(true, 0.0F, 4.0F, -1.0F, 1.2F, -1.0F, 3.2F)),
-            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.65F),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.65F),
             new Motorcycle(45.0F, 11.5F * MODEL_UNIT * 1.2F, -22.5F, false),
             new MopedParts(
                     List.of(new Part("moped_mud_guard", new Point(0.0F, 0.47283F, 0.8863575F),
@@ -283,7 +284,7 @@ public record LandVehicleSpec(
                     seat(false, 5.0F, 3.5F, -14.5F, 1.4F, -1.0F, 5.6F),
                     seat(false, -5.0F, 3.5F, -18.9F, 1.4F, -1.0F, 5.6F)
             ),
-            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
             null, null, List.of(), false
     );
 
@@ -300,7 +301,7 @@ public record LandVehicleSpec(
             false, new Point(0.0F, 0.0F, 0.0F),
             new Part("iron_large_engine", new Point(0.0F, 0.763125F, 1.1875F),
                     0.825F, 0.0F, 0.0F, 0.0F),
-            new Part("sports_car_steering_wheel", new Point(-0.25F, 0.59400625F, 0.1023625F),
+            new Part("sports_car_steering_wheel", new Point(-0.25F, 0.59399375F, 0.1023625F),
                     0.7F, -67.5F, 0.0F, 0.0F),
             itemPart("fuel_door_closed", -10.0F, 6.5F, -14.0F,
                     0.4F, 0.0F, -90.0F, 0.0F, 1.0F, 0.0F, 2.6F),
@@ -352,7 +353,7 @@ public record LandVehicleSpec(
                     seat(true, 7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F),
                     seat(false, -7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F)
             ),
-            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
             null, null,
             List.of(
                     new StorageCompartment("glove_box", "Glove Box", 1,
@@ -365,15 +366,86 @@ public record LandVehicleSpec(
             false
     );
 
-    private static final Map<String, LandVehicleSpec> BY_ID = Map.of(
-            GO_KART.id, GO_KART,
-            LAWN_MOWER.id, LAWN_MOWER,
-            QUAD_BIKE.id, QUAD_BIKE,
-            TRACTOR.id, TRACTOR,
-            DIRT_BIKE.id, DIRT_BIKE,
-            MOPED.id, MOPED,
-            OFF_ROADER.id, OFF_ROADER,
-            SPORTS_CAR.id, SPORTS_CAR
+    /* Generated Mini Bus geometry uses body scale 1.3 and wheelOffset
+     * (8 * 1.19 / 2) = 4.76 pixels. The source registers a Mini Bus steering-wheel
+     * model that is absent from its assets; its ray transforms explicitly use the Go Kart wheel,
+     * so that original model is the non-fallback vanilla representation here. */
+    public static final LandVehicleSpec MINI_BUS = new LandVehicleSpec(
+            "mini_bus", "Mini Bus", "mini_bus_body",
+            2.0F, 2.0F, 1.0F,
+            1.3F, 1.0F, 4.76F,
+            14.0F, 35.0F, 13.5F * MODEL_UNIT * 1.3F, -13.5F * MODEL_UNIT * 1.3F, 5.0F,
+            30_000.0F, 0.375F, 0.75F, 1.25F, "vehicle:entity.mini_bus.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.40625F, 1.516441875F, 1.27057125F),
+                    0.91F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -12.0F, 10.0F, -8.75F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.3F, 1.0F, 4.76F),
+            itemPart("key_hole", 0.0F, 6.75F, 19.5F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.3F, 1.0F, 4.76F),
+            List.of(
+                    new Part("mini_bus_stock_roof", new Point(0.0F, 1.52425F, 0.0F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_roof_racks", new Point(0.0F, 2.2555F, 0.0F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_left_door", new Point(0.934375F, 0.87425F, 1.665625F),
+                            1.3F, 0.0F, 0.0F, 0.0F,
+                            new Openable("left_door", Axis.Y, -75.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.040625F, 0.0F, -1.096875F),
+                                            new Point(0.340886F, 1.305712F, 0.040625F)))),
+                    new Part("mini_bus_right_door", new Point(-0.934375F, 0.87425F, 1.665625F),
+                            1.3F, 0.0F, 0.0F, 0.0F,
+                            new Openable("right_door", Axis.Y, 75.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.340886F, 0.0F, -1.096875F),
+                                            new Point(0.040625F, 1.305712F, 0.040625F)))),
+                    new Part("mini_bus_sliding_door", new Point(0.934375F, 0.87425F, -0.609375F),
+                            1.3F, 0.0F, 0.0F, 0.0F,
+                            new Openable("left_sliding_door", Axis.Y, 105.0F, 20,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.040625F, 0.0F, -0.040625F),
+                                            new Point(0.040625F, 1.305712F, 1.015625F)))),
+                    new Part("mini_bus_rear", new Point(0.0F, 0.9555F, -1.7875F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_seat", new Point(0.0F, 0.87425F, 0.0F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_dashboard", new Point(0.0F, 0.87425F, 1.3F),
+                            1.3F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    wheel(-1, true, 9.0F, 0.0F, 13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F),
+                    wheel(1, true, 9.0F, 0.0F, 13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F),
+                    wheel(-1, false, 9.0F, 0.0F, -13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F),
+                    wheel(1, false, 9.0F, 0.0F, -13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F)
+            ),
+            List.of(
+                    seat(true, 5.0F, 3.0F, 9.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, -5.0F, 3.0F, 9.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, 5.0F, 3.0F, -3.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, -5.0F, 3.0F, -3.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, 5.0F, 3.0F, -15.0F, 1.3F, 1.0F, 4.76F)
+            ),
+            true, "big_tow_bar", new Point(0.0F, 0.0F, -25.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
+            Map.entry(GO_KART.id, GO_KART),
+            Map.entry(LAWN_MOWER.id, LAWN_MOWER),
+            Map.entry(QUAD_BIKE.id, QUAD_BIKE),
+            Map.entry(TRACTOR.id, TRACTOR),
+            Map.entry(DIRT_BIKE.id, DIRT_BIKE),
+            Map.entry(MOPED.id, MOPED),
+            Map.entry(OFF_ROADER.id, OFF_ROADER),
+            Map.entry(SPORTS_CAR.id, SPORTS_CAR),
+            Map.entry(MINI_BUS.id, MINI_BUS)
     );
 
     public static LandVehicleSpec byId(String id) {

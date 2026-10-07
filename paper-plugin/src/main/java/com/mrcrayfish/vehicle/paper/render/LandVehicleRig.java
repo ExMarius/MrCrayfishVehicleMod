@@ -108,7 +108,7 @@ public final class LandVehicleRig {
         ItemDisplay steering = partDisplay(world, location, spec.steering(), vehicleId, all);
         ItemDisplay fuelFiller = partDisplay(world, location, spec.fuelFiller(), vehicleId, all);
         ItemDisplay towBar = spec.canTowTrailers()
-                ? partDisplay(world, location, new LandVehicleSpec.Part("tow_bar",
+                ? partDisplay(world, location, new LandVehicleSpec.Part(spec.towBarModel(),
                 spec.towBarVisualCenter(), 1.0F, 0.0F, 180.0F, 0.0F), vehicleId, all)
                 : null;
 

@@ -202,6 +202,16 @@ public final class VehicleManager {
         }
     }
 
+    public void handleAttack(Player player, Entity clicked) {
+        LandVehicle vehicle = entities.get(clicked.getUniqueId());
+        if (vehicle == null || !player.hasPermission("vehicle.use")) {
+            return;
+        }
+        if (vehicle.handleSpecialAttack(player, clicked)) {
+            save();
+        }
+    }
+
     public void handleInventoryClose(Inventory inventory) {
         for (LandVehicle vehicle : vehicles.values()) {
             if (vehicle.ownsStorage(inventory)) {

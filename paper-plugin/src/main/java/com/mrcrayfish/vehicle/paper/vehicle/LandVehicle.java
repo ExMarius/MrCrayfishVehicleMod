@@ -441,6 +441,14 @@ public final class LandVehicle {
      * Moped chest attachment preserves the original behavior of not consuming the selected chest.
      */
     public boolean handleSpecialInteraction(Player player, Entity clicked) {
+        return handleSpecialInteraction(player, clicked, true);
+    }
+
+    public boolean handleSpecialAttack(Player player, Entity clicked) {
+        return handleSpecialInteraction(player, clicked, false);
+    }
+
+    private boolean handleSpecialInteraction(Player player, Entity clicked, boolean rightClick) {
         SpecialTarget target = targetedSpecialPart(player);
         if (target != null) {
             if (target.openable() != null) {
@@ -448,9 +456,11 @@ public final class LandVehicle {
             }
             Inventory inventory = compartmentInventories.get(target.compartment().key());
             if (inventory != null) {
-                Location soundLocation = compartmentLocation(target.compartment());
-                player.getWorld().playSound(soundLocation, Sound.BLOCK_CHEST_OPEN, 0.5F, 0.9F);
-                player.openInventory(inventory);
+                if (rightClick) {
+                    Location soundLocation = compartmentLocation(target.compartment());
+                    player.getWorld().playSound(soundLocation, Sound.BLOCK_CHEST_OPEN, 0.5F, 0.9F);
+                    player.openInventory(inventory);
+                }
                 return true;
             }
         }
@@ -468,6 +478,9 @@ public final class LandVehicle {
         }
         if (!rig.isStorageInteraction(clicked) && !aimingAtMopedStorage(player)) {
             return false;
+        }
+        if (!rightClick) {
+            return true;
         }
         if (!chestAttached) {
             player.sendRichMessage("<yellow>Ține o ladă în mână pentru a o atașa Moped-ului.</yellow>");
