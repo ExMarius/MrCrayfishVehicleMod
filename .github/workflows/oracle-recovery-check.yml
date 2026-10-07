@@ -49,7 +49,10 @@ jobs:
           plugin_pack_url=$(sed -n 's/^[[:space:]]*url: *"\([^"]*\)".*/\1/p' "$plugin_config")
           plugin_pack_sha1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' "$plugin_config")
           server_pack_url=$(sed -n 's/^resource-pack=//p' "$ROOT/mc/server.properties" | tail -1)
+          # Paper persists Java-properties URL separators as \: after startup.
+          server_pack_url=${server_pack_url//\\:/:}
           server_pack_sha1=$(sed -n 's/^resource-pack-sha1=//p' "$ROOT/mc/server.properties" | tail -1)
+          notice "pack-plugin=$(basename "$plugin_pack_url") pack-server=$(basename "$server_pack_url") url-match=$(test "$plugin_pack_url" = "$server_pack_url" && echo yes || echo no) sha1-match=$(test "$plugin_pack_sha1" = "$server_pack_sha1" && echo yes || echo no)"
 
           test "$configured_port" = 25565
           printf '%s\n' "$frp_local_port" | grep -Eq '(^|,)25565(,|$)'
