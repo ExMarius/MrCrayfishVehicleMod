@@ -2,8 +2,11 @@ package com.mrcrayfish.vehicle.paper.listener;
 
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -39,6 +42,7 @@ public final class VehicleListener implements Listener {
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         String protectedCommand = protectEntityKill(event.getMessage());
         if (!protectedCommand.equals(event.getMessage())) {
+            dismountPlayersFromUnprotectedVehicles();
             event.setMessage(protectedCommand);
             event.getPlayer().sendRichMessage(
                     "<yellow>Selector protejat automat:</yellow> "
@@ -50,9 +54,25 @@ public final class VehicleListener implements Listener {
     public void onServerCommand(ServerCommandEvent event) {
         String protectedCommand = protectEntityKill(event.getCommand());
         if (!protectedCommand.equals(event.getCommand())) {
+            dismountPlayersFromUnprotectedVehicles();
             event.setCommand(protectedCommand);
             event.getSender().sendRichMessage(
                     "<yellow>Selector protejat automat: jucătorii și vehiculele au fost excluse.</yellow>");
+        }
+    }
+
+    /**
+     * Paper can loop in AbstractHorse's dismount-location search if a ridden
+     * ordinary horse is removed directly by /kill. Plugin seat horses are
+     * excluded by the rewritten selector; riders of every other mount are
+     * detached while that mount is still valid, before the command executes.
+     */
+    private static void dismountPlayersFromUnprotectedVehicles() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Entity mount = player.getVehicle();
+            if (mount != null && !mount.getScoreboardTags().contains(LandVehicleRig.ENTITY_TAG)) {
+                player.leaveVehicle();
+            }
         }
     }
 

@@ -559,6 +559,28 @@ public final class LandVehicleRig {
 
     public void remove() {
         removed = true;
+        /* Never invalidate a minimum-scale Horse while it still has a player.
+         * Paper's next ride tick may otherwise loop inside
+         * AbstractHorse#getDismountLocationInDirection. Restore an ordinary
+         * bounding box and detach synchronously before removing the rig. */
+        for (SeatCarrier carrier : seats) {
+            Horse horse = carrier.horse;
+            if (horse == null || !horse.isValid() || horse.getPassengers().isEmpty()) {
+                continue;
+            }
+            AttributeInstance scale = horse.getAttribute(Attribute.SCALE);
+            if (scale != null) {
+                scale.setBaseValue(1.0D);
+            }
+            horse.eject();
+            if (!horse.getPassengers().isEmpty()) {
+                /* Failing open is safer than deleting a still-ridden carrier. */
+                entities.remove(horse);
+                horse.setInvisible(false);
+                horse.setInvulnerable(false);
+                horse.setGravity(true);
+            }
+        }
         for (Entity entity : new ArrayList<>(entities)) {
             entity.remove();
         }
