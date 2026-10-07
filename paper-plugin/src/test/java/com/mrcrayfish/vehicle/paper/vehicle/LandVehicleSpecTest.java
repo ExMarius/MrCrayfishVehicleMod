@@ -200,7 +200,7 @@ class LandVehicleSpecTest {
                 .storageCompartments().getFirst().interactionBox();
         assertPoint(gloveBox.min(), 0.125F, 0.38125F, 0.1875F);
         assertPoint(gloveBox.max(), 0.5F, 0.63125F, 0.3125F);
-        assertEquals(1.0D, gloveBox.rayIntersection(
+        assertEquals(0.9375D, gloveBox.rayIntersection(
                 new LandVehicleSpec.Point(0.25F, 0.5F, 1.25F),
                 new LandVehicleSpec.Point(0.0F, 0.0F, -1.0F), 6.0D), 1.0E-6D);
         assertTrue(Double.isInfinite(gloveBox.rayIntersection(
