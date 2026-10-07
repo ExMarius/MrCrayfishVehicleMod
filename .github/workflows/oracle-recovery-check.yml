@@ -27,7 +27,7 @@ jobs:
           }
           ROOT="$HOME/minecraft-server"
           entries=$(find "$ROOT" -maxdepth 1 -mindepth 1 -printf '%f\n' 2>/dev/null | sort | paste -sd, -)
-          sizes=$(du -sh "$ROOT"/* "$ROOT"/.[!.]* 2>/dev/null | sort -h | tr '\n' '|')
+          sizes=$(du -sh "$ROOT"/* "$ROOT"/.[!.]* 2>/dev/null | sort -h | tr '\n' '|' || true)
           java=""
           while IFS= read -r pid; do
             [ -n "$pid" ] || continue
