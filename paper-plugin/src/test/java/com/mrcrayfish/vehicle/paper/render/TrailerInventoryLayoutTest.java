@@ -43,6 +43,28 @@ class TrailerInventoryLayoutTest {
     }
 
     @Test
+    void amountOnlyConsumptionKeepsExistingCargoTransformsStable() {
+        assertEquals(
+                TrailerRig.inventoryTransforms(TrailerSpec.FERTILIZER, 63),
+                TrailerRig.inventoryTransforms(TrailerSpec.FERTILIZER, 62));
+        assertEquals(
+                TrailerRig.inventoryTransforms(TrailerSpec.SEEDER, 63),
+                TrailerRig.inventoryTransforms(TrailerSpec.SEEDER, 62));
+    }
+
+    @Test
+    void sourcePileThresholdOnlyRemovesTheTrailingDisplay() {
+        List<TrailerRig.InventoryTransform> full = TrailerRig.inventoryTransforms(
+                TrailerSpec.SEEDER, 64);
+        List<TrailerRig.InventoryTransform> consumed = TrailerRig.inventoryTransforms(
+                TrailerSpec.SEEDER, 63);
+
+        assertEquals(4, full.size());
+        assertEquals(3, consumed.size());
+        assertEquals(full.subList(0, 3), consumed);
+    }
+
+    @Test
     void trailersWithoutSourceCargoRenderingProduceNoTransforms() {
         assertTrue(TrailerRig.inventoryTransforms(TrailerSpec.STORAGE_TRAILER, 64).isEmpty());
     }

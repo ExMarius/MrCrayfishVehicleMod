@@ -237,23 +237,60 @@ public final class TrailerRig {
                 && inventoryDisplays.stream().allMatch(display -> display.entity.isValid())) {
             return;
         }
-        for (InventoryDisplay display : inventoryDisplays) {
-            entities.remove(display.entity);
-            display.entity.remove();
-        }
-        inventoryDisplays.clear();
         inventoryFingerprint = fingerprint;
 
         World world = root.getWorld();
         if (world == null) {
             return;
         }
-        for (InventoryLayout layout : inventoryLayout(spec, contents)) {
-            ItemDisplay entity = display(world, root, layout.stack.clone());
-            mark(entity, trailerId);
-            entities.add(entity);
+        List<InventoryLayout> desired = inventoryLayout(spec, contents);
+        int shared = Math.min(inventoryDisplays.size(), desired.size());
+
+        /* Consuming one seed or one bone meal changes ItemStack#hashCode every
+         * work tick. Recreating the whole pile for that amount-only change made
+         * fresh ItemDisplays interpolate from the moving trailer root, so the
+         * cargo appeared to jump outside while planting/fertilizing. Reconcile
+         * the existing entities in place and only add/remove displays when the
+         * source renderer's visible pile count actually changes. */
+        for (int index = 0; index < shared; index++) {
+            InventoryDisplay current = inventoryDisplays.get(index);
+            InventoryLayout layout = desired.get(index);
+            ItemDisplay entity = current.entity;
+            if (!entity.isValid()) {
+                entities.remove(entity);
+                entity.remove();
+                entity = inventoryDisplay(world, root, layout);
+            } else if (!entity.getItemStack().isSimilar(layout.stack)) {
+                entity.setItemStack(visualStack(layout.stack));
+            }
+            inventoryDisplays.set(index, new InventoryDisplay(entity, layout));
+        }
+        for (int index = inventoryDisplays.size() - 1; index >= desired.size(); index--) {
+            InventoryDisplay removed = inventoryDisplays.remove(index);
+            entities.remove(removed.entity);
+            removed.entity.remove();
+        }
+        for (int index = shared; index < desired.size(); index++) {
+            InventoryLayout layout = desired.get(index);
+            ItemDisplay entity = inventoryDisplay(world, root, layout);
             inventoryDisplays.add(new InventoryDisplay(entity, layout));
         }
+    }
+
+    private ItemDisplay inventoryDisplay(World world, Location root, InventoryLayout layout) {
+        ItemDisplay entity = display(world, root, visualStack(layout.stack));
+        mark(entity, trailerId);
+        entities.add(entity);
+        return entity;
+    }
+
+    private static ItemStack visualStack(ItemStack source) {
+        ItemStack visual = source.clone();
+        /* Stack count controls the number of rendered copies, not the appearance
+         * of an individual source item. Keeping each display at amount one also
+         * prevents amount-only metadata updates from reaching vanilla clients. */
+        visual.setAmount(1);
+        return visual;
     }
 
     /** Exact item-pile matrices from FertilizerTrailerRenderer and SeederTrailerRenderer. */

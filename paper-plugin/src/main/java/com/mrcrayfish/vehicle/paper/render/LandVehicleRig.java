@@ -556,21 +556,46 @@ public final class LandVehicleRig {
         if (removed || !valid()) {
             return false;
         }
+
+        /* VehicleEntity/SeatTracker selects the closest available source seat,
+         * rather than the first seat in declaration order. This is particularly
+         * important for the Off Roader: approaching its rear selects one of the
+         * two hanging rear positions without requiring the front seats to fill. */
+        SeatCarrier closest = null;
+        double closestDistance = Double.POSITIVE_INFINITY;
+        double playerHalfHeight = player.getBoundingBox().getHeight() * 0.5D;
+        Location playerLocation = player.getLocation();
         for (SeatCarrier carrier : seats) {
             Pig pig = carrier.pig;
             if (pig != null && pig.isValid() && !pig.getPassengers().isEmpty()) {
                 continue;
             }
-            if (pig != null) {
-                discardPig(carrier);
+            Location seatLocation = carrier.anchor.getLocation();
+            if (!seatLocation.getWorld().equals(playerLocation.getWorld())) {
+                continue;
             }
-            pig = createPig(carrier);
-            if (pig != null && pig.addPassenger(player)) {
-                carrier.rider = player.getUniqueId();
-                return true;
+            /* SeatTracker compares the player's feet against seatY minus half
+             * the player's bounding-box height. Preserve that source equation. */
+            seatLocation.subtract(0.0D, playerHalfHeight, 0.0D);
+            double distance = seatLocation.distanceSquared(playerLocation);
+            if (distance < closestDistance) {
+                closest = carrier;
+                closestDistance = distance;
             }
-            discardPig(carrier);
         }
+        if (closest == null) {
+            return false;
+        }
+
+        if (closest.pig != null) {
+            discardPig(closest);
+        }
+        Pig pig = createPig(closest);
+        if (pig != null && pig.addPassenger(player)) {
+            closest.rider = player.getUniqueId();
+            return true;
+        }
+        discardPig(closest);
         return false;
     }
 

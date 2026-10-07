@@ -68,7 +68,7 @@ The generated body scale is `1.4`; each wheel's generated scale is another `1.4`
 
 `OffRoaderRenderer` translates its steering wheel to `(-0.3125, 0.35, 0.2)`, rotates local X by `-45` degrees, translates local Y by `-0.02`, and scales by `0.75`. After body scaling and the rotated local translation, the world center is `(-0.4375, 1.572701, 0.299799)` with scale `1.05`. Runtime steering then rotates it around its local Y axis by `steering / 35 * 25`, preserving the source call order.
 
-The four source seat centers are `(-0.4375, 0.7525, -0.2625)`, `(0.4375, 0.7525, -0.2625)`, `(-0.4375, 1.40875, -1.26875)`, and `(0.4375, 0.70875, -1.65375)`. The source-specific per-limb poses for the unusual rear seats remain a vanilla-client limitation; the accepted horse-style pose and exact seat roots are retained.
+The four source seat centers are `(-0.4375, 0.7525, -0.2625)`, `(0.4375, 0.7525, -0.2625)`, `(-0.4375, 1.40875, -1.26875)`, and `(0.4375, 0.70875, -1.65375)`. The third and fourth entries are the source's unusual rear hanging positions. Mounting now mirrors `SeatTracker#getClosestAvailableSeatToPlayer`, so approaching and clicking from the rear can select a free hanging position even while a front seat is free. The source-specific per-limb poses for those rear seats remain a vanilla-client limitation; the accepted horse-style pose and exact seat roots are retained.
 
 ### Vehicle Trailer passenger offsets
 
@@ -96,7 +96,7 @@ Every trailer has `S=1.1`, `A=-0.5`, `W=5`, body origin `Y=0.859375`, wheel cent
 | Fluid Trailer | ±0.790625 | -0.171875 | -1.718750 | fluid minimum `(-0.42625, 0.653125, -1.089)`, full size `(0.83875, 0.680625, 1.837)` |
 | Vehicle Trailer | ±0.996875 | -0.171875 | -1.581250 | carried vehicle at source passenger offset |
 
-Fertilizer and Seeder cargo displays now use the original per-stack count divisors, grid spacing, layer staggering, rotation order, and `0.45 * bodyScale` scale. Their three world-interaction points are evaluated every tick like the original entities. Seeder inventory acceptance retains the original Forge seeds-tag set; planting retains the source crop-block restriction.
+Fertilizer and Seeder cargo displays now use the original per-stack count divisors, grid spacing, layer staggering, rotation order, and `0.45 * bodyScale` scale. Their three world-interaction points are evaluated every tick like the original entities. Seeder inventory acceptance retains the original Forge seeds-tag set; planting retains the source crop-block restriction. Consuming one item reconciles the existing cargo displays in place instead of respawning the entire pile at the moving trailer root; only a real source pile-count threshold adds or removes a display, preventing planting/fertilizing movement from pushing the visible cargo outside the trailer.
 
 ## Corrections made by this audit
 
@@ -109,6 +109,8 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 7. Independent regression tests now cover common body equations, wheel centers/scales/contact, seats, engines, steering, fuel/ignition parts, tow bars, Vehicle Trailer offsets, rear-axle wheelie order, motorcycle fork matrices, every trailer hitch/wheel/part equation, and cargo layouts.
 8. The r16 Moped port adds its serialized physics, all body/cosmetic parts, exact fork-linked handles/mud guard/front wheel, original engine sample, fuel filler, Vehicle Trailer offset, and persistent attachable 27-slot chest.
 9. The r17 Off Roader port adds its four-seat geometry, nested `1.4 * 1.4` wheel scaling, exact rotated-local steering transform, fuel/ignition transforms, 25,000-unit tank, and original shared Jet Ski engine sample.
+10. Vehicle entry now chooses the closest available source seat, exposing the Off Roader's rear hanging positions without requiring every earlier seat to be occupied.
+11. Fertilizer/Seeder cargo entities are reconciled in place while supplies are consumed, removing movement-induced visual jumps without changing the source pile matrices.
 
 ## Exact ports versus vanilla-client adaptations
 
