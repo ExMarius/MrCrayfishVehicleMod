@@ -170,13 +170,13 @@ public final class VehicleListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.HIGH)
     public void onPlaceCarriedVehicle(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) {
-            return;
-        }
         boolean carryingWaterVehicle = vehicles.trailers().isCarryingWaterVehicle(event.getPlayer());
-        if (!acceptsCarriedVehiclePlacement(event.getAction(), carryingWaterVehicle)) {
+        if (event.getHand() == null
+                || event.getHand() != EquipmentSlot.HAND && !carryingWaterVehicle
+                || !acceptsCarriedVehiclePlacement(
+                event.getAction(), carryingWaterVehicle, event.isCancelled())) {
             return;
         }
 
@@ -192,8 +192,16 @@ public final class VehicleListener implements Listener {
         }
     }
 
-    /** Empty-hand water interaction is RIGHT_CLICK_AIR because carrying is virtual. */
-    static boolean acceptsCarriedVehiclePlacement(Action action, boolean carryingWaterVehicle) {
+    /**
+     * Empty-hand water interaction is RIGHT_CLICK_AIR because carrying is virtual.
+     * Paper pre-cancels air interactions whose vanilla result is a no-op, so that
+     * specific cancelled event must still reach the fluid ray trace.
+     */
+    static boolean acceptsCarriedVehiclePlacement(Action action, boolean carryingWaterVehicle,
+                                                   boolean cancelled) {
+        if (cancelled && !(carryingWaterVehicle && action == Action.RIGHT_CLICK_AIR)) {
+            return false;
+        }
         return action == Action.RIGHT_CLICK_BLOCK
                 || carryingWaterVehicle && action == Action.RIGHT_CLICK_AIR;
     }
