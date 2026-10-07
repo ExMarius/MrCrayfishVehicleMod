@@ -5,6 +5,7 @@ on:
     paths:
       - "paper-plugin/**"
       - "tools/build_resource_pack.py"
+      - "tools/test_build_resource_pack.py"
       - "tools/configure_server_resource_pack.py"
       - "tools/test_configure_server_resource_pack.py"
       - "src/main/resources/assets/vehicle/**"
@@ -37,8 +38,8 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      - name: Test server resource-pack synchronization
-        run: python3 -m unittest tools.test_configure_server_resource_pack
+      - name: Test resource-pack build and server synchronization
+        run: python3 -m unittest tools.test_build_resource_pack tools.test_configure_server_resource_pack
 
       - name: Build plugin and resource pack
         run: ./paper-plugin/gradlew -p paper-plugin clean build resourcePack
@@ -59,7 +60,7 @@ jobs:
 
       - name: Verify resource pack
         run: |
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r17.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r18.zip"
           unzip -t "$PACK"
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
           CONFIG_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)
@@ -85,6 +86,18 @@ jobs:
           unzip -l "$PACK" assets/vehicle/textures/item/off_roader_grill.png | grep -q off_roader_grill.png
           unzip -l "$PACK" assets/vehicle/textures/item/off_roader_logo.png | grep -q off_roader_logo.png
           unzip -l "$PACK" assets/vehicle/sounds/entity/jet_ski/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/items/sports_car_body.json | grep -q sports_car_body.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_hood.json | grep -q sports_car_hood.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_left_door.json | grep -q sports_car_left_door.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_right_door.json | grep -q sports_car_right_door.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_boot.json | grep -q sports_car_boot.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_dashboard.json | grep -q sports_car_dashboard.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_roof.json | grep -q sports_car_roof.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_seat.json | grep -q sports_car_seat.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_steering_wheel.json | grep -q sports_car_steering_wheel.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/sports_car/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/sounds/entity/vehicle/door/open.ogg | grep -q open.ogg
+          unzip -l "$PACK" assets/vehicle/sounds/entity/vehicle/hood/open.ogg | grep -q open.ogg
 
       - name: Publish prototype release
         if: github.event_name != 'pull_request'
@@ -98,19 +111,19 @@ jobs:
           fi
           TAG="vehicle-plugin-prototype-v0.1.0"
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r17.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r18.zip"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$JAR" "$PACK" --clobber
             gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
               -f sha="$GITHUB_SHA" -F force=true >/dev/null
             gh release edit "$TAG" --target "$GITHUB_SHA" \
               --title "Vehicle Plugin land vehicles prototype v0.1.0 (Paper 1.21.4)" \
-              --notes "Paper 1.21.4 vanilla-client checkpoint with Go Kart, Lawn Mower, Quad Bike, Tractor, Dirt Bike, Moped with attachable storage, Off Roader with four seats, source engine audio, and all five original trailers. Requires the attached r17 resource pack."
+              --notes "Paper 1.21.4 vanilla-client checkpoint with eight land vehicles through the two-seat Sports Car, persistent Glove Box and Trunk storage, source openable cosmetics and engine audio, and all five original trailers. Requires the attached r18 resource pack."
           else
             gh release create "$TAG" "$JAR" "$PACK" \
               --target "$GITHUB_SHA" \
               --title "Vehicle Plugin land vehicles prototype v0.1.0 (Paper 1.21.4)" \
-              --notes "Paper 1.21.4 vanilla-client checkpoint with Go Kart, Lawn Mower, Quad Bike, Tractor, Dirt Bike, Moped with attachable storage, Off Roader with four seats, source engine audio, and all five original trailers. Requires the attached r17 resource pack." \
+              --notes "Paper 1.21.4 vanilla-client checkpoint with eight land vehicles through the two-seat Sports Car, persistent Glove Box and Trunk storage, source openable cosmetics and engine audio, and all five original trailers. Requires the attached r18 resource pack." \
               --prerelease
           fi
 
@@ -217,4 +230,4 @@ jobs:
           if-no-files-found: error
           path: |
             paper-plugin/build/libs/MrCrayfishVehiclePlugin-*.jar
-            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r17.zip
+            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r18.zip

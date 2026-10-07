@@ -27,7 +27,9 @@ import org.bukkit.util.BoundingBox;
 import org.bukkit.util.Vector;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -48,6 +50,7 @@ public final class LandVehicle {
     private final EngineSoundController soundController;
     private final double[] wheelPositions;
     private final Inventory storageInventory;
+    private final Map<String, Inventory> compartmentInventories;
 
     private Location location;
     private Vector velocity = new Vector();
@@ -87,6 +90,11 @@ public final class LandVehicle {
         this.wheelPositions = new double[spec.wheels().size() * 3];
         this.storageInventory = spec.mopedParts() == null ? null
                 : Bukkit.createInventory(null, 27, Component.text("Moped Chest"));
+        this.compartmentInventories = new LinkedHashMap<>();
+        for (LandVehicleSpec.StorageCompartment compartment : spec.storageCompartments()) {
+            compartmentInventories.put(compartment.key(), Bukkit.createInventory(null,
+                    compartment.size(), Component.text(compartment.title())));
+        }
         this.fuel = spec.energyCapacity();
     }
 
@@ -102,6 +110,7 @@ public final class LandVehicle {
 
     public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
         age++;
+        boolean openablesChanged = rig.tickOpenables(location);
         updateSeatGauge();
         rig.tickSeats(location.getYaw());
         if (age % 10 == 0) {
@@ -109,6 +118,10 @@ public final class LandVehicle {
         }
         if (transported) {
             soundController.tick(location, false, spec.minEnginePitch(), List.of());
+            if (openablesChanged) {
+                rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                        0.0F, 0.0F, false, age);
+            }
             return;
         }
         Player driver = driver().orElse(null);
@@ -131,7 +144,7 @@ public final class LandVehicle {
                 renderWheelAngle = 0.0F;
             }
             traction = LandVehicleSpec.STANDARD_TRACTION;
-            if (previousRenderAngle != renderWheelAngle) {
+            if (openablesChanged || previousRenderAngle != renderWheelAngle) {
                 rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
                         0.0F, spec.bodyRoll(steeringAngle, horizontalSpeed()), false, age);
             } else if (age % 20 == 0) {
@@ -422,10 +435,26 @@ public final class LandVehicle {
     }
 
     /**
-     * Vanilla interaction replacement for MopedEntity's client ray-traced chest boxes.
-     * Attaching preserves the source behavior of not consuming the selected chest.
+     * Vanilla interaction replacement for source client-side ray tracing. Sports Car storage
+     * boxes and openable cosmetics compete by nearest ray hit, preserving the source order in
+     * which the closed boot must be opened before the trunk box behind it can be reached.
+     * Moped chest attachment preserves the original behavior of not consuming the selected chest.
      */
-    public boolean handleStorageInteraction(Player player, Entity clicked) {
+    public boolean handleSpecialInteraction(Player player, Entity clicked) {
+        SpecialTarget target = targetedSpecialPart(player);
+        if (target != null) {
+            if (target.openable() != null) {
+                return rig.toggleOpenable(target.openable().id(), location);
+            }
+            Inventory inventory = compartmentInventories.get(target.compartment().key());
+            if (inventory != null) {
+                Location soundLocation = compartmentLocation(target.compartment());
+                player.getWorld().playSound(soundLocation, Sound.BLOCK_CHEST_OPEN, 0.5F, 0.9F);
+                player.openInventory(inventory);
+                return true;
+            }
+        }
+
         if (storageInventory == null) {
             return false;
         }
@@ -437,7 +466,7 @@ public final class LandVehicle {
                     + "<gray>Apasă pe lada din spate pentru inventar.</gray>");
             return true;
         }
-        if (!rig.isStorageInteraction(clicked) && !aimingAtStorage(player)) {
+        if (!rig.isStorageInteraction(clicked) && !aimingAtMopedStorage(player)) {
             return false;
         }
         if (!chestAttached) {
@@ -452,6 +481,98 @@ public final class LandVehicle {
         player.getWorld().playSound(chestRuntimeLocation(), Sound.BLOCK_CHEST_OPEN, 0.5F, 0.9F);
         player.openInventory(storageInventory);
         return true;
+    }
+
+    private SpecialTarget targetedSpecialPart(Player player) {
+        if (spec.storageCompartments().isEmpty()
+                && spec.bodyParts().stream().noneMatch(part -> part.openable() != null)) {
+            return null;
+        }
+        Location eye = player.getEyeLocation();
+        if (eye.getWorld() == null || !eye.getWorld().equals(location.getWorld())) {
+            return null;
+        }
+        LandVehicleSpec.Point origin = vehicleLocalPoint(eye.toVector());
+        LandVehicleSpec.Point direction = vehicleLocalDirection(eye.getDirection().normalize());
+        double nearest = 6.0D;
+        LandVehicleSpec.StorageCompartment nearestCompartment = null;
+        LandVehicleSpec.Openable nearestOpenable = null;
+
+        for (LandVehicleSpec.StorageCompartment compartment : spec.storageCompartments()) {
+            double distance = compartment.interactionBox().rayIntersection(origin, direction, nearest);
+            if (distance <= nearest) {
+                nearest = distance;
+                nearestCompartment = compartment;
+                nearestOpenable = null;
+            }
+        }
+        if (!player.isSneaking()) {
+            for (LandVehicleSpec.Part part : spec.bodyParts()) {
+                LandVehicleSpec.Openable openable = part.openable();
+                if (openable == null) {
+                    continue;
+                }
+                LandVehicleSpec.Point partOrigin = subtract(origin, part.center());
+                LandVehicleSpec.Point inverseOrigin = rotate(partOrigin, openable.axis(),
+                        -rig.openAngle(openable.id()));
+                LandVehicleSpec.Point inverseDirection = rotate(direction, openable.axis(),
+                        -rig.openAngle(openable.id()));
+                double distance = openable.interactionBox()
+                        .rayIntersection(inverseOrigin, inverseDirection, nearest);
+                if (distance < nearest) {
+                    nearest = distance;
+                    nearestCompartment = null;
+                    nearestOpenable = openable;
+                }
+            }
+        }
+        return nearestCompartment == null && nearestOpenable == null ? null
+                : new SpecialTarget(nearestCompartment, nearestOpenable, nearest);
+    }
+
+    private LandVehicleSpec.Point vehicleLocalPoint(Vector worldPoint) {
+        Vector relative = worldPoint.clone().subtract(location.toVector());
+        double radians = Math.toRadians(location.getYaw());
+        double sin = Math.sin(radians);
+        double cos = Math.cos(radians);
+        return new LandVehicleSpec.Point(
+                (float) (relative.getX() * cos + relative.getZ() * sin),
+                (float) relative.getY(),
+                (float) (-relative.getX() * sin + relative.getZ() * cos));
+    }
+
+    private LandVehicleSpec.Point vehicleLocalDirection(Vector worldDirection) {
+        double radians = Math.toRadians(location.getYaw());
+        double sin = Math.sin(radians);
+        double cos = Math.cos(radians);
+        return new LandVehicleSpec.Point(
+                (float) (worldDirection.getX() * cos + worldDirection.getZ() * sin),
+                (float) worldDirection.getY(),
+                (float) (-worldDirection.getX() * sin + worldDirection.getZ() * cos));
+    }
+
+    private static LandVehicleSpec.Point subtract(LandVehicleSpec.Point left,
+                                                   LandVehicleSpec.Point right) {
+        return new LandVehicleSpec.Point(left.x() - right.x(), left.y() - right.y(),
+                left.z() - right.z());
+    }
+
+    private static LandVehicleSpec.Point rotate(LandVehicleSpec.Point point,
+                                                 LandVehicleSpec.Axis axis, float degrees) {
+        double radians = Math.toRadians(degrees);
+        double sin = Math.sin(radians);
+        double cos = Math.cos(radians);
+        return switch (axis) {
+            case X -> new LandVehicleSpec.Point(point.x(),
+                    (float) (point.y() * cos - point.z() * sin),
+                    (float) (point.y() * sin + point.z() * cos));
+            case Y -> new LandVehicleSpec.Point(
+                    (float) (point.x() * cos + point.z() * sin), point.y(),
+                    (float) (-point.x() * sin + point.z() * cos));
+            case Z -> new LandVehicleSpec.Point(
+                    (float) (point.x() * cos - point.y() * sin),
+                    (float) (point.x() * sin + point.y() * cos), point.z());
+        };
     }
 
     private void attachChest(ItemStack chestItem) {
@@ -489,15 +610,25 @@ public final class LandVehicle {
     }
 
     public boolean ownsStorage(Inventory inventory) {
-        return storageInventory != null && storageInventory == inventory;
+        return (storageInventory != null && storageInventory == inventory)
+                || compartmentInventories.containsValue(inventory);
     }
 
-    public void storageClosed() {
-        if (storageInventory != null && chestAttached && storageInventory.getViewers().size() <= 1) {
-            World world = location.getWorld();
-            if (world != null) {
-                world.playSound(chestRuntimeLocation(), Sound.BLOCK_CHEST_CLOSE, 0.5F, 0.9F);
+    public void storageClosed(Inventory inventory) {
+        Location soundLocation = null;
+        if (storageInventory != null && chestAttached && storageInventory == inventory
+                && storageInventory.getViewers().size() <= 1) {
+            soundLocation = chestRuntimeLocation();
+        } else if (inventory.getViewers().size() <= 1) {
+            for (LandVehicleSpec.StorageCompartment compartment : spec.storageCompartments()) {
+                if (compartmentInventories.get(compartment.key()) == inventory) {
+                    soundLocation = compartmentLocation(compartment);
+                    break;
+                }
             }
+        }
+        if (soundLocation != null && soundLocation.getWorld() != null) {
+            soundLocation.getWorld().playSound(soundLocation, Sound.BLOCK_CHEST_CLOSE, 0.5F, 0.9F);
         }
     }
 
@@ -505,32 +636,60 @@ public final class LandVehicle {
         return chestAttached;
     }
 
-    public List<ItemStack> storageContents() {
-        if (storageInventory == null || !chestAttached) {
-            return List.of();
+    public Map<String, List<ItemStack>> storageContents() {
+        Map<String, List<ItemStack>> contents = new LinkedHashMap<>();
+        if (storageInventory != null && chestAttached) {
+            contents.put("moped_chest", copyContents(storageInventory));
         }
-        List<ItemStack> contents = new ArrayList<>(storageInventory.getSize());
-        for (ItemStack stack : storageInventory.getContents()) {
+        for (Map.Entry<String, Inventory> entry : compartmentInventories.entrySet()) {
+            contents.put(entry.getKey(), copyContents(entry.getValue()));
+        }
+        return contents;
+    }
+
+    private static List<ItemStack> copyContents(Inventory inventory) {
+        List<ItemStack> contents = new ArrayList<>(inventory.getSize());
+        for (ItemStack stack : inventory.getContents()) {
             contents.add(stack == null || stack.getType().isAir() ? null : stack.clone());
         }
         return contents;
     }
 
-    public void restoreStorage(boolean attached, List<ItemStack> contents) {
-        if (storageInventory == null) {
+    public void restoreStorage(boolean attached, Map<String, List<ItemStack>> contents) {
+        if (storageInventory != null) {
+            storageInventory.clear();
+            chestAttached = attached;
+            if (attached) {
+                restoreContents(storageInventory, contents == null ? null : contents.get("moped_chest"));
+            }
+            rig.setStorageChestAttached(attached);
+        }
+        for (Map.Entry<String, Inventory> entry : compartmentInventories.entrySet()) {
+            entry.getValue().clear();
+            restoreContents(entry.getValue(), contents == null ? null : contents.get(entry.getKey()));
+        }
+    }
+
+    private static void restoreContents(Inventory inventory, List<ItemStack> contents) {
+        if (contents == null) {
             return;
         }
-        storageInventory.clear();
-        chestAttached = attached;
-        if (attached && contents != null) {
-            for (int slot = 0; slot < Math.min(contents.size(), storageInventory.getSize()); slot++) {
-                ItemStack stack = contents.get(slot);
-                if (stack != null && !stack.getType().isAir()) {
-                    storageInventory.setItem(slot, stack.clone());
-                }
+        for (int slot = 0; slot < Math.min(contents.size(), inventory.getSize()); slot++) {
+            ItemStack stack = contents.get(slot);
+            if (stack != null && !stack.getType().isAir()) {
+                inventory.setItem(slot, stack.clone());
             }
         }
-        rig.setStorageChestAttached(attached);
+    }
+
+    public Map<String, Boolean> openPartStates() {
+        return rig.openStates();
+    }
+
+    public void restoreOpenPartStates(Map<String, Boolean> states) {
+        rig.restoreOpenStates(states);
+        rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                0.0F, 0.0F, false, age);
     }
 
     private Location chestRuntimeLocation() {
@@ -538,7 +697,14 @@ public final class LandVehicle {
         return local(location, offset.x(), offset.y(), offset.z());
     }
 
-    private boolean aimingAtStorage(Player player) {
+    private Location compartmentLocation(LandVehicleSpec.StorageCompartment compartment) {
+        LandVehicleSpec.Point min = compartment.interactionBox().min();
+        LandVehicleSpec.Point max = compartment.interactionBox().max();
+        return local(location, (min.x() + max.x()) * 0.5D,
+                (min.y() + max.y()) * 0.5D, (min.z() + max.z()) * 0.5D);
+    }
+
+    private boolean aimingAtMopedStorage(Player player) {
         Location eye = player.getEyeLocation();
         if (eye.getWorld() == null || !eye.getWorld().equals(location.getWorld())) {
             return false;
@@ -554,12 +720,19 @@ public final class LandVehicle {
     }
 
     private void closeStorageViewers() {
-        if (storageInventory == null) {
-            return;
+        List<Inventory> inventories = new ArrayList<>(compartmentInventories.values());
+        if (storageInventory != null) {
+            inventories.add(storageInventory);
         }
-        for (HumanEntity viewer : new ArrayList<>(storageInventory.getViewers())) {
-            viewer.closeInventory();
+        for (Inventory inventory : inventories) {
+            for (HumanEntity viewer : new ArrayList<>(inventory.getViewers())) {
+                viewer.closeInventory();
+            }
         }
+    }
+
+    private record SpecialTarget(LandVehicleSpec.StorageCompartment compartment,
+                                 LandVehicleSpec.Openable openable, double distance) {
     }
 
     public boolean mount(Player player) {

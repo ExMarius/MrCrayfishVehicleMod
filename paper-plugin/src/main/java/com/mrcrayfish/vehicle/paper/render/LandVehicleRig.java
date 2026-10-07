@@ -7,6 +7,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.attribute.Attribute;
 import org.bukkit.attribute.AttributeInstance;
@@ -25,8 +26,11 @@ import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ThreadLocalRandom;
 
 /** Multipart vanilla-display rig driven by a generated land-vehicle definition. */
 public final class LandVehicleRig {
@@ -109,14 +113,14 @@ public final class LandVehicleRig {
                 : null;
 
         List<PartDisplay> chassisParts = new ArrayList<>();
+        for (LandVehicleSpec.Part part : spec.bodyParts()) {
+            chassisParts.add(new PartDisplay(
+                    partDisplay(world, location, part, vehicleId, all), part));
+        }
         List<PartDisplay> forkParts = new ArrayList<>();
         ItemDisplay storageChest = null;
         Interaction storageInteraction = null;
         if (spec.mopedParts() != null) {
-            for (LandVehicleSpec.Part part : spec.mopedParts().chassisParts()) {
-                chassisParts.add(new PartDisplay(
-                        partDisplay(world, location, part, vehicleId, all), part));
-            }
             for (LandVehicleSpec.Part part : spec.mopedParts().forkParts()) {
                 forkParts.add(new PartDisplay(
                         partDisplay(world, location, part, vehicleId, all), part));
@@ -326,7 +330,7 @@ public final class LandVehicleRig {
         }
 
         for (PartDisplay partDisplay : chassisParts) {
-            placePropertyPart(partDisplay.entity, partDisplay.properties, renderAnchor, driverSeat,
+            placePropertyPart(partDisplay, renderAnchor, driverSeat,
                     yaw, wheelieAngle, bodyRoll, chassisRotation);
         }
 
@@ -409,6 +413,28 @@ public final class LandVehicleRig {
             }
             maintainPig(carrier, yaw);
         }
+    }
+
+    private void placePropertyPart(PartDisplay partDisplay,
+                                   Location renderAnchor, Vector3f driverSeat, float yaw,
+                                   float wheelieAngle, float bodyRoll, Quaternionf chassisRotation) {
+        LandVehicleSpec.Part part = partDisplay.properties;
+        Vector3f center = chassis(point(part.center()), wheelieAngle, bodyRoll);
+        Quaternionf rotation = new Quaternionf(chassisRotation);
+        if (part.openable() != null) {
+            float angle = radians(partDisplay.openAngle());
+            switch (part.openable().axis()) {
+                case X -> rotation.rotateX(angle);
+                case Y -> rotation.rotateY(angle);
+                case Z -> rotation.rotateZ(angle);
+            }
+        }
+        Quaternionf sourceRotation = new Quaternionf()
+                .rotateX(radians(part.rotationX()))
+                .rotateY(radians(part.rotationY()))
+                .rotateZ(radians(part.rotationZ()));
+        place(partDisplay.entity, renderAnchor, relativeToSeat(center, driverSeat), yaw, rotation,
+                new Vector3f(part.scale()), sourceRotation);
     }
 
     private void placePropertyPart(ItemDisplay display, LandVehicleSpec.Part part,
@@ -618,6 +644,73 @@ public final class LandVehicleRig {
         return Collections.unmodifiableList(entities);
     }
 
+    /** Advances source OpenableAction animations. Closing sounds fire when the part reaches zero. */
+    public boolean tickOpenables(Location root) {
+        boolean changed = false;
+        for (PartDisplay part : chassisParts) {
+            if (part.tick()) {
+                changed = true;
+                if (!part.open && part.animationTick == 0) {
+                    playCustomSound(root, part.properties.openable().closeSound());
+                }
+            }
+        }
+        return changed;
+    }
+
+    public boolean toggleOpenable(String id, Location root) {
+        for (PartDisplay part : chassisParts) {
+            LandVehicleSpec.Openable openable = part.properties.openable();
+            if (openable == null || !openable.id().equals(id)) {
+                continue;
+            }
+            part.open = !part.open;
+            if (part.open) {
+                playCustomSound(root, openable.openSound());
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public float openAngle(String id) {
+        for (PartDisplay part : chassisParts) {
+            LandVehicleSpec.Openable openable = part.properties.openable();
+            if (openable != null && openable.id().equals(id)) {
+                return part.openAngle();
+            }
+        }
+        return 0.0F;
+    }
+
+    public Map<String, Boolean> openStates() {
+        Map<String, Boolean> states = new LinkedHashMap<>();
+        for (PartDisplay part : chassisParts) {
+            if (part.properties.openable() != null) {
+                states.put(part.properties.openable().id(), part.open);
+            }
+        }
+        return states;
+    }
+
+    public void restoreOpenStates(Map<String, Boolean> states) {
+        for (PartDisplay part : chassisParts) {
+            LandVehicleSpec.Openable openable = part.properties.openable();
+            if (openable == null) {
+                continue;
+            }
+            part.open = states != null && Boolean.TRUE.equals(states.get(openable.id()));
+            part.animationTick = part.open ? openable.animationLength() : 0;
+        }
+    }
+
+    private static void playCustomSound(Location root, String sound) {
+        if (root.getWorld() != null && sound != null && !sound.isBlank()) {
+            float pitch = 0.8F + 0.2F * ThreadLocalRandom.current().nextFloat();
+            root.getWorld().playSound(root, sound, SoundCategory.NEUTRAL, 1.0F, pitch);
+        }
+    }
+
     public boolean isStorageInteraction(Entity entity) {
         return storageInteraction != null && storageInteraction.getUniqueId().equals(entity.getUniqueId());
     }
@@ -682,7 +775,46 @@ public final class LandVehicleRig {
     private record WheelDisplay(ItemDisplay entity, LandVehicleSpec.Wheel properties) {
     }
 
-    private record PartDisplay(ItemDisplay entity, LandVehicleSpec.Part properties) {
+    private static final class PartDisplay {
+        private final ItemDisplay entity;
+        private final LandVehicleSpec.Part properties;
+        private boolean open;
+        private int animationTick;
+
+        private PartDisplay(ItemDisplay entity, LandVehicleSpec.Part properties) {
+            this.entity = entity;
+            this.properties = properties;
+        }
+
+        private boolean tick() {
+            LandVehicleSpec.Openable openable = properties.openable();
+            if (openable == null) {
+                return false;
+            }
+            int previous = animationTick;
+            if (open && animationTick < openable.animationLength()) {
+                animationTick++;
+            } else if (!open && animationTick > 0) {
+                animationTick--;
+            }
+            return previous != animationTick;
+        }
+
+        private float openAngle() {
+            LandVehicleSpec.Openable openable = properties.openable();
+            if (openable == null || animationTick == 0) {
+                return 0.0F;
+            }
+            double progress = animationTick / (double) openable.animationLength();
+            return (float) (openable.angle() * easeOutBack(progress));
+        }
+    }
+
+    static double easeOutBack(double progress) {
+        double c1 = 1.70158D;
+        double c3 = c1 + 1.0D;
+        return 1.0D + c3 * Math.pow(progress - 1.0D, 3.0D)
+                + c1 * Math.pow(progress - 1.0D, 2.0D);
     }
 
     private static final class SeatCarrier {

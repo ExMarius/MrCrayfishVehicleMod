@@ -6,7 +6,7 @@ from tools.configure_server_resource_pack import plugin_pack, synchronize
 
 CONFIG = """\
 resource-pack:
-  url: "https://example.invalid/vehicle-r17.zip"
+  url: "https://example.invalid/vehicle-r18.zip"
   sha1: "0123456789abcdef0123456789abcdef01234567"
   required: true
   prompt: "Vehicle pack required."
@@ -20,7 +20,7 @@ class ConfigureServerResourcePackTest(unittest.TestCase):
     def test_reads_validated_plugin_values_and_stable_id(self):
         values = plugin_pack(CONFIG)
 
-        self.assertEqual("https://example.invalid/vehicle-r17.zip", values["resource-pack"])
+        self.assertEqual("https://example.invalid/vehicle-r18.zip", values["resource-pack"])
         self.assertEqual("0123456789abcdef0123456789abcdef01234567", values["resource-pack-sha1"])
         self.assertEqual("true", values["require-resource-pack"])
         self.assertEqual('{"text":"Vehicle pack required."}', values["resource-pack-prompt"])
@@ -47,7 +47,7 @@ motd=Vehicle test
         self.assertEqual(1, sum(line.startswith("resource-pack-id=") for line in lines))
         self.assertEqual(1, sum(line.startswith("resource-pack-prompt=") for line in lines))
         self.assertEqual(1, sum(line.startswith("require-resource-pack=") for line in lines))
-        self.assertIn("resource-pack=https://example.invalid/vehicle-r17.zip\n", result)
+        self.assertIn("resource-pack=https://example.invalid/vehicle-r18.zip\n", result)
         self.assertIn("require-resource-pack=true\n", result)
 
     def test_rejects_invalid_hash(self):

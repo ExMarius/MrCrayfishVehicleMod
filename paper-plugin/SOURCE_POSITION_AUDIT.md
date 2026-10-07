@@ -28,6 +28,7 @@ All currently implemented body transforms have zero body translation/rotation, s
 | Dirt Bike | 0.850000 | 0.350000 / 0.350000 | 0.850000, 0.912500 | (0, 0.712500, 0) | (0, 0.850000, 0) before fork steering | n/a |
 | Moped | 0.765000 | 0.240000 / 0.240000 | 0.465000 | n/a (source sets `renderEngine=false`) | handles `(0, 1.0855425, 0.6305325)` before fork steering | n/a |
 | Off Roader | 1.102500 | 0.490000 / 0.490000 | 0.752500, 0.752500, 0.708750, 0.708750 (vanilla rear-seat adaptation) | n/a (source sets `renderEngine=false`) | (-0.437500, 1.572701, 0.299799) | n/a |
+| Sports Car | 0.662500 | 0.350000 / 0.350000 | 0.037500, 0.037500 | (0, 0.763125, 1.187500) | (-0.250000, 0.59400625, 0.1023625) | n/a |
 
 Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt Bike wheel X scales now use serialized `0.938`; the other generated and auto-scaled wheel values match their property equations.
 
@@ -42,8 +43,9 @@ Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt B
 | Dirt Bike | (0, 1.2734375, 0.2251875) | none (`canLockWithKey=false`) |
 | Moped | (0, 0.165000, 0) | hidden (`canLockWithKey=false`) |
 | Off Roader | (-1.050000, 1.321250, -0.568750) | (0, 1.015000, 0.542500) |
+| Sports Car | (-0.625000, 0.568750, -0.875000) | (-0.312500, 0.443750, 0.406250) |
 
-The r17 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
+The r18 pack includes the original closed full/small fuel-port geometry. It also includes the key-hole geometry, while the Paper rig correctly leaves it hidden in the current default state: the source renders ignition/key parts only after its dynamic `NEEDS_KEY` state is enabled, and the Paper key system has not yet been ported.
 
 ### Dirt Bike fork
 
@@ -70,6 +72,28 @@ The generated body scale is `1.4`; each wheel's generated scale is another `1.4`
 
 The authoritative source seat centers are `(-0.4375, 0.7525, -0.2625)`, `(0.4375, 0.7525, -0.2625)`, `(-0.4375, 1.40875, -1.26875)`, and `(0.4375, 0.70875, -1.65375)`. The third source entry relies on a custom standing/hanging per-limb player pose that a vanilla mounted player cannot display. Per the accepted vanilla-client correction, its runtime Y is lowered to `0.70875`, matching the other rear rider while retaining its source X/Z; both rear runtime centers are therefore low. Mounting mirrors `SeatTracker#getClosestAvailableSeatToPlayer`, so approaching and clicking from the rear can select a free rear position even while a front seat is free. All occupants retain the accepted horse-style pose.
 
+### Sports Car renderer, cosmetics, and storage
+
+The generated wheel offset is `2.6` model pixels. All four 1.4-scale wheels are centered at outside X `±0.875`, Y `0.35`, front Z `1.25`, and rear Z `-1.1875`; their contact Y is exactly zero. The two source seat centers are `(-0.4375, 0.0375, -0.3125)` and `(0.4375, 0.0375, -0.3125)` before the accepted global rider correction.
+
+`SportsCarRenderer` places the steering wheel at source translation `(-4, -1.0961, 1.6378)` pixels, scale `0.7`, and local X rotation `-67.5` degrees. After the common body matrix its center is `(-0.25, 0.59400625, 0.1023625)`. The rendered large engine preserves the generated `(0, 3.01, 19)`-pixel transform, `0.825` scale, and renderer half-scale Y correction, yielding center `(0, 0.763125, 1.1875)`.
+
+The base model is not a complete car by itself. The Paper rig therefore renders all seven generated default cosmetics at their source pivots:
+
+| Cosmetic | Pivot center | Source open action |
+|---|---|---|
+| Hood | (0, 1.006250, 0.843750) | X `-60°`, 12 ticks |
+| Left door | (0.937500, 0.225000, 0.625000) | Y `-75°`, 12 ticks |
+| Right door | (-0.937500, 0.225000, 0.625000) | Y `+90°`, 12 ticks |
+| Boot/spoiler | (0, 1.131250, -1.468750) | X `+90°`, 12 ticks |
+| Seat | (0, 0.225000, 0) | static |
+| Dashboard | (0, 1.037500, 0.750000) | static |
+| Roof | (0, 1.037500, 0) | static |
+
+Openable parts use the source `easeOutBack` curve and original door/hood open-close samples. Their target states are persisted and carried through activation, hibernation, restarts, and Vehicle Trailer transport. Server-side oriented ray tests replace `CosmeticRayTraceData`; they compare the openable model bounds with the storage bounds by nearest hit, including each part's current rotation.
+
+The Glove Box is a persistent 9-slot inventory with source interaction bounds `(0.125, 0.38125, 0.1875)` through `(0.5, 0.63125, 0.3125)`. The Trunk is a persistent 27-slot inventory with bounds `(-0.4375, 0.4125, -1.1875)` through `(0.4375, 0.6, -0.75)`. As in the source ray tracer, the closed boot is closer when approached from the rear: opening it exposes the trunk interaction region behind it.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -80,7 +104,8 @@ The serialized or source-default offsets are:
 - Tractor `(0, 0, 0)`;
 - Dirt Bike `(0, -0.062, -0.312)`;
 - Moped `(0, -0.031, -0.65)`;
-- Off Roader `(0, 0, 0)` (source default).
+- Off Roader `(0, 0, 0)` (source default);
+- Sports Car `(0, 0, 0)` (source default).
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -112,6 +137,8 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 10. Vehicle entry now chooses the closest available source seat, exposing the Off Roader's rear hanging positions without requiring every earlier seat to be occupied.
 11. Fertilizer/Seeder cargo entities are reconciled in place while supplies are consumed, removing movement-induced visual jumps without changing the source pile matrices.
 12. The source Off Roader's elevated standing/hanging rear seat is lowered to the other rear seat's Y because vanilla forces every mounted player into a seated pose.
+13. The r18 Sports Car port adds its two-seat generated physics, complete base plus seven-cosmetic body, rendered large engine, steering/filler transforms, four source open actions and samples, original engine loop, and persistent independent Glove Box/Trunk inventories.
+14. The obsolete r4-only milestone workflow was repaired and advanced to validate and publish the current r18 artifact instead of referencing a pack the current build no longer produced.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -120,7 +147,8 @@ Exact matrix/equation ports:
 - generated body, wheel, seat, hitch, tow, engine, steering, filler, ignition, trailer-part, fluid-bound, wheelie, motorcycle-roll, and motorcycle fork coordinates;
 - source renderer translation/rotation order and generated-property scaling;
 - source Vehicle Trailer passenger offsets and trailer hitch distances;
-- source cargo layout equations and trailer work-point positions.
+- source cargo layout equations and trailer work-point positions;
+- Sports Car cosmetic pivots/open angles/easing, storage capacities and interaction bounds, and persistent action/inventory state.
 
 Vanilla-client adaptations that intentionally remain:
 

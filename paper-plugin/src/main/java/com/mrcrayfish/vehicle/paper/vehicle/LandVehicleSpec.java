@@ -35,6 +35,7 @@ public record LandVehicleSpec(
         Part steering,
         Part fuelFiller,
         Part ignition,
+        List<Part> bodyParts,
         List<Wheel> wheels,
         List<Seat> seats,
         boolean canTowTrailers,
@@ -42,6 +43,7 @@ public record LandVehicleSpec(
         Point trailerOffset,
         Motorcycle motorcycle,
         MopedParts mopedParts,
+        List<StorageCompartment> storageCompartments,
         boolean lawnMower
 ) {
     public static final float MODEL_UNIT = 1.0F / 16.0F;
@@ -66,6 +68,7 @@ public record LandVehicleSpec(
             itemPart("fuel_door_closed", 0.0F, 0.0F, 0.0F,
                     1.0F, 0.0F, 0.0F, 0.0F, 1.0F, -1.0F, 3.2F),
             null,
+            List.of(),
             List.of(
                     wheel(-1, true, 7.0F, 0.0F, 8.75F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
                     wheel(1, true, 7.0F, 0.0F, 8.75F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
@@ -74,7 +77,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, -3.0F, -1.0F, 1.0F, -1.0F, 3.2F)),
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.375F),
-            null, null, false
+            null, null, List.of(), false
     );
 
     /* wheelOffset = (8 * 0.97 / 2) - 0.8 = 3.08; auto-scaled front wheels become 0.77. */
@@ -92,6 +95,7 @@ public record LandVehicleSpec(
             itemPart("fuel_door_closed", -4.5F, 10.0F, 4.5F,
                     0.5F, 0.0F, -90.0F, 0.0F, 1.25F, -2.0F, 3.08F),
             null,
+            List.of(),
             List.of(
                     wheel(-1, true, 6.0F, 0.0F, 13.5F, 0.77F, 0.77F, 0.77F, 1.25F, -2.0F, 3.08F),
                     wheel(1, true, 6.0F, 0.0F, 13.5F, 0.77F, 0.77F, 0.77F, 1.25F, -2.0F, 3.08F),
@@ -100,7 +104,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, 7.0F, -9.0F, 1.25F, -2.0F, 3.08F)),
             true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, -0.01F, -1.0F),
-            null, null, true
+            null, null, List.of(), true
     );
 
     public static final LandVehicleSpec QUAD_BIKE = new LandVehicleSpec(
@@ -118,6 +122,7 @@ public record LandVehicleSpec(
                     0.6F, -90.0F, 0.0F, 0.0F, 1.1F, -0.5F, 4.4F),
             itemPart("key_hole", -5.0F, 4.5F, 6.5F,
                     0.5F, -45.0F, 0.0F, 0.0F, 1.1F, -0.5F, 4.4F),
+            List.of(),
             List.of(
                     wheel(-1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
                     wheel(1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
@@ -129,7 +134,7 @@ public record LandVehicleSpec(
                     seat(false, 0.0F, 5.5F, -12.0F, 1.1F, -0.5F, 4.4F)
             ),
             true, new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, -0.55F),
-            null, null, false
+            null, null, List.of(), false
     );
 
     /* Source wheelOffset = (8 * 2.8 / 2) - 5.5 = 5.7. The front wheel's
@@ -152,6 +157,7 @@ public record LandVehicleSpec(
                     0.6F, 0.0F, -90.0F, 0.0F, 1.0F, -3.0F, 5.7F),
             itemPart("key_hole", -2.75F, 12.0F, -1.75F,
                     0.5F, -45.0F, 0.0F, 0.0F, 1.0F, -3.0F, 5.7F),
+            List.of(),
             List.of(
                     wheel(-1, true, 8.0F, 0.0F, 14.0F,
                             0.938F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
@@ -164,7 +170,7 @@ public record LandVehicleSpec(
             ),
             List.of(seat(true, 0.0F, 9.0F, -14.0F, 1.0F, -3.0F, 5.7F)),
             true, new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
-            null, null, false
+            null, null, List.of(), false
     );
 
     /* DirtBikeRenderer steers both the handle assembly and the separately rendered
@@ -183,6 +189,7 @@ public record LandVehicleSpec(
             itemPart("small_fuel_door_closed", 0.0F, 14.775F, 3.603F,
                     0.6F, 67.5F, 180.0F, 0.0F, 1.0F, 0.0F, 5.6F),
             null,
+            List.of(),
             List.of(
                     wheel(0, true, 0.0F, 0.0F, 14.08F,
                             0.938F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F),
@@ -194,7 +201,8 @@ public record LandVehicleSpec(
                     seat(false, 0.0F, 9.0F, -9.0F, 1.0F, 0.0F, 5.6F)
             ),
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.312F),
-            new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), null, false
+            new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), null,
+            List.of(), false
     );
 
     /* The Moped renderer steers its handles, mud guard, and manually rendered
@@ -212,6 +220,14 @@ public record LandVehicleSpec(
                     1.0F, 0.0F, 0.0F, 0.0F, 1.2F, -1.0F, 3.2F),
             null,
             List.of(
+                    new Part("moped_stock_seat", new Point(0.0F, 0.69F, -0.4875F),
+                            1.2F, 0.0F, 0.0F, 0.0F),
+                    new Part("moped_stock_tray", new Point(0.0F, 0.69F, -0.4875F),
+                            1.2F, 0.0F, 0.0F, 0.0F),
+                    new Part("moped_stock_front_light", new Point(0.0F, 0.915F, 0.7629F),
+                            1.2F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
                     wheel(0, true, 0.0F, 0.0F, 14.088F,
                             0.6F, 0.8F, 0.8F, 1.2F, -1.0F, 3.2F),
                     wheel(0, false, 0.0F, 0.0F, -6.7F,
@@ -221,21 +237,13 @@ public record LandVehicleSpec(
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.65F),
             new Motorcycle(45.0F, 11.5F * MODEL_UNIT * 1.2F, -22.5F, false),
             new MopedParts(
-                    List.of(
-                            new Part("moped_stock_seat", new Point(0.0F, 0.69F, -0.4875F),
-                                    1.2F, 0.0F, 0.0F, 0.0F),
-                            new Part("moped_stock_tray", new Point(0.0F, 0.69F, -0.4875F),
-                                    1.2F, 0.0F, 0.0F, 0.0F),
-                            new Part("moped_stock_front_light", new Point(0.0F, 0.915F, 0.7629F),
-                                    1.2F, 0.0F, 0.0F, 0.0F)
-                    ),
                     List.of(new Part("moped_mud_guard", new Point(0.0F, 0.47283F, 0.8863575F),
                             1.2F, 0.0F, 0.0F, 0.0F)),
                     new Part("minecraft:chest", new Point(0.0F, 1.065F, -0.7875F),
                             0.6F, 0.0F, 180.0F, 0.0F),
                     new Point(0.0F, 1.0F, -0.75F)
             ),
-            false
+            List.of(), false
     );
 
     /* Generated Off Roader geometry uses four 1.4-scale wheels inside a 1.4-scale body.
@@ -255,6 +263,7 @@ public record LandVehicleSpec(
                     0.5F, 0.0F, -90.0F, 0.0F, 1.4F, -1.0F, 5.6F),
             itemPart("key_hole", 0.0F, 7.0F, 6.2F,
                     0.5F, -67.5F, 0.0F, 0.0F, 1.4F, -1.0F, 5.6F),
+            List.of(),
             List.of(
                     wheel(-1, true, 10.0F, 0.0F, 14.5F,
                             1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
@@ -275,7 +284,85 @@ public record LandVehicleSpec(
                     seat(false, -5.0F, 3.5F, -18.9F, 1.4F, -1.0F, 5.6F)
             ),
             false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
-            null, null, false
+            null, null, List.of(), false
+    );
+
+    /* Generated Sports Car geometry uses the default body scale/ground offset and
+     * a wheelOffset of (8 * 1.4 / 2) - 3 = 2.6 model pixels. Its seven generated
+     * cosmetic models are required to complete the body; four retain the source
+     * openable actions around their declared cosmetic pivots. */
+    public static final LandVehicleSpec SPORTS_CAR = new LandVehicleSpec(
+            "sports_car", "Sports Car", "sports_car_body",
+            1.5F, 1.0F, 1.0F,
+            1.0F, 0.0F, 2.6F,
+            20.0F, 35.0F, 20.0F * MODEL_UNIT, -19.0F * MODEL_UNIT, 5.0F,
+            20_000.0F, 0.25F, 0.9F, 1.5F, "vehicle:entity.sports_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            new Part("iron_large_engine", new Point(0.0F, 0.763125F, 1.1875F),
+                    0.825F, 0.0F, 0.0F, 0.0F),
+            new Part("sports_car_steering_wheel", new Point(-0.25F, 0.59400625F, 0.1023625F),
+                    0.7F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -10.0F, 6.5F, -14.0F,
+                    0.4F, 0.0F, -90.0F, 0.0F, 1.0F, 0.0F, 2.6F),
+            itemPart("key_hole", -5.0F, 4.5F, 6.5F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.0F, 0.0F, 2.6F),
+            List.of(
+                    new Part("sports_car_hood", new Point(0.0F, 1.00625F, 0.84375F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("hood", Axis.X, -60.0F, 12,
+                                    "vehicle:entity.vehicle.hood.open", "vehicle:entity.vehicle.hood.close",
+                                    new Box(new Point(-0.6875F, -0.198366F, -0.03125F),
+                                            new Point(0.6875F, 0.03125F, 0.883688F)))),
+                    new Part("sports_car_left_door", new Point(0.9375F, 0.225F, 0.625F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("left_door", Axis.Y, -75.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.09375F, 0.0F, -1.1875F),
+                                            new Point(0.288713F, 1.25F, 0.010787F)))),
+                    new Part("sports_car_right_door", new Point(-0.9375F, 0.225F, 0.625F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("right_door", Axis.Y, 90.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.288713F, 0.0F, -1.1875F),
+                                            new Point(0.09375F, 1.25F, 0.010787F)))),
+                    new Part("sports_car_boot", new Point(0.0F, 1.13125F, -1.46875F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("spoiler", Axis.X, 90.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.625F, -0.34375F, -0.468751F),
+                                            new Point(0.625F, 0.031251F, 0.03125F)))),
+                    new Part("sports_car_seat", new Point(0.0F, 0.225F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_car_dashboard", new Point(0.0F, 1.0375F, 0.75F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_car_roof", new Point(0.0F, 1.0375F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    wheel(-1, true, 12.0F, 3.0F, 20.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(1, true, 12.0F, 3.0F, 20.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(-1, false, 12.0F, 3.0F, -19.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(1, false, 12.0F, 3.0F, -19.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F)
+            ),
+            List.of(
+                    seat(true, 7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F),
+                    seat(false, -7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F)
+            ),
+            false, new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null,
+            List.of(
+                    new StorageCompartment("glove_box", "Glove Box", 1,
+                            new Box(new Point(0.125F, 0.38125F, 0.1875F),
+                                    new Point(0.5F, 0.63125F, 0.3125F))),
+                    new StorageCompartment("trunk", "Trunk", 3,
+                            new Box(new Point(-0.4375F, 0.4125F, -1.1875F),
+                                    new Point(0.4375F, 0.6F, -0.75F)))
+            ),
+            false
     );
 
     private static final Map<String, LandVehicleSpec> BY_ID = Map.of(
@@ -285,7 +372,8 @@ public record LandVehicleSpec(
             TRACTOR.id, TRACTOR,
             DIRT_BIKE.id, DIRT_BIKE,
             MOPED.id, MOPED,
-            OFF_ROADER.id, OFF_ROADER
+            OFF_ROADER.id, OFF_ROADER,
+            SPORTS_CAR.id, SPORTS_CAR
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -386,15 +474,68 @@ public record LandVehicleSpec(
     }
 
     public record Part(String model, Point center, float scale,
-                       float rotationX, float rotationY, float rotationZ) {
+                       float rotationX, float rotationY, float rotationZ,
+                       Openable openable) {
+        public Part(String model, Point center, float scale,
+                    float rotationX, float rotationY, float rotationZ) {
+            this(model, center, scale, rotationX, rotationY, rotationZ, null);
+        }
+    }
+
+    public enum Axis {
+        X, Y, Z
+    }
+
+    public record Openable(String id, Axis axis, float angle, int animationLength,
+                           String openSound, String closeSound, Box interactionBox) {
+    }
+
+    /** Axis-aligned bounds in vehicle-root space, or in an openable part's local pivot space. */
+    public record Box(Point min, Point max) {
+        public double rayIntersection(Point origin, Point direction, double maximumDistance) {
+            double near = 0.0D;
+            double far = maximumDistance;
+            float[] origins = {origin.x, origin.y, origin.z};
+            float[] directions = {direction.x, direction.y, direction.z};
+            float[] minimums = {min.x, min.y, min.z};
+            float[] maximums = {max.x, max.y, max.z};
+            for (int axis = 0; axis < 3; axis++) {
+                double component = directions[axis];
+                if (Math.abs(component) < 1.0E-8D) {
+                    if (origins[axis] < minimums[axis] || origins[axis] > maximums[axis]) {
+                        return Double.POSITIVE_INFINITY;
+                    }
+                    continue;
+                }
+                double first = (minimums[axis] - origins[axis]) / component;
+                double second = (maximums[axis] - origins[axis]) / component;
+                if (first > second) {
+                    double temporary = first;
+                    first = second;
+                    second = temporary;
+                }
+                near = Math.max(near, first);
+                far = Math.min(far, second);
+                if (near > far) {
+                    return Double.POSITIVE_INFINITY;
+                }
+            }
+            return near <= maximumDistance && far >= 0.0D ? Math.max(0.0D, near)
+                    : Double.POSITIVE_INFINITY;
+        }
+    }
+
+    public record StorageCompartment(String key, String title, int rows, Box interactionBox) {
+        public int size() {
+            return rows * 9;
+        }
     }
 
     public record Motorcycle(float maxLeanAngle, float steeringPivotZ,
                              float steeringAxisTilt, boolean frontWheelYaw180) {
     }
 
-    public record MopedParts(List<Part> chassisParts, List<Part> forkParts,
-                             Part chest, Point chestInteractionOffset) {
+    public record MopedParts(List<Part> forkParts, Part chest, Point chestInteractionOffset) {
     }
 
     public record Wheel(int side, boolean front, float axleX, float centerY, float axleZ,

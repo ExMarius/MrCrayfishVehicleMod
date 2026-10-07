@@ -74,6 +74,13 @@ class SourceTransformsTest {
         assertVector(wheel, 0.0F, 0.35F, 0.88F);
     }
 
+    @Test
+    void openableCosmeticsUseTheSourceEaseOutBackCurve() {
+        assertEquals(0.0D, LandVehicleRig.easeOutBack(0.0D), 1.0E-9D);
+        assertEquals(1.0D, LandVehicleRig.easeOutBack(1.0D), 1.0E-9D);
+        assertEquals(1.0641365625D, LandVehicleRig.easeOutBack(0.75D), 1.0E-9D);
+    }
+
     private static Vector3f point(LandVehicleSpec.Point point) {
         return new Vector3f(point.x(), point.y(), point.z());
     }

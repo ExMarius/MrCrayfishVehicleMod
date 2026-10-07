@@ -24,6 +24,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -99,7 +100,7 @@ public final class VehicleManager {
         }
         CarriedVehicle carried = new CarriedVehicle(vehicle.spec(), vehicle.fuel(), vehicle.velocity(),
                 vehicle.traction(), vehicle.verticalVelocity(), vehicle.chestAttached(),
-                vehicle.storageContents());
+                vehicle.storageContents(), vehicle.openPartStates());
         unindex(vehicle);
         releaseChunkTicket(vehicle);
         trailers.onVehicleRemoved(vehicle.id());
@@ -114,6 +115,7 @@ public final class VehicleManager {
         vehicle.setTraction(carried.traction());
         vehicle.setVerticalVelocity(carried.verticalVelocity());
         vehicle.restoreStorage(carried.chestAttached(), carried.storageContents());
+        vehicle.restoreOpenPartStates(carried.openPartStates());
         return vehicle;
     }
 
@@ -182,7 +184,7 @@ public final class VehicleManager {
             player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
             return;
         }
-        if (vehicle.handleStorageInteraction(player, clicked)) {
+        if (vehicle.handleSpecialInteraction(player, clicked)) {
             save();
             return;
         }
@@ -203,7 +205,7 @@ public final class VehicleManager {
     public void handleInventoryClose(Inventory inventory) {
         for (LandVehicle vehicle : vehicles.values()) {
             if (vehicle.ownsStorage(inventory)) {
-                vehicle.storageClosed();
+                vehicle.storageClosed(inventory);
                 save();
                 return;
             }
@@ -259,7 +261,14 @@ public final class VehicleManager {
         data.set(path + ".traction", stored.traction());
         data.set(path + ".vertical-velocity", stored.verticalVelocity());
         data.set(path + ".storage.chest-attached", stored.chestAttached());
-        data.set(path + ".storage.items", stored.storageContents());
+        data.set(path + ".storage.items",
+                stored.storageContents().getOrDefault("moped_chest", List.of()));
+        for (Map.Entry<String, List<ItemStack>> entry : stored.storageContents().entrySet()) {
+            data.set(path + ".storage.compartments." + entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, Boolean> entry : stored.openPartStates().entrySet()) {
+            data.set(path + ".cosmetics.open." + entry.getKey(), entry.getValue());
+        }
     }
 
     private void load() {
@@ -302,6 +311,7 @@ public final class VehicleManager {
         vehicle.setTraction(stored.traction());
         vehicle.setVerticalVelocity(stored.verticalVelocity());
         vehicle.restoreStorage(stored.chestAttached(), stored.storageContents());
+        vehicle.restoreOpenPartStates(stored.openPartStates());
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {
@@ -458,7 +468,8 @@ public final class VehicleManager {
 
     public record CarriedVehicle(LandVehicleSpec spec, float fuel, Vector velocity,
                                  float traction, double verticalVelocity, boolean chestAttached,
-                                 List<ItemStack> storageContents) {
+                                 Map<String, List<ItemStack>> storageContents,
+                                 Map<String, Boolean> openPartStates) {
     }
 
     private record VehicleChunk(World world, int x, int z) {
@@ -468,7 +479,8 @@ public final class VehicleManager {
                                  double x, double y, double z, float yaw, float fuel,
                                  double velocityX, double velocityY, double velocityZ,
                                  float traction, double verticalVelocity, boolean chestAttached,
-                                 List<ItemStack> storageContents) {
+                                 Map<String, List<ItemStack>> storageContents,
+                                 Map<String, Boolean> openPartStates) {
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
             World world = location.getWorld();
@@ -479,7 +491,7 @@ public final class VehicleManager {
             return new StoredVehicle(vehicle.id(), vehicle.spec().id(), world.getUID().toString(), world.getName(),
                     location.getX(), location.getY(), location.getZ(), location.getYaw(), vehicle.fuel(),
                     velocity.getX(), velocity.getY(), velocity.getZ(), vehicle.traction(), vehicle.verticalVelocity(),
-                    vehicle.chestAttached(), vehicle.storageContents());
+                    vehicle.chestAttached(), vehicle.storageContents(), vehicle.openPartStates());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -499,10 +511,28 @@ public final class VehicleManager {
                     (float) data.getDouble(path + ".traction"),
                     data.getDouble(path + ".vertical-velocity"),
                     data.getBoolean(path + ".storage.chest-attached", false),
-                    readStorage(data, path + ".storage.items"));
+                    readStorage(data, path), readOpenPartStates(data, path));
         }
 
-        private static List<ItemStack> readStorage(YamlConfiguration data, String path) {
+        private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {
+            Map<String, List<ItemStack>> contents = new LinkedHashMap<>();
+            List<ItemStack> legacyMoped = readStorageList(data, vehiclePath + ".storage.items");
+            if (!legacyMoped.isEmpty()
+                    || data.getBoolean(vehiclePath + ".storage.chest-attached", false)) {
+                contents.put("moped_chest", legacyMoped);
+            }
+            ConfigurationSection section = data.getConfigurationSection(
+                    vehiclePath + ".storage.compartments");
+            if (section != null) {
+                for (String storageKey : section.getKeys(false)) {
+                    contents.put(storageKey, readStorageList(data,
+                            vehiclePath + ".storage.compartments." + storageKey));
+                }
+            }
+            return contents;
+        }
+
+        private static List<ItemStack> readStorageList(YamlConfiguration data, String path) {
             List<?> serialized = data.getList(path, List.of());
             List<ItemStack> contents = new ArrayList<>(serialized.size());
             for (Object value : serialized) {
@@ -510,5 +540,18 @@ public final class VehicleManager {
             }
             return contents;
         }
+
+        private static Map<String, Boolean> readOpenPartStates(YamlConfiguration data,
+                                                                String vehiclePath) {
+            Map<String, Boolean> states = new LinkedHashMap<>();
+            ConfigurationSection section = data.getConfigurationSection(vehiclePath + ".cosmetics.open");
+            if (section != null) {
+                for (String part : section.getKeys(false)) {
+                    states.put(part, section.getBoolean(part));
+                }
+            }
+            return states;
+        }
     }
+
 }
