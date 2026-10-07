@@ -103,14 +103,28 @@ jobs:
           CONFIGURE="$GITHUB_WORKSPACE/oracle-deployment/configure_server_resource_pack.py"
 
           phase() { echo "::notice title=Oracle deploy phase::$1"; }
-          test -s "$JAR"
-          test -s "$CONFIG"
-          test -s "$ROOT/bin/stop-minecraft.sh"
-          test -s "$ROOT/bin/start-minecraft.sh"
+          require_file() {
+            if [ ! -s "$1" ]; then
+              echo "::error title=Oracle deploy prerequisite missing::$2"
+              exit 1
+            fi
+          }
+          phase "Deployment job started"
+          require_file "$JAR" "Built plugin artifact was not downloaded"
+          require_file "$CONFIG" "Plugin config artifact was not downloaded"
+          require_file "$ROOT/bin/stop-minecraft.sh" "Minecraft stop script is missing"
+          require_file "$ROOT/bin/start-minecraft.sh" "Minecraft start script is missing"
+          phase "Artifacts and lifecycle scripts verified"
           mkdir -p "$BACKUP/plugins" "$DATA"
-          find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -exec cp -p {} "$BACKUP/plugins/" \;
+          if ! find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -exec cp -p {} "$BACKUP/plugins/" \;; then
+            echo "::error title=Oracle backup failed::Could not back up the installed plugin JAR"
+            exit 1
+          fi
           [ ! -f "$DATA/config.yml" ] || cp -p "$DATA/config.yml" "$BACKUP/config.yml"
-          cp -p "$SERVER/server.properties" "$BACKUP/server.properties"
+          if ! cp -p "$SERVER/server.properties" "$BACKUP/server.properties"; then
+            echo "::error title=Oracle backup failed::Could not back up server.properties"
+            exit 1
+          fi
           phase "Backup created"
 
           PACK_URL=$(sed -n 's/^[[:space:]]*url: *"\([^"]*\)".*/\1/p' "$CONFIG")
