@@ -112,6 +112,7 @@ jobs:
           phase "Deployment job started"
           require_file "$JAR" "Built plugin artifact was not downloaded"
           require_file "$CONFIG" "Plugin config artifact was not downloaded"
+          require_file "$CONFIGURE" "Resource-pack synchronization tool was not downloaded"
           require_file "$ROOT/bin/stop-minecraft.sh" "Minecraft stop script is missing"
           require_file "$ROOT/bin/start-minecraft.sh" "Minecraft start script is missing"
           phase "Artifacts and lifecycle scripts verified"
@@ -126,6 +127,23 @@ jobs:
             exit 1
           fi
           phase "Backup created"
+
+          server_changed=false
+          rollback_on_error() {
+            rc=$?
+            trap - ERR
+            if [ "$server_changed" = true ]; then
+              echo "::warning title=Oracle deployment rollback::Restoring the previous plugin and server.properties"
+              bash "$ROOT/bin/stop-minecraft.sh" || true
+              find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
+              find "$BACKUP/plugins" -maxdepth 1 -type f -name '*.jar' -exec cp -p {} "$PLUGINS/" \;
+              [ ! -f "$BACKUP/config.yml" ] || cp -p "$BACKUP/config.yml" "$DATA/config.yml"
+              cp -p "$BACKUP/server.properties" "$SERVER/server.properties"
+              bash "$ROOT/bin/start-minecraft.sh" || true
+            fi
+            exit "$rc"
+          }
+          trap rollback_on_error ERR
 
           PACK_URL=$(sed -n 's/^[[:space:]]*url: *"\([^"]*\)".*/\1/p' "$CONFIG")
           PACK_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' "$CONFIG")
@@ -146,16 +164,21 @@ jobs:
           fi
           phase "Resource pack URL and SHA-1 verified"
 
+          python3 "$CONFIGURE" \
+            --server-properties "$SERVER/server.properties" \
+            --plugin-config "$CONFIG" \
+            --output "$BACKUP/server.properties.updated"
+          grep -q "^resource-pack-sha1=$PACK_SHA1$" "$BACKUP/server.properties.updated"
+          grep -q '^require-resource-pack=true$' "$BACKUP/server.properties.updated"
+          phase "Updated server.properties prepared and validated"
+
           bash "$ROOT/bin/stop-minecraft.sh"
+          server_changed=true
           phase "Minecraft stopped cleanly"
           find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
           install -m 600 "$JAR" "$TARGET"
           install -m 600 "$CONFIG" "$DATA/config.yml"
-          python3 "$CONFIGURE" \
-            --server-properties "$SERVER/server.properties" \
-            --plugin-config "$CONFIG" \
-            --output "$SERVER/server.properties.updated"
-          mv "$SERVER/server.properties.updated" "$SERVER/server.properties"
+          install -m 600 "$BACKUP/server.properties.updated" "$SERVER/server.properties"
 
           start_epoch=$(date +%s)
           : > "$ROOT/logs/server-console.log"
@@ -178,17 +201,13 @@ jobs:
           done
 
           if [ "$ready" -ne 1 ]; then
-            echo "::error title=Oracle deployment failed::Rolling back the plugin and server.properties"
-            bash "$ROOT/bin/stop-minecraft.sh" || true
-            find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
-            find "$BACKUP/plugins" -maxdepth 1 -type f -name '*.jar' -exec cp -p {} "$PLUGINS/" \;
-            [ ! -f "$BACKUP/config.yml" ] || cp -p "$BACKUP/config.yml" "$DATA/config.yml"
-            cp -p "$BACKUP/server.properties" "$SERVER/server.properties"
-            bash "$ROOT/bin/start-minecraft.sh" || true
+            echo "::error title=Oracle deployment failed::Minecraft did not become healthy; rollback will start now"
             tail -80 "$ROOT/logs/server-console.log" || true
-            exit 1
+            false
           fi
 
+          server_changed=false
+          trap - ERR
           find "$ROOT/backups" -mindepth 1 -maxdepth 1 -type d -name 'plugin-*' -printf '%T@ %p\n' \
             | sort -rn | tail -n +6 | cut -d' ' -f2- | xargs -r rm -rf
           echo "::notice title=Oracle deployment::Plugin deployed, resource pack synchronized, and Minecraft is ready on local port 25565"
