@@ -1,5 +1,7 @@
 name: Recover migrated Oracle server runtime
 
+# This workflow is also the non-destructive emergency start path for the migrated server.
+
 on:
   workflow_dispatch:
   push:
