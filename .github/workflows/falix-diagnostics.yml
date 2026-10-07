@@ -1,0 +1,68 @@
+name: Falix diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/falix-diagnostics.yml"
+      - ".github/falix-log-request"
+
+permissions:
+  contents: read
+
+jobs:
+  collect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Download Falix logs
+        env:
+          FALIX_SFTP_HOST: ${{ secrets.FALIX_SFTP_HOST }}
+          FALIX_SFTP_PORT: ${{ secrets.FALIX_SFTP_PORT }}
+          FALIX_SFTP_USERNAME: ${{ secrets.FALIX_SFTP_USERNAME }}
+          FALIX_SFTP_PASSWORD: ${{ secrets.FALIX_SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for variable in FALIX_SFTP_HOST FALIX_SFTP_PORT FALIX_SFTP_USERNAME FALIX_SFTP_PASSWORD; do
+            if [ -z "${!variable:-}" ]; then
+              echo "::error title=Missing FalixNodes secret::${variable} is not configured."
+              exit 1
+            fi
+          done
+          if ! [[ "$FALIX_SFTP_PORT" =~ ^[0-9]+$ ]]; then
+            echo "::error title=Invalid FalixNodes secret::FALIX_SFTP_PORT must be numeric."
+            exit 1
+          fi
+          SFTP_HOST="${FALIX_SFTP_HOST#sftp://}"
+          SFTP_HOST="${SFTP_HOST%%/*}"
+          SFTP_HOST="${SFTP_HOST%%:*}"
+          test -n "$SFTP_HOST"
+
+          sudo apt-get update -qq
+          sudo apt-get install --yes --quiet sshpass
+          mkdir -p falix-diagnostics
+          export SSHPASS="$FALIX_SFTP_PASSWORD"
+          sshpass -e sftp \
+            -oBatchMode=no \
+            -oPreferredAuthentications=password \
+            -oPubkeyAuthentication=no \
+            -oStrictHostKeyChecking=accept-new \
+            -oConnectTimeout=20 \
+            -P "$FALIX_SFTP_PORT" \
+            "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" <<EOF
+          get logs/latest.log falix-diagnostics/latest.log
+          -get -R crash-reports falix-diagnostics/crash-reports
+          EOF
+          unset SSHPASS FALIX_SFTP_PASSWORD
+          test -s falix-diagnostics/latest.log
+
+      - name: Upload private diagnostic artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: falix-diagnostics-${{ github.run_id }}
+          path: falix-diagnostics/
+          if-no-files-found: error
+          retention-days: 1
