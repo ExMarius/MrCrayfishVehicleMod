@@ -364,7 +364,7 @@ class LandVehicleSpecTest {
         assertEquals(180.0F, spec.seats().get(3).yawOffset(), EPSILON);
         assertFalse(spec.canTowTrailers());
         assertEquals(spec, LandVehicleSpec.byId("golf_cart"));
-        assertEquals(15, LandVehicleSpec.ids().size());
+        assertEquals(21, LandVehicleSpec.ids().size());
     }
 
     @Test
