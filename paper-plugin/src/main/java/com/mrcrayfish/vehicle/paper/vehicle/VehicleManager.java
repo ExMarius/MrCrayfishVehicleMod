@@ -201,6 +201,20 @@ public final class VehicleManager {
         if (player.isSneaking() && trailers.pickUpVehicle(player, vehicle)) {
             return;
         }
+        /* r37 bug fix: a player who was still registered as the Shopping Cart's pusher
+         * (e.g. they sneak-interacted to grab it, then clicked it again without
+         * sneaking) could also mount its seat. LandVehicle#tick runs tickPushed()
+         * first whenever a pusher is set, which re-derives the cart's position from
+         * the pushing player's own location every tick; but a mounted player's
+         * location is itself re-derived from the seat's position by the server's
+         * native passenger sync. Together those formed a feedback loop that pushed
+         * both the cart and the player upward indefinitely - the reported "infinite
+         * flight" exploit. Mounting while still the pusher is refused outright. */
+        if (player.getUniqueId().equals(vehicle.pusher())) {
+            player.sendRichMessage("<red>Lasă căruciorul (ghemuit + interacționează) "
+                    + "înainte să urci în el.</red>");
+            return;
+        }
         if (vehicle.mount(player)) {
             if (vehicle.spec().motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
                 player.sendRichMessage("<gray>W/S înainte/înapoi, A/D deplasare laterală, "
@@ -224,6 +238,12 @@ public final class VehicleManager {
             player.sendRichMessage("<gray>Ai lăsat căruciorul.</gray>");
         } else if (current != null) {
             player.sendRichMessage("<red>Căruciorul este deja împins de altcineva.</red>");
+        } else if (vehicle.occupied()) {
+            /* r37: the same mount/push feedback loop described in handleInteraction()
+             * can also be entered this way around (mount first, then sneak-interact to
+             * start pushing while still seated), so pushing a cart with anyone already
+             * sitting in it is refused too. */
+            player.sendRichMessage("<red>Cineva stă deja în cărucior.</red>");
         } else {
             vehicle.setPusher(player.getUniqueId());
             player.sendRichMessage("<gray>Împingi căruciorul din spate. Mergi pentru a-l deplasa; "

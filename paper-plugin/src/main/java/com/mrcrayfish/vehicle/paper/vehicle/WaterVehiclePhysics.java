@@ -51,16 +51,21 @@ final class WaterVehiclePhysics {
      * "waterLevel - 0.35 + 0.25 * min(1, speed/maxForwardSpeed)", sinking 0.25 blocks
      * at rest versus full throttle). This is a disclosed deviation from the literal
      * source value, not a reproduction of it; see SOURCE_POSITION_AUDIT.md r37 entry.
+     * A follow-up user request nudged the fixed height down by one more model pixel
+     * (1/16 block) after the first flattened value sat slightly too high.
      */
+    private static final double RESTING_WATERLINE = -0.10D - 1.0D / 16.0D;
+
     static double targetSurfaceY(double waterLevel, float speed, float maxForwardSpeed) {
-        return waterLevel - 0.10D;
+        return waterLevel + RESTING_WATERLINE;
     }
 
     /** Matches the disclosed targetSurfaceY height above so a freshly placed boat
      * does not visibly drop the moment it starts ticking. */
     static double restingSurfaceY(double waterLevel) {
-        return waterLevel - 0.10D;
+        return waterLevel + RESTING_WATERLINE;
     }
+
 
     enum State {
         IN_WATER,

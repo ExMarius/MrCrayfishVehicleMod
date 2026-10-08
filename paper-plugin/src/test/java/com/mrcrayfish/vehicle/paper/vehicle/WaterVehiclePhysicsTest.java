@@ -61,7 +61,7 @@ class WaterVehiclePhysicsTest {
         /* r37: per explicit user direction, this no longer matches the genuine
          * released source height (waterLevel - 0.35); see
          * WaterVehiclePhysics.targetSurfaceY and SOURCE_POSITION_AUDIT.md r37. */
-        assertEquals(64.9D, WaterVehiclePhysics.restingSurfaceY(65.0D), 0.000001D);
+        assertEquals(64.8375D, WaterVehiclePhysics.restingSurfaceY(65.0D), 0.000001D);
     }
 
     @Test
@@ -72,9 +72,9 @@ class WaterVehiclePhysicsTest {
          * genuine released source formula ("waterLevel - 0.35 + 0.25 *
          * min(1, speed/maxForwardSpeed)"), not a reproduction of it; see
          * SOURCE_POSITION_AUDIT.md r37 entry. */
-        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 0.0F, 10.0F), 0.000001D);
-        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 10.0F), 0.000001D);
-        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, -4.0F, 10.0F), 0.000001D);
-        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 20.0F), 0.000001D);
+        assertEquals(64.8375D, WaterVehiclePhysics.targetSurfaceY(65.0D, 0.0F, 10.0F), 0.000001D);
+        assertEquals(64.8375D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 10.0F), 0.000001D);
+        assertEquals(64.8375D, WaterVehiclePhysics.targetSurfaceY(65.0D, -4.0F, 10.0F), 0.000001D);
+        assertEquals(64.8375D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 20.0F), 0.000001D);
     }
 }
