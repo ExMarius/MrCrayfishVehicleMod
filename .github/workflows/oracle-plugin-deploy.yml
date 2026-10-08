@@ -177,11 +177,22 @@ jobs:
           if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
             if ! bash "$ROOT/bin/stop-minecraft.sh"; then
               echo "::warning title=Oracle stop recovery::Normal stop failed; closing only the mcv-minecraft screen session"
-              screen -S mcv-minecraft -X quit || true
+              sessions=$(screen -list 2>/dev/null | awk '$1 ~ /^[0-9]+[.]mcv-minecraft$/ {print $1}')
+              for session in $sessions; do
+                screen -S "$session" -X quit || true
+                screen_pid=${session%%.*}
+                kill -TERM "$screen_pid" 2>/dev/null || true
+              done
               for _ in $(seq 1 15); do
                 screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]' || break
                 sleep 1
               done
+              sessions=$(screen -list 2>/dev/null | awk '$1 ~ /^[0-9]+[.]mcv-minecraft$/ {print $1}')
+              for session in $sessions; do
+                screen_pid=${session%%.*}
+                kill -KILL "$screen_pid" 2>/dev/null || true
+              done
+              screen -wipe >/dev/null 2>&1 || true
             fi
             if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
               echo "::error title=Oracle stop failed::The mcv-minecraft screen session is still running"
