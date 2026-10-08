@@ -683,7 +683,10 @@ public record LandVehicleSpec(
                     seat(true, 0.0F, 5.0F, -3.0F, 1.25F, -1.5F, 4.624F),
                     seat(false, 0.0F, 5.5F, -12.0F, 1.25F, -1.5F, 4.624F)
             ),
-            true, "tow_bar", new Point(0.0F, 0.0F, -20.8F), new Point(0.0F, 0.0F, -0.55F),
+            /* Nudged from -20.8 to -19.6 (~1.5px closer at this body's 1.25x scale)
+             * per live playtesting feedback: the hitch/jack sat visibly detached
+             * behind the ATV's rear bumper. */
+            true, "tow_bar", new Point(0.0F, 0.0F, -19.6F), new Point(0.0F, 0.0F, -0.55F),
             null, null, List.of(), false
     );
 

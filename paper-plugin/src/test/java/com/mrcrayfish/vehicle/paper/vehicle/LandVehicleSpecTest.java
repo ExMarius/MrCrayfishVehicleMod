@@ -700,7 +700,9 @@ class LandVehicleSpecTest {
         assertTowBar(LandVehicleSpec.LAWN_MOWER, -1.25F);
         assertTowBar(LandVehicleSpec.QUAD_BIKE, -1.1F);
         assertTowBar(LandVehicleSpec.TRACTOR, -1.53125F);
-        assertTowBar(LandVehicleSpec.ATV, -1.625F);
+        /* -19.6 (nudged from -20.8 per live playtesting feedback) * 1.25 bodyScale
+         * * 0.0625 MODEL_UNIT = -1.53125. */
+        assertTowBar(LandVehicleSpec.ATV, -1.53125F);
     }
 
     @Test
