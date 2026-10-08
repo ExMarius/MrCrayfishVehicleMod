@@ -36,14 +36,22 @@ def item_definition(model: str, tint: int = 0xFFFFFF) -> dict[str, object]:
     }
 
 
+VANILLA_1_21_4_ELEMENT_ANGLES = (-45.0, -22.5, 0.0, 22.5, 45.0)
+
+
 def convert_model(source: Path, destination: Path, textures: dict[str, str] | None = None,
-                  geometry_scale: float = 1.0) -> None:
+                  geometry_scale: float = 1.0, legalize_rotations: bool = False) -> None:
     """Normalize Forge/Blockbench model metadata to vanilla model JSON.
 
     Framework accepts oversized elements, but vanilla rejects element coordinates
     outside -16..32 and replaces the whole model with its black/magenta fallback.
     Oversized geometry is scaled around the item origin (8, 8, 8); the display
     rig applies the exact inverse scale so the model keeps its source dimensions.
+
+    Minecraft 1.21.4 also accepts only 22.5-degree element-rotation increments.
+    Framework's complex-model loader accepts arbitrary values. Models using those
+    source angles must opt into nearest legal rotation conversion; arbitrary angles
+    did not become a vanilla feature until after the server's 1.21.4 protocol.
     """
     model = json.loads(source.read_text(encoding="utf-8"))
     if textures is not None:
@@ -61,6 +69,16 @@ def convert_model(source: Path, destination: Path, textures: dict[str, str] | No
             rotation = element.get("rotation")
             if rotation is not None and "origin" in rotation:
                 rotation["origin"] = scaled(rotation["origin"])
+    if legalize_rotations:
+        for element in model.get("elements", []):
+            rotation = element.get("rotation")
+            if rotation is None or "angle" not in rotation:
+                continue
+            source_angle = float(rotation["angle"])
+            rotation["angle"] = min(
+                VANILLA_1_21_4_ELEMENT_ANGLES,
+                key=lambda candidate: abs(candidate - source_angle),
+            )
     model.pop("loader", None)
     model.pop("groups", None)
     # texture_size is understood by the source loader but unnecessary for vanilla item models.
@@ -79,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r23 — twelve vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r24 — twelve vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -317,6 +335,7 @@ def build(output: Path) -> tuple[Path, str]:
                 {texture_key: f"vehicle:item/{target}",
                  "particle": f"vehicle:item/{target}"},
                 geometry_scale=geometry_scale,
+                legalize_rotations=True,
             )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -644,7 +663,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r23.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r24.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

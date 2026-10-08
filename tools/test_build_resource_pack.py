@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r23_pack(self):
+    def test_configured_sha1_matches_deterministic_r24_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -64,6 +64,13 @@ class ResourcePackBuildTest(unittest.TestCase):
                                                 f"{entry} element {index} {key}")
                         self.assertLessEqual(coordinate, 32.0,
                                              f"{entry} element {index} {key}")
+                rotation = element.get("rotation")
+                if rotation is not None:
+                    self.assertIn(rotation.get("axis"), ("x", "y", "z"),
+                                  f"{entry} element {index} rotation axis")
+                    self.assertIn(float(rotation.get("angle", 0.0)),
+                                  build_resource_pack.VANILLA_1_21_4_ELEMENT_ANGLES,
+                                  f"{entry} element {index} rotation angle")
                 for face, definition in element.get("faces", {}).items():
                     texture = definition.get("texture", "")
                     if texture.startswith("#"):
