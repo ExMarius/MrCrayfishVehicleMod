@@ -455,9 +455,9 @@ class LandVehicleSpecTest {
         assertEquals(LandVehicleSpec.MotionType.AIR, spec.motionType());
         assertEquals(3.0F, spec.entityWidth(), EPSILON);
         assertEquals(1.6875F, spec.entityHeight(), EPSILON);
-        assertEquals(0.85F, spec.bodyScale(), EPSILON);
+        assertEquals(1.0F, spec.bodyScale(), EPSILON);
         assertEquals(4.0F, spec.wheelOffset(), EPSILON);
-        assertPoint(spec.bodyOrigin(), 0.0F, 0.6375F, -0.425F);
+        assertPoint(spec.bodyOrigin(), 0.0F, 0.75F, -0.5F);
         assertEquals(24.0F, spec.enginePower(), EPSILON);
         assertEquals(25.0F, spec.maxSteeringAngle(), EPSILON);
         assertEquals(0.765625F, spec.frontAxleOffset(), EPSILON);
@@ -467,7 +467,7 @@ class LandVehicleSpecTest {
         assertEquals("vehicle:entity.sports_plane.engine", spec.engineSound());
         assertEquals(3, spec.wheels().size());
         assertEquals(1, spec.seats().size());
-        assertPoint(spec.seats().getFirst().sourceOffset(), 0.0F, 0.53125F, -0.425F);
+        assertPoint(spec.seats().getFirst().sourceOffset(), 0.0F, 0.625F, -0.5F);
         assertEquals(7, spec.bodyParts().size());
         assertEquals(3.0F, spec.modelScaleCorrection("sports_plane_body"), EPSILON);
         assertEquals(3.0F, spec.modelScaleCorrection("sports_plane_wings"), EPSILON);

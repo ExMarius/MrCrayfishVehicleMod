@@ -606,50 +606,59 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
-    /* PlaneEntity uses the generated Sports Plane body transform (Z -8), display scale
-     * 0.85, default four-pixel wheel offset, one driver seat, and three source wheels.
+    /* PlaneEntity uses the generated Sports Plane body transform (Z -8) and default
+     * four-pixel wheel offset, one driver seat, and three source wheels. The JSON's
+     * bodyTransform omits "scale", which ExtraJSONUtils.getAsTransform defaults to 1.0
+     * (confirmed: AbstractPlaneRenderer/AbstractVehicleRenderer only ever read
+     * getBodyTransform(), never getDisplayTransform(), which is GUI/item-only) -- so the
+     * correct in-world body scale is 1.0, not the item displayTransform's 0.85. All
+     * position/scale fields below are the bodyScale=1.0 values (previous revision used
+     * 0.85 for these, scaling the whole plane ~15% too small; frontAxleOffset/
+     * rearAxleOffset already correctly used bodyScale=1.0 per PlaneEntity's own
+     * (bodyPosition.getZ() + axleOffset.z) * 0.0625 * bodyPosition.getScale() formula,
+     * so those two were untouched by this fix).
      * Complex-model children are represented as independent displays so their original
      * propeller, aileron, elevator, and joystick actions remain animated for vanilla clients. */
     public static final LandVehicleSpec SPORTS_PLANE = new LandVehicleSpec(
             "sports_plane", "Sports Plane", "sports_plane_body",
             3.0F, 1.6875F, 0.6F,
-            0.85F, 0.0F, 4.0F,
+            1.0F, 0.0F, 4.0F,
             24.0F, 25.0F, 0.765625F, -0.40625F, 5.0F,
             75_000.0F, 1.0F, 0.5F, 1.25F, "vehicle:entity.sports_plane.engine",
             false, new Point(0.0F, 0.0F, 0.0F),
-            new Part("iron_large_engine", new Point(0.0F, 0.6375F, -0.425F),
-                    0.85F, 0.0F, 0.0F, 0.0F),
+            new Part("iron_large_engine", new Point(0.0F, 0.75F, -0.5F),
+                    1.0F, 0.0F, 0.0F, 0.0F),
             null,
-            new Part("fuel_door_closed", new Point(-0.23109375F, 0.53125F, -0.74375F),
-                    0.425F, 0.0F, -112.5F, 0.0F),
+            new Part("fuel_door_closed", new Point(-0.271875F, 0.625F, -0.875F),
+                    0.5F, 0.0F, -112.5F, 0.0F),
             null,
             List.of(
-                    new Part("sports_plane_wings", new Point(0.0F, 1.275F, -0.796875F),
-                            0.85F, 0.0F, 0.0F, 0.0F),
-                    new Part("sports_plane_seat", new Point(0.0F, 0.6375F, -0.425F),
-                            0.85F, 0.0F, 0.0F, 0.0F),
-                    new Part("sports_plane_propeller", new Point(0.0F, 0.95625F, 1.221875F),
-                            0.85F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_wings", new Point(0.0F, 1.5F, -0.9375F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_seat", new Point(0.0F, 0.75F, -0.5F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_propeller", new Point(0.0F, 1.125F, 1.4375F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
                     new Part("sports_plane_left_aileron",
-                            new Point(1.5307969F, 0.85F, -0.6195916F),
-                            0.85F, 0.0F, 0.0F, 0.0F),
+                            new Point(1.8009375F, 1.0F, -0.72893125F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
                     new Part("sports_plane_right_aileron",
-                            new Point(-1.5307969F, 0.85F, -0.6195916F),
-                            0.85F, 0.0F, 0.0F, 0.0F),
-                    new Part("sports_plane_elevator", new Point(0.0F, 1.009375F, -3.771875F),
-                            0.85F, 0.0F, 0.0F, 0.0F),
-                    new Part("sports_plane_joystick", new Point(0.0F, 0.478125F, 0.2390625F),
-                            0.85F, 0.0F, 0.0F, 0.0F)
+                            new Point(-1.8009375F, 1.0F, -0.72893125F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_elevator", new Point(0.0F, 1.1875F, -4.4375F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_joystick", new Point(0.0F, 0.5625F, 0.28125F),
+                            1.0F, 0.0F, 0.0F, 0.0F)
             ),
             List.of(
-                    new Wheel(0, true, 0.0F, 0.16457593F, 1.000195F,
-                            0.0F, 0.0F, 0.85F, 0.65830374F, 0.65830374F),
-                    new Wheel(0, false, 0.8234375F, 0.2125F, -0.7171875F,
-                            0.0F, 0.0F, 0.85F, 0.85F, 0.85F),
-                    new Wheel(0, false, -0.8234375F, 0.2125F, -0.7171875F,
-                            0.0F, 0.0F, 0.85F, 0.85F, 0.85F)
+                    new Wheel(0, true, 0.0F, 0.193625F, 1.1766875F,
+                            0.0F, 0.0F, 1.0F, 0.7745F, 0.7745F),
+                    new Wheel(0, false, 0.96875F, 0.25F, -0.84375F,
+                            0.0F, 0.0F, 1.0F, 1.0F, 1.0F),
+                    new Wheel(0, false, -0.96875F, 0.25F, -0.84375F,
+                            0.0F, 0.0F, 1.0F, 1.0F, 1.0F)
             ),
-            List.of(new Seat(true, new Point(0.0F, 0.53125F, -0.425F), 0.0F)),
+            List.of(new Seat(true, new Point(0.0F, 0.625F, -0.5F), 0.0F)),
             false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
             new Point(0.0F, 0.0F, 0.0F),
             null, null, List.of(), false
