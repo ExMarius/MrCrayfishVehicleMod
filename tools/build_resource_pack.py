@@ -97,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r32 — twenty-four vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r33 — twenty-three vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -184,7 +184,6 @@ def build(output: Path) -> tuple[Path, str]:
             "aluminum_boat_body": ("vehicle:item/aluminum_boat_body", 16383998),
             "bumper_car_body": ("vehicle:item/bumper_car_body", 16383998),
             "shopping_cart_body": ("vehicle:item/shopping_cart_body", 16383998),
-            "bath_body": ("vehicle:item/bath_body", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -533,20 +532,6 @@ def build(output: Path) -> tuple[Path, str]:
                 "plastic_mesh_one": "vehicle:model/mesh_angled_flipped",
                 "plastic_mesh_three": "vehicle:model/mesh",
                 "particle": "minecraft:block/light_gray_concrete",
-            },
-        )
-        convert_model(
-            ROOT / "tools/source_assets/cfm_bath.json",
-            namespace / "models/item/bath_body.json",
-            {
-                # The recovered MrCrayfish's Furniture Mod bathtub already uses only
-                # vanilla-style block textures as its own native design (see
-                # tools/source_assets/README.md), carried over unchanged.
-                "0": "minecraft:block/water_still",
-                "1": "minecraft:block/white_concrete",
-                "2": "minecraft:block/cyan_terracotta",
-                "3": "minecraft:block/stone",
-                "particle": "minecraft:block/white_concrete",
             },
         )
         convert_model(
@@ -934,7 +919,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r32.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r33.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

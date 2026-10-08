@@ -270,23 +270,19 @@ source's position-follow formula exactly; the only difference from source is the
 trigger itself.
 
 `BathEntity` extends `PlaneEntity` directly and overrides nothing except `setFuelConsumption(0.0F)`
-(infinite fuel) — every other plane constant (speed, turn angle, flap/lift behaviour) is the shared
-`PlaneEntity` default, identical to what `SportsPlaneEntity` inherits (its own explicit
-`setMaxSpeed(25F)`/`setAccelerationSpeed(0.5F)` just restate the same defaults), so this port's
-`BATH` spec reuses the exact same `AIR` motion-type flight model as the Sports Plane via
-`motionType()`'s id check, with its own `maxSteeringAngle` left at the shared `35°` default since
-Bath never calls `setMaxTurnAngle()` the way `SportsPlaneEntity` explicitly does (`25°`). Like the
-original source itself, there is no dedicated Bath body model: `BathModel#render` draws
-`SpecialModels.ATV_BODY` as a placeholder (rotated `90°` around Y), while its ray-trace hitbox
-separately targets the real `cfm:bath` item — because the actual tub geometry only ever existed as
-MrCrayfish's Furniture Mod item. **Notably, `BathEntity`'s own `EntityType` registration is entirely
-gated behind CFM being loaded** (`VehicleUtil.createModDependentEntityType(REGISTER, "cfm", "bath",
-...)`), exactly like the Couch and Sofacopter — without CFM, Bath does not exist at all in the
-original source. This Paper port deliberately goes beyond the source by shipping Bath without any
-CFM dependency. r30 through r31 reused the ATV-body placeholder the source renderer falls back to
-for its visuals (this port's `atv_body` item model) instead of attempting to recover or recreate
-the CFM bathtub geometry the way r27 recovered the Sofacopter's real ceiling-fan rotor. r32
-recovered and wired in the real geometry; see the next section.
+(infinite fuel). **Notably, `BathEntity`'s own `EntityType` registration is entirely gated behind
+CFM being loaded** (`VehicleUtil.createModDependentEntityType(REGISTER, "cfm", "bath", ...)`),
+exactly like the Couch and Sofacopter — without CFM, Bath does not exist at all in the original
+source, and its own entity/model classes are absent from this repository's `1.16.X-dev` source
+entirely (they only ever shipped in a released build). r29 through r30 shipped Bath anyway, as a
+deliberate beyond-the-source addition, first with the ATV-body placeholder (r29–r31) and then with
+a from-scratch-rotated geometry recovered from MrCrayfish's Furniture Mod, a *different* mod's
+source code, not the Vehicle Mod's own (r32). **Per explicit user direction, Bath has been removed
+entirely in r33**: this port's standing rule is to reproduce the Vehicle Mod's own source code and
+assets only, and Bath's dependence on a different mod's geometry for any faithful rendering put it
+outside that rule regardless of which placeholder or recovered geometry it used. `LandVehicleSpec`
+no longer has a `BATH` constant, `tools/source_assets/cfm_bath.json` has been deleted, and the
+resource pack no longer ships a `bath_body` item or model.
 
 ### Aluminum Boat real hull texture recovered (r31)
 
@@ -304,27 +300,6 @@ also holds `go_kart.png`, the texture for a superseded single-mesh `go_kart_body
 predates (and is not used by) the currently shipped multi-part Go Kart, and `tyre.png`, a small
 tire-colored swatch not clearly tied to any one vehicle's texture key; both are left in place,
 unwired, pending clearer evidence of their intended use.
-
-### Bath's real CFM tub geometry recovered (r32)
-
-Per explicit user direction, Bath no longer uses the ATV-body placeholder (r29–r31). The real
-`cfm:bath` block model was found on MrCrayfish's Furniture Mod `master` branch (it is not present
-on any 1.16.X-era branch of that mod; Bath's own entity/model classes are likewise absent from this
-repository's `1.16.X-dev` source, consistent with the original mod gating Bath's existence behind
-CFM being installed — see above). Like every other vanilla-block-textured vehicle in this project,
-the tub's own native design already uses only vanilla block textures (water, white concrete, cyan
-terracotta, stone), so no dedicated PNG art was needed. The model was originally authored as a
-two-block-wide item for the `bath_top`/`bath_bottom` pair with its long axis on CFM's X axis; it has
-been rotated 90 degrees around Y (vertex positions remapped, faces relabeled) so its long axis lines
-up with this rig's forward Z axis instead, and saved as `tools/source_assets/cfm_bath.json`. It is
-wired in as a new `bath_body` item model, replacing `atv_body` as `BATH`'s `bodyModel`.
-
-`bodyScale` and `bodyRenderTranslation` were deliberately left unchanged from the previously-working
-ATV-placeholder values rather than freshly recalculated for the tub's different proportions: there
-is no generated ground truth for Bath's body position (the comment on `BATH.bodyRenderTranslation()`
-already noted this is a "separately hand-tuned" value even for the placeholder), and this port has
-no way to visually verify a new value without a live client. If the tub sits or sizes wrong in-game,
-it needs the same kind of small positional nudge the ATV tow hitch needed, not a formula rewrite.
 
 ### Vehicle Trailer passenger offsets
 
@@ -388,6 +363,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 23. The r28 Dune Buggy port adds the released `1.16.X` body/handles models (which natively use vanilla block textures, not custom art), serialized axle/wheel/seat/fuel-port geometry, the shared Dirt Bike/Moped tilted-fork handlebar steering with its manually fork-rendered front wheel, and the original Bumper Car engine sample selected by `DuneBuggyEntity#getEngineSound()`.
 24. The r29 batch adds the released `1.16.X` ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch: their generated axle/wheel/seat/fuel-port geometry and vanilla-block-texture bodies, the ATV's dune-buggy-style steering ratio, the Mini Bike's `Motorcycle`-pattern fork steering with an estimated (not exactly sourced) handlebar resting position, each vehicle's own engine sample reuse, and the Couch's CFM-dependent shared sofa body.
 25. The r30 batch adds the released `1.16.X` Bumper Car, Shopping Cart, and Bath, the three vehicles whose mechanics are genuinely novel to this port: the Bumper Car's car-to-car collision, approximated as a velocity jolt plus `bonk.ogg` since this port does not expose the source's internal `currentSpeed` field; the Shopping Cart's push-from-behind control, approximated as a sneak-interact grab/release toggle driving the cart's position from the pushing player each tick; and Bath, which reuses the Sports Plane's flight model and the source's own ATV-body placeholder visual rather than the CFM-only `cfm:bath` item geometry, shipped without CFM despite the original source gating Bath's very existence behind that mod being installed.
+26. r33 removes Bath entirely, per explicit user direction that this port only reproduces the Vehicle Mod's own source code and assets: any faithful rendering of Bath depends on a *different* mod's (MrCrayfish's Furniture Mod) geometry, which no placeholder or recovered substitute (r29's ATV body, r32's recovered CFM tub) could avoid. The vehicle count drops from twenty-four to twenty-three.
 
 ## Exact ports versus vanilla-client adaptations
 

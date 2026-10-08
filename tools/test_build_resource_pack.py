@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r32_pack(self):
+    def test_configured_sha1_matches_deterministic_r33_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -283,7 +283,7 @@ class ResourcePackBuildTest(unittest.TestCase):
 
         aluminum_boat_body = self.read_json("assets/vehicle/models/item/aluminum_boat_body.json")
         self.assertEqual(77, len(aluminum_boat_body["elements"]))
-        # r32 recovered the released source's own riveted-aluminum hull texture (previously sitting
+        # r33 recovered the released source's own riveted-aluminum hull texture (previously sitting
         # unwired under the stray plural "textures/vehicles/" directory) in place of the concrete
         # placeholder used since r29; "seat" and "logo" still have no dedicated art and keep theirs.
         self.assertEqual("vehicle:item/aluminum_boat_body", aluminum_boat_body["textures"]["body"])
@@ -313,7 +313,7 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual("vehicle:entity/speed_boat/engine",
                          sounds["entity.speed_boat.engine"]["sounds"][0]["name"])
 
-    def test_bumper_car_shopping_cart_and_bath_use_released_geometry_and_audio(self):
+    def test_bumper_car_and_shopping_cart_use_released_geometry_and_audio(self):
         bumper_car_body = self.read_json("assets/vehicle/models/item/bumper_car_body.json")
         self.assertEqual(33, len(bumper_car_body["elements"]))
         self.assertEqual("minecraft:block/white_concrete", bumper_car_body["textures"]["body"])
@@ -327,15 +327,6 @@ class ResourcePackBuildTest(unittest.TestCase):
                         "vehicle:model/mesh", "vehicle:model/mesh_angled_flipped"):
             path = texture.split(":", 1)[1]
             self.assertIn(f"assets/vehicle/textures/{path}.png", self.entries)
-
-        # Bath now ships the recovered MrCrayfish's Furniture Mod "cfm:bath" tub
-        # geometry (rotated 90 degrees so its long axis is the rig's forward Z axis)
-        # instead of the earlier revision's ATV-placeholder body.
-        bath_body = self.read_json("assets/vehicle/models/item/bath_body.json")
-        self.assertEqual(11, len(bath_body["elements"]))
-        self.assertEqual("minecraft:block/white_concrete", bath_body["textures"]["1"])
-        self.assertEqual("minecraft:block/water_still", bath_body["textures"]["0"])
-        self.assertIn("assets/vehicle/items/bath_body.json", self.entries)
 
         legal_angles = {-45.0, -22.5, 0.0, 22.5, 45.0}
         for model in (bumper_car_body, shopping_cart_body):

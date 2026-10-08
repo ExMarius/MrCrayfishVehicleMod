@@ -962,11 +962,13 @@ public final class LandVehicle {
     }
 
     private void updateWheelRotations() {
-        /* Bath has no wheels at all (spec.wheels() is empty) since it never touches the
-         * ground on its own axles — reusing firstFrontWheel()/firstRearWheel() below would
-         * throw NoSuchElementException on every tick and silently break the entity (it
-         * never crashed visibly, but the exception aborted tickPlane() every tick, so the
-         * vehicle's display rig was never updated after spawn and appeared invisible). */
+        /* Helicopter-family vehicles (Compact Helicopter, Sofacopter) have no wheels at
+         * all (spec.wheels() is empty) since they never touch the ground on their own
+         * axles — reusing firstFrontWheel()/firstRearWheel() below would throw
+         * NoSuchElementException on every tick and silently break the entity (an earlier
+         * wheel-less vehicle never crashed visibly, but the exception aborted tickPlane()
+         * every tick, so its display rig was never updated after spawn and appeared
+         * invisible). */
         if (spec.wheels().isEmpty()) {
             return;
         }
