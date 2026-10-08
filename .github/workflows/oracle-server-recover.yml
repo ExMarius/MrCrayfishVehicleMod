@@ -87,9 +87,7 @@ jobs:
 
           ready=0
           for _ in $(seq 1 120); do
-            latest_mtime=$(stat -c %Y "$SERVER/logs/latest.log" 2>/dev/null || echo 0)
-            if [ "$latest_mtime" -ge "$start_epoch" ] \
-                && grep -Eq 'Done \([0-9.,]+s\)!|Done \(' "$SERVER/logs/latest.log" 2>/dev/null \
+            if grep -Eq 'Done \([0-9.,]+s\)!|Done \(' "$SERVER/logs/latest.log" 2>/dev/null \
                 && ss -ltn 2>/dev/null | grep -q ':25565' \
                 && pgrep -x frpc >/dev/null \
                 && screen -list 2>/dev/null | grep -q "[.]$SESSION[[:space:]]"; then
