@@ -38,6 +38,10 @@ jobs:
           if [ -x "$ROOT/bin/stop-panel.sh" ]; then
             "$ROOT/bin/stop-panel.sh" || true
           fi
+          # Restart the supervisor so a newly deployed FRP lifecycle takes effect.
+          if [ -x "$ROOT/bin/stop-frp.sh" ]; then
+            "$ROOT/bin/stop-frp.sh" || true
+          fi
 
           install -m 700 oracle-panel/panel.py "$PANEL/panel.py"
           for script in oracle-panel/scripts/*.sh; do
@@ -62,6 +66,20 @@ jobs:
           }
           test -s "$ROOT/frp/supervisor.pid"
           kill -0 "$(cat "$ROOT/frp/supervisor.pid")"
+          if [ -x "$ROOT/frp/frps" ] && { [ -s "$ROOT/frp/frps.toml" ] || [ -s "$ROOT/frp/frps.yaml" ]; }; then
+            ready=0
+            for _ in $(seq 1 20); do
+              if pgrep -x frps >/dev/null 2>&1 && pgrep -x frpc >/dev/null 2>&1; then
+                ready=1
+                break
+              fi
+              sleep 1
+            done
+            if [ "$ready" -ne 1 ]; then
+              echo "::error title=Panel deployment::The preserved local FRPS/FRPC pair did not become ready"
+              exit 1
+            fi
+          fi
 
           echo "::notice title=Oracle panel::Panel ready on local port 8081; one-command bootstrap is $HOME/start.sh"
           if [ -s "$PANEL/initial-password.txt" ]; then

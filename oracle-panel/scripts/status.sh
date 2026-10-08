@@ -17,6 +17,7 @@ while IFS= read -r pid; do
 done < <(pgrep -x java 2>/dev/null || true)
 echo "Java: ${java_pid:-stopped}"
 echo "Panel: $(pgrep -f "$ROOT/panel/panel.py" >/dev/null 2>&1 && echo running || echo stopped)"
-echo "FRP: $(pgrep -x frpc >/dev/null 2>&1 && echo connected || echo reconnecting)"
+echo "FRP client: $(pgrep -x frpc >/dev/null 2>&1 && echo connected || echo reconnecting)"
+echo "FRP server: $(pgrep -x frps >/dev/null 2>&1 && echo running || echo stopped)"
 echo "FRP supervisor: $(pgrep -f "$ROOT/bin/frp-supervisor.sh" >/dev/null 2>&1 && echo running || echo stopped)"
 echo "Runner: $(pgrep -f 'Runner.Listener' >/dev/null 2>&1 && echo running || echo stopped)"
