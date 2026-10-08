@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r34_pack(self):
+    def test_configured_sha1_matches_deterministic_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -162,7 +162,12 @@ class ResourcePackBuildTest(unittest.TestCase):
         model = self.read_json("assets/vehicle/models/item/jet_ski_body.json")
         self.assertEqual(42, len(model["elements"]))
         self.assertIn("assets/vehicle/items/jet_ski_body.json", self.entries)
-        self.assertEqual("vehicle:model/cray_industries", model["textures"]["logo"])
+        # r35: the source model's literal, unconverted "vehicle:model/cray_industries"
+        # path is not covered by Minecraft's default "blocks" sprite atlas sources and
+        # rendered as a missing-texture black/purple square in-game; it now points at a
+        # dedicated textures/item/ copy, like every other vehicle's Cray Industries decal.
+        self.assertEqual("vehicle:item/jet_ski_logo", model["textures"]["logo"])
+        self.assertIn("assets/vehicle/textures/item/jet_ski_logo.png", self.entries)
         sounds = self.read_json("assets/vehicle/sounds.json")
         self.assertIn("entity.jet_ski.engine", sounds)
         engine = self.archive.read("assets/vehicle/sounds/entity/jet_ski/engine.ogg")
@@ -288,7 +293,11 @@ class ResourcePackBuildTest(unittest.TestCase):
         # never-referenced "aluminum.png" file for the literal source values below.
         self.assertEqual("minecraft:block/white_concrete", aluminum_boat_body["textures"]["body"])
         self.assertEqual("minecraft:block/white_concrete", aluminum_boat_body["textures"]["particle"])
-        self.assertEqual("vehicle:model/cray_industries", aluminum_boat_body["textures"]["logo"])
+        # r35: "logo" now points at a dedicated textures/item/ copy instead of the
+        # non-standard textures/model/ path, which Minecraft's default "blocks" sprite
+        # atlas does not stitch sprites from (see SOURCE_POSITION_AUDIT.md r35 entry).
+        self.assertEqual("vehicle:item/aluminum_boat_logo", aluminum_boat_body["textures"]["logo"])
+        self.assertIn("assets/vehicle/textures/item/aluminum_boat_logo.png", self.entries)
         self.assertEqual("minecraft:block/anvil", aluminum_boat_body["textures"]["seat"])
 
         legal_angles = {-45.0, -22.5, 0.0, 22.5, 45.0}
@@ -323,9 +332,15 @@ class ResourcePackBuildTest(unittest.TestCase):
 
         shopping_cart_body = self.read_json("assets/vehicle/models/item/shopping_cart_body.json")
         self.assertEqual(46, len(shopping_cart_body["elements"]))
-        self.assertEqual("vehicle:model/cray_industries", shopping_cart_body["textures"]["logo"])
-        for texture in ("vehicle:model/mesh_angled", "vehicle:model/white_mesh",
-                        "vehicle:model/mesh", "vehicle:model/mesh_angled_flipped"):
+        # r35: each of this body's mesh/logo decals now points at its own dedicated
+        # textures/item/ copy instead of the non-standard textures/model/ path, which
+        # Minecraft's default "blocks" sprite atlas does not stitch sprites from and
+        # rendered as a missing-texture black/purple square in-game; see
+        # SOURCE_POSITION_AUDIT.md r35 entry for the full root-cause analysis.
+        self.assertEqual("vehicle:item/shopping_cart_logo", shopping_cart_body["textures"]["logo"])
+        for texture in ("vehicle:item/shopping_cart_mesh_angled", "vehicle:item/shopping_cart_white_mesh",
+                        "vehicle:item/shopping_cart_mesh", "vehicle:item/shopping_cart_mesh_angled_flipped",
+                        "vehicle:item/shopping_cart_logo"):
             path = texture.split(":", 1)[1]
             self.assertIn(f"assets/vehicle/textures/{path}.png", self.entries)
 

@@ -97,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r34 — twenty-three vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r35 — twenty-three vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -358,6 +358,21 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/jet_ski_body.json",
             namespace / "models/item/jet_ski_body.json",
+            {
+                # The source model's "seat"/"white"/"detail"/"body" keys already resolve
+                # cleanly in modern vanilla and are carried over unchanged. r35: "logo"
+                # was the literal, unconverted "vehicle:model/cray_industries" path, which
+                # is not covered by Minecraft's default "blocks" sprite atlas sources and
+                # renders as a missing-texture black/purple square in-game. Point it at
+                # the same dedicated textures/item/ copy convention used by every other
+                # vehicle's Cray Industries decal; see SOURCE_POSITION_AUDIT.md r35 entry
+                # for the full root-cause analysis.
+                "seat": "minecraft:block/black_wool",
+                "white": "minecraft:block/white_concrete",
+                "logo": "vehicle:item/jet_ski_logo",
+                "detail": "minecraft:block/anvil",
+                "body": "minecraft:block/white_concrete",
+            },
         )
         for source, target, texture_key, geometry_scale in (
             ("base", "sports_plane_body", "base", 1.0 / 3.0),
@@ -505,8 +520,12 @@ def build(output: Path) -> tuple[Path, str]:
                 # resolvable vanilla texture also used as-is by the Fluid Trailer's "base"
                 # key below). None of these need substituting; see SOURCE_POSITION_AUDIT.md
                 # for why r31's "recovered aluminum hull texture" was reverted in r34.
+                # r35: "logo" now points at a dedicated textures/item/ copy (like every
+                # other vehicle's Cray Industries decal) instead of the non-standard
+                # textures/model/ path, which Minecraft's default "blocks" sprite atlas
+                # does not stitch sprites from; see SOURCE_POSITION_AUDIT.md r35 entry.
                 "seat": "minecraft:block/anvil",
-                "logo": "vehicle:model/cray_industries",
+                "logo": "vehicle:item/aluminum_boat_logo",
                 "body": "minecraft:block/white_concrete",
                 "particle": "minecraft:block/white_concrete",
             },
@@ -532,13 +551,20 @@ def build(output: Path) -> tuple[Path, str]:
                 # All of this body's source textures are the mod's own existing
                 # vehicle:model assets (mesh patterns and the Cray Industries logo),
                 # not CFM or the legacy anvil atlas, so they carry over unchanged.
+                # r35: each one is now copied to its own textures/item/ file and
+                # referenced via vehicle:item/, matching the convention already used
+                # for every other vehicle's mesh/logo decals (e.g. off_roader_grill,
+                # off_roader_logo). The old textures/model/ path is not covered by
+                # Minecraft's default "blocks" sprite atlas sources, so sprites placed
+                # there never get stitched in and render as the missing-texture
+                # black/purple checkerboard in-game; see SOURCE_POSITION_AUDIT.md r35.
                 "plastic_frame": "minecraft:block/light_gray_concrete",
-                "plastic_mesh_two": "vehicle:model/mesh_angled",
-                "metal_mesh": "vehicle:model/white_mesh",
+                "plastic_mesh_two": "vehicle:item/shopping_cart_mesh_angled",
+                "metal_mesh": "vehicle:item/shopping_cart_white_mesh",
                 "metal": "minecraft:block/white_concrete",
-                "logo": "vehicle:model/cray_industries",
-                "plastic_mesh_one": "vehicle:model/mesh_angled_flipped",
-                "plastic_mesh_three": "vehicle:model/mesh",
+                "logo": "vehicle:item/shopping_cart_logo",
+                "plastic_mesh_one": "vehicle:item/shopping_cart_mesh_angled_flipped",
+                "plastic_mesh_three": "vehicle:item/shopping_cart_mesh",
                 "particle": "minecraft:block/light_gray_concrete",
             },
         )
@@ -743,23 +769,31 @@ def build(output: Path) -> tuple[Path, str]:
         )
         copy(
             ASSETS / "textures/model/cray_industries.png",
-            namespace / "textures/model/cray_industries.png",
+            namespace / "textures/item/aluminum_boat_logo.png",
+        )
+        copy(
+            ASSETS / "textures/model/cray_industries.png",
+            namespace / "textures/item/shopping_cart_logo.png",
+        )
+        copy(
+            ASSETS / "textures/model/cray_industries.png",
+            namespace / "textures/item/jet_ski_logo.png",
         )
         copy(
             ASSETS / "textures/model/mesh.png",
-            namespace / "textures/model/mesh.png",
+            namespace / "textures/item/shopping_cart_mesh.png",
         )
         copy(
             ASSETS / "textures/model/mesh_angled.png",
-            namespace / "textures/model/mesh_angled.png",
+            namespace / "textures/item/shopping_cart_mesh_angled.png",
         )
         copy(
             ASSETS / "textures/model/mesh_angled_flipped.png",
-            namespace / "textures/model/mesh_angled_flipped.png",
+            namespace / "textures/item/shopping_cart_mesh_angled_flipped.png",
         )
         copy(
             ASSETS / "textures/model/white_mesh.png",
-            namespace / "textures/model/white_mesh.png",
+            namespace / "textures/item/shopping_cart_white_mesh.png",
         )
         copy(
             ASSETS / "textures/model/wheel.png",
@@ -923,7 +957,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r34.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r35.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

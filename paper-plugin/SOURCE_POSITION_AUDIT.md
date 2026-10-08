@@ -312,6 +312,67 @@ orphans in that same stray plural directory: `go_kart.png`, the texture for a su
 Kart, and `tyre.png`, a small tire-colored swatch not clearly tied to any one vehicle's texture key.
 All three are left in place, unwired, pending clearer evidence of their intended use.
 
+### Shopping Cart / Aluminum Boat / Jet Ski missing-texture (black/purple) decals fixed (r35)
+
+After r34 shipped, the Shopping Cart was reported in-game as still showing the missing-texture
+black/purple checkerboard on its mesh panels and Cray Industries decal, even though a full
+file-level audit (byte-for-byte PNG comparison, UV bounds, texture-key wiring, namespace, zip
+copy path) found no discrepancy against `tools/source_assets/vehicle_shopping_cart_body.json`.
+The actual defect was not in the texture *file* but in the texture *path convention*: Minecraft's
+default "blocks" sprite atlas (used to render every custom `elements`-based item model in this
+pack, not just vanilla blocks) only auto-stitches sprites from its configured directory sources,
+which cover the standard `block/` and `item/` texture folders across all namespaces — not
+arbitrary custom subfolders. This resource pack's build script copies several of its own textures
+(the mod's real `mesh.png`, `mesh_angled.png`, `mesh_angled_flipped.png`, `white_mesh.png`, and
+`cray_industries.png`) into a non-standard `textures/model/` folder and referenced some of them
+there via literal `vehicle:model/*` paths. Sprites placed under that folder are never stitched
+into the atlas, so any texture key pointing at one resolves to nothing and renders as the
+missing-texture checkerboard — while identical art copied instead to the standard
+`textures/item/` folder (e.g. the Off Roader's own `off_roader_logo.png`/`off_roader_grill.png`,
+both already copied from these same two source files) renders correctly. This explained the bug
+precisely: it is why `vehicle:item/*` and `minecraft:block/*` references work everywhere in this
+pack, while the handful of `vehicle:model/*` references did not.
+
+Three vehicles were affected, all traced the same way — grepping the entire build script's
+texture-override dictionaries and the built pack's own model JSON for any `vehicle:model/*` or
+unconverted `model/`-style path, confirming no other vehicle carries one:
+
+- **Shopping Cart** (`shopping_cart_body`): all five texture keys sourced from the mod's own
+  `vehicle:model` assets — `plastic_mesh_two` (`mesh_angled`), `metal_mesh` (`white_mesh`),
+  `plastic_mesh_one` (`mesh_angled_flipped`), `plastic_mesh_three` (`mesh`), and `logo`
+  (`cray_industries`) — used the broken folder.
+- **Aluminum Boat** (`aluminum_boat_body`): the `logo` key, restored in r34's revert directly from
+  the literal source model value, inherited the same broken `vehicle:model/cray_industries` path.
+- **Jet Ski** (`jet_ski_body`): this model is converted with no texture-override dictionary at all
+  (its other four keys — `seat`, `white`, `detail`, `body` — already resolve as literal vanilla
+  block textures), so its source `logo` value passed through completely unconverted as the same
+  broken `vehicle:model/cray_industries` path. This was an undiscovered instance of the identical
+  bug, found by auditing every `convert_model()` call in the build script rather than only the one
+  the user reported.
+
+The fix (r35) does not touch any geometry, UVs, or art — only the destination folder and
+reference path for these five texture files. Each is now copied to its own dedicated file under
+the pack's standard `textures/item/` folder and referenced via `vehicle:item/*`, matching the
+convention this pack already uses successfully everywhere else, including for multiple other
+vehicles' own Cray Industries decals (`off_roader_logo.png`, `lawn_mower_logo.png`,
+`fluid_trailer_logo.png`): `shopping_cart_mesh.png`, `shopping_cart_mesh_angled.png`,
+`shopping_cart_mesh_angled_flipped.png`, `shopping_cart_white_mesh.png`,
+`shopping_cart_logo.png`, `aluminum_boat_logo.png`, and `jet_ski_logo.png`. The old
+`textures/model/mesh*.png`, `textures/model/white_mesh.png`, and `textures/model/cray_industries.png`
+copies (which no model referenced any more once this was done) were removed from the generated
+pack entirely, so it no longer ships any `vehicle:model/*`-pathed texture or any file under a
+non-standard `textures/model/` destination folder at all.
+
+This also retroactively explains the deliberate `logo` substitutions on Smart Car and Speed Boat
+(r29 batch, both override `logo` to `minecraft:block/light_gray_concrete` instead of their source
+models' own `vehicle:model/cray_industries` value). The rationale recorded at the time — "none of
+them ship a dedicated texture file upstream" — is incorrect, since `cray_industries.png` is a real,
+pre-existing art asset used successfully elsewhere; the substitution most likely silently worked
+around this exact atlas bug without it being identified as such. That divergence is left as-is for
+now (it is not reported broken and changing it is a separate, user-prompted decision per the
+project's "one concrete thing at a time" rule), but is flagged here since the same dedicated
+`textures/item/` fix applied in r35 would equally apply to it if ever revisited.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -376,6 +437,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 25. The r30 batch adds the released `1.16.X` Bumper Car, Shopping Cart, and Bath, the three vehicles whose mechanics are genuinely novel to this port: the Bumper Car's car-to-car collision, approximated as a velocity jolt plus `bonk.ogg` since this port does not expose the source's internal `currentSpeed` field; the Shopping Cart's push-from-behind control, approximated as a sneak-interact grab/release toggle driving the cart's position from the pushing player each tick; and Bath, which reuses the Sports Plane's flight model and the source's own ATV-body placeholder visual rather than the CFM-only `cfm:bath` item geometry, shipped without CFM despite the original source gating Bath's very existence behind that mod being installed.
 26. r33 removes Bath entirely, per explicit user direction that this port only reproduces the Vehicle Mod's own source code and assets: any faithful rendering of Bath depends on a *different* mod's (MrCrayfish's Furniture Mod) geometry, which no placeholder or recovered substitute (r29's ATV body, r32's recovered CFM tub) could avoid. The vehicle count drops from twenty-four to twenty-three.
 27. r34 reverts r31's Aluminum Boat texture change: the released source model's own `body`/`logo`/`seat` texture keys (plain white concrete, the real Cray Industries decal, and the vanilla anvil texture) already resolve correctly and needed no substitution; r31's `textures/vehicles/aluminum.png` was an unrelated, never-referenced file, not this vehicle's missing art, and is restored to its original unwired location.
+28. r35 fixes a pack-wide missing-texture (black/purple) bug on the Shopping Cart's four mesh textures and the Shopping Cart/Aluminum Boat/Jet Ski Cray Industries decals: their source models reference (or, for the Jet Ski, pass through unconverted) a non-standard `vehicle:model/*` texture path that Minecraft's default "blocks" sprite atlas never stitches sprites from. All five affected textures are now copied to their own dedicated files under the pack's standard `textures/item/` folder and referenced via `vehicle:item/*`, matching the convention already used successfully everywhere else in this pack.
 
 ## Exact ports versus vanilla-client adaptations
 
