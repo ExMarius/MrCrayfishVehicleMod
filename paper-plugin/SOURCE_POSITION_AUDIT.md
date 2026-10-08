@@ -283,11 +283,10 @@ MrCrayfish's Furniture Mod item. **Notably, `BathEntity`'s own `EntityType` regi
 gated behind CFM being loaded** (`VehicleUtil.createModDependentEntityType(REGISTER, "cfm", "bath",
 ...)`), exactly like the Couch and Sofacopter — without CFM, Bath does not exist at all in the
 original source. This Paper port deliberately goes beyond the source by shipping Bath without any
-CFM dependency, reusing the same ATV-body placeholder the source renderer already falls back to for
-its visuals (this port's `atv_body` item model) rather than attempting to recover or recreate the
-CFM bathtub geometry the way r27 recovered the Sofacopter's real ceiling-fan rotor. If a faithful
-tub shape is wanted later, the CFM `cfm:bath` model would need to be sourced and legalized the same
-way the ceiling fan was.
+CFM dependency. r30 through r31 reused the ATV-body placeholder the source renderer falls back to
+for its visuals (this port's `atv_body` item model) instead of attempting to recover or recreate
+the CFM bathtub geometry the way r27 recovered the Sofacopter's real ceiling-fan rotor. r32
+recovered and wired in the real geometry; see the next section.
 
 ### Aluminum Boat real hull texture recovered (r31)
 
@@ -305,6 +304,27 @@ also holds `go_kart.png`, the texture for a superseded single-mesh `go_kart_body
 predates (and is not used by) the currently shipped multi-part Go Kart, and `tyre.png`, a small
 tire-colored swatch not clearly tied to any one vehicle's texture key; both are left in place,
 unwired, pending clearer evidence of their intended use.
+
+### Bath's real CFM tub geometry recovered (r32)
+
+Per explicit user direction, Bath no longer uses the ATV-body placeholder (r29–r31). The real
+`cfm:bath` block model was found on MrCrayfish's Furniture Mod `master` branch (it is not present
+on any 1.16.X-era branch of that mod; Bath's own entity/model classes are likewise absent from this
+repository's `1.16.X-dev` source, consistent with the original mod gating Bath's existence behind
+CFM being installed — see above). Like every other vanilla-block-textured vehicle in this project,
+the tub's own native design already uses only vanilla block textures (water, white concrete, cyan
+terracotta, stone), so no dedicated PNG art was needed. The model was originally authored as a
+two-block-wide item for the `bath_top`/`bath_bottom` pair with its long axis on CFM's X axis; it has
+been rotated 90 degrees around Y (vertex positions remapped, faces relabeled) so its long axis lines
+up with this rig's forward Z axis instead, and saved as `tools/source_assets/cfm_bath.json`. It is
+wired in as a new `bath_body` item model, replacing `atv_body` as `BATH`'s `bodyModel`.
+
+`bodyScale` and `bodyRenderTranslation` were deliberately left unchanged from the previously-working
+ATV-placeholder values rather than freshly recalculated for the tub's different proportions: there
+is no generated ground truth for Bath's body position (the comment on `BATH.bodyRenderTranslation()`
+already noted this is a "separately hand-tuned" value even for the placeholder), and this port has
+no way to visually verify a new value without a live client. If the tub sits or sizes wrong in-game,
+it needs the same kind of small positional nudge the ATV tow hitch needed, not a formula rewrite.
 
 ### Vehicle Trailer passenger offsets
 

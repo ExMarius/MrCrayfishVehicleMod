@@ -890,15 +890,21 @@ public record LandVehicleSpec(
      * (infinite fuel); every other plane constant (speed, turn angle, flap/lift behaviour)
      * is the shared PlaneEntity default, identical to what Sports Plane inherits, so Bath
      * reuses that same AIR motionType flight model via the motionType() id check below.
-     * Like the original source itself, there is no dedicated Bath body model: BathModel's
-     * own render() draws SpecialModels.ATV_BODY as a placeholder (rotated), because the
-     * real geometry only ever existed as MrCrayfish's Furniture Mod "cfm:bath" item —
      * BathEntity's own EntityType registration is entirely gated behind CFM being loaded
      * in the original source (VehicleUtil.createModDependentEntityType), so Bath does not
-     * exist there at all without it. This Paper port keeps the original's placeholder
-     * ATV body rather than depending on or recreating CFM's bathtub geometry. */
+     * exist there at all without it; the real tub geometry only ever existed as
+     * MrCrayfish's Furniture Mod "cfm:bath" item. An earlier revision of this port shipped
+     * the ATV placeholder body instead of that geometry. Per explicit user direction, this
+     * now uses the recovered CFM bathtub itself ("bath_body", see
+     * tools/source_assets/cfm_bath.json and its README) rotated 90 degrees around Y so its
+     * long axis lines up with this rig's forward Z axis rather than CFM's native X axis.
+     * bodyScale and bodyRenderTranslation below are carried over unchanged from the
+     * previously working ATV-placeholder values rather than freshly recalculated for the
+     * tub's different proportions, since there is no generated ground truth for Bath to
+     * recalculate them from and no way to visually verify a new value here; nudge them
+     * (the same way the ATV tow hitch was nudged) if the tub sits wrong in-game. */
     public static final LandVehicleSpec BATH = new LandVehicleSpec(
-            "bath", "Bath", "atv_body",
+            "bath", "Bath", "bath_body",
             1.0F, 1.0F, 1.0F,
             1.0F, 0.0F, 0.0F,
             24.0F, 35.0F, 0.0F, 0.0F, 5.0F,
