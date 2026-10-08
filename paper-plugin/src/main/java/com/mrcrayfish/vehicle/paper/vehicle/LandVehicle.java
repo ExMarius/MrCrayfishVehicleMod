@@ -46,6 +46,8 @@ public final class LandVehicle {
     private static final int MAX_WHEELIE_TICKS = 10;
     private static final float BRAKE_POWER = -1.0F;
     private static final float DRAG = 0.001F;
+    /** See tickPushed(): how far ahead of a pushing player the Shopping Cart sits. */
+    private static final double PUSH_DISTANCE = 1.8D;
 
     private final VehiclePlugin plugin;
     private final UUID id;
@@ -245,8 +247,15 @@ public final class LandVehicle {
     /**
      * Mirrors ShoppingCartEntity#tick: while a player is pushing the cart, its
      * position is driven directly from that player's location and yaw every tick
-     * (1.3 blocks ahead of them) instead of running the normal land-vehicle physics.
-     * Any seated passenger just comes along for the ride, matching the source.
+     * instead of running the normal land-vehicle physics. Any seated passenger just
+     * comes along for the ride, matching the source.
+     *
+     * r37: the forward offset is this port's own tuning (the source Forge renderer
+     * has no equivalent vanilla-client gap to port, since it draws the pushing
+     * player's own arm model reaching onto the handle rather than placing two
+     * separate hitboxes), raised from an earlier 1.3 blocks to 1.8 per explicit user
+     * feedback that pushing visually put the player inside the cart's basket instead
+     * of leaving them standing behind its handle; see SOURCE_POSITION_AUDIT.md r37.
      */
     private void tickPushed() {
         Player player = pusher == null ? null : Bukkit.getPlayer(pusher);
@@ -261,8 +270,8 @@ public final class LandVehicle {
         Location playerLocation = player.getLocation();
         float yaw = playerLocation.getYaw();
         double radians = Math.toRadians(yaw);
-        double x = -Math.sin(radians) * 1.3D;
-        double z = Math.cos(radians) * 1.3D;
+        double x = -Math.sin(radians) * PUSH_DISTANCE;
+        double z = Math.cos(radians) * PUSH_DISTANCE;
         location.setX(playerLocation.getX() + x);
         location.setY(playerLocation.getY());
         location.setZ(playerLocation.getZ() + z);

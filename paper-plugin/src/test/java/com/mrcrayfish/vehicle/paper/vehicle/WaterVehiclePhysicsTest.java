@@ -36,8 +36,9 @@ class WaterVehiclePhysicsTest {
         /* Speed Boat (enginePower 20) and Jet Ski (18) must not be flattened to
          * Aluminum Boat's (10) top speed just because they share one physics
          * routine - this was a real inconsistency found while diagnosing the
-         * reported "boat rises when moving forward" behavior (that lift effect
-         * itself is intentional/source-accurate; this speed cap wasn't). */
+         * reported "boat rises when moving forward" behavior (r37 removed that
+         * speed-dependent lift/sink entirely per explicit user direction; this
+         * speed cap was a separate, still-applicable fix). */
         assertEquals(20.0F, WaterVehiclePhysics.updateSpeed(
                 19.8F, 1.0F, true, true, 100.0D, 20.0F, 4.0F), EPSILON);
         assertEquals(18.0F, WaterVehiclePhysics.updateSpeed(
@@ -57,17 +58,23 @@ class WaterVehiclePhysicsTest {
 
     @Test
     void carriedJetSkiStartsAtItsRestingWaterline() {
-        assertEquals(64.65D, WaterVehiclePhysics.restingSurfaceY(65.0D), 0.000001D);
+        /* r37: per explicit user direction, this no longer matches the genuine
+         * released source height (waterLevel - 0.35); see
+         * WaterVehiclePhysics.targetSurfaceY and SOURCE_POSITION_AUDIT.md r37. */
+        assertEquals(64.9D, WaterVehiclePhysics.restingSurfaceY(65.0D), 0.000001D);
     }
 
     @Test
-    void releasedBoatSurfaceTargetRisesWithForwardSpeed() {
-        assertEquals(64.65D, WaterVehiclePhysics.targetSurfaceY(65.0D, 0.0F, 10.0F), 0.000001D);
+    void releasedBoatSurfaceTargetNoLongerSinksWhileIdle() {
+        /* r37: per explicit user direction, boats no longer sit lower in the water
+         * while idle than while moving - every speed (including reverse) now
+         * resolves to the same height. This is a disclosed deviation from the
+         * genuine released source formula ("waterLevel - 0.35 + 0.25 *
+         * min(1, speed/maxForwardSpeed)"), not a reproduction of it; see
+         * SOURCE_POSITION_AUDIT.md r37 entry. */
+        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 0.0F, 10.0F), 0.000001D);
         assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 10.0F), 0.000001D);
-        assertEquals(64.55D, WaterVehiclePhysics.targetSurfaceY(65.0D, -4.0F, 10.0F), 0.000001D);
-        /* Same speed, but a Speed Boat's higher enginePower means it's a smaller
-         * fraction of its own top speed, so it rises less than an Aluminum Boat
-         * moving at the same absolute speed would. */
-        assertEquals(64.775D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 20.0F), 0.000001D);
+        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, -4.0F, 10.0F), 0.000001D);
+        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 20.0F), 0.000001D);
     }
 }

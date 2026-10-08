@@ -45,14 +45,21 @@ final class WaterVehiclePhysics {
         return inAir ? delta * 2.0F : delta;
     }
 
+    /**
+     * r37: per explicit user direction, boats no longer sit lower in the water while
+     * idle than while moving (the genuine released source formula was
+     * "waterLevel - 0.35 + 0.25 * min(1, speed/maxForwardSpeed)", sinking 0.25 blocks
+     * at rest versus full throttle). This is a disclosed deviation from the literal
+     * source value, not a reproduction of it; see SOURCE_POSITION_AUDIT.md r37 entry.
+     */
     static double targetSurfaceY(double waterLevel, float speed, float maxForwardSpeed) {
-        return waterLevel - 0.35D
-                + 0.25D * Math.min(1.0F, speed / maxForwardSpeed);
+        return waterLevel - 0.10D;
     }
 
-    /** Speed is always 0 at rest, so the ratio term vanishes regardless of maxForwardSpeed. */
+    /** Matches the disclosed targetSurfaceY height above so a freshly placed boat
+     * does not visibly drop the moment it starts ticking. */
     static double restingSurfaceY(double waterLevel) {
-        return waterLevel - 0.35D;
+        return waterLevel - 0.10D;
     }
 
     enum State {
