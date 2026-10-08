@@ -71,11 +71,27 @@ class ResourcePackBuildTest(unittest.TestCase):
                     self.assertIn(float(rotation.get("angle", 0.0)),
                                   build_resource_pack.VANILLA_1_21_4_ELEMENT_ANGLES,
                                   f"{entry} element {index} rotation angle")
+                texture_width, texture_height = model.get("texture_size", [16, 16])
                 for face, definition in element.get("faces", {}).items():
                     texture = definition.get("texture", "")
                     if texture.startswith("#"):
                         self.assertIn(texture[1:], textures,
                                       f"{entry} element {index} face {face}: {texture}")
+                    uv = definition.get("uv")
+                    if uv is not None:
+                        u1, v1, u2, v2 = uv
+                        # UV must stay within the model's own declared canvas (defaulting
+                        # to vanilla's implicit 16x16) or it samples past the substituted
+                        # sprite's edge into whatever sprite the atlas happens to pack
+                        # next to it; see SOURCE_POSITION_AUDIT.md r35/r36 entries.
+                        self.assertGreaterEqual(min(u1, u2), -0.001,
+                                                f"{entry} element {index} face {face} uv {uv}")
+                        self.assertGreaterEqual(min(v1, v2), -0.001,
+                                                f"{entry} element {index} face {face} uv {uv}")
+                        self.assertLessEqual(max(u1, u2), texture_width + 0.001,
+                                             f"{entry} element {index} face {face} uv {uv}")
+                        self.assertLessEqual(max(v1, v2), texture_height + 0.001,
+                                             f"{entry} element {index} face {face} uv {uv}")
 
     def test_every_pack_png_has_a_valid_nonempty_ihdr(self):
         for entry in sorted(path for path in self.entries if path.endswith(".png")):
@@ -153,12 +169,43 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual(86, len(model["elements"]))
         self.assertIn("assets/vehicle/items/golf_cart_body.json", self.entries)
         self.assertEqual("minecraft:block/white_concrete", model["textures"]["body"])
+        # r36: the roof strut's "west"/"up" faces had an isolated source authoring
+        # error (UV dimensions matching none of this element's other four faces or
+        # its own real geometry); patched to mirror their correctly-sized siblings
+        # ("east" and "down") rather than sampling past the sprite's edge. A disclosed
+        # deviation from the literal source value; see SOURCE_POSITION_AUDIT.md.
+        for element in model["elements"]:
+            if element["from"] == [11, 28.5, 19] and element["to"] == [21, 29.6, 20.1]:
+                self.assertEqual([0, 0, 1.1, 1.1], element["faces"]["west"]["uv"])
+                self.assertEqual([0, 0, 10, 1.1], element["faces"]["up"]["uv"])
+                break
+        else:
+            self.fail("golf cart roof strut element not found")
         sounds = self.read_json("assets/vehicle/sounds.json")
         self.assertIn("entity.vehicle.helicopter_rotor", sounds)
         rotor = self.archive.read("assets/vehicle/sounds/entity/vehicle/helicopter_rotor.ogg")
         self.assertEqual(27_922, self.last_ogg_granule(rotor))
 
+    def test_vehicle_trailer_rails_declare_their_authored_texture_size(self):
+        # r36: these two 17-model-pixel-long side rails author UV 1:1 against their
+        # own real length on all four faces, exceeding the vanilla 16x16 canvas this
+        # port substitutes for the source's own dedicated "frame" art. Declaring the
+        # true canvas size lets vanilla scale that UV proportionally onto the 16x16
+        # sprite instead of letting it overflow into whatever sprite sits next to it
+        # in the atlas; see SOURCE_POSITION_AUDIT.md r36 entry.
+        model = self.read_json("assets/vehicle/models/item/vehicle_trailer_body.json")
+        self.assertEqual([17, 17], model["texture_size"])
+        rails = [element for element in model["elements"]
+                 if element["from"] in ([1, -0.5, -4], [13, -0.5, -4])]
+        self.assertEqual(2, len(rails))
+        for rail in rails:
+            self.assertEqual([0, 0, 17, 1.5], rail["faces"]["east"]["uv"])
+            self.assertEqual([0, 0, 17, 1.5], rail["faces"]["west"]["uv"])
+            self.assertEqual([0, 0, 2, 17], rail["faces"]["up"]["uv"])
+            self.assertEqual([0, 0, 2, 17], rail["faces"]["down"]["uv"])
+
     def test_jet_ski_body_and_engine_are_complete(self):
+
         model = self.read_json("assets/vehicle/models/item/jet_ski_body.json")
         self.assertEqual(42, len(model["elements"]))
         self.assertIn("assets/vehicle/items/jet_ski_body.json", self.entries)

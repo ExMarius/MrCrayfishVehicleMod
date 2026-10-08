@@ -40,7 +40,9 @@ VANILLA_1_21_4_ELEMENT_ANGLES = (-45.0, -22.5, 0.0, 22.5, 45.0)
 
 
 def convert_model(source: Path, destination: Path, textures: dict[str, str] | None = None,
-                  geometry_scale: float = 1.0, legalize_rotations: bool = False) -> None:
+                  geometry_scale: float = 1.0, legalize_rotations: bool = False,
+                  texture_size: list[int] | None = None,
+                  element_patch: dict | None = None) -> None:
     """Normalize Forge/Blockbench model metadata to vanilla model JSON.
 
     Framework accepts oversized elements, but vanilla rejects element coordinates
@@ -52,6 +54,21 @@ def convert_model(source: Path, destination: Path, textures: dict[str, str] | No
     Framework's complex-model loader accepts arbitrary values. Models using those
     source angles must opt into nearest legal rotation conversion; arbitrary angles
     did not become a vanilla feature until after the server's 1.21.4 protocol.
+
+    texture_size declares the canvas the model's own UV coordinates were authored
+    against. It is normally dropped (see below) because every converted texture here
+    is a plain 16x16 vanilla sprite, but a few source models author UV 1:1 against
+    their own element's real pixel length, which can exceed 16 on elements longer
+    than a block; declaring the true value here lets vanilla's loader scale that
+    model's UV proportionally onto the 16x16 substitute sprite instead of letting it
+    overflow past the sprite's edge. See SOURCE_POSITION_AUDIT.md for the specific
+    case this is used for (Vehicle Trailer side rails).
+
+    element_patch optionally corrects a specific face's authored UV on a single
+    element, identified by its own "from"/"to" coordinates, when the source's own
+    value is an isolated authoring error (not a texture_size mismatch) rather than
+    a reproducible discrepancy; see SOURCE_POSITION_AUDIT.md for the one documented
+    use of this (Golf Cart's roof strut).
     """
     model = json.loads(source.read_text(encoding="utf-8"))
     if textures is not None:
@@ -79,11 +96,26 @@ def convert_model(source: Path, destination: Path, textures: dict[str, str] | No
                 VANILLA_1_21_4_ELEMENT_ANGLES,
                 key=lambda candidate: abs(candidate - source_angle),
             )
+    if element_patch is not None:
+        target_from = element_patch["from"]
+        target_to = element_patch["to"]
+        for element in model.get("elements", []):
+            if element.get("from") == target_from and element.get("to") == target_to:
+                for face_name, uv in element_patch["faces"].items():
+                    element["faces"][face_name]["uv"] = uv
+                break
+        else:
+            raise ValueError(f"element_patch target not found in {source}")
     model.pop("loader", None)
     model.pop("groups", None)
-    # texture_size is understood by the source loader but unnecessary for vanilla item models.
-    model.pop("texture_size", None)
+    if texture_size is not None:
+        model["texture_size"] = texture_size
+    else:
+        # texture_size is understood by the source loader but unnecessary for vanilla
+        # item models whose UV was authored against the default 16x16 canvas.
+        model.pop("texture_size", None)
     write_json(destination, model)
+
 
 
 def copy(source: Path, destination: Path) -> None:
@@ -97,7 +129,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r35 — twenty-three vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r36 — twenty-three vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -354,6 +386,29 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/golf_cart_body.json",
             namespace / "models/item/golf_cart_body.json",
+            element_patch={
+                # This tiny roof-strut element's own "west" and "up" faces author UV
+                # dimensions that match none of this same element's four other faces
+                # or its own real geometry (10x1.1x1.1 model pixels): "west" is
+                # [0,0,-11.9,5.1] instead of matching "east"'s correctly-sized
+                # [0,0,1.1,1.1], and "up" is [0,0,12,6.1] instead of matching
+                # "down"'s correctly-sized [0,0,10,1.1]. Every sibling face proves
+                # the element's real UV footprint; this is an isolated authoring
+                # error in the source's own asset, not a reproducible discrepancy
+                # (the other five faces across this model and the rest of the body
+                # are internally consistent). Per explicit user direction, the two
+                # mismatched faces are patched here to mirror their correctly-sized
+                # counterparts rather than left to sample whatever sprite happens to
+                # sit next to white concrete in the atlas; see SOURCE_POSITION_AUDIT.md
+                # r36 entry. This is a disclosed deviation from the literal source
+                # value, not a literal reproduction of it.
+                "from": [11, 28.5, 19],
+                "to": [21, 29.6, 20.1],
+                "faces": {
+                    "west": [0, 0, 1.1, 1.1],
+                    "up": [0, 0, 10, 1.1],
+                },
+            },
         )
         convert_model(
             ASSETS / "models/vehicle/jet_ski_body.json",
@@ -606,6 +661,7 @@ def build(output: Path) -> tuple[Path, str]:
             "seed_spiker": "seed_spiker",
         }.items():
             textures = None
+            texture_size = None
             if source == "trailer_fluid_body":
                 # The four Cray Industries side panels use the original pixels,
                 # but move them from the legacy model/ path to a normal item
@@ -617,11 +673,23 @@ def build(output: Path) -> tuple[Path, str]:
                     "base": "minecraft:block/anvil",
                     "frame": "minecraft:block/light_gray_concrete",
                 }
+            if source == "trailer_body":
+                # The two 17-model-pixel-long side rails author their UV 1:1 against
+                # their own real length (consistent across all four of their faces),
+                # which exceeds the vanilla 16x16 canvas this port substitutes for the
+                # source's own dedicated "frame" art. Declaring the model's true
+                # authored canvas size here lets vanilla scale that UV proportionally
+                # onto the 16x16 sprite instead of letting it overflow past its edge
+                # into whatever sprite happens to sit next to it in the atlas; see
+                # SOURCE_POSITION_AUDIT.md r36 entry.
+                texture_size = [17, 17]
             convert_model(
                 ASSETS / f"models/vehicle/{source}.json",
                 namespace / f"models/item/{target}.json",
                 textures,
+                texture_size=texture_size,
             )
+
         convert_model(
             ASSETS / "models/item/standard_wheel.json",
             namespace / "models/item/standard_wheel.json",
@@ -957,7 +1025,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r35.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r36.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

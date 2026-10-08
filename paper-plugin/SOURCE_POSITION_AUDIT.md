@@ -373,6 +373,55 @@ now (it is not reported broken and changing it is a separate, user-prompted deci
 project's "one concrete thing at a time" rule), but is flagged here since the same dedicated
 `textures/item/` fix applied in r35 would equally apply to it if ever revisited.
 
+### Vehicle Trailer rail UV overflow and Golf Cart roof-strut UV typo fixed (r36)
+
+A follow-up pack-wide audit after r35 (checking every element's face UV against its model's own
+declared or implicit 16x16 texture canvas, not just the `vehicle:model/*` folder class of bug)
+found nine face values across two unrelated vehicles exceeding that bound. Both are genuinely
+present, byte-for-byte, in the vendored `src/main/resources/assets/vehicle/models/vehicle/
+golf_cart_body.json` and `trailer_body.json` — original `MrCrayfish's Model Creator`-authored
+assets, unmodified since this repository's base commit, predating any porting work. They are two
+different kinds of defect, resolved two different ways:
+
+**Vehicle Trailer** (`trailer_body.json`): the two side-rail elements (`from [1,-0.5,-4]` and
+`[13,-0.5,-4]`, each `to [x+2,1,13]`, i.e. 17 model pixels long) author their `east`/`west`/`up`/
+`down` face UV consistently and exactly matching their own real dimensions on every one of those
+four faces (`[0,0,17,1.5]` and `[0,0,2,17]`) — strong evidence this was a deliberate 1:1
+texel-per-model-pixel UV mapping against the source's own dedicated `frame` art, which was almost
+certainly a custom texture file at least 17 pixels along that axis, not the vanilla 16x16 block
+texture (`minecraft:block/light_gray_concrete`) this port substitutes for it. Since no
+`texture_size` is declared, vanilla's loader defaults to assuming a 16x16 canvas, so the `17` value
+overflows one pixel past the substitute sprite's edge, sampling from whatever happens to sit next
+to it in the stitched atlas. The fix declares `"texture_size": [17, 17]` on this one converted
+model (via a new `convert_model(..., texture_size=...)` parameter in `build_resource_pack.py`),
+which does not touch the source geometry or UV values at all — it only tells vanilla's loader the
+true canvas the UV was authored against, so it scales that mapping proportionally onto the 16x16
+substitute sprite instead of letting it overflow. This is a correction of a side effect of this
+port's own texture substitution, not a deviation from the source's authored values.
+
+**Golf Cart** (`golf_cart_body.json`): a single tiny roof-strut element (`from [11,28.5,19]` to
+`[21,29.6,20.1]`, a `10x1.1x1.1`-model-pixel rotated plate) has six faces, four of which
+(`north`/`south`/`down` at `[0,0,10,1.1]` and `east` at `[0,0,1.1,1.1]`) correctly match the
+element's own real dimensions. The other two do not match the element, match each other, or match
+any plausible authored canvas: `west` is `[0,0,-11.9,5.1]` (its mirror face `east` is correctly
+`[0,0,1.1,1.1]`) and `up` is `[0,0,12,6.1]` (its mirror face `down` is correctly `[0,0,10,1.1]`).
+Unlike the Vehicle Trailer case, this is not a consistent larger-canvas mapping — it is an isolated
+authoring error in the source's own asset on two of six faces of one tiny element, most likely
+present (and equally glitchy, if even visible at this element's scale) in the original released
+mod itself. Per the project's standing rule to reproduce only what is genuinely in the Vehicle
+Mod's own source, this would ordinarily be left untouched. The user explicitly authorized a
+disclosed deviation here instead: a new `convert_model(..., element_patch=...)` parameter locates
+this exact element (by its own `from`/`to`) and overwrites just its `west` and `up` face UV to
+mirror their correctly-sized counterparts (`east` and `down`), using the element's own internally
+consistent pattern rather than inventing new values. This is recorded here explicitly as **not** a
+literal reproduction of the source's own authored value for those two faces.
+
+Both fixes are covered by new tests: `test_vehicle_trailer_rails_declare_their_authored_texture_size`
+and an assertion added to `test_golf_cart_model_and_source_audio_are_complete`, plus a new
+pack-wide UV-bounds check added to `test_every_generated_element_stays_inside_vanilla_model_bounds`
+that fails the whole suite if any model's face UV ever again exceeds its own declared (or default
+16x16) canvas, so this class of bug cannot silently regress or reappear elsewhere undetected.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -438,6 +487,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 26. r33 removes Bath entirely, per explicit user direction that this port only reproduces the Vehicle Mod's own source code and assets: any faithful rendering of Bath depends on a *different* mod's (MrCrayfish's Furniture Mod) geometry, which no placeholder or recovered substitute (r29's ATV body, r32's recovered CFM tub) could avoid. The vehicle count drops from twenty-four to twenty-three.
 27. r34 reverts r31's Aluminum Boat texture change: the released source model's own `body`/`logo`/`seat` texture keys (plain white concrete, the real Cray Industries decal, and the vanilla anvil texture) already resolve correctly and needed no substitution; r31's `textures/vehicles/aluminum.png` was an unrelated, never-referenced file, not this vehicle's missing art, and is restored to its original unwired location.
 28. r35 fixes a pack-wide missing-texture (black/purple) bug on the Shopping Cart's four mesh textures and the Shopping Cart/Aluminum Boat/Jet Ski Cray Industries decals: their source models reference (or, for the Jet Ski, pass through unconverted) a non-standard `vehicle:model/*` texture path that Minecraft's default "blocks" sprite atlas never stitches sprites from. All five affected textures are now copied to their own dedicated files under the pack's standard `textures/item/` folder and referenced via `vehicle:item/*`, matching the convention already used successfully everywhere else in this pack.
+29. r36 fixes two unrelated UV-overflow defects found by a follow-up pack-wide audit: the Vehicle Trailer's two side rails author UV 1:1 against their own real 17-model-pixel length, overflowing the vanilla 16x16 canvas this port substitutes for their source art, now corrected by declaring the model's true authored `texture_size` without touching any UV or geometry value; and the Golf Cart's roof strut has an isolated source authoring error on two of its six faces (matching neither each other, the element's real geometry, nor the model's internally consistent pattern on its other four faces), corrected per explicit user direction as a disclosed deviation from the literal (but demonstrably erroneous) source value, patched to mirror its own correctly-sized sibling faces.
 
 ## Exact ports versus vanilla-client adaptations
 
