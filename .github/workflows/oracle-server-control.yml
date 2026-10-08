@@ -1,0 +1,91 @@
+name: Control Oracle Minecraft server
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: Minecraft lifecycle action
+        required: true
+        type: choice
+        options: [start, stop, restart, status]
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/oracle-server-control-request
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-minecraft-lifecycle
+  cancel-in-progress: false
+
+jobs:
+  control:
+    runs-on: self-hosted
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Apply canonical lifecycle action
+        shell: bash
+        env:
+          DISPATCH_ACTION: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          ROOT="$HOME/minecraft-server"
+          action="${DISPATCH_ACTION:-}"
+          if [ "$GITHUB_EVENT_NAME" = push ]; then
+            action=$(sed -n 's/^action:[[:space:]]*//p' .github/oracle-server-control-request | tail -1)
+          fi
+          case "$action" in
+            start|stop|restart|status) ;;
+            *) echo "::error title=Invalid lifecycle action::$action"; exit 1 ;;
+          esac
+
+          test -x "$ROOT/start.sh"
+          test -x "$ROOT/bin/start-minecraft.sh"
+          test -x "$ROOT/bin/stop-minecraft.sh"
+          "$ROOT/start.sh"
+
+          case "$action" in
+            start)
+              "$ROOT/bin/start-minecraft.sh"
+              ;;
+            stop)
+              "$ROOT/bin/stop-minecraft.sh"
+              ;;
+            restart)
+              "$ROOT/bin/stop-minecraft.sh"
+              "$ROOT/bin/start-minecraft.sh"
+              ;;
+            status)
+              ;;
+          esac
+
+          if [ "$action" = start ] || [ "$action" = restart ]; then
+            ready=0
+            for _ in $(seq 1 120); do
+              if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]' \
+                  && ss -ltn 2>/dev/null | grep -q ':25565' \
+                  && grep -q 'Done (' "$ROOT/mc/logs/latest.log" 2>/dev/null; then
+                ready=1
+                break
+              fi
+              sleep 2
+            done
+            if [ "$ready" -ne 1 ]; then
+              tail -80 "$ROOT/logs/server-console.log" || true
+              echo "::error title=Oracle control::Minecraft did not become ready"
+              exit 1
+            fi
+          elif [ "$action" = stop ]; then
+            if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
+              echo "::error title=Oracle control::Minecraft remained running after Stop"
+              exit 1
+            fi
+          fi
+
+          status=$($ROOT/bin/status.sh | tr '\n' ';')
+          echo "::notice title=Oracle control::$action completed; $status"
