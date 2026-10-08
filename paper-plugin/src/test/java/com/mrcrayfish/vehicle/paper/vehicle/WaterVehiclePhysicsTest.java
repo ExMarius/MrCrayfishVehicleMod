@@ -10,25 +10,40 @@ class WaterVehiclePhysicsTest {
     @Test
     void releasedBoatSpeedEquationAcceleratesAndClamps() {
         assertEquals(0.5F, WaterVehiclePhysics.updateSpeed(
-                0.0F, 1.0F, true, true, 100.0D), EPSILON);
+                0.0F, 1.0F, true, true, 100.0D, 10.0F, 4.0F), EPSILON);
         assertEquals(10.0F, WaterVehiclePhysics.updateSpeed(
-                9.8F, 1.0F, true, true, 100.0D), EPSILON);
+                9.8F, 1.0F, true, true, 100.0D, 10.0F, 4.0F), EPSILON);
         assertEquals(-0.5F, WaterVehiclePhysics.updateSpeed(
-                0.0F, -1.0F, true, true, 100.0D), EPSILON);
+                0.0F, -1.0F, true, true, 100.0D, 10.0F, 4.0F), EPSILON);
         assertEquals(-4.0F, WaterVehiclePhysics.updateSpeed(
-                -3.8F, -1.0F, true, true, 100.0D), EPSILON);
+                -3.8F, -1.0F, true, true, 100.0D, 10.0F, 4.0F), EPSILON);
         assertEquals(8.0F, WaterVehiclePhysics.updateSpeed(
-                9.8F, 1.0F, true, true, 8.0D), EPSILON);
+                9.8F, 1.0F, true, true, 8.0D, 10.0F, 4.0F), EPSILON);
     }
 
     @Test
     void releasedBoatSpeedEquationPreservesSourceDamping() {
         assertEquals(4.5F, WaterVehiclePhysics.updateSpeed(
-                5.0F, 0.0F, true, true, 100.0D), EPSILON);
+                5.0F, 0.0F, true, true, 100.0D, 10.0F, 4.0F), EPSILON);
         assertEquals(4.25F, WaterVehiclePhysics.updateSpeed(
-                5.0F, 1.0F, false, true, 100.0D), EPSILON);
+                5.0F, 1.0F, false, true, 100.0D, 10.0F, 4.0F), EPSILON);
         assertEquals(4.9F, WaterVehiclePhysics.updateSpeed(
-                5.0F, 1.0F, true, false, 100.0D), EPSILON);
+                5.0F, 1.0F, true, false, 100.0D, 10.0F, 4.0F), EPSILON);
+    }
+
+    @Test
+    void eachWaterVehicleAcceleratesToItsOwnEnginePowerInsteadOfASharedCap() {
+        /* Speed Boat (enginePower 20) and Jet Ski (18) must not be flattened to
+         * Aluminum Boat's (10) top speed just because they share one physics
+         * routine - this was a real inconsistency found while diagnosing the
+         * reported "boat rises when moving forward" behavior (that lift effect
+         * itself is intentional/source-accurate; this speed cap wasn't). */
+        assertEquals(20.0F, WaterVehiclePhysics.updateSpeed(
+                19.8F, 1.0F, true, true, 100.0D, 20.0F, 4.0F), EPSILON);
+        assertEquals(18.0F, WaterVehiclePhysics.updateSpeed(
+                17.8F, 1.0F, true, true, 100.0D, 18.0F, 4.0F), EPSILON);
+        assertEquals(10.0F, WaterVehiclePhysics.updateSpeed(
+                9.8F, 1.0F, true, true, 100.0D, 10.0F, 4.0F), EPSILON);
     }
 
     @Test
@@ -47,8 +62,12 @@ class WaterVehiclePhysicsTest {
 
     @Test
     void releasedBoatSurfaceTargetRisesWithForwardSpeed() {
-        assertEquals(64.65D, WaterVehiclePhysics.targetSurfaceY(65.0D, 0.0F), 0.000001D);
-        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F), 0.000001D);
-        assertEquals(64.55D, WaterVehiclePhysics.targetSurfaceY(65.0D, -4.0F), 0.000001D);
+        assertEquals(64.65D, WaterVehiclePhysics.targetSurfaceY(65.0D, 0.0F, 10.0F), 0.000001D);
+        assertEquals(64.9D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 10.0F), 0.000001D);
+        assertEquals(64.55D, WaterVehiclePhysics.targetSurfaceY(65.0D, -4.0F, 10.0F), 0.000001D);
+        /* Same speed, but a Speed Boat's higher enginePower means it's a smaller
+         * fraction of its own top speed, so it rises less than an Aluminum Boat
+         * moving at the same absolute speed would. */
+        assertEquals(64.775D, WaterVehiclePhysics.targetSurfaceY(65.0D, 10.0F, 20.0F), 0.000001D);
     }
 }

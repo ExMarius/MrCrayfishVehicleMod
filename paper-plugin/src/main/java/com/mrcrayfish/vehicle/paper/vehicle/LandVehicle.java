@@ -299,7 +299,8 @@ public final class LandVehicle {
         boolean inPropellingWater = waterState == WaterVehiclePhysics.State.IN_WATER
                 || waterState == WaterVehiclePhysics.State.UNDER_WATER;
         waterSpeed = WaterVehiclePhysics.updateSpeed(waterSpeed, throttle,
-                driver != null && enginePowered, inPropellingWater, globalSpeedLimit);
+                driver != null && enginePowered, inPropellingWater, globalSpeedLimit,
+                spec.enginePower(), spec.maxReverseSpeed());
         if (Math.abs(waterSpeed) < 0.001F) {
             waterSpeed = 0.0F;
         }
@@ -312,7 +313,8 @@ public final class LandVehicle {
             if (waterState == WaterVehiclePhysics.State.UNDER_WATER) {
                 velocity.setY(velocity.getY() + 0.08D);
             } else {
-                double targetY = WaterVehiclePhysics.targetSurfaceY(status.waterLevel(), waterSpeed);
+                double targetY = WaterVehiclePhysics.targetSurfaceY(status.waterLevel(), waterSpeed,
+                        spec.enginePower());
                 double floatingY = (targetY - location.getY()) / spec.entityHeight();
                 velocity.setY(velocity.getY() + floatingY * 0.05D);
                 if (Math.abs(floatingY) < 0.1D && velocity.getY() > 0.0D
