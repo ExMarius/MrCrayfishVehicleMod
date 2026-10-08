@@ -973,7 +973,14 @@ public record LandVehicleSpec(
                 case "aluminum_boat" -> new Point(0.0F, 0.0F, 0.2F);
                 default -> new Point(0.0F, 0.0F, 0.25F);
             };
-            case AIR -> new Point(0.0F, 0.0F, -0.425F);
+            /* Sports Plane's generated bodyTransform.translate.z is -8.0 raw pixels,
+             * giving -8.0 * MODEL_UNIT * bodyScale(1.0) = -0.5 once bodyScale correctly
+             * uses the bodyTransform default instead of the item displayTransform's 0.85
+             * (see the SPORTS_PLANE comment above). Bath has no generated ground truth
+             * and keeps its separately hand-tuned, already-confirmed-working value. */
+            case AIR -> "sports_plane".equals(id)
+                    ? new Point(0.0F, 0.0F, -0.5F)
+                    : new Point(0.0F, 0.0F, -0.425F);
             case LAND, HELICOPTER -> new Point(0.0F, 0.0F, 0.0F);
         };
     }
