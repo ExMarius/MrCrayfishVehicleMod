@@ -351,14 +351,16 @@ public final class PaperTrailer {
         if (!spec.canTowTrailers()) {
             return location.clone();
         }
-        // AbstractLandVehicleRenderer translates the tow bar by the raw model-unit
-        // offset only, before matrixStack.scale(bodyScale) is ever applied — so this
-        // must not be multiplied by bodyScale either (see LandVehicleSpec.towBarVisualCenter).
+        // Matches LandVehicleSpec.towBarPhysicsOffset(): AbstractLandVehicleRenderer
+        // explicitly re-multiplies the tow bar offset by bodyScale after cancelling
+        // the body's scale for the accessory model's own geometry, so the tow bar's
+        // ORIGIN position (unlike its fixed 1x rendered size) does scale with the body.
         LandVehicleSpec.Point tow = spec.towBarOffset();
+        float bodyScale = spec.bodyScale();
         return local(location,
-                tow.x() * LandVehicleSpec.MODEL_UNIT,
-                tow.y() * LandVehicleSpec.MODEL_UNIT,
-                tow.z() * LandVehicleSpec.MODEL_UNIT,
+                tow.x() * bodyScale * LandVehicleSpec.MODEL_UNIT,
+                tow.y() * bodyScale * LandVehicleSpec.MODEL_UNIT,
+                tow.z() * bodyScale * LandVehicleSpec.MODEL_UNIT,
                 location.getYaw());
     }
 

@@ -278,11 +278,13 @@ class LandVehicleSpecTest {
         assertEquals(20, slidingDoor.openable().animationLength());
         assertTrue(spec.canTowTrailers());
         assertEquals("big_tow_bar", spec.towBarModel());
-        /* AbstractLandVehicleRenderer translates the tow bar by the raw model-unit
-         * offset (-25.0 * 0.0625) BEFORE matrixStack.scale(bodyScale) is ever applied,
-         * so Mini Bus's 1.3x body scale must not multiply this offset. */
-        assertPoint(spec.towBarVisualCenter(), 0.0F, 0.5F, -1.5625F);
-        assertPoint(spec.towBarPhysicsOffset(), 0.0F, 0.0F, -1.5625F);
+        /* -25.0 (raw offset) * 1.3 (Mini Bus bodyScale) * 0.0625 (MODEL_UNIT) = -2.03125.
+         * AbstractLandVehicleRenderer cancels bodyScale for the tow bar MODEL's own
+         * geometry (always rendered at native 1x size), but explicitly re-multiplies
+         * the offset by bodyScale before translating, so the origin position still
+         * scales with the body. */
+        assertPoint(spec.towBarVisualCenter(), 0.0F, 0.5F, -2.03125F);
+        assertPoint(spec.towBarPhysicsOffset(), 0.0F, 0.0F, -2.03125F);
     }
 
     @Test
@@ -691,13 +693,14 @@ class LandVehicleSpecTest {
 
     @Test
     void towBarsKeepSeparateSourceVisualAndPhysicsOrigins() {
-        /* Tow bar offsets are raw model-unit translations applied before the body's
-         * uniform scale in AbstractLandVehicleRenderer, so they must NOT be multiplied
-         * by each vehicle's bodyScale (regression test for the detached ATV tow hitch). */
-        assertTowBar(LandVehicleSpec.LAWN_MOWER, -1.0F);
-        assertTowBar(LandVehicleSpec.QUAD_BIKE, -1.0F);
+        /* Tow bar offsets ARE multiplied by each vehicle's bodyScale (verified by
+         * numerically tracing AbstractLandVehicleRenderer's matrix stack): bodyScale
+         * is cancelled only for the tow bar accessory model's own rendered geometry
+         * (kept at native 1x size), not for its origin position. */
+        assertTowBar(LandVehicleSpec.LAWN_MOWER, -1.25F);
+        assertTowBar(LandVehicleSpec.QUAD_BIKE, -1.1F);
         assertTowBar(LandVehicleSpec.TRACTOR, -1.53125F);
-        assertTowBar(LandVehicleSpec.ATV, -1.3F);
+        assertTowBar(LandVehicleSpec.ATV, -1.625F);
     }
 
     @Test

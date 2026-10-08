@@ -1048,27 +1048,37 @@ public record LandVehicleSpec(
      * The common source renderer draws the tow bar after cancelling body scale,
      * but before the axle/wheel translations and wheelie matrix. Its model origin
      * therefore keeps the renderer's standalone +0.5 Y correction and never
-     * follows a boost wheelie. Crucially, AbstractLandVehicleRenderer multiplies
-     * this offset by the raw 0.0625 model unit ONLY — never by bodyScale, since
-     * the translation happens before matrixStack.scale(bodyScale) is applied.
-     * Multiplying by bodyScale here (as a prior revision did) pushes the tow bar
-     * further from the body than the source for every vehicle whose body isn't
-     * scale 1.0 (e.g. the ATV at 1.25x), making it look visibly detached.
+     * follows a boost wheelie.
+     *
+     * AbstractLandVehicleRenderer's actual sequence is: scale(bodyScale), then
+     * translate(bodyPos) (so bodyPos's displacement IS scaled by bodyScale); then,
+     * for the tow bar specifically, it pushes a new pose, applies scale(1/bodyScale)
+     * to cancel the scale for the tow bar MODEL's own geometry (so the accessory
+     * model always renders at native 1x size, never stretched by the body scale),
+     * and then explicitly re-multiplies towBarOffset by bodyScale before
+     * translating in that now-unscaled frame. Net effect, confirmed by tracing the
+     * matrix stack numerically: the tow bar's ORIGIN position still scales with
+     * bodyScale (same as every other body-relative offset below), while only its
+     * rendered geometry size stays fixed at 1x (already handled by this port's
+     * hardcoded `scale = 1.0F` in LandVehicleRig's tow bar partDisplay() call).
+     * Do not remove the bodyScale factor here — a bodyScale of 1.25 (e.g. ATV)
+     * genuinely pushes the tow bar 25% further from the body root than a 1.0
+     * body, which is correct/intentional.
      */
     public Point towBarVisualCenter() {
         return new Point(
-                towBarOffset.x * MODEL_UNIT,
-                0.5F + towBarOffset.y * MODEL_UNIT,
-                towBarOffset.z * MODEL_UNIT
+                towBarOffset.x * bodyScale * MODEL_UNIT,
+                0.5F + towBarOffset.y * bodyScale * MODEL_UNIT,
+                towBarOffset.z * bodyScale * MODEL_UNIT
         );
     }
 
     /** Source trailer physics uses the same X/Z offset without visual +0.5 Y. */
     public Point towBarPhysicsOffset() {
         return new Point(
-                towBarOffset.x * MODEL_UNIT,
-                towBarOffset.y * MODEL_UNIT,
-                towBarOffset.z * MODEL_UNIT
+                towBarOffset.x * bodyScale * MODEL_UNIT,
+                towBarOffset.y * bodyScale * MODEL_UNIT,
+                towBarOffset.z * bodyScale * MODEL_UNIT
         );
     }
 
