@@ -284,22 +284,33 @@ outside that rule regardless of which placeholder or recovered geometry it used.
 no longer has a `BATH` constant, `tools/source_assets/cfm_bath.json` has been deleted, and the
 resource pack no longer ships a `bath_body` item or model.
 
-### Aluminum Boat real hull texture recovered (r31)
+### Aluminum Boat texture: r31's "recovered hull texture" reverted (r34)
 
 The r29 batch shipped the Aluminum Boat's `body` face with a `minecraft:block/light_gray_concrete`
 block-texture approximation because no dedicated art for it had been found in the vendored source
-tree at the time. A full systematic texture audit subsequently found a genuine, previously-unwired
-hull texture sitting in the repository under the stray plural directory
-`textures/vehicles/aluminum.png` (distinct from the singular `textures/vehicle/` tree every other
-vehicle's art lives in) — a riveted aluminum-sheet texture matching the vehicle by name and content,
-referenced by no model anywhere in the tree. It has been relocated to the conventional per-vehicle
-path `textures/vehicle/aluminum_boat/body.png` and wired into `vehicle_aluminum_boat_body.json`'s
-`body`/`particle` keys in place of the concrete placeholder; `seat` and `logo` still use their
-original placeholders since no dedicated art for those parts was found. The same plural directory
-also holds `go_kart.png`, the texture for a superseded single-mesh `go_kart_body.json` model that
-predates (and is not used by) the currently shipped multi-part Go Kart, and `tyre.png`, a small
-tire-colored swatch not clearly tied to any one vehicle's texture key; both are left in place,
-unwired, pending clearer evidence of their intended use.
+tree at the time. r31 then found a texture sitting in the repository under the stray plural
+directory `textures/vehicles/aluminum.png` (distinct from the singular `textures/vehicle/` tree
+every other vehicle's art lives in) — a riveted aluminum-sheet texture matching the vehicle by name
+and content, referenced by no model anywhere in the tree — and wired it into the Aluminum Boat's
+`body`/`particle` keys, assuming it was the vehicle's missing dedicated art.
+
+That assumption was wrong. `tools/source_assets/vehicle_aluminum_boat_body.json` — the exact
+released Vehicle Mod `1.16.X` Aluminum Boat model, the genuine 1:1 source for this vehicle — already
+specifies its own complete, directly resolvable texture map: `"body": "minecraft:block/white_concrete"`,
+`"logo": "vehicle:model/cray_industries"` (the mod's own real decal, already used correctly on other
+vehicles), and `"seat": "minecraft:block/anvil"` (a legitimate, resolvable vanilla texture, not a
+broken legacy reference — the Fluid Trailer's own `base` key uses the same path directly). None of
+these needed any substitution at all; the real Aluminum Boat is a plain white-concrete hull like
+several of its r29-batch siblings (Bumper Car and parts of Smart Car/Speed Boat use the same
+`white_concrete` base), not a custom riveted-metal texture. r31's `aluminum.png` was an unrelated,
+never-referenced file that happened to visually fit the vehicle's name; per the standing rule that
+this port only reproduces the Vehicle Mod's own source, r34 reverts r31's wiring and restores the
+literal source texture map (`seat`/`logo`/`body`/`particle` above). `aluminum.png` has been moved
+back to its original `textures/vehicles/aluminum.png` location, unwired, alongside its two sibling
+orphans in that same stray plural directory: `go_kart.png`, the texture for a superseded single-mesh
+`go_kart_body.json` model that predates (and is not used by) the currently shipped multi-part Go
+Kart, and `tyre.png`, a small tire-colored swatch not clearly tied to any one vehicle's texture key.
+All three are left in place, unwired, pending clearer evidence of their intended use.
 
 ### Vehicle Trailer passenger offsets
 
@@ -364,6 +375,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 24. The r29 batch adds the released `1.16.X` ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch: their generated axle/wheel/seat/fuel-port geometry and vanilla-block-texture bodies, the ATV's dune-buggy-style steering ratio, the Mini Bike's `Motorcycle`-pattern fork steering with an estimated (not exactly sourced) handlebar resting position, each vehicle's own engine sample reuse, and the Couch's CFM-dependent shared sofa body.
 25. The r30 batch adds the released `1.16.X` Bumper Car, Shopping Cart, and Bath, the three vehicles whose mechanics are genuinely novel to this port: the Bumper Car's car-to-car collision, approximated as a velocity jolt plus `bonk.ogg` since this port does not expose the source's internal `currentSpeed` field; the Shopping Cart's push-from-behind control, approximated as a sneak-interact grab/release toggle driving the cart's position from the pushing player each tick; and Bath, which reuses the Sports Plane's flight model and the source's own ATV-body placeholder visual rather than the CFM-only `cfm:bath` item geometry, shipped without CFM despite the original source gating Bath's very existence behind that mod being installed.
 26. r33 removes Bath entirely, per explicit user direction that this port only reproduces the Vehicle Mod's own source code and assets: any faithful rendering of Bath depends on a *different* mod's (MrCrayfish's Furniture Mod) geometry, which no placeholder or recovered substitute (r29's ATV body, r32's recovered CFM tub) could avoid. The vehicle count drops from twenty-four to twenty-three.
+27. r34 reverts r31's Aluminum Boat texture change: the released source model's own `body`/`logo`/`seat` texture keys (plain white concrete, the real Cray Industries decal, and the vanilla anvil texture) already resolve correctly and needed no substitution; r31's `textures/vehicles/aluminum.png` was an unrelated, never-referenced file, not this vehicle's missing art, and is restored to its original unwired location.
 
 ## Exact ports versus vanilla-client adaptations
 

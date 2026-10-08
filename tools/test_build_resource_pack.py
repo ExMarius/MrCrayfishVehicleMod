@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r33_pack(self):
+    def test_configured_sha1_matches_deterministic_r34_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -283,12 +283,13 @@ class ResourcePackBuildTest(unittest.TestCase):
 
         aluminum_boat_body = self.read_json("assets/vehicle/models/item/aluminum_boat_body.json")
         self.assertEqual(77, len(aluminum_boat_body["elements"]))
-        # r33 recovered the released source's own riveted-aluminum hull texture (previously sitting
-        # unwired under the stray plural "textures/vehicles/" directory) in place of the concrete
-        # placeholder used since r29; "seat" and "logo" still have no dedicated art and keep theirs.
-        self.assertEqual("vehicle:item/aluminum_boat_body", aluminum_boat_body["textures"]["body"])
-        self.assertEqual("vehicle:item/aluminum_boat_body", aluminum_boat_body["textures"]["particle"])
-        self.assertIn("assets/vehicle/textures/item/aluminum_boat_body.png", self.entries)
+        # The released source's own texture map already resolves cleanly in modern vanilla
+        # (see build_resource_pack.py); r34 reverted r31's substitution of an unrelated,
+        # never-referenced "aluminum.png" file for the literal source values below.
+        self.assertEqual("minecraft:block/white_concrete", aluminum_boat_body["textures"]["body"])
+        self.assertEqual("minecraft:block/white_concrete", aluminum_boat_body["textures"]["particle"])
+        self.assertEqual("vehicle:model/cray_industries", aluminum_boat_body["textures"]["logo"])
+        self.assertEqual("minecraft:block/anvil", aluminum_boat_body["textures"]["seat"])
 
         legal_angles = {-45.0, -22.5, 0.0, 22.5, 45.0}
         for model in (atv_body, atv_handles, mini_bike_body, mini_bike_handles,

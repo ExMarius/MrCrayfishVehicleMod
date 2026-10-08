@@ -97,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r33 — twenty-three vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r34 — twenty-three vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -498,11 +498,19 @@ def build(output: Path) -> tuple[Path, str]:
             ROOT / "tools/source_assets/vehicle_aluminum_boat_body.json",
             namespace / "models/item/aluminum_boat_body.json",
             {
-                "seat": "minecraft:block/black_wool",
-                "logo": "minecraft:block/gray_concrete",
-                "body": "vehicle:item/aluminum_boat_body",
-                "particle": "vehicle:item/aluminum_boat_body",
+                # The released 1.16.X source model's own texture map already resolves
+                # cleanly in modern vanilla: a plain white-concrete hull/particle (like
+                # several sibling r29-batch vehicles), the mod's own real Cray Industries
+                # decal for "logo", and "minecraft:block/anvil" for "seat" (a legitimate,
+                # resolvable vanilla texture also used as-is by the Fluid Trailer's "base"
+                # key below). None of these need substituting; see SOURCE_POSITION_AUDIT.md
+                # for why r31's "recovered aluminum hull texture" was reverted in r34.
+                "seat": "minecraft:block/anvil",
+                "logo": "vehicle:model/cray_industries",
+                "body": "minecraft:block/white_concrete",
+                "particle": "minecraft:block/white_concrete",
             },
+
         )
         convert_model(
             ROOT / "tools/source_assets/vehicle_bumper_car_body.json",
@@ -615,10 +623,6 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ASSETS / "textures/vehicle/go_kart/base.png",
             namespace / "textures/item/go_kart_body.png",
-        )
-        copy(
-            ASSETS / "textures/vehicle/aluminum_boat/body.png",
-            namespace / "textures/item/aluminum_boat_body.png",
         )
         copy(
             ASSETS / "textures/vehicle/quad_bike/base.png",
@@ -919,7 +923,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r33.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r34.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")
