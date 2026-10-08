@@ -66,21 +66,6 @@ jobs:
           }
           test -s "$ROOT/frp/supervisor.pid"
           kill -0 "$(cat "$ROOT/frp/supervisor.pid")"
-          if [ -x "$ROOT/frp/frps" ] && { [ -s "$ROOT/frp/frps.toml" ] || [ -s "$ROOT/frp/frps.yaml" ]; }; then
-            ready=0
-            for _ in $(seq 1 20); do
-              if pgrep -x frps >/dev/null 2>&1 && pgrep -x frpc >/dev/null 2>&1; then
-                ready=1
-                break
-              fi
-              sleep 1
-            done
-            if [ "$ready" -ne 1 ]; then
-              echo "::error title=Panel deployment::The preserved local FRPS/FRPC pair did not become ready"
-              exit 1
-            fi
-          fi
-
           echo "::notice title=Oracle panel::Panel ready on local port 8081; one-command bootstrap is $HOME/start.sh"
           if [ -s "$PANEL/initial-password.txt" ]; then
             echo "::notice title=Oracle panel login::Initial credential is stored privately at $PANEL/initial-password.txt"

@@ -7,12 +7,9 @@ if [ -s "$PID_FILE" ]; then
   [ -z "$pid" ] || kill -TERM "$pid" 2>/dev/null || true
 fi
 for _ in $(seq 1 15); do
-  if ! pgrep -x frpc >/dev/null 2>&1 && ! pgrep -x frps >/dev/null 2>&1; then
-    break
-  fi
+  pgrep -x frpc >/dev/null 2>&1 || break
   sleep 1
 done
 pkill -TERM -x frpc 2>/dev/null || true
-pkill -TERM -x frps 2>/dev/null || true
 rm -f "$PID_FILE"
-echo "FRP client și server au fost oprite."
+echo "Clientul FRP a fost oprit."
