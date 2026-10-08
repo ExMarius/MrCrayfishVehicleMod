@@ -283,6 +283,56 @@ class LandVehicleSpecTest {
     }
 
     @Test
+    void duneBuggyMatchesReleasedPropertiesAndManualFrontForkRenderer() {
+        LandVehicleSpec spec = LandVehicleSpec.DUNE_BUGGY;
+        assertEquals(LandVehicleSpec.MotionType.LAND, spec.motionType());
+        assertEquals(0.75F, spec.entityWidth(), EPSILON);
+        assertEquals(0.75F, spec.entityHeight(), EPSILON);
+        assertEquals(0.5F, spec.stepHeight(), EPSILON);
+        assertEquals(1.3F, spec.bodyScale(), EPSILON);
+        assertEquals(-2.3F, spec.axleOffset(), EPSILON);
+        assertEquals(2.5F, spec.wheelOffset(), EPSILON);
+        assertPoint(spec.bodyOrigin(), 0.0F, 0.66625F, 0.0F);
+        assertEquals(10.0F, spec.enginePower(), EPSILON);
+        assertEquals(35.0F, spec.maxSteeringAngle(), EPSILON);
+        assertEquals(5.3F / 16.0F * 1.3F, spec.frontAxleOffset(), EPSILON);
+        assertEquals(-5.7F / 16.0F * 1.3F, spec.rearAxleOffset(), EPSILON);
+        assertEquals(5_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(0.25F, spec.energyPerTick(), EPSILON);
+        assertEquals(0.5F, spec.minEnginePitch(), EPSILON);
+        assertEquals(1.2F, spec.maxEnginePitch(), EPSILON);
+        assertEquals("vehicle:entity.bumper_car.engine", spec.engineSound());
+        assertFalse(spec.exhaustFumes());
+        assertNull(spec.engine());
+        assertNull(spec.ignition());
+        assertEquals("dune_buggy_handles", spec.steering().model());
+        assertPoint(spec.steering().center(), 0.0F, 0.66625F, -0.00609375F);
+        assertEquals(1.3F, spec.steering().scale(), EPSILON);
+        assertEquals(35.0F * 15.0F / 45.0F, spec.steeringVisualAngle(), EPSILON);
+        assertPoint(spec.fuelFiller().center(), 0.0F, 0.26F, -0.56875F);
+        assertEquals(0.325F, spec.fuelFiller().scale(), EPSILON);
+        assertEquals(3, spec.wheels().size());
+        LandVehicleSpec.Wheel front = spec.firstFrontWheel();
+        assertPoint(front.visualCenter(), 0.0F, 0.20475F, 0.42290625F);
+        assertEquals(0.203125F, front.centerY(), EPSILON);
+        assertEquals(0.430625F, front.axleZ(), EPSILON);
+        assertEquals(0.0F, front.contactY(), EPSILON);
+        assertEquals(0.8125F, front.scaleY(), EPSILON);
+        assertEquals(-0.2965625F, spec.wheels().get(1).contactX(), EPSILON);
+        assertEquals(1, spec.seats().size());
+        assertPoint(spec.seats().getFirst().sourceOffset(), 0.0F, 0.17875F, -0.24375F);
+        assertNotNull(spec.motorcycle());
+        assertEquals(0.0F, spec.motorcycle().maxLeanAngle(), EPSILON);
+        assertEquals(3.125F / 16.0F * 1.3F,
+                spec.motorcycle().steeringPivotZ(), EPSILON);
+        assertEquals(-22.5F, spec.motorcycle().steeringAxisTilt(), EPSILON);
+        assertTrue(spec.motorcycle().frontWheelYaw180());
+        assertFalse(spec.canTowTrailers());
+        assertPoint(spec.trailerOffset(), 0.0F, -0.025F, -0.25F);
+        assertEquals(spec, LandVehicleSpec.byId("dune_buggy"));
+    }
+
+    @Test
     void golfCartMatchesGeneratedPropertiesRendererAndRearSeatYaw() {
         LandVehicleSpec spec = LandVehicleSpec.GOLF_CART;
         assertEquals(2.0F, spec.entityWidth(), EPSILON);
@@ -314,7 +364,7 @@ class LandVehicleSpecTest {
         assertEquals(180.0F, spec.seats().get(3).yawOffset(), EPSILON);
         assertFalse(spec.canTowTrailers());
         assertEquals(spec, LandVehicleSpec.byId("golf_cart"));
-        assertEquals(14, LandVehicleSpec.ids().size());
+        assertEquals(15, LandVehicleSpec.ids().size());
     }
 
     @Test
@@ -648,6 +698,7 @@ class LandVehicleSpecTest {
         assertPoint(LandVehicleSpec.GO_KART.trailerOffset(), 0.0F, -0.031F, -0.375F);
         assertPoint(LandVehicleSpec.LAWN_MOWER.trailerOffset(), 0.0F, -0.01F, -1.0F);
         assertPoint(LandVehicleSpec.QUAD_BIKE.trailerOffset(), 0.0F, 0.0F, -0.55F);
+        assertPoint(LandVehicleSpec.DUNE_BUGGY.trailerOffset(), 0.0F, -0.025F, -0.25F);
         assertPoint(LandVehicleSpec.TRACTOR.trailerOffset(), 0.0F, 0.0F, 0.0F);
         assertPoint(LandVehicleSpec.DIRT_BIKE.trailerOffset(), 0.0F, -0.062F, -0.312F);
         assertPoint(LandVehicleSpec.MOPED.trailerOffset(), 0.0F, -0.031F, -0.65F);

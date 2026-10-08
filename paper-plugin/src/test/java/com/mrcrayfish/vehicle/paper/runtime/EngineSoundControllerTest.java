@@ -13,6 +13,10 @@ class EngineSoundControllerTest {
                 EngineSoundController.replayTicks("vehicle:entity.go_kart.engine", 0.9F), 0.001D);
         assertEquals(36.2154D,
                 EngineSoundController.replayTicks("vehicle:entity.go_kart.engine", 2.0F), 0.001D);
+        assertEquals(25.6512D,
+                EngineSoundController.replayTicks("vehicle:entity.bumper_car.engine", 0.5F), 0.001D);
+        assertEquals(10.1047D,
+                EngineSoundController.replayTicks("vehicle:entity.bumper_car.engine", 1.2F), 0.001D);
         assertEquals(7.0453D,
                 EngineSoundController.replayTicks("vehicle:entity.quad_bike.engine", 0.5F), 0.001D);
         assertEquals(2.2181D,

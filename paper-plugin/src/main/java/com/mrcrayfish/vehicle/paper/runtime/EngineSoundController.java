@@ -120,6 +120,8 @@ public final class EngineSoundController {
         double ticksAtPitchOne;
         if (sound.endsWith("go_kart.engine")) {
             ticksAtPitchOne = 74.43083900226758D;
+        } else if (sound.endsWith("bumper_car.engine")) {
+            ticksAtPitchOne = 13.32562358276644D;
         } else if (sound.endsWith("tractor.engine")) {
             ticksAtPitchOne = 36.833958333333335D;
         } else if (sound.endsWith("dirt_bike.engine")) {

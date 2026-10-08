@@ -32,6 +32,7 @@ All implemented land vehicles have zero body translation/rotation. The Jet Ski i
 | Mini Bus | 1.118000 | 0.386750 / 0.386750 | 0.711750 (all five) | n/a (source sets `renderEngine=false`) | (-0.406250, 1.516441875, 1.27057125) | -2.031250 |
 | Golf Cart | 0.8553125 | 0.316250 / 0.316250 | 0.6396875 (all four; rear pair yaw `180°`) | n/a (source does not enable engine rendering) | (-0.396750, 1.3277991, 0.13126346) | n/a |
 | Jet Ski | 0.83984375 (visual Z `0.25`) | n/a | 0.60546875 (both) | n/a (source does not enable engine rendering) | (0, 1.2835938, 0.531250) handles | n/a |
+| Dune Buggy | 0.666250 | 0.203125 (manually fork-rendered) / 0.203125 | 0.178750 | n/a (source does not render its engine) | (0, 0.666250, -0.006094) before fork steering | n/a |
 
 Every listed wheel has a calculated contact Y of exactly `0`. Tractor and Dirt Bike wheel X scales now use serialized `0.938`; the other generated and auto-scaled wheel values match their property equations.
 
@@ -69,6 +70,12 @@ The Moped uses the same tilted-axis equation around its renderer's `11.5/16 * 1.
 - front wheel `(-0.009121702, 0.24077387, 1.0584683)`.
 
 The stock seat/tray center is `(0, 0.69, -0.4875)` and the stock front-light center is `(0, 0.915, 0.7629)`. The closed vanilla chest display is centered at `(0, 1.065, -0.7875)` with scale `0.6`; its center compensates for the vanilla chest item's center anchor while preserving the source renderer's bottom position and 180-degree orientation.
+
+### Dune Buggy fork and manually rendered front wheel
+
+The released `1.16.X` `DuneBuggyEntity` is a plain `LandVehicleEntity`, not a `MotorcycleEntity`, so its `Motorcycle.maxLeanAngle` is `0`; only its handlebar fork and single manually rendered front wheel reuse the shared tilted-axis equation. `DuneBuggyRenderer` translates `(0, 0, 3.125/16)`, rotates local X by `-22.5°`, applies `(wheelAngle / 45) * 15` degrees of Y steering, rotates back `+22.5°`, then translates `(0, 0, -0.2)` before drawing the handles model; this nets to a pure `-0.0046875`-block Z offset at zero steering, matching the generated body-origin Y of `0.666250`. The front wheel is excluded from the standard per-wheel render loop (`"render": false` in the generated properties) and is instead drawn inside this same fork frame at a further local `(0, -0.355, 0.33)` offset with the renderer's explicit `180°` Y rotation, giving the unsteered visual center `(0, 0.204750, 0.422906)` while the wheel's physics axle (used for suspension/steering math) stays at the generated front-axle point `(0, 0.203125, 0.430625)`. Both the handles and the front wheel's `renderCenter` are reproduced exactly through `SourceTransforms.forkPoint` using the shared `steeringAxisTilt = -22.5°` and `steeringPivotZ = 3.125/16 * 1.3 = 0.253906` pivot. At the renderer's non-normalized `35° * 15/45 = 11.666...°` visual steering angle the fork-steered centers are `(-0.048574, 0.668149, -0.001509)` for the handles and `(-0.004140, 0.204912, 0.423297)` for the front wheel.
+
+The released body and handles models (`dune_buggy_body.json`, `dune_buggy_handles.json`) are MrCrayfish's Model Creator output and natively reference vanilla block textures (`minecraft:block/yellow_concrete`, `yellow_wool`, `light_gray_concrete`, `gray_concrete`, `red_concrete`) rather than a custom PNG; no texture file for this vehicle exists anywhere in the upstream repository. This is the original source design, not a fallback substitution, and every element rotation (`±22.5°`, `±45°`) is already within vanilla 1.21.4's legal set, so no angle legalization is required. `DuneBuggyEntity#getEngineSound()` reuses the Bumper Car's engine sample; the Paper port copies that exact released OGG rather than inventing audio.
 
 ### Off Roader renderer
 
@@ -222,6 +229,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 20. The r23/r24 Sports Plane port adds its complete source body/complex rig, generated wheel and seat positions, flight/control-surface equations, persistence, and original engine sample; r24 narrowly legalizes source element angles rejected by vanilla 1.21.4.
 21. The r25 Compact Helicopter port adds its complete 91-element body and four cosmetic models, exact two-seat/pivot geometry, helicopter force/blade/yaw/lean equations, joystick and both rotor animations, source sound/fuel/persistence, transformed exhaust, and rotor downwash.
 22. The r27 Sofacopter port restores the official Furniture Mod red sofa and original `cfm:ceiling_fan_fans` four-blade rotor, retains the Vehicle Mod arm and exact rotor pivot/scale, corrects r26's full-aircraft-wing substitution, and applies its generated 15-power, 40,000-capacity helicopter behavior without inventing sound or Compact-only effects.
+23. The r28 Dune Buggy port adds the released `1.16.X` body/handles models (which natively use vanilla block textures, not custom art), serialized axle/wheel/seat/fuel-port geometry, the shared Dirt Bike/Moped tilted-fork handlebar steering with its manually fork-rendered front wheel, and the original Bumper Car engine sample selected by `DuneBuggyEntity#getEngineSound()`.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -238,6 +246,7 @@ Exact matrix/equation ports:
 - Sports Plane body/wheel/seat/part pivots, flight and control-surface equations, persistence, and original engine sample;
 - Compact Helicopter body/seat/cosmetic pivots, blade/lift/movement/yaw/drag/lean equations, fuel/persistence, exhaust/downwash behavior, and original rotor sample;
 - Sofacopter serialized body/seat/filler/ignition positions, rotor-arm/CFM-fan pivots and scale, generic helicopter equations, capacity/consumption, silence, and persistence.
+- Dune Buggy serialized body/wheel/seat/fuel-port coordinates, the shared tilted-fork handlebar steering matrix, the manually fork-rendered front wheel's physics-axle/visual-center split, and the original Bumper Car engine sample.
 
 Vanilla-client adaptations that intentionally remain:
 

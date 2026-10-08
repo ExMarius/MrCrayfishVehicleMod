@@ -67,6 +67,22 @@ class SourceTransformsTest {
     }
 
     @Test
+    void duneBuggySteersHandlesAndManuallyRenderedFrontWheelThroughSourceTiltedMatrix() {
+        LandVehicleSpec spec = LandVehicleSpec.DUNE_BUGGY;
+        Quaternionf fork = SourceTransforms.motorcycleSteering(
+                spec.motorcycle(), spec.steeringVisualAngle());
+
+        Vector3f handles = SourceTransforms.forkPoint(
+                point(spec.steering().center()), point(spec.bodyOrigin()), spec.motorcycle(), fork);
+        assertVector(handles, -0.04857442F, 0.6681491F, -0.0015089406F);
+
+        LandVehicleSpec.Wheel front = spec.firstFrontWheel();
+        Vector3f wheel = SourceTransforms.forkPoint(
+                point(front.visualCenter()), point(spec.bodyOrigin()), spec.motorcycle(), fork);
+        assertVector(wheel, -0.0041399524F, 0.20491186F, 0.42329702F);
+    }
+
+    @Test
     void zeroSteeringLeavesDirtBikeHandlesAndForkWheelAtSourceCenters() {
         LandVehicleSpec spec = LandVehicleSpec.DIRT_BIKE;
         Quaternionf fork = SourceTransforms.motorcycleSteering(spec.motorcycle(), 0.0F);

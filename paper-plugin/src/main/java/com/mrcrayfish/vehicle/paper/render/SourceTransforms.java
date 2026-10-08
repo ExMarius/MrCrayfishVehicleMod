@@ -46,7 +46,7 @@ final class SourceTransforms {
         return aircraftRotation(pitch, roll).transform(new Vector3f(point));
     }
 
-    /** DirtBikeRenderer: X(-22.5), steering Y, then X(+22.5). */
+    /** Dirt Bike, Moped, and Dune Buggy fork/handlebar order: tilted X, steering Y, untilted X. */
     static Quaternionf motorcycleSteering(LandVehicleSpec.Motorcycle motorcycle,
                                           float steeringRotation) {
         if (motorcycle == null) {

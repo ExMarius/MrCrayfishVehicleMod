@@ -111,6 +111,8 @@ def build(output: Path) -> tuple[Path, str]:
             "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
             "quad_bike_body": ("vehicle:item/quad_bike_body", 16383998),
             "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),
+            "dune_buggy_body": ("vehicle:item/dune_buggy_body", 0xF2B116),
+            "dune_buggy_handles": ("vehicle:item/dune_buggy_handles", 0xF2B116),
             "tractor_body": ("vehicle:item/tractor_body", 16383998),
             "dirt_bike_body": ("vehicle:item/dirt_bike_body", 16383998),
             "dirt_bike_handles": ("vehicle:item/dirt_bike_handles", 16383998),
@@ -202,6 +204,27 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/quad_bike/handles.json",
             namespace / "models/item/quad_bike_handles.json",
             {"texture": "vehicle:item/quad_bike_handles", "particle": "vehicle:item/quad_bike_handles"},
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_dune_buggy_body.json",
+            namespace / "models/item/dune_buggy_body.json",
+            {
+                "seat": "minecraft:block/yellow_wool",
+                "engine_base": "minecraft:block/light_gray_concrete",
+                "engine_part": "minecraft:block/gray_concrete",
+                "body": "minecraft:block/yellow_concrete",
+                "particle": "minecraft:block/yellow_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_dune_buggy_handles.json",
+            namespace / "models/item/dune_buggy_handles.json",
+            {
+                "handles": "minecraft:block/yellow_concrete",
+                "axel": "minecraft:block/light_gray_concrete",
+                "base": "minecraft:block/red_concrete",
+                "particle": "minecraft:block/yellow_concrete",
+            },
         )
         convert_model(
             ASSETS / "models/vehicle/tractor_body.json",
@@ -625,6 +648,10 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "sounds/entity/quad_bike/engine.ogg",
         )
         copy(
+            ROOT / "tools/source_assets/vehicle_bumper_car_engine.ogg",
+            namespace / "sounds/entity/bumper_car/engine.ogg",
+        )
+        copy(
             ASSETS / "sounds/entity/tractor/engine.ogg",
             namespace / "sounds/entity/tractor/engine.ogg",
         )
@@ -669,6 +696,9 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.quad_bike.engine": {
                 "sounds": [{"name": "vehicle:entity/quad_bike/engine", "preload": True}]
+            },
+            "entity.bumper_car.engine": {
+                "sounds": [{"name": "vehicle:entity/bumper_car/engine", "preload": True}]
             },
             "entity.tractor.engine": {
                 "sounds": [{"name": "vehicle:entity/tractor/engine", "preload": True}]
@@ -726,7 +756,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r28.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

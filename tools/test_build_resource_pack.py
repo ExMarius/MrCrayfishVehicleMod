@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r27_pack(self):
+    def test_configured_sha1_matches_deterministic_r28_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -229,6 +229,32 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual("fan_4", blades["elements"][-1]["name"])
         self.assertEqual([-3.4, 7.0, 6.5], blades["elements"][6]["from"])
         self.assertEqual([9.5, 8.0, 19.4], blades["elements"][-1]["to"])
+
+    def test_dune_buggy_models_use_the_released_vanilla_block_textures_and_bumper_car_engine(self):
+        body = self.read_json("assets/vehicle/models/item/dune_buggy_body.json")
+        self.assertEqual(20, len(body["elements"]))
+        self.assertEqual("minecraft:block/yellow_concrete", body["textures"]["body"])
+        self.assertEqual("minecraft:block/yellow_wool", body["textures"]["seat"])
+        self.assertEqual("minecraft:block/light_gray_concrete", body["textures"]["engine_base"])
+        self.assertEqual("minecraft:block/gray_concrete", body["textures"]["engine_part"])
+        handles = self.read_json("assets/vehicle/models/item/dune_buggy_handles.json")
+        self.assertEqual(16, len(handles["elements"]))
+        self.assertEqual("minecraft:block/yellow_concrete", handles["textures"]["handles"])
+        self.assertEqual("minecraft:block/light_gray_concrete", handles["textures"]["axel"])
+        self.assertEqual("minecraft:block/red_concrete", handles["textures"]["base"])
+        legal_angles = {-45.0, -22.5, 0.0, 22.5, 45.0}
+        for model in (body, handles):
+            for element in model["elements"]:
+                if "rotation" in element:
+                    self.assertIn(element["rotation"]["angle"], legal_angles)
+        for entry in ("assets/vehicle/items/dune_buggy_body.json",
+                     "assets/vehicle/items/dune_buggy_handles.json"):
+            self.assertIn(entry, self.entries)
+        self.assertIn("assets/vehicle/sounds/entity/bumper_car/engine.ogg", self.entries)
+        sounds = self.read_json("assets/vehicle/sounds.json")
+        self.assertIn("entity.bumper_car.engine", sounds)
+        self.assertEqual("vehicle:entity/bumper_car/engine",
+                         sounds["entity.bumper_car.engine"]["sounds"][0]["name"])
 
     @staticmethod
     def last_ogg_granule(data):

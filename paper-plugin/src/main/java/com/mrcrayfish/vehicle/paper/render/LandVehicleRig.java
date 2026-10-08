@@ -387,7 +387,7 @@ public final class LandVehicleRig {
             Quaternionf rotation;
             Quaternionf sourceRotation;
             if (wheel.front() && spec.motorcycle() != null) {
-                Vector3f unsteeredCenter = new Vector3f(wheel.axleX(), wheel.centerY(), wheel.axleZ());
+                Vector3f unsteeredCenter = point(wheel.visualCenter());
                 center = SourceTransforms.forkPoint(
                         unsteeredCenter, bodyOrigin, spec.motorcycle(), forkRotation);
                 center = chassis(center, wheelieAngle, bodyRoll);

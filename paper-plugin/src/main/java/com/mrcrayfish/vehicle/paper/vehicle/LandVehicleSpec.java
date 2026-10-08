@@ -138,6 +138,40 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* Released Dune Buggy properties auto-calculate wheelOffset as
+     * (8 * 0.625 / 2) = 2.5. Its renderer draws the otherwise hidden front
+     * wheel inside the tilted handlebar steering matrix, so renderCenter keeps
+     * that manual position separate from the generated wheel's physics point. */
+    public static final LandVehicleSpec DUNE_BUGGY = new LandVehicleSpec(
+            "dune_buggy", "Dune Buggy", "dune_buggy_body",
+            0.75F, 0.75F, 0.5F,
+            1.3F, -2.3F, 2.5F,
+            10.0F, 35.0F, 5.3F * MODEL_UNIT * 1.3F, -5.7F * MODEL_UNIT * 1.3F, 5.0F,
+            5_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.bumper_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            null,
+            new Part("dune_buggy_handles", new Point(0.0F, 0.66625F, -0.00609375F),
+                    1.3F, 0.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", 0.0F, 3.0F, -7.0F,
+                    0.25F, 0.0F, 180.0F, 0.0F, 1.3F, -2.3F, 2.5F),
+            null,
+            List.of(),
+            List.of(
+                    new Wheel(0, true, 0.0F, 0.203125F, 0.430625F,
+                            0.0F, 0.0F, 0.8125F, 0.8125F, 0.8125F,
+                            new Point(0.0F, 0.20475F, 0.42290625F)),
+                    wheel(-1, false, 2.4F, 0.0F, -5.7F,
+                            0.625F, 0.625F, 0.625F, 1.3F, -2.3F, 2.5F),
+                    wheel(1, false, 2.4F, 0.0F, -5.7F,
+                            0.625F, 0.625F, 0.625F, 1.3F, -2.3F, 2.5F)
+            ),
+            List.of(seat(true, 0.0F, 2.0F, -3.0F, 1.3F, -2.3F, 2.5F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, -0.025F, -0.25F),
+            new Motorcycle(0.0F, 3.125F * MODEL_UNIT * 1.3F, -22.5F, true),
+            null, List.of(), false
+    );
+
     /* Source wheelOffset = (8 * 2.8 / 2) - 5.5 = 5.7. The front wheel's
      * auto-scaled Y/Z axes become 5.7 / 4 = 1.425 while X stays at the
      * generated property's serialized 0.938 value. */
@@ -625,6 +659,7 @@ public record LandVehicleSpec(
             Map.entry(GO_KART.id, GO_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
             Map.entry(QUAD_BIKE.id, QUAD_BIKE),
+            Map.entry(DUNE_BUGGY.id, DUNE_BUGGY),
             Map.entry(TRACTOR.id, TRACTOR),
             Map.entry(DIRT_BIKE.id, DIRT_BIKE),
             Map.entry(MOPED.id, MOPED),
@@ -690,6 +725,11 @@ public record LandVehicleSpec(
     }
 
     public float steeringVisualAngle() {
+        if ("dune_buggy".equals(id)) {
+            /* DuneBuggyRenderer uses wheelAngle / 45 * 15 rather than
+             * normalizing by the vehicle's 35-degree steering limit. */
+            return maxSteeringAngle * 15.0F / 45.0F;
+        }
         return motionType() == MotionType.WATER ? 15.0F : 25.0F;
     }
 
@@ -907,13 +947,25 @@ public record LandVehicleSpec(
 
     public record Wheel(int side, boolean front, float axleX, float centerY, float axleZ,
                         float halfWidthOffset, float contactY,
-                        float scaleX, float scaleY, float scaleZ) {
+                        float scaleX, float scaleY, float scaleZ, Point renderCenter) {
+        public Wheel(int side, boolean front, float axleX, float centerY, float axleZ,
+                     float halfWidthOffset, float contactY,
+                     float scaleX, float scaleY, float scaleZ) {
+            this(side, front, axleX, centerY, axleZ, halfWidthOffset, contactY,
+                    scaleX, scaleY, scaleZ, null);
+        }
+
         public float contactX() {
             return axleX + halfWidthOffset;
         }
 
         public float contactZ() {
             return axleZ;
+        }
+
+        /** Renderer-only override for source vehicles that manually draw a generated wheel. */
+        public Point visualCenter() {
+            return renderCenter != null ? renderCenter : new Point(axleX, centerY, axleZ);
         }
     }
 
