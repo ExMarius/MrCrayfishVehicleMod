@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r28_pack(self):
+    def test_configured_sha1_matches_deterministic_r29_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -255,6 +255,58 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertIn("entity.bumper_car.engine", sounds)
         self.assertEqual("vehicle:entity/bumper_car/engine",
                          sounds["entity.bumper_car.engine"]["sounds"][0]["name"])
+
+    def test_atv_mini_bike_smart_car_and_boat_models_use_released_geometry_and_audio(self):
+        atv_body = self.read_json("assets/vehicle/models/item/atv_body.json")
+        self.assertEqual(46, len(atv_body["elements"]))
+        self.assertEqual("minecraft:block/lime_concrete", atv_body["textures"]["body"])
+        atv_handles = self.read_json("assets/vehicle/models/item/atv_handles.json")
+        self.assertEqual(11, len(atv_handles["elements"]))
+        self.assertEqual("minecraft:block/lime_concrete", atv_handles["textures"]["handles"])
+        self.assertIn("assets/vehicle/sounds/entity/atv/engine.ogg", self.entries)
+
+        mini_bike_body = self.read_json("assets/vehicle/models/item/mini_bike_body.json")
+        self.assertEqual(33, len(mini_bike_body["elements"]))
+        self.assertEqual("minecraft:block/red_concrete", mini_bike_body["textures"]["body"])
+        mini_bike_handles = self.read_json("assets/vehicle/models/item/mini_bike_handles.json")
+        self.assertEqual(16, len(mini_bike_handles["elements"]))
+        self.assertEqual("minecraft:block/red_concrete", mini_bike_handles["textures"]["handles"])
+
+        smart_car_body = self.read_json("assets/vehicle/models/item/smart_car_body.json")
+        self.assertEqual(109, len(smart_car_body["elements"]))
+        self.assertEqual("minecraft:block/cyan_concrete", smart_car_body["textures"]["base"])
+
+        speed_boat_body = self.read_json("assets/vehicle/models/item/speed_boat_body.json")
+        self.assertEqual(67, len(speed_boat_body["elements"]))
+        self.assertEqual("minecraft:block/red_concrete", speed_boat_body["textures"]["base"])
+        self.assertIn("assets/vehicle/sounds/entity/speed_boat/engine.ogg", self.entries)
+
+        aluminum_boat_body = self.read_json("assets/vehicle/models/item/aluminum_boat_body.json")
+        self.assertEqual(77, len(aluminum_boat_body["elements"]))
+        self.assertEqual("minecraft:block/light_gray_concrete", aluminum_boat_body["textures"]["body"])
+
+        legal_angles = {-45.0, -22.5, 0.0, 22.5, 45.0}
+        for model in (atv_body, atv_handles, mini_bike_body, mini_bike_handles,
+                      smart_car_body, speed_boat_body, aluminum_boat_body):
+            for element in model["elements"]:
+                if "rotation" in element:
+                    self.assertIn(element["rotation"]["angle"], legal_angles)
+
+        for entry in ("assets/vehicle/items/atv_body.json", "assets/vehicle/items/atv_handles.json",
+                     "assets/vehicle/items/mini_bike_body.json",
+                     "assets/vehicle/items/mini_bike_handles.json",
+                     "assets/vehicle/items/smart_car_body.json",
+                     "assets/vehicle/items/speed_boat_body.json",
+                     "assets/vehicle/items/aluminum_boat_body.json"):
+            self.assertIn(entry, self.entries)
+
+        sounds = self.read_json("assets/vehicle/sounds.json")
+        self.assertIn("entity.atv.engine", sounds)
+        self.assertEqual("vehicle:entity/atv/engine",
+                         sounds["entity.atv.engine"]["sounds"][0]["name"])
+        self.assertIn("entity.speed_boat.engine", sounds)
+        self.assertEqual("vehicle:entity/speed_boat/engine",
+                         sounds["entity.speed_boat.engine"]["sounds"][0]["name"])
 
     @staticmethod
     def last_ogg_granule(data):

@@ -655,6 +655,171 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* ATVEntity's setMaxSpeed(15)/setFuelCapacity(20000) and ATVRenderer's handlebar
+     * chain (translate, -45 tilt, small offset, then the dune-buggy-style turn ratio)
+     * match the existing Quad Bike's tuning and non-motorcycle steering pattern closely,
+     * confirming the same real-world vehicle class under a distinct body model. */
+    public static final LandVehicleSpec ATV = new LandVehicleSpec(
+            "atv", "ATV", "atv_body",
+            1.5F, 1.0F, 1.0F,
+            1.25F, -1.5F, 4.624F,
+            15.0F, 35.0F, 10.5F * MODEL_UNIT * 1.25F, -10.5F * MODEL_UNIT * 1.25F, 5.0F,
+            20_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.atv.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("atv_handles", new Point(0.0F, 1.2688404F, 0.3345971F),
+                    1.25F, -45.0F, 0.0F, 0.0F),
+            itemPart("small_fuel_door_closed", 0.0F, 6.55F, 5.0F,
+                    0.35F, -90.0F, 0.0F, 0.0F, 1.25F, -1.5F, 4.624F),
+            itemPart("key_hole", -5.0F, 4.5F, 6.5F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.25F, -1.5F, 4.624F),
+            List.of(),
+            List.of(
+                    wheel(-1, true, 4.0F, 0.0F, 10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F),
+                    wheel(1, true, 4.0F, 0.0F, 10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F),
+                    wheel(-1, false, 4.0F, 0.0F, -10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F),
+                    wheel(1, false, 4.0F, 0.0F, -10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F)
+            ),
+            List.of(
+                    seat(true, 0.0F, 5.0F, -3.0F, 1.25F, -1.5F, 4.624F),
+                    seat(false, 0.0F, 5.5F, -12.0F, 1.25F, -1.5F, 4.624F)
+            ),
+            true, "tow_bar", new Point(0.0F, 0.0F, -20.8F), new Point(0.0F, 0.0F, -0.55F),
+            null, null, List.of(), false
+    );
+
+    /* MiniBikeEntity extends MotorcycleEntity and reuses the Go Kart engine sound.
+     * shouldRenderFuelPort() returns false, so no fuelFiller model exists. The fork
+     * tilts -22.5 degrees and untilts back before the steering turn is applied, so
+     * at rest the handlebar and front wheel sit at their natural mesh/physics offsets
+     * (the fork rotation is the identity transform whenever steering is centered);
+     * the handlebar position below is the handles mesh's own bounding-box center,
+     * since no generated position entry exists for it, and should be treated as a
+     * reasonable first-pass estimate rather than an exactly sourced value. */
+    public static final LandVehicleSpec MINI_BIKE = new LandVehicleSpec(
+            "mini_bike", "Mini Bike", "mini_bike_body",
+            1.0F, 1.0F, 1.0F,
+            1.05F, -1.7F, 4.12F,
+            18.0F, 35.0F, 13.0F * MODEL_UNIT * 1.05F, -6.7F * MODEL_UNIT * 1.05F, 5.0F,
+            15_000.0F, 0.375F, 0.5F, 1.8F, "vehicle:entity.go_kart.engine",
+            true, new Point(0.0F, 0.55F, 0.0F),
+            itemPart("iron_small_engine", 0.0F, 1.0F, 2.5F,
+                    0.7F, 0.0F, 180.0F, 0.0F, 1.05F, -1.7F, 4.12F),
+            itemPart("mini_bike_handles", 0.0F, 8.65F, 17.9F,
+                    1.0F, 0.0F, 0.0F, 0.0F, 1.05F, -1.7F, 4.12F),
+            null, null,
+            List.of(),
+            List.of(
+                    wheel(0, true, 0.0F, -0.394F, 13.0F, 1.03F, 1.03F, 1.03F, 1.05F, -1.7F, 4.12F),
+                    wheel(0, false, 0.0F, 0.0F, -6.7F, 1.03F, 1.03F, 1.03F, 1.05F, -1.7F, 4.12F)
+            ),
+            List.of(seat(true, 0.0F, 7.0F, -2.0F, 1.05F, -1.7F, 4.12F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.5F),
+            new Motorcycle(45.0F, 10.5F * MODEL_UNIT * 1.05F, -22.5F, true),
+            null, List.of(), false
+    );
+
+    /* SmartCarEntity only overrides engine pitch, maxUpStep, and tow/mount trailer
+     * flags; its steering wheel reuses the Go Kart model behind a static -67.5 tilt,
+     * the same non-motorcycle resting-position pattern as the other wheeled steering
+     * wheels in this file. */
+    public static final LandVehicleSpec SMART_CAR = new LandVehicleSpec(
+            "smart_car", "Smart Car", "smart_car_body",
+            1.85F, 1.15F, 1.0F,
+            1.25F, -1.7F, 3.752F,
+            15.0F, 35.0F, 12.0F * MODEL_UNIT * 1.25F, -12.0F * MODEL_UNIT * 1.25F, 5.0F,
+            15_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.bumper_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel", new Point(0.0F, 1.0257454F, 0.3980970F),
+                    1.125F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -9.0F, 8.7F, -12.3F,
+                    0.25F, 0.0F, -90.0F, 0.0F, 1.25F, -1.7F, 3.752F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F),
+                    wheel(1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F),
+                    wheel(-1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F),
+                    wheel(1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F)
+            ),
+            List.of(seat(true, 0.0F, 0.5F, -2.0F, 1.25F, -1.7F, 3.752F)),
+            true, "tow_bar", new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* SpeedBoatEntity extends the mod's own BoatEntity, same water-motion base as
+     * Jet Ski. AbstractBoatRenderer applies the body's generated translate in raw
+     * block units (unscaled) before the uniform body scale, so fuelFiller and the
+     * steering wheel add that vector on top of the standard pixel-converted offset,
+     * matching the confirmed Jet Ski formula. */
+    public static final LandVehicleSpec SPEED_BOAT = new LandVehicleSpec(
+            "speed_boat", "Speed Boat", "speed_boat_body",
+            1.5F, 1.0F, 0.0F,
+            1.0F, 2.5F, 0.0F,
+            20.0F, 35.0F, 0.0F, 0.0F, 4.0F,
+            25_000.0F, 0.75F, 1.0F, 2.0F, "vehicle:entity.speed_boat.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel", new Point(0.0F, 0.8543921F, 0.5488579F),
+                    1.0F, -45.0F, 0.0F, 0.0F),
+            new Part("small_fuel_door_closed", new Point(0.0F, 0.453375F, -0.59325F),
+                    0.65F, -90.0F, 0.0F, 0.0F),
+            null, List.of(), List.of(),
+            List.of(seat(true, 0.0F, 0.0F, 0.0F, 1.0F, 2.5F, 0.0F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.094F, -0.75F),
+            null, null, List.of(), false
+    );
+
+    /* AluminumBoatEntity extends the mod's own BoatEntity with an explicit
+     * setMaxTurnAngle(20). AluminumBoatRenderer draws no steering wheel or engine
+     * model, and its four seats use the plain pixel-converted seat formula with no
+     * body-translate addition (confirmed against Jet Ski's existing seat values). */
+    public static final LandVehicleSpec ALUMINUM_BOAT = new LandVehicleSpec(
+            "aluminum_boat", "Aluminum Boat", "aluminum_boat_body",
+            2.25F, 0.875F, 0.0F,
+            1.1F, 0.0F, 0.0F,
+            10.0F, 20.0F, 0.0F, 0.0F, 4.0F,
+            25_000.0F, 0.5F, 0.8F, 1.5F, "vehicle:entity.speed_boat.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null, null,
+            new Part("fuel_door_closed", new Point(-1.1F, 0.20625F, -1.0375F),
+                    0.275F, 0.0F, -90.0F, 0.0F),
+            null, List.of(), List.of(),
+            List.of(
+                    seat(true, -7.0F, 8.0F, -15.0F, 1.1F, 0.0F, 0.0F),
+                    seat(false, 7.0F, 6.0F, -15.0F, 1.1F, 0.0F, 0.0F),
+                    seat(false, -7.0F, 6.0F, 3.0F, 1.1F, 0.0F, 0.0F),
+                    seat(false, 7.0F, 6.0F, 3.0F, 1.1F, 0.0F, 0.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* CouchEntity is an otherwise plain LandVehicleEntity that reuses the ATV engine
+     * sound and the CFM red sofa body mesh also used by Sofacopter. SofaCarRenderer's
+     * body translation is a flat (0, 0.0625, 0) literal, handled in
+     * bodyRenderTranslation() below rather than baked into these part offsets.
+     * NOTE: this vehicle's original source model hard-depends on MrCrayfish's
+     * Furniture Mod asset; flagged for the user before shipping. */
+    public static final LandVehicleSpec COUCH = new LandVehicleSpec(
+            "couch", "Couch", "sofacopter_sofa",
+            1.0F, 1.0F, 1.0F,
+            1.0F, -1.5F, 4.4F,
+            10.0F, 35.0F, 7.0F * MODEL_UNIT, -7.0F * MODEL_UNIT, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.atv.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null, null,
+            itemPart("fuel_door_closed", 0.0F, 2.0F, 8.0F,
+                    0.5F, 0.0F, 0.0F, 0.0F, 1.0F, -1.5F, 4.4F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 8.0F, 0.062F, 7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F),
+                    wheel(1, true, 8.0F, 0.062F, 7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F),
+                    wheel(-1, false, 8.0F, 0.062F, -7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F),
+                    wheel(1, false, 8.0F, 0.062F, -7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F)
+            ),
+            List.of(seat(true, 0.0F, 5.0F, 0.0F, 1.0F, -1.5F, 4.4F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, -0.25F),
+            null, null, List.of(), false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
@@ -670,7 +835,13 @@ public record LandVehicleSpec(
             Map.entry(JET_SKI.id, JET_SKI),
             Map.entry(SPORTS_PLANE.id, SPORTS_PLANE),
             Map.entry(COMPACT_HELICOPTER.id, COMPACT_HELICOPTER),
-            Map.entry(SOFACOPTER.id, SOFACOPTER)
+            Map.entry(SOFACOPTER.id, SOFACOPTER),
+            Map.entry(ATV.id, ATV),
+            Map.entry(MINI_BIKE.id, MINI_BIKE),
+            Map.entry(SMART_CAR.id, SMART_CAR),
+            Map.entry(SPEED_BOAT.id, SPEED_BOAT),
+            Map.entry(ALUMINUM_BOAT.id, ALUMINUM_BOAT),
+            Map.entry(COUCH.id, COUCH)
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -693,15 +864,28 @@ public record LandVehicleSpec(
         if ("sofacopter".equals(id)) {
             return new Point(0.0F, 0.0F, 0.062F * MODEL_UNIT);
         }
+        /* SofaCarRenderer's body translate is a flat (0, 0.0625, 0) literal independent
+         * of the generated position JSON's own -0.062 pixel value (two separate numbers
+         * in the original source), unlike Sofacopter's pixel-converted translate above. */
+        if ("couch".equals(id)) {
+            return new Point(0.0F, 0.0625F, 0.0F);
+        }
+        /* AbstractBoatRenderer applies the body translate in raw block units before
+         * scaling, unlike AbstractLandVehicleRenderer's pixel-converted translate.
+         * Each water vehicle keeps its own distinct generated translate vector. */
         return switch (motionType()) {
-            case WATER -> new Point(0.0F, 0.0F, 0.25F);
+            case WATER -> switch (id) {
+                case "speed_boat" -> new Point(0.0F, -0.031F, 0.688F);
+                case "aluminum_boat" -> new Point(0.0F, 0.0F, 0.2F);
+                default -> new Point(0.0F, 0.0F, 0.25F);
+            };
             case AIR -> new Point(0.0F, 0.0F, -0.425F);
             case LAND, HELICOPTER -> new Point(0.0F, 0.0F, 0.0F);
         };
     }
 
     public MotionType motionType() {
-        if ("jet_ski".equals(id)) {
+        if ("jet_ski".equals(id) || "speed_boat".equals(id) || "aluminum_boat".equals(id)) {
             return MotionType.WATER;
         }
         if ("sports_plane".equals(id)) {
@@ -725,9 +909,9 @@ public record LandVehicleSpec(
     }
 
     public float steeringVisualAngle() {
-        if ("dune_buggy".equals(id)) {
-            /* DuneBuggyRenderer uses wheelAngle / 45 * 15 rather than
-             * normalizing by the vehicle's 35-degree steering limit. */
+        if ("dune_buggy".equals(id) || "atv".equals(id)) {
+            /* DuneBuggyRenderer and ATVRenderer both use wheelAngle / 45 * 15
+             * rather than normalizing by the vehicle's 35-degree steering limit. */
             return maxSteeringAngle * 15.0F / 45.0F;
         }
         return motionType() == MotionType.WATER ? 15.0F : 25.0F;

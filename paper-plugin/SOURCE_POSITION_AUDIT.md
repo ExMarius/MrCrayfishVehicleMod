@@ -170,6 +170,64 @@ The serialized body translation is `0.062` model pixels, giving body origin `(0,
 
 The source custom Sofacopter limb pose (`-55°` arms and `-90°` legs with side angles) is not representable for one mounted player on an unmodified client. It uses the same accepted stable vanilla mount pose and global rider-height correction as the other vehicles, without forcing player camera or body yaw.
 
+### ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch (r29)
+
+These six released `1.16.X` vehicles were ported together because each one's geometry and physics
+derive cleanly from its own generated properties file and renderer without needing iterative visual
+tuning. None of them ship a dedicated texture file upstream (the same situation as the Dune Buggy),
+so their converted models reference vanilla block textures chosen to approximate the source palette
+(lime/red/cyan/red/light-gray concrete for the ATV, Mini Bike, Smart Car, Speed Boat, and Aluminum
+Boat bodies respectively) rather than inventing custom art.
+
+`ATVEntity` is a plain `LandVehicleEntity`, not a `MotorcycleEntity`; its `ATVRenderer` handlebar
+chain (translate, `-45°` tilt, small offset, then `(wheelAngle / 45) * 15` degrees of turn) is the
+same non-normalized ratio as the Dune Buggy, so `steeringVisualAngle()` now matches `"atv"` in
+addition to `"dune_buggy"`. Its generated axle/wheel/seat/fuel-port/key-port positions and tow bar
+offset are copied directly from the generated properties file.
+
+`MiniBikeEntity` extends `MotorcycleEntity` and reuses the Go Kart engine sample
+(`setMaxSpeed(18F)`, `setFuelCapacity(15000F)`, `setFuelConsumption(0.375F)`); its
+`shouldRenderFuelPort()` override returns `false`, so no fuel-filler model is ported. Its fork tilts
+`-22.5°` and untilts back to `+22.5°` before any steering turn is applied, and `SourceTransforms`'s
+fork rotation is the exact identity transform whenever steering is centered, independent of the
+pivot location. This means, unlike the ATV/Smart Car/Speed Boat's non-motorcycle steering wheels
+(whose static tilt is never undone, so their resting position legitimately bakes in the tilt
+chain's net displacement), the Mini Bike's handlebar resting position is simply the handles mesh's
+own natural position and cannot be derived from the fork chain. No generated transform exists for
+it in the source, so this port estimates it from the raw handles mesh's own bounding-box center
+(`x` mid `8.0`, `y` mid `8.65`, `z` mid `17.9` model pixels), converted with the same pixel formula
+used for every other static part. This is a reasonable first pass, not an exactly sourced value,
+and is a candidate for later visual tuning. The front wheel's `render: false` flag in the generated
+properties means it already has no visible mesh regardless.
+
+`SmartCarEntity` only overrides engine pitch, `maxUpStep`, and the tow/mount-trailer flags; it
+reuses the Bumper Car engine sample and the Go Kart steering wheel model behind a static `-67.5°`
+tilt, the same non-motorcycle resting-position pattern as the Off Roader and Jet Ski.
+
+`SpeedBoatEntity` and `AluminumBoatEntity` both extend the mod's own `BoatEntity`, the same empty
+dev-branch water motion already documented for the Jet Ski. `AbstractBoatRenderer` applies each
+body's generated translate in raw block units before the uniform body scale, so their fuelFiller
+and (for the Speed Boat) steering wheel positions add that vector on top of the standard
+pixel-converted offset, matching the confirmed Jet Ski formula; their seat positions do not receive
+this addition, also matching Jet Ski. `AluminumBoatRenderer` draws no steering wheel or engine
+model. The Aluminum Boat reuses the Speed Boat's engine sample because neither
+`AluminumBoatEntity#getEngineSound()` nor the generated properties define a distinct one.
+
+`CouchEntity` is an otherwise plain `LandVehicleEntity` (registry id `couch`, not `sofa_car`) that
+reuses the ATV's engine sample and the same official CFM `sofa_single` red-sofa body already ported
+for the Sofacopter, so this port's Couch references the existing `sofacopter_sofa` item rather than
+converting a second copy of the same geometry. **This means the Couch carries the same hard
+dependency on MrCrayfish's Furniture Mod assets as the original source** (the Sofacopter has the
+same hard CFM dependency documented above, and the not-yet-ported Bath has a soft CFM dependency in
+its own source); this is disclosed here rather than silently shipped as if it were an original
+Vehicle Mod asset.
+
+**Flagged for review, not yet implemented:** three vehicles remaining after this batch have
+mechanics genuinely novel to this port and were deliberately left out of this "confidently
+portable" batch pending explicit user direction: the Bumper Car's collision-bump interaction, the
+Shopping Cart's push-from-behind control scheme, and the Bath's plane-physics movement base. Each
+needs a design decision beyond matrix/constant transcription before it can be ported faithfully.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -230,6 +288,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 21. The r25 Compact Helicopter port adds its complete 91-element body and four cosmetic models, exact two-seat/pivot geometry, helicopter force/blade/yaw/lean equations, joystick and both rotor animations, source sound/fuel/persistence, transformed exhaust, and rotor downwash.
 22. The r27 Sofacopter port restores the official Furniture Mod red sofa and original `cfm:ceiling_fan_fans` four-blade rotor, retains the Vehicle Mod arm and exact rotor pivot/scale, corrects r26's full-aircraft-wing substitution, and applies its generated 15-power, 40,000-capacity helicopter behavior without inventing sound or Compact-only effects.
 23. The r28 Dune Buggy port adds the released `1.16.X` body/handles models (which natively use vanilla block textures, not custom art), serialized axle/wheel/seat/fuel-port geometry, the shared Dirt Bike/Moped tilted-fork handlebar steering with its manually fork-rendered front wheel, and the original Bumper Car engine sample selected by `DuneBuggyEntity#getEngineSound()`.
+24. The r29 batch adds the released `1.16.X` ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch: their generated axle/wheel/seat/fuel-port geometry and vanilla-block-texture bodies, the ATV's dune-buggy-style steering ratio, the Mini Bike's `Motorcycle`-pattern fork steering with an estimated (not exactly sourced) handlebar resting position, each vehicle's own engine sample reuse, and the Couch's CFM-dependent shared sofa body. The Bumper Car, Shopping Cart, and Bath remain unported pending a design decision on their novel mechanics.
 
 ## Exact ports versus vanilla-client adaptations
 

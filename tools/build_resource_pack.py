@@ -97,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r27 — fourteen vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r29 — twenty-one vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -175,6 +175,13 @@ def build(output: Path) -> tuple[Path, str]:
             "fuel_door_closed": ("vehicle:item/fuel_door_closed", 16383998),
             "small_fuel_door_closed": ("vehicle:item/small_fuel_door_closed", 16383998),
             "key_hole": ("vehicle:item/key_hole", 16383998),
+            "atv_body": ("vehicle:item/atv_body", 16383998),
+            "atv_handles": ("vehicle:item/atv_handles", 16383998),
+            "mini_bike_body": ("vehicle:item/mini_bike_body", 16383998),
+            "mini_bike_handles": ("vehicle:item/mini_bike_handles", 16383998),
+            "smart_car_body": ("vehicle:item/smart_car_body", 16383998),
+            "speed_boat_body": ("vehicle:item/speed_boat_body", 16383998),
+            "aluminum_boat_body": ("vehicle:item/aluminum_boat_body", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -411,6 +418,89 @@ def build(output: Path) -> tuple[Path, str]:
                 "particle": "minecraft:block/white_concrete",
             },
             legalize_rotations=True,
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_atv_body.json",
+            namespace / "models/item/atv_body.json",
+            {
+                "seat": "minecraft:block/black_wool",
+                "axel": "minecraft:block/light_gray_concrete",
+                "body": "minecraft:block/lime_concrete",
+                "frame": "minecraft:block/gray_concrete",
+                "particle": "minecraft:block/lime_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_atv_handles.json",
+            namespace / "models/item/atv_handles.json",
+            {
+                "handles": "minecraft:block/lime_concrete",
+                "frame_alt": "minecraft:block/light_gray_concrete",
+                "frame_main": "minecraft:block/gray_concrete",
+                "particle": "minecraft:block/lime_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_mini_bike_body.json",
+            namespace / "models/item/mini_bike_body.json",
+            {
+                "seat": "minecraft:block/black_wool",
+                "axel": "minecraft:block/light_gray_concrete",
+                "body": "minecraft:block/red_concrete",
+                "particle": "minecraft:block/red_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_mini_bike_handles.json",
+            namespace / "models/item/mini_bike_handles.json",
+            {
+                "handles": "minecraft:block/red_concrete",
+                "axel": "minecraft:block/light_gray_concrete",
+                "body": "minecraft:block/gray_concrete",
+                "particle": "minecraft:block/red_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_smart_car_body.json",
+            namespace / "models/item/smart_car_body.json",
+            {
+                "seat": "minecraft:block/black_wool",
+                "indicator_light": "minecraft:block/orange_stained_glass",
+                "axel": "minecraft:block/light_gray_concrete",
+                "brake_light": "minecraft:block/red_stained_glass",
+                "steering_wheel_shaft": "minecraft:block/gray_concrete",
+                "headlights": "minecraft:block/white_stained_glass",
+                "logo": "minecraft:block/light_gray_concrete",
+                "windshield": "minecraft:block/light_blue_stained_glass",
+                "grill": "minecraft:block/gray_concrete",
+                "frame": "minecraft:block/black_concrete",
+                "base": "minecraft:block/cyan_concrete",
+                "particle": "minecraft:block/cyan_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_speed_boat_body.json",
+            namespace / "models/item/speed_boat_body.json",
+            {
+                "seat": "minecraft:block/white_wool",
+                "glass": "minecraft:block/light_blue_stained_glass",
+                "steering_wheel_shaft": "minecraft:block/gray_concrete",
+                "logo": "minecraft:block/light_gray_concrete",
+                "detail": "minecraft:block/light_gray_concrete",
+                "tint": "minecraft:block/white_concrete",
+                "base": "minecraft:block/red_concrete",
+                "particle": "minecraft:block/red_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_aluminum_boat_body.json",
+            namespace / "models/item/aluminum_boat_body.json",
+            {
+                "seat": "minecraft:block/black_wool",
+                "logo": "minecraft:block/gray_concrete",
+                "body": "minecraft:block/light_gray_concrete",
+                "particle": "minecraft:block/light_gray_concrete",
+            },
         )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
@@ -668,6 +758,14 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "sounds/entity/jet_ski/engine.ogg",
         )
         copy(
+            ASSETS / "sounds/entity/atv/engine.ogg",
+            namespace / "sounds/entity/atv/engine.ogg",
+        )
+        copy(
+            ASSETS / "sounds/entity/speed_boat/engine.ogg",
+            namespace / "sounds/entity/speed_boat/engine.ogg",
+        )
+        copy(
             ASSETS / "sounds/entity/sports_car/engine.ogg",
             namespace / "sounds/entity/sports_car/engine.ogg",
         )
@@ -711,6 +809,12 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.jet_ski.engine": {
                 "sounds": [{"name": "vehicle:entity/jet_ski/engine", "preload": True}]
+            },
+            "entity.atv.engine": {
+                "sounds": [{"name": "vehicle:entity/atv/engine", "preload": True}]
+            },
+            "entity.speed_boat.engine": {
+                "sounds": [{"name": "vehicle:entity/speed_boat/engine", "preload": True}]
             },
             "entity.sports_car.engine": {
                 "sounds": [{"name": "vehicle:entity/sports_car/engine", "preload": True}]
@@ -756,7 +860,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r28.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r29.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

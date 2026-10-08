@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f -print -quit)
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r28.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r29.zip"
           test -s "$JAR"
           unzip -t "$PACK"
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
@@ -59,6 +59,15 @@ jobs:
           grep -Fxq 'assets/vehicle/items/dune_buggy_body.json' /tmp/resource-pack-entries.txt
           grep -Fxq 'assets/vehicle/items/dune_buggy_handles.json' /tmp/resource-pack-entries.txt
           grep -Fxq 'assets/vehicle/sounds/entity/bumper_car/engine.ogg' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/items/atv_body.json' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/items/atv_handles.json' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/sounds/entity/atv/engine.ogg' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/items/mini_bike_body.json' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/items/mini_bike_handles.json' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/items/smart_car_body.json' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/items/speed_boat_body.json' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/sounds/entity/speed_boat/engine.ogg' /tmp/resource-pack-entries.txt
+          grep -Fxq 'assets/vehicle/items/aluminum_boat_body.json' /tmp/resource-pack-entries.txt
 
       - name: Prepare immutable milestone assets
         shell: bash
@@ -67,12 +76,12 @@ jobs:
           mkdir release
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
           cp "$JAR" release/MrCrayfishVehiclePlugin-Paper-1.21.4-LandVehicles.jar
-          cp paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r28.zip release/
+          cp paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r29.zip release/
           (
             cd release
             sha256sum MrCrayfishVehiclePlugin-Paper-1.21.4-LandVehicles.jar \
-              MrCrayfishVehiclePlugin-resource-pack-1.21.4-r28.zip > SHA256SUMS.txt
-            sha1sum MrCrayfishVehiclePlugin-resource-pack-1.21.4-r28.zip > RESOURCE-PACK-SHA1.txt
+              MrCrayfishVehiclePlugin-resource-pack-1.21.4-r29.zip > SHA256SUMS.txt
+            sha1sum MrCrayfishVehiclePlugin-resource-pack-1.21.4-r29.zip > RESOURCE-PACK-SHA1.txt
           )
 
       - name: Publish immutable GitHub milestone
@@ -81,21 +90,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="paper-land-vehicles-milestone-2026-10-08-r28"
+          TAG="paper-land-vehicles-milestone-2026-10-08-r29"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; refusing to overwrite the immutable milestone."
             exit 1
           fi
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
-            --title "Paper 1.21.4 land vehicles milestone r28 — 2026-10-08" \
+            --title "Paper 1.21.4 land vehicles milestone r29 — 2026-10-08" \
             --prerelease \
             --notes-file - <<'EOF'
           Immutable backup of the validated land-vehicle checkpoint for Paper 1.21.4 and Java 21.
 
           Included:
-          - server plugin JAR with eleven land vehicles, the Jet Ski, Sports Plane, Compact Helicopter, Sofacopter, and all five original trailers;
-          - mandatory vanilla-client resource pack r28, adding the released `1.16.X` Dune Buggy (exact body/handles models, fork-steered handlebars shared with the Dirt Bike/Moped, manually fork-rendered front wheel, and original Bumper Car engine sample), while retaining the complete Compact Helicopter and Sports Plane rigs, the recovered official Sofacopter furniture body/rotor rig, released aquatic physics, and source-accurate audio or silence;
+          - server plugin JAR with seventeen land vehicles, the two-seat Jet Ski and Speed Boat, four-seat Aluminum Boat, Sports Plane, Compact Helicopter, Sofacopter, Couch, and all five original trailers;
+          - mandatory vanilla-client resource pack r29, adding the released `1.16.X` ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch (exact generated axle/wheel/seat/fuel-port geometry, the ATV's dune-buggy-style tilted-fork handlebar steering ratio, the Mini Bike's fork-steered handlebars shared with the Dirt Bike/Moped pattern, and original engine samples reused per each entity's `getEngineSound()`), while retaining the complete Dune Buggy, Compact Helicopter, Sports Plane, and Sofacopter rigs, and source-accurate audio or silence;
           - SHA-256 checksums for both artifacts;
           - the resource-pack SHA-1 used by Paper configuration.
 
