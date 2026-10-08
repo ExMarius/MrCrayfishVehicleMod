@@ -175,7 +175,18 @@ jobs:
           phase "Updated server.properties prepared and validated"
 
           if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
-            bash "$ROOT/bin/stop-minecraft.sh"
+            if ! bash "$ROOT/bin/stop-minecraft.sh"; then
+              echo "::warning title=Oracle stop recovery::Normal stop failed; closing only the mcv-minecraft screen session"
+              screen -S mcv-minecraft -X quit || true
+              for _ in $(seq 1 15); do
+                screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]' || break
+                sleep 1
+              done
+            fi
+            if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
+              echo "::error title=Oracle stop failed::The mcv-minecraft screen session is still running"
+              exit 1
+            fi
             phase "Minecraft stopped cleanly"
           else
             phase "Minecraft was already stopped"
