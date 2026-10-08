@@ -91,6 +91,7 @@ jobs:
             if [ "$latest_mtime" -ge "$start_epoch" ] \
                 && grep -Eq 'Done \([0-9.,]+s\)!|Done \(' "$SERVER/logs/latest.log" 2>/dev/null \
                 && ss -ltn 2>/dev/null | grep -q ':25565' \
+                && pgrep -x frpc >/dev/null \
                 && screen -list 2>/dev/null | grep -q "[.]$SESSION[[:space:]]"; then
               ready=1
               break
