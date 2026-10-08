@@ -82,6 +82,9 @@ public final class LandVehicle {
     private int age;
     private boolean transported;
     private boolean chestAttached;
+    /* ShoppingCartEntity#tick replaces normal driving with position-following
+     * whenever a player is pushing it from behind; null means nobody is pushing. */
+    private UUID pusher;
     private float waterSpeed;
     private WaterVehiclePhysics.State waterState = WaterVehiclePhysics.State.IN_AIR;
     private WaterVehiclePhysics.State previousWaterState = WaterVehiclePhysics.State.IN_AIR;
@@ -139,6 +142,10 @@ public final class LandVehicle {
                 rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
                         0.0F, 0.0F, false, age);
             }
+            return;
+        }
+        if (pusher != null) {
+            tickPushed();
             return;
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
@@ -233,6 +240,39 @@ public final class LandVehicle {
             LawnMowerBehavior.cutBushes(location, motion, spec.entityWidth(), driver,
                     stack -> trailers.storeMowerDrop(id, stack));
         }
+    }
+
+    /**
+     * Mirrors ShoppingCartEntity#tick: while a player is pushing the cart, its
+     * position is driven directly from that player's location and yaw every tick
+     * (1.3 blocks ahead of them) instead of running the normal land-vehicle physics.
+     * Any seated passenger just comes along for the ride, matching the source.
+     */
+    private void tickPushed() {
+        Player player = pusher == null ? null : Bukkit.getPlayer(pusher);
+        World world = location.getWorld();
+        if (player == null || !player.isValid() || world == null
+                || !player.getWorld().equals(world)
+                || player.getLocation().distanceSquared(location) > 16.0D) {
+            pusher = null;
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
+            return;
+        }
+        Location playerLocation = player.getLocation();
+        float yaw = playerLocation.getYaw();
+        double radians = Math.toRadians(yaw);
+        double x = -Math.sin(radians) * 1.3D;
+        double z = Math.cos(radians) * 1.3D;
+        location.setX(playerLocation.getX() + x);
+        location.setY(playerLocation.getY());
+        location.setZ(playerLocation.getZ() + z);
+        location.setYaw(yaw);
+        location.setPitch(0.0F);
+        velocity = new Vector();
+        verticalVelocity = 0.0D;
+        onGround = true;
+        soundController.tick(location, false, spec.minEnginePitch(), List.of());
+        rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, age);
     }
 
     /**
@@ -1363,6 +1403,14 @@ public final class LandVehicle {
 
     public boolean transported() {
         return transported;
+    }
+
+    public UUID pusher() {
+        return pusher;
+    }
+
+    public void setPusher(UUID pusher) {
+        this.pusher = pusher;
     }
 
     public boolean occupied() {

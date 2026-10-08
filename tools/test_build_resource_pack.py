@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r29_pack(self):
+    def test_configured_sha1_matches_deterministic_r30_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -307,6 +307,42 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertIn("entity.speed_boat.engine", sounds)
         self.assertEqual("vehicle:entity/speed_boat/engine",
                          sounds["entity.speed_boat.engine"]["sounds"][0]["name"])
+
+    def test_bumper_car_shopping_cart_and_bath_use_released_geometry_and_audio(self):
+        bumper_car_body = self.read_json("assets/vehicle/models/item/bumper_car_body.json")
+        self.assertEqual(33, len(bumper_car_body["elements"]))
+        self.assertEqual("minecraft:block/white_concrete", bumper_car_body["textures"]["body"])
+        self.assertIn("assets/vehicle/sounds/entity/bumper_car/engine.ogg", self.entries)
+        self.assertIn("assets/vehicle/sounds/entity/bumper_car/bonk.ogg", self.entries)
+
+        shopping_cart_body = self.read_json("assets/vehicle/models/item/shopping_cart_body.json")
+        self.assertEqual(46, len(shopping_cart_body["elements"]))
+        self.assertEqual("vehicle:model/cray_industries", shopping_cart_body["textures"]["logo"])
+        for texture in ("vehicle:model/mesh_angled", "vehicle:model/white_mesh",
+                        "vehicle:model/mesh", "vehicle:model/mesh_angled_flipped"):
+            path = texture.split(":", 1)[1]
+            self.assertIn(f"assets/vehicle/textures/{path}.png", self.entries)
+
+        # Bath reuses the ATV's placeholder body item/model (same as the original
+        # source's own BathModel, which renders SpecialModels.ATV_BODY) rather than
+        # shipping a dedicated model, since the real tub geometry only ever existed
+        # as MrCrayfish's Furniture Mod "cfm:bath" item.
+        self.assertIn("assets/vehicle/items/atv_body.json", self.entries)
+
+        legal_angles = {-45.0, -22.5, 0.0, 22.5, 45.0}
+        for model in (bumper_car_body, shopping_cart_body):
+            for element in model["elements"]:
+                if "rotation" in element:
+                    self.assertIn(element["rotation"]["angle"], legal_angles)
+
+        for entry in ("assets/vehicle/items/bumper_car_body.json",
+                     "assets/vehicle/items/shopping_cart_body.json"):
+            self.assertIn(entry, self.entries)
+
+        sounds = self.read_json("assets/vehicle/sounds.json")
+        self.assertIn("entity.bumper_car.bonk", sounds)
+        self.assertEqual("vehicle:entity/bumper_car/bonk",
+                         sounds["entity.bumper_car.bonk"]["sounds"][0]["name"])
 
     @staticmethod
     def last_ogg_granule(data):

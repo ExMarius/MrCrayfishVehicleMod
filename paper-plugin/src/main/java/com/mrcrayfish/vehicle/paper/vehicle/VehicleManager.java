@@ -42,6 +42,9 @@ public final class VehicleManager {
     private BukkitTask tickTask;
     private BukkitTask saveTask;
     private int activationTick;
+    /** Short per-vehicle cooldown after a bumper-car bonk so overlapping cars don't
+     * retrigger the jolt and sound every single tick while still touching. */
+    private final Map<UUID, Integer> bumperCarCooldowns = new HashMap<>();
 
     public VehicleManager(VehiclePlugin plugin) {
         this.plugin = plugin;
@@ -188,6 +191,10 @@ public final class VehicleManager {
             save();
             return;
         }
+        if ("shopping_cart".equals(vehicle.spec().id()) && player.isSneaking()) {
+            togglePush(player, vehicle);
+            return;
+        }
         if (trailers.attachHeldToVehicle(player, vehicle)) {
             return;
         }
@@ -205,6 +212,22 @@ public final class VehicleManager {
             }
         } else {
             player.sendRichMessage("<red>Nu mai este niciun loc liber în acest vehicul.</red>");
+        }
+    }
+
+    /** ShoppingCartEntity has no interact code of its own in the source; sneak-clicking it
+     * to grab/release from behind is this port's stand-in for walking into its hitbox. */
+    private void togglePush(Player player, LandVehicle vehicle) {
+        UUID current = vehicle.pusher();
+        if (player.getUniqueId().equals(current)) {
+            vehicle.setPusher(null);
+            player.sendRichMessage("<gray>Ai lăsat căruciorul.</gray>");
+        } else if (current != null) {
+            player.sendRichMessage("<red>Căruciorul este deja împins de altcineva.</red>");
+        } else {
+            vehicle.setPusher(player.getUniqueId());
+            player.sendRichMessage("<gray>Împingi căruciorul din spate. Mergi pentru a-l deplasa; "
+                    + "interacționează din nou ghemuit pentru a-l lăsa.</gray>");
         }
     }
 
@@ -384,6 +407,70 @@ public final class VehicleManager {
             }
         }
         trailers.tick();
+        handleBumperCarCollisions();
+    }
+
+    /**
+     * BumperCarEntity#push adds the colliding car's own current motion back onto
+     * itself (a sudden jolt in whatever direction it was already travelling) and
+     * immediately cuts its drive speed, rather than bouncing the two cars apart by
+     * their relative velocity. This reproduces that same jolt-then-settle feel
+     * using the exposed velocity vector, since the internal currentSpeed state
+     * that the original debuffs isn't part of this port's public surface.
+     */
+    private void handleBumperCarCollisions() {
+        List<LandVehicle> bumperCars = new ArrayList<>();
+        for (LandVehicle vehicle : vehicles.values()) {
+            if ("bumper_car".equals(vehicle.spec().id()) && !vehicle.transported() && !vehicle.resting()) {
+                bumperCars.add(vehicle);
+            }
+        }
+        for (Map.Entry<UUID, Integer> entry : bumperCarCooldowns.entrySet()) {
+            entry.setValue(entry.getValue() - 1);
+        }
+        bumperCarCooldowns.values().removeIf(ticks -> ticks <= 0);
+        for (int i = 0; i < bumperCars.size(); i++) {
+            LandVehicle a = bumperCars.get(i);
+            for (int j = i + 1; j < bumperCars.size(); j++) {
+                LandVehicle b = bumperCars.get(j);
+                if (bumperCarCooldowns.containsKey(a.id()) || bumperCarCooldowns.containsKey(b.id())) {
+                    continue;
+                }
+                Location la = a.location();
+                Location lb = b.location();
+                if (la.getWorld() == null || !la.getWorld().equals(lb.getWorld())
+                        || Math.abs(la.getY() - lb.getY()) > 1.5D) {
+                    continue;
+                }
+                double dx = la.getX() - lb.getX();
+                double dz = la.getZ() - lb.getZ();
+                double distanceSquared = dx * dx + dz * dz;
+                double threshold = a.spec().entityWidth();
+                if (distanceSquared >= threshold * threshold) {
+                    continue;
+                }
+                double distance = Math.sqrt(Math.max(distanceSquared, 1.0E-4D));
+                double nx = dx / distance;
+                double nz = dz / distance;
+                boltBumperCar(a, nx, nz);
+                boltBumperCar(b, -nx, -nz);
+                World world = la.getWorld();
+                Location midpoint = la.clone().add(lb).multiply(0.5D);
+                float pitch = 0.6F + 0.1F * (float) Math.min(1.0D,
+                        (a.velocity().length() + b.velocity().length()) / 2.0D);
+                world.playSound(midpoint, "vehicle:entity.bumper_car.bonk",
+                        org.bukkit.SoundCategory.NEUTRAL, 1.0F, pitch);
+                bumperCarCooldowns.put(a.id(), 10);
+                bumperCarCooldowns.put(b.id(), 10);
+            }
+        }
+    }
+
+    private static void boltBumperCar(LandVehicle vehicle, double nx, double nz) {
+        Vector current = vehicle.velocity();
+        Vector jolted = new Vector(current.getX() + nx * 0.5D, current.getY(), current.getZ() + nz * 0.5D)
+                .multiply(0.75D);
+        vehicle.setVelocity(jolted);
     }
 
     private void activateNearbyVehicles(World onlyWorld) {

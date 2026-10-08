@@ -222,11 +222,72 @@ same hard CFM dependency documented above, and the not-yet-ported Bath has a sof
 its own source); this is disclosed here rather than silently shipped as if it were an original
 Vehicle Mod asset.
 
-**Flagged for review, not yet implemented:** three vehicles remaining after this batch have
-mechanics genuinely novel to this port and were deliberately left out of this "confidently
-portable" batch pending explicit user direction: the Bumper Car's collision-bump interaction, the
-Shopping Cart's push-from-behind control scheme, and the Bath's plane-physics movement base. Each
-needs a design decision beyond matrix/constant transcription before it can be ported faithfully.
+Three vehicles remained after this batch with mechanics genuinely novel to this port — the Bumper
+Car's collision-bump interaction, the Shopping Cart's push-from-behind control scheme, and the
+Bath's plane-physics movement base — and were deliberately left out of this "confidently portable"
+batch pending explicit user direction. They were ported in r30; see the next section.
+
+### Bumper Car, Shopping Cart, and Bath (r30)
+
+These three released `1.16.X` vehicles each have one mechanic genuinely novel to this port (no
+other ported vehicle collides with its own kind, is pushed by a player instead of driven, or flies
+on a plane base with no dedicated body model), so they were intentionally held back from the r29
+batch. The user gave explicit latitude to port them with best-effort approximations rather than
+hold up the whole plugin on three mechanics ("fai cum vrea inima ta doar sa mearga aproape la
+fel" — do as you see fit, just make it work approximately the same); the approximations and their
+reasoning are documented below rather than silently shipped.
+
+`BumperCarEntity` is a plain `LandVehicleEntity` (`setMaxSpeed(10)`, `setTurnSensitivity(20)`,
+`maxUpStep=0.625F` explicit) whose fuel system is left entirely at `LandVehicleEntity` defaults —
+the source has a literal `//TODO figure out fuel system` comment and never calls
+`setFuelCapacity`/`setFuelConsumption`. Its generated axle/wheel/seat/fuel-port geometry and its
+own `bumper_car_body.json` mesh and `go_kart_steering_wheel` handlebar (translated, tilted `-45°`,
+then scaled `0.9×`) are copied directly, the same pattern as the r29 batch. Its one bespoke
+mechanic is `push(Entity)`: colliding with another Bumper Car adds the car's *own* current motion
+back onto itself (scaled `2×`) and multiplies its drive speed by `0.25`, producing a sudden jolt
+that quickly bleeds off, together with a `bonk.ogg` sample pitched by combined speed. This port's
+`LandVehicle` does not expose the internal `currentSpeed` field the source debuffs, only the public
+`velocity` vector, so `VehicleManager` approximates the same jolt-then-settle feel by nudging each
+car's velocity along the line between the two cars and damping it by `0.75`, run as a pairwise check
+across every active Bumper Car each tick (with a 10-tick per-car cooldown so two cars resting
+against each other don't re-bonk every tick). This reproduces the source's *feel* (a jolt, then a
+quick slowdown, plus the sound) rather than its literal arithmetic.
+
+`ShoppingCartEntity` never calls `setMaxSpeed()` (so it keeps the `LandVehicleEntity` base `10F`),
+sets `setMaxTurnAngle(90)` for its tight swivel-front steering, `setTurnSensitivity(15)`, and zero
+fuel capacity/consumption (it never runs dry). Its generated body geometry reuses the mod's own
+existing `vehicle:model/mesh`, `mesh_angled`, `mesh_angled_flipped`, `white_mesh`, and
+`cray_industries` textures — none of which are CFM or the legacy anvil atlas, so they carry over
+unchanged, unlike several other vehicles' detail textures. Its one bespoke mechanic is a `pusher`
+field: whenever a player is pushing it, `tick()` skips all normal driving physics and instead sets
+the cart's position to 1.3 blocks in front of that player's feet every tick, matching their yaw.
+The source does not show how `pusher` gets set (that wiring lives outside the entity class, most
+likely a walk-into-the-hitbox trigger elsewhere in the mod), so this port approximates the grab
+gesture as a sneak-right-click toggle on the cart (handled in `VehicleManager#handleInteraction`,
+ahead of the generic trailer pickup/mount branches): sneak-interacting an unclaimed cart grabs it,
+sneak-interacting it again releases it. While held, `LandVehicle#tickPushed` reproduces the
+source's position-follow formula exactly; the only difference from source is the grab/release
+trigger itself.
+
+`BathEntity` extends `PlaneEntity` directly and overrides nothing except `setFuelConsumption(0.0F)`
+(infinite fuel) — every other plane constant (speed, turn angle, flap/lift behaviour) is the shared
+`PlaneEntity` default, identical to what `SportsPlaneEntity` inherits (its own explicit
+`setMaxSpeed(25F)`/`setAccelerationSpeed(0.5F)` just restate the same defaults), so this port's
+`BATH` spec reuses the exact same `AIR` motion-type flight model as the Sports Plane via
+`motionType()`'s id check, with its own `maxSteeringAngle` left at the shared `35°` default since
+Bath never calls `setMaxTurnAngle()` the way `SportsPlaneEntity` explicitly does (`25°`). Like the
+original source itself, there is no dedicated Bath body model: `BathModel#render` draws
+`SpecialModels.ATV_BODY` as a placeholder (rotated `90°` around Y), while its ray-trace hitbox
+separately targets the real `cfm:bath` item — because the actual tub geometry only ever existed as
+MrCrayfish's Furniture Mod item. **Notably, `BathEntity`'s own `EntityType` registration is entirely
+gated behind CFM being loaded** (`VehicleUtil.createModDependentEntityType(REGISTER, "cfm", "bath",
+...)`), exactly like the Couch and Sofacopter — without CFM, Bath does not exist at all in the
+original source. This Paper port deliberately goes beyond the source by shipping Bath without any
+CFM dependency, reusing the same ATV-body placeholder the source renderer already falls back to for
+its visuals (this port's `atv_body` item model) rather than attempting to recover or recreate the
+CFM bathtub geometry the way r27 recovered the Sofacopter's real ceiling-fan rotor. If a faithful
+tub shape is wanted later, the CFM `cfm:bath` model would need to be sourced and legalized the same
+way the ceiling fan was.
 
 ### Vehicle Trailer passenger offsets
 
@@ -288,7 +349,8 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 21. The r25 Compact Helicopter port adds its complete 91-element body and four cosmetic models, exact two-seat/pivot geometry, helicopter force/blade/yaw/lean equations, joystick and both rotor animations, source sound/fuel/persistence, transformed exhaust, and rotor downwash.
 22. The r27 Sofacopter port restores the official Furniture Mod red sofa and original `cfm:ceiling_fan_fans` four-blade rotor, retains the Vehicle Mod arm and exact rotor pivot/scale, corrects r26's full-aircraft-wing substitution, and applies its generated 15-power, 40,000-capacity helicopter behavior without inventing sound or Compact-only effects.
 23. The r28 Dune Buggy port adds the released `1.16.X` body/handles models (which natively use vanilla block textures, not custom art), serialized axle/wheel/seat/fuel-port geometry, the shared Dirt Bike/Moped tilted-fork handlebar steering with its manually fork-rendered front wheel, and the original Bumper Car engine sample selected by `DuneBuggyEntity#getEngineSound()`.
-24. The r29 batch adds the released `1.16.X` ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch: their generated axle/wheel/seat/fuel-port geometry and vanilla-block-texture bodies, the ATV's dune-buggy-style steering ratio, the Mini Bike's `Motorcycle`-pattern fork steering with an estimated (not exactly sourced) handlebar resting position, each vehicle's own engine sample reuse, and the Couch's CFM-dependent shared sofa body. The Bumper Car, Shopping Cart, and Bath remain unported pending a design decision on their novel mechanics.
+24. The r29 batch adds the released `1.16.X` ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch: their generated axle/wheel/seat/fuel-port geometry and vanilla-block-texture bodies, the ATV's dune-buggy-style steering ratio, the Mini Bike's `Motorcycle`-pattern fork steering with an estimated (not exactly sourced) handlebar resting position, each vehicle's own engine sample reuse, and the Couch's CFM-dependent shared sofa body.
+25. The r30 batch adds the released `1.16.X` Bumper Car, Shopping Cart, and Bath, the three vehicles whose mechanics are genuinely novel to this port: the Bumper Car's car-to-car collision, approximated as a velocity jolt plus `bonk.ogg` since this port does not expose the source's internal `currentSpeed` field; the Shopping Cart's push-from-behind control, approximated as a sneak-interact grab/release toggle driving the cart's position from the pushing player each tick; and Bath, which reuses the Sports Plane's flight model and the source's own ATV-body placeholder visual rather than the CFM-only `cfm:bath` item geometry, shipped without CFM despite the original source gating Bath's very existence behind that mod being installed.
 
 ## Exact ports versus vanilla-client adaptations
 

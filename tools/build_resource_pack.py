@@ -97,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r29 — twenty-one vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r30 — twenty-four vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -182,6 +182,8 @@ def build(output: Path) -> tuple[Path, str]:
             "smart_car_body": ("vehicle:item/smart_car_body", 16383998),
             "speed_boat_body": ("vehicle:item/speed_boat_body", 16383998),
             "aluminum_boat_body": ("vehicle:item/aluminum_boat_body", 16383998),
+            "bumper_car_body": ("vehicle:item/bumper_car_body", 16383998),
+            "shopping_cart_body": ("vehicle:item/shopping_cart_body", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -503,6 +505,36 @@ def build(output: Path) -> tuple[Path, str]:
             },
         )
         convert_model(
+            ROOT / "tools/source_assets/vehicle_bumper_car_body.json",
+            namespace / "models/item/bumper_car_body.json",
+            {
+                "seat": "minecraft:block/black_wool",
+                "rubber": "minecraft:block/black_concrete",
+                # Keep the source's dark detailing without the legacy anvil atlas path.
+                "detail": "minecraft:block/gray_concrete",
+                "body": "minecraft:block/white_concrete",
+                "shaft": "minecraft:block/light_gray_concrete",
+                "particle": "minecraft:block/white_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/vehicle_shopping_cart_body.json",
+            namespace / "models/item/shopping_cart_body.json",
+            {
+                # All of this body's source textures are the mod's own existing
+                # vehicle:model assets (mesh patterns and the Cray Industries logo),
+                # not CFM or the legacy anvil atlas, so they carry over unchanged.
+                "plastic_frame": "minecraft:block/light_gray_concrete",
+                "plastic_mesh_two": "vehicle:model/mesh_angled",
+                "metal_mesh": "vehicle:model/white_mesh",
+                "metal": "minecraft:block/white_concrete",
+                "logo": "vehicle:model/cray_industries",
+                "plastic_mesh_one": "vehicle:model/mesh_angled_flipped",
+                "plastic_mesh_three": "vehicle:model/mesh",
+                "particle": "minecraft:block/light_gray_concrete",
+            },
+        )
+        convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
         )
@@ -706,6 +738,22 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "textures/model/cray_industries.png",
         )
         copy(
+            ASSETS / "textures/model/mesh.png",
+            namespace / "textures/model/mesh.png",
+        )
+        copy(
+            ASSETS / "textures/model/mesh_angled.png",
+            namespace / "textures/model/mesh_angled.png",
+        )
+        copy(
+            ASSETS / "textures/model/mesh_angled_flipped.png",
+            namespace / "textures/model/mesh_angled_flipped.png",
+        )
+        copy(
+            ASSETS / "textures/model/white_mesh.png",
+            namespace / "textures/model/white_mesh.png",
+        )
+        copy(
             ASSETS / "textures/model/wheel.png",
             namespace / "textures/item/standard_wheel.png",
         )
@@ -740,6 +788,10 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ROOT / "tools/source_assets/vehicle_bumper_car_engine.ogg",
             namespace / "sounds/entity/bumper_car/engine.ogg",
+        )
+        copy(
+            ASSETS / "sounds/entity/bumper_car/bonk.ogg",
+            namespace / "sounds/entity/bumper_car/bonk.ogg",
         )
         copy(
             ASSETS / "sounds/entity/tractor/engine.ogg",
@@ -797,6 +849,9 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.bumper_car.engine": {
                 "sounds": [{"name": "vehicle:entity/bumper_car/engine", "preload": True}]
+            },
+            "entity.bumper_car.bonk": {
+                "sounds": [{"name": "vehicle:entity/bumper_car/bonk", "preload": True}]
             },
             "entity.tractor.engine": {
                 "sounds": [{"name": "vehicle:entity/tractor/engine", "preload": True}]
@@ -860,7 +915,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r29.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r30.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

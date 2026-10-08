@@ -820,6 +820,85 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* BumperCarEntity: setMaxSpeed(10), setTurnSensitivity(20), maxUpStep=0.625F explicit;
+     * fuel system is left at LandVehicleEntity defaults (the source literally has a
+     * "//TODO figure out fuel system" comment and never calls setFuelCapacity). Its one
+     * bespoke mechanic, push()'s car-to-car bonk, needs to compare every active Bumper
+     * Car pairwise each tick, so it is handled in VehicleManager rather than here. */
+    public static final LandVehicleSpec BUMPER_CAR = new LandVehicleSpec(
+            "bumper_car", "Bumper Car", "bumper_car_body",
+            1.5F, 1.0F, 0.625F,
+            1.2F, -1.5F, 1.88F,
+            10.0F, 35.0F, 8.5F * MODEL_UNIT * 1.2F, -8.5F * MODEL_UNIT * 1.2F, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 0.8F, "vehicle:entity.bumper_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel", new Point(0.0F, 0.8285F, 0.0F),
+                    1.08F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -8.0F, 6.0F, -8.0F,
+                    0.25F, 0.0F, -90.0F, 0.0F, 1.2F, -1.5F, 1.88F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 7.0F, 0.0F, 8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F),
+                    wheel(1, true, 7.0F, 0.0F, 8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F),
+                    wheel(-1, false, 7.0F, 0.0F, -8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F),
+                    wheel(1, false, 7.0F, 0.0F, -8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F)
+            ),
+            List.of(seat(true, 0.0F, 1.0F, -6.0F, 1.2F, -1.5F, 1.88F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.562F),
+            null, null, List.of(), false
+    );
+
+    /* ShoppingCartEntity: no setMaxSpeed() override (base 10F default), explicit
+     * setMaxTurnAngle(90) for its tight swivel-front steering, setTurnSensitivity(15),
+     * zero fuel capacity/consumption (it never runs dry). Its one bespoke mechanic — a
+     * nearby player grabbing it from behind and pushing it around, which overrides
+     * normal driving every tick while held — is handled by LandVehicle#tickPushed and
+     * VehicleManager's sneak-interact toggle rather than here. */
+    public static final LandVehicleSpec SHOPPING_CART = new LandVehicleSpec(
+            "shopping_cart", "Shopping Cart", "shopping_cart_body",
+            1.0F, 1.0F, 1.0F,
+            1.05F, -1.0F, 1.88F,
+            10.0F, 90.0F, 9.5F * MODEL_UNIT * 1.05F, -10.5F * MODEL_UNIT * 1.05F, 5.0F,
+            0.0F, 0.0F, 0.5F, 1.2F, "",
+            false, new Point(0.0F, 0.0F, 0.0F), null, null, null, null,
+            List.of(),
+            List.of(
+                    wheel(-1, false, 5.75F, 0.0F, -10.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F),
+                    wheel(1, false, 5.75F, 0.0F, -10.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F),
+                    wheel(-1, true, 4.0F, 0.0F, 9.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F),
+                    wheel(1, true, 4.0F, 0.0F, 9.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F)
+            ),
+            List.of(seat(true, 0.0F, 7.0F, -4.0F, 1.05F, -1.0F, 1.88F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.25F),
+            null, null, List.of(), false
+    );
+
+    /* BathEntity extends PlaneEntity directly with only setFuelConsumption(0.0F) overridden
+     * (infinite fuel); every other plane constant (speed, turn angle, flap/lift behaviour)
+     * is the shared PlaneEntity default, identical to what Sports Plane inherits, so Bath
+     * reuses that same AIR motionType flight model via the motionType() id check below.
+     * Like the original source itself, there is no dedicated Bath body model: BathModel's
+     * own render() draws SpecialModels.ATV_BODY as a placeholder (rotated), because the
+     * real geometry only ever existed as MrCrayfish's Furniture Mod "cfm:bath" item —
+     * BathEntity's own EntityType registration is entirely gated behind CFM being loaded
+     * in the original source (VehicleUtil.createModDependentEntityType), so Bath does not
+     * exist there at all without it. This Paper port keeps the original's placeholder
+     * ATV body rather than depending on or recreating CFM's bathtub geometry. */
+    public static final LandVehicleSpec BATH = new LandVehicleSpec(
+            "bath", "Bath", "atv_body",
+            1.0F, 1.0F, 1.0F,
+            1.0F, 0.0F, 0.0F,
+            24.0F, 35.0F, 0.0F, 0.0F, 5.0F,
+            15_000.0F, 0.0F, 0.5F, 1.2F, "",
+            false, new Point(0.0F, 0.0F, 0.0F), null, null, null, null,
+            List.of(),
+            List.of(),
+            List.of(seat(true, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, -0.438F),
+            null, null, List.of(), false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
@@ -841,7 +920,10 @@ public record LandVehicleSpec(
             Map.entry(SMART_CAR.id, SMART_CAR),
             Map.entry(SPEED_BOAT.id, SPEED_BOAT),
             Map.entry(ALUMINUM_BOAT.id, ALUMINUM_BOAT),
-            Map.entry(COUCH.id, COUCH)
+            Map.entry(COUCH.id, COUCH),
+            Map.entry(BUMPER_CAR.id, BUMPER_CAR),
+            Map.entry(SHOPPING_CART.id, SHOPPING_CART),
+            Map.entry(BATH.id, BATH)
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -888,7 +970,7 @@ public record LandVehicleSpec(
         if ("jet_ski".equals(id) || "speed_boat".equals(id) || "aluminum_boat".equals(id)) {
             return MotionType.WATER;
         }
-        if ("sports_plane".equals(id)) {
+        if ("sports_plane".equals(id) || "bath".equals(id)) {
             return MotionType.AIR;
         }
         return "compact_helicopter".equals(id) || "sofacopter".equals(id)
