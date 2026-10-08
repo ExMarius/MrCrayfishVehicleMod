@@ -52,8 +52,8 @@ jobs:
 
           # This architecture deliberately leaves Minecraft under panel/Actions control.
           "$ROOT/bin/stop-minecraft.sh"
-          "$ROOT/bin/start-panel.sh"
-          "$ROOT/bin/start-frp.sh"
+          # Exercise the exact symlinked one-command path the Cloud Shell user runs.
+          "$HOME/start.sh"
 
           curl -fsS --connect-timeout 2 http://127.0.0.1:8081/healthz | grep -q '"ok": true'
           screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]' && {

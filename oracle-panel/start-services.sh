@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE="$(readlink -f "${BASH_SOURCE[0]}")"
+ROOT="$(cd "$(dirname "$SOURCE")" && pwd)"
 "$ROOT/bin/start-runner.sh"
 "$ROOT/bin/start-panel.sh"
 "$ROOT/bin/start-frp.sh"
