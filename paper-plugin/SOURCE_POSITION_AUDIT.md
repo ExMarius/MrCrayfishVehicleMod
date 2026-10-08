@@ -289,6 +289,23 @@ CFM bathtub geometry the way r27 recovered the Sofacopter's real ceiling-fan rot
 tub shape is wanted later, the CFM `cfm:bath` model would need to be sourced and legalized the same
 way the ceiling fan was.
 
+### Aluminum Boat real hull texture recovered (r31)
+
+The r29 batch shipped the Aluminum Boat's `body` face with a `minecraft:block/light_gray_concrete`
+block-texture approximation because no dedicated art for it had been found in the vendored source
+tree at the time. A full systematic texture audit subsequently found a genuine, previously-unwired
+hull texture sitting in the repository under the stray plural directory
+`textures/vehicles/aluminum.png` (distinct from the singular `textures/vehicle/` tree every other
+vehicle's art lives in) — a riveted aluminum-sheet texture matching the vehicle by name and content,
+referenced by no model anywhere in the tree. It has been relocated to the conventional per-vehicle
+path `textures/vehicle/aluminum_boat/body.png` and wired into `vehicle_aluminum_boat_body.json`'s
+`body`/`particle` keys in place of the concrete placeholder; `seat` and `logo` still use their
+original placeholders since no dedicated art for those parts was found. The same plural directory
+also holds `go_kart.png`, the texture for a superseded single-mesh `go_kart_body.json` model that
+predates (and is not used by) the currently shipped multi-part Go Kart, and `tyre.png`, a small
+tire-colored swatch not clearly tied to any one vehicle's texture key; both are left in place,
+unwired, pending clearer evidence of their intended use.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:

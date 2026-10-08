@@ -135,10 +135,10 @@ DATA_DIR="$SERVER_DIR/plugins/MrCrayfishVehiclePlugin"
 test -s "$DATA_DIR/config.yml" || fail "default config.yml was not generated"
 test -f "$DATA_DIR/vehicles.yml" || fail "vehicles.yml was not created on shutdown"
 test -f "$DATA_DIR/trailers.yml" || fail "trailers.yml was not created on shutdown"
-grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r30.zip' "$DATA_DIR/config.yml" \
-  || fail "generated config does not select resource pack r30"
-grep -Fq '87113724db89ca6ffe4b4d578bf75a240c177d1f' "$DATA_DIR/config.yml" \
-  || fail "generated config does not contain the verified r30 SHA-1"
+grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r31.zip' "$DATA_DIR/config.yml" \
+  || fail "generated config does not select resource pack r31"
+grep -Fq 'ecae8d3b2a673e3e604a3b2966e9086ddbc4d554' "$DATA_DIR/config.yml" \
+  || fail "generated config does not contain the verified r31 SHA-1"
 
 run_server_cycle 2
 
