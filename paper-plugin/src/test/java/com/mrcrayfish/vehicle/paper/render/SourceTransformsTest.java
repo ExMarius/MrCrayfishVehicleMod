@@ -23,6 +23,13 @@ class SourceTransformsTest {
     }
 
     @Test
+    void aircraftAppliesSourceRollThenPitchPointOrder() {
+        Vector3f transformed = SourceTransforms.aircraftPoint(
+                new Vector3f(1.0F, 2.0F, 3.0F), 30.0F, 20.0F);
+        assertVector(transformed, 0.25565234F, 0.4237935F, 3.7087789F);
+    }
+
+    @Test
     void dirtBikeForkUsesTiltSteerUntiltedMatrixAroundTenAndAHalfPixelPivot() {
         LandVehicleSpec spec = LandVehicleSpec.DIRT_BIKE;
         Quaternionf fork = SourceTransforms.motorcycleSteering(spec.motorcycle(), 25.0F);

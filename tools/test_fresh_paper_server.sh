@@ -99,7 +99,7 @@ run_server_cycle() {
       break
     fi
     if grep -Fq 'Done (' "$SERVER_LOG" \
-        && [ "$(grep -Fc 'Vehicle plugin enabled. Ten land vehicles, one water vehicle, and five trailers are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
+        && [ "$(grep -Fc 'Vehicle plugin enabled. Ten land vehicles, one water vehicle, two aircraft, and five trailers are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
       ready=true
       break
     fi
@@ -135,14 +135,14 @@ DATA_DIR="$SERVER_DIR/plugins/MrCrayfishVehiclePlugin"
 test -s "$DATA_DIR/config.yml" || fail "default config.yml was not generated"
 test -f "$DATA_DIR/vehicles.yml" || fail "vehicles.yml was not created on shutdown"
 test -f "$DATA_DIR/trailers.yml" || fail "trailers.yml was not created on shutdown"
-grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r24.zip' "$DATA_DIR/config.yml" \
-  || fail "generated config does not select resource pack r24"
-grep -Fq '53c4ab0d2a3fb11e91659abc073e6eeb2d92ed53' "$DATA_DIR/config.yml" \
-  || fail "generated config does not contain the verified r24 SHA-1"
+grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r25.zip' "$DATA_DIR/config.yml" \
+  || fail "generated config does not select resource pack r25"
+grep -Fq 'd60cb2b012780e1542627c168365e5b34b7a62b5' "$DATA_DIR/config.yml" \
+  || fail "generated config does not contain the verified r25 SHA-1"
 
 run_server_cycle 2
 
-[ "$(grep -Fc 'Vehicle plugin enabled. Ten land vehicles, one water vehicle, and five trailers are ready.' "$SERVER_LOG")" -eq 2 ] \
+[ "$(grep -Fc 'Vehicle plugin enabled. Ten land vehicles, one water vehicle, two aircraft, and five trailers are ready.' "$SERVER_LOG")" -eq 2 ] \
   || fail "plugin did not enable exactly once per startup"
 [ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred for unavailable worlds/types.' "$SERVER_LOG")" -eq 2 ] \
   || fail "empty vehicle persistence did not load on both starts"

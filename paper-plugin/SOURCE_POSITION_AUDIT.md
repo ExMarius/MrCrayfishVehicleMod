@@ -126,6 +126,31 @@ The audited 1.16.X-dev `BoatEntity#updateVehicleMotion` is completely empty and 
 
 The original 46,434-sample Jet Ski engine is replayed at its pitch-adjusted duration and attached to the moving rig. The source has no boat body lean at this checkpoint: `AbstractBoatRenderer` explicitly leaves both speed pitch and turning roll commented under `TODO add back boat rotation`, so r21 does not invent either animation.
 
+### Sports Plane renderer and flight equations
+
+The Sports Plane uses the generated body scale `0.85`, ground offset `4`, body translation Z `-8` model pixels, and three generated wheel positions. The resulting body origin is `(0, 0.6375, -0.425)` and the source seat center is `(0, 0.53125, -0.425)`. Its complex-model propeller, ailerons, elevator, and joystick remain independent displays at their original pivots. `PlaneEntity` propeller acceleration, angle-of-attack limiting, flap/elevator interpolation, lift, pitch/roll/yaw, drag, surface friction, airborne heading alignment, gravity, and unpiloted lift reduction are translated in source order. The generated PlaneProperties remain `16`, `35`, `0.25`, `0.1`, `45`, `0.15`, `0.075`, and `2`.
+
+The original plane assets include arbitrary per-element rotations that the source Framework loader accepts but vanilla 1.21.4 rejects. The resource pack scales only oversized geometry around item origin `(8,8,8)`, applies the exact inverse display scale, and maps unsupported element angles to the nearest vanilla-legal `0`, `±22.5`, or `±45` degrees. This is the narrow protocol adaptation that prevents whole-model black/magenta fallback while preserving the original elements, textures, part pivots, and runtime actions.
+
+### Compact Helicopter renderer and flight equations
+
+`CompactHelicopterEntity`, `HelicopterEntity`, `AbstractHelicopterRenderer`, the generated properties/cosmetics, and `helicopter/base.complex` were audited together. Its generated dimensions are `2 × 2`, body scale/ground/wheel offsets are `1/0/0`, power is `25`, capacity is `15,000`, consumption is `0.25/tick`, and pitch range is `0.5–1.0`. It inherits the exact default HelicopterProperties: movement interpolation `0.015`, yaw-follow strength `0.05`, maximum lean `30`, and quadratic drag `0.001`. The original 27,922-sample `vehicle:entity.vehicle.helicopter_rotor` sound is replayed at its pitch-adjusted duration.
+
+The common helicopter matrix gives body origin `(0, 0.5, 0)`. Independent complex-model displays preserve these source pivots:
+
+- stock seat cosmetic `(0, 0.6875, 0)`;
+- joystick `(-0.46875, 0.75, 0.84375)`, rotating X by `forward × 10°` and Z by `strafe × -10°` after source `0.25` input interpolation;
+- main blades `(0, 2.8125, -0.5625)`, rotating around Y;
+- tail rotor `(0.1875, 2.03125, -5.09375)`, rotating around X.
+
+The generated seats `(7.5,10,3)` and `(-7.5,10,3)` model pixels become driver/passenger offsets `(-0.46875,0.625,0.1875)` and `(0.46875,0.625,0.1875)` before the separately retained global rider correction. No player camera/body yaw API is forced. While airborne, vehicle yaw instead follows the driver's normal look yaw with source strength `0.05`; rear passengers retain native mount behavior.
+
+Blade acceleration is preserved exactly: positive lift adds `power/4`, neutral/negative operation adds `0.5`, and overspeed/non-operation multiplies by `0.95`; limits are grounded `80`, neutral flight `200`, ascent `200 + power`, and descent `150`. The runtime then preserves source strafe/forward rotation and normalization, `power × 0.05` movement force, travel downforce, quadratic drag, `-1.6 + 1.6 × bladeSpeed/200` gravity/lift, global-speed clamping through source `×20`/`×0.05`, velocity interpolation, and the additional unpiloted `-0.04` fall. Body pitch/roll use the source local-velocity lean vector. Vanilla W/S and A/D provide forward/strafe, Space provides positive lift, and Sprint provides negative lift.
+
+The Compact-specific exhaust point `(-9.5564,23.5,-38.1927)` model pixels is transformed with body lean/yaw for its every-other-tick smoke. Rotor downwash retains the source threshold `30`, eight-block random spread, `min(12, bladeSpeed/15)` downward ray distance, blade-speed scaling, and dirt/gravel/sand versus water effects using vanilla block, splash, bubble, and cloud particles. Blade speed and velocity persist across save, hibernation, and restart.
+
+As with the Sports Plane, only protocol-incompatible asset details are adapted: the 91-element body is normalized to one quarter and the four-element main blades to one third around `(8,8,8)`, with exact inverse display scales `4` and `3`; all five original helicopter models retain their elements and textures, and unsupported element rotations are mapped to the nearest 1.21.4-legal angle rather than replaced with fallback geometry.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -140,7 +165,9 @@ The serialized or source-default offsets are:
 - Sports Car `(0, 0, 0)` (source default);
 - Mini Bus `(0, 0, 0)` (source default);
 - Golf Cart `(0, 0, 0)` (source default);
-- Jet Ski `(0, -0.094, -0.650)` (serialized from generator input `-0.09375`).
+- Jet Ski `(0, -0.094, -0.650)` (serialized from generator input `-0.09375`);
+- Sports Plane `(0, 0, 0)` (source default);
+- Compact Helicopter `(0, 0, 0)` (source default).
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -179,6 +206,8 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 17. The r20 Golf Cart port adds the complete body, four wheels, four seats including both generated rear-facing yaw offsets, exact steering/filler/ignition transforms, and original rotor sample. It documents and narrowly repairs the source entity's unfinished helicopter inheritance by applying its generated cart geometry and power to land motion.
 18. The r21 Jet Ski port adds its complete body, two seats, boat-specific render matrix, handles/filler transforms, original engine sample, wakes, and released aquatic state/buoyancy/momentum equations. This recovers the last complete upstream behavior while explicitly recording that the audited dev method is empty.
 19. Sports Car steering uses a display-only `(-3, +5, +2)`-pixel correction derived from the transformed wheel and dashboard-column bounds, which overlap on all three axes; source geometry, scale, rotation, and animation remain unchanged.
+20. The r23/r24 Sports Plane port adds its complete source body/complex rig, generated wheel and seat positions, flight/control-surface equations, persistence, and original engine sample; r24 narrowly legalizes source element angles rejected by vanilla 1.21.4.
+21. The r25 Compact Helicopter port adds its complete 91-element body and four cosmetic models, exact two-seat/pivot geometry, helicopter force/blade/yaw/lean equations, joystick and both rotor animations, source sound/fuel/persistence, transformed exhaust, and rotor downwash.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -191,7 +220,9 @@ Exact matrix/equation ports:
 - Sports Car cosmetic pivots/open angles/easing, storage capacities and interaction bounds, and persistent action/inventory state;
 - Mini Bus wheel/seat/cosmetic/openable/filler/ignition/tow geometry and big-tow-bar selection;
 - Golf Cart body/wheel/seat/rear-yaw/steering/filler/ignition geometry and source-selected rotor sample;
-- Jet Ski boat-renderer/body/seat/handle/filler coordinates, released water-state and buoyancy equations, and original engine sample.
+- Jet Ski boat-renderer/body/seat/handle/filler coordinates, released water-state and buoyancy equations, and original engine sample;
+- Sports Plane body/wheel/seat/part pivots, flight and control-surface equations, persistence, and original engine sample;
+- Compact Helicopter body/seat/cosmetic pivots, blade/lift/movement/yaw/drag/lean equations, fuel/persistence, exhaust/downwash behavior, and original rotor sample.
 
 Vanilla-client adaptations that intentionally remain:
 
@@ -204,4 +235,6 @@ Vanilla-client adaptations that intentionally remain:
 - the Mini Bus uses the original Go Kart steering-wheel asset named by its source ray transforms because the renderer's separately registered Mini Bus steering model is absent from the repository;
 - the Golf Cart uses the source land-motion equations with its generated wheel/axle/electric-power values because its original entity is an explicitly unfinished `HelicopterEntity` subclass that cannot move horizontally while grounded; rear-seat `180°` facing is applied to the native mount carrier without forcing player camera or body yaw APIs;
 - the Jet Ski restores the parent repository's last complete released `1.16.X` boat motion because the audited dev method is empty. Fluid heights and source/flowing classification are mapped to Paper `Levelled`/`Waterlogged` block data, and directional wake velocity is represented with Paper's closest particle spread controls;
+- source element rotations unsupported by vanilla 1.21.4 are mapped to the nearest legal `0`, `±22.5`, or `±45` degree angle; oversized source geometry is normalized around the item origin and exactly inverse-scaled by its display. This affects only static model compatibility, not part pivots or runtime animation angles;
+- the Compact Helicopter's custom dust particle is represented by the struck block's vanilla block particle, while its source splash, bubble, cloud, smoke, ray distance, spread, and velocity equations remain available to unmodified clients;
 - custom per-limb player pose animation, damage wobble/destroy overlays, open fuel-door animation, and inserted-key animation are not representable with the current vanilla-client rig. These limitations do not change the audited static part coordinates.

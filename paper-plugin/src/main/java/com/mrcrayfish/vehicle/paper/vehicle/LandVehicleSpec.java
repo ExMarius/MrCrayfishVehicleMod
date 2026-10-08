@@ -502,6 +502,42 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* CompactHelicopterEntity uses the default body transform and the four default
+     * HelicopterProperties values. The complex-model children are separate displays so
+     * the main blades, tail rotor, and joystick retain their source animation pivots. */
+    public static final LandVehicleSpec COMPACT_HELICOPTER = new LandVehicleSpec(
+            "compact_helicopter", "Compact Helicopter", "compact_helicopter_body",
+            2.0F, 2.0F, 0.6F,
+            1.0F, 0.0F, 0.0F,
+            25.0F, 35.0F, 0.0F, 0.0F, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 1.0F, "vehicle:entity.vehicle.helicopter_rotor",
+            true, new Point(-9.5564F * MODEL_UNIT,
+                    0.5F + 23.5F * MODEL_UNIT, -38.1927F * MODEL_UNIT),
+            null, null, null, null,
+            List.of(
+                    new Part("compact_helicopter_seat", new Point(0.0F, 0.6875F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("compact_helicopter_joystick",
+                            new Point(-7.5F * MODEL_UNIT, 0.75F, 13.5F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("compact_helicopter_blades",
+                            new Point(0.0F, 0.5F + 37.0F * MODEL_UNIT, -9.0F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("compact_helicopter_tail_rotor",
+                            new Point(3.0F * MODEL_UNIT, 0.5F + 24.5F * MODEL_UNIT,
+                                    -81.5F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(),
+            List.of(
+                    seat(true, 7.5F, 10.0F, 3.0F, 1.0F, 0.0F, 0.0F),
+                    seat(false, -7.5F, 10.0F, 3.0F, 1.0F, 0.0F, 0.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
     /* PlaneEntity uses the generated Sports Plane body transform (Z -8), display scale
      * 0.85, default four-pixel wheel offset, one driver seat, and three source wheels.
      * Complex-model children are represented as independent displays so their original
@@ -563,7 +599,8 @@ public record LandVehicleSpec(
             Map.entry(MINI_BUS.id, MINI_BUS),
             Map.entry(GOLF_CART.id, GOLF_CART),
             Map.entry(JET_SKI.id, JET_SKI),
-            Map.entry(SPORTS_PLANE.id, SPORTS_PLANE)
+            Map.entry(SPORTS_PLANE.id, SPORTS_PLANE),
+            Map.entry(COMPACT_HELICOPTER.id, COMPACT_HELICOPTER)
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -586,7 +623,7 @@ public record LandVehicleSpec(
         return switch (motionType()) {
             case WATER -> new Point(0.0F, 0.0F, 0.25F);
             case AIR -> new Point(0.0F, 0.0F, -0.425F);
-            case LAND -> new Point(0.0F, 0.0F, 0.0F);
+            case LAND, HELICOPTER -> new Point(0.0F, 0.0F, 0.0F);
         };
     }
 
@@ -594,13 +631,23 @@ public record LandVehicleSpec(
         if ("jet_ski".equals(id)) {
             return MotionType.WATER;
         }
-        return "sports_plane".equals(id) ? MotionType.AIR : MotionType.LAND;
+        if ("sports_plane".equals(id)) {
+            return MotionType.AIR;
+        }
+        return "compact_helicopter".equals(id) ? MotionType.HELICOPTER : MotionType.LAND;
     }
 
     public Plane plane() {
         return motionType() == MotionType.AIR ? new Plane(
                 16.0F, 35.0F, 0.25F, 0.1F,
                 45.0F, 0.15F, 0.075F, 2.0F) : null;
+    }
+
+    /** Exact default HelicopterProperties inherited by the Compact Helicopter. */
+    public Helicopter helicopter() {
+        return motionType() == MotionType.HELICOPTER
+                ? new Helicopter(0.015F, 0.05F, 30.0F, 0.001F)
+                : null;
     }
 
     public float steeringVisualAngle() {
@@ -635,11 +682,18 @@ public record LandVehicleSpec(
                 default -> 1.0F;
             };
         }
+        if ("compact_helicopter".equals(id)) {
+            return switch (model) {
+                case "compact_helicopter_body" -> 4.0F;
+                case "compact_helicopter_blades" -> 3.0F;
+                default -> 1.0F;
+            };
+        }
         return 1.0F;
     }
 
     public Point wheeliePivot() {
-        if (motionType() == MotionType.AIR) {
+        if (motionType() == MotionType.AIR || motionType() == MotionType.HELICOPTER) {
             return new Point(0.0F, 0.0F, 0.0F);
         }
         return new Point(0.0F, wheelOffset * MODEL_UNIT * bodyScale, rearAxleOffset);
@@ -742,7 +796,7 @@ public record LandVehicleSpec(
     }
 
     public enum MotionType {
-        LAND, WATER, AIR
+        LAND, WATER, AIR, HELICOPTER
     }
 
     /** Exact PlaneProperties values generated for the Sports Plane. */
@@ -750,6 +804,10 @@ public record LandVehicleSpec(
                         float flapStrength, float flapSensitivity,
                         float maxElevatorAngle, float elevatorStrength,
                         float elevatorSensitivity, float maxTurnAngle) {
+    }
+
+    public record Helicopter(float movementStrength, float rotateStrength,
+                             float maxLeanAngle, float drag) {
     }
 
     public enum Axis {

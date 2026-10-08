@@ -37,6 +37,15 @@ final class SourceTransforms {
         return transformed;
     }
 
+    /** Plane/helicopter renderer call order X(pitch), then Z(roll): points receive Z then X. */
+    static Quaternionf aircraftRotation(float pitch, float roll) {
+        return new Quaternionf().rotateX(radians(pitch)).rotateZ(radians(roll));
+    }
+
+    static Vector3f aircraftPoint(Vector3f point, float pitch, float roll) {
+        return aircraftRotation(pitch, roll).transform(new Vector3f(point));
+    }
+
     /** DirtBikeRenderer: X(-22.5), steering Y, then X(+22.5). */
     static Quaternionf motorcycleSteering(LandVehicleSpec.Motorcycle motorcycle,
                                           float steeringRotation) {

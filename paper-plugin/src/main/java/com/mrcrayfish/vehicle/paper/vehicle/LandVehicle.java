@@ -39,7 +39,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Server-side port of PoweredVehicleEntity and its land, water, and plane runtimes. Variable names, update order, forces, traction, steering,
+ * Server-side port of PoweredVehicleEntity and its land, water, plane, and helicopter runtimes. Variable names, update order, forces, traction, steering,
  * charging/boosting, aircraft controls, and part animation follow the original implementation.
  */
 public final class LandVehicle {
@@ -92,6 +92,8 @@ public final class LandVehicle {
     private float elevatorAngle;
     private float bodyPitch;
     private float planeBodyRoll;
+    private float helicopterJoystickForward;
+    private float helicopterJoystickStrafe;
 
     private LandVehicle(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
                         TrailerManager trailers, LandVehicleRig rig) {
@@ -145,6 +147,10 @@ public final class LandVehicle {
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.AIR) {
             tickPlane(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            return;
+        }
+        if (spec.motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
+            tickHelicopter(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
             return;
         }
         Player driver = driver().orElse(null);
@@ -327,6 +333,209 @@ public final class LandVehicle {
         if (driver == null && age % 20 == 0 && !openablesChanged) {
             rig.refreshBrightness(location);
         }
+    }
+
+    /** Direct server-side translation of HelicopterEntity#updateVehicleMotion. */
+    private void tickHelicopter(double globalSpeedLimit, double fuelConsumptionFactor,
+                                boolean openablesChanged) {
+        LandVehicleSpec.Helicopter helicopter = spec.helicopter();
+        if (helicopter == null) {
+            throw new IllegalStateException("Helicopter is missing HelicopterProperties: " + spec.id());
+        }
+        Player driver = driver().orElse(null);
+        boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
+        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean operating = driver != null && enginePowered;
+        VehicleInput input = driver == null ? VehicleInput.idle()
+                : VehicleInput.from(driver.getCurrentInput());
+        float forwardInput = clamp(input.throttle(), -1.0F, 1.0F);
+        float sideInput = clamp(input.steeringDirection(), -1.0F, 1.0F);
+        float liftInput = (input.handbrake() ? 1.0F : 0.0F)
+                + (input.sprint() ? -1.0F : 0.0F);
+        boolean flying = !onGround;
+
+        motion.zero();
+        if (driver != null && flying && operating) {
+            float deltaYaw = wrapDegrees(driver.getLocation().getYaw() - location.getYaw());
+            location.setYaw(normalizeYaw(location.getYaw()
+                    + deltaYaw * helicopter.rotateStrength()));
+        }
+
+        updateBladeSpeed(operating, liftInput, flying);
+        propellerRotation = wrapDegrees(propellerRotation + propellerSpeed);
+
+        Vector heading = new Vector();
+        if (flying) {
+            Vector movementInput = rotateYLikeMinecraft(
+                    new Vector(sideInput, 0.0D, forwardInput),
+                    Math.toRadians(-location.getYaw()));
+            if (movementInput.lengthSquared() > 1.0D) {
+                movementInput.normalize();
+            }
+            if (operating && movementInput.lengthSquared() > 0.0D) {
+                heading.add(movementInput.multiply(spec.enginePower() * 0.05D));
+            }
+
+            double horizontalSpeed = new Vector(velocity.getX(), 0.0D, velocity.getZ())
+                    .multiply(20.0D).length();
+            heading.add(new Vector(0.0D,
+                    -1.5D * (horizontalSpeed / spec.enginePower()) * 0.05D, 0.0D));
+            heading.add(velocity.clone().multiply(velocity.length()).multiply(-helicopter.drag()));
+        } else {
+            velocity.setX(velocity.getX() * 0.85D);
+            velocity.setY(0.0D);
+            velocity.setZ(velocity.getZ() * 0.85D);
+        }
+
+        float gravity = -1.6F;
+        float bladeLift = 1.6F * (propellerSpeed / 200.0F);
+        heading.add(new Vector(0.0D, gravity + bladeLift, 0.0D));
+        heading.multiply(20.0D);
+        clampLength(heading, Math.max(0.0D, globalSpeedLimit));
+        heading.multiply(0.05D);
+        velocity = lerp(velocity, heading, helicopter.movementStrength());
+        motion.add(velocity);
+
+        Vector requestedMovement = motion.clone();
+        if (!operating) {
+            requestedMovement.setY(requestedMovement.getY() - 0.04D);
+        }
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
+                world, location, requestedMovement, onGround,
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+        location.add(collision.movement());
+        onGround = collision.onGround();
+        verticalVelocity = velocity.getY();
+
+        Vector localLean = rotateYLikeMinecraft(
+                new Vector(-motion.getX(), 0.0D, motion.getZ())
+                        .multiply(helicopter.maxLeanAngle()),
+                Math.toRadians(-(location.getYaw() + 90.0F)));
+        location.setPitch((float) -localLean.getX());
+        if (!onGround) {
+            bodyPitch = (float) -localLean.getX();
+            planeBodyRoll = (float) localLean.getZ();
+        } else {
+            bodyPitch *= 0.5F;
+            planeBodyRoll *= 0.5F;
+        }
+
+        helicopterJoystickStrafe = lerp(0.25F, helicopterJoystickStrafe, sideInput);
+        helicopterJoystickForward = lerp(0.25F, helicopterJoystickForward, forwardInput);
+        rig.setHelicopterAnimations(propellerRotation,
+                helicopterJoystickForward, helicopterJoystickStrafe);
+        rig.update(location, 0.0F, 0.0F, 0.0F,
+                bodyPitch, planeBodyRoll, operating, age);
+
+        if (driver != null && !creativeDriver && enginePowered) {
+            fuel = Math.max(0.0F,
+                    fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+        }
+        updateSeatGauge();
+        helicopterEffects(driver, enginePowered);
+
+        if (driver == null && onGround && propellerSpeed < 0.01F) {
+            velocity.zero();
+            motion.zero();
+            verticalVelocity = 0.0D;
+        }
+        if (driver == null && age % 20 == 0 && !openablesChanged) {
+            rig.refreshBrightness(location);
+        }
+    }
+
+    /** HelicopterEntity#updateBladeSpeed and getMaxBladeSpeed. */
+    private void updateBladeSpeed(boolean operating, float liftInput, boolean flying) {
+        propellerSpeed = HelicopterPhysics.nextBladeSpeed(propellerSpeed,
+                operating, liftInput, flying, spec.enginePower());
+    }
+
+    /** Source rotor pitch/volume plus CompactHelicopterEntity smoke and downwash. */
+    private void helicopterEffects(Player driver, boolean enginePowered) {
+        float normal = clamp(propellerSpeed / 200.0F, 0.0F, 1.25F) * 0.6F;
+        normal += (float) ((motion.clone().multiply(20.0D).length() / spec.enginePower()) * 0.4D);
+        float targetPitch = spec.minEnginePitch()
+                + (spec.maxEnginePitch() - spec.minEnginePitch()) * clamp(normal, 0.0F, 1.0F);
+        float targetVolume = driver != null && enginePowered
+                ? 0.2F + 0.8F * (propellerSpeed / 80.0F) : 0.001F;
+        List<UUID> riders = rig.seatCarriers().stream()
+                .flatMap(seat -> seat.getPassengers().stream())
+                .filter(Player.class::isInstance)
+                .map(Entity::getUniqueId)
+                .toList();
+        soundController.tick(location, driver != null && enginePowered,
+                targetPitch, targetVolume, riders);
+
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        if (driver != null && enginePowered && age % 2 == 0 && spec.exhaustPosition() != null) {
+            Vector exhaustOffset = rotateBodyOffset(spec.exhaustPosition(), bodyPitch, planeBodyRoll);
+            Location exhaust = local(location, exhaustOffset.getX(),
+                    exhaustOffset.getY(), exhaustOffset.getZ());
+            world.spawnParticle(Particle.LARGE_SMOKE, exhaust, 0,
+                    -motion.getX(), 0.0D, -motion.getZ(), 1.0D);
+        }
+        if (propellerSpeed <= 30.0F) {
+            return;
+        }
+
+        double bladeScale = propellerSpeed * 0.001D;
+        double spreadRange = 8.0D;
+        double randomX = -spreadRange * 0.5D + spreadRange * Math.random();
+        double randomZ = -spreadRange * 0.5D + spreadRange * Math.random();
+        double downDistance = Math.min(12.0D, propellerSpeed / 15.0D);
+        downDistance = downDistance * 0.5D + downDistance * 0.5D * Math.random();
+        Location start = location.clone().add(randomX, 3.0D, randomZ);
+        RayTraceResult result = world.rayTraceBlocks(start, new Vector(0.0D, -1.0D, 0.0D),
+                downDistance, FluidCollisionMode.SOURCE_ONLY, false);
+        if (result == null || result.getHitPosition() == null || result.getHitBlock() == null) {
+            return;
+        }
+        Location hit = result.getHitPosition().toLocation(world);
+        double distanceScale = (downDistance - start.distance(hit)) / downDistance;
+        Block block = result.getHitBlock();
+        double velocityX = randomX * bladeScale * distanceScale;
+        double velocityZ = randomZ * bladeScale * distanceScale;
+        if (isRotorDust(block.getType())) {
+            world.spawnParticle(Particle.BLOCK, hit, 0,
+                    velocityX, 0.02D, velocityZ, 1.0D, block.getBlockData());
+        } else if (isWater(block)) {
+            world.spawnParticle(Particle.SPLASH, hit, 0, velocityX, 0.02D, velocityZ, 1.0D);
+            world.spawnParticle(Particle.BUBBLE, hit, 0, velocityX, 0.02D, velocityZ, 1.0D);
+            world.spawnParticle(Particle.CLOUD, hit, 1, 0.0D, 0.0D, 0.0D, 0.0D);
+        }
+    }
+
+    private static boolean isRotorDust(Material material) {
+        return switch (material) {
+            case DIRT, COARSE_DIRT, ROOTED_DIRT, GRASS_BLOCK, PODZOL, MYCELIUM,
+                    GRAVEL, SAND, RED_SAND, SUSPICIOUS_GRAVEL, SUSPICIOUS_SAND -> true;
+            default -> false;
+        };
+    }
+
+    private static boolean isWater(Block block) {
+        return block.getType() == Material.WATER
+                || block.getBlockData() instanceof Waterlogged waterlogged && waterlogged.isWaterlogged();
+    }
+
+    private static Vector rotateBodyOffset(LandVehicleSpec.Point point, float pitch, float roll) {
+        double rollRadians = Math.toRadians(roll);
+        double rollCosine = Math.cos(rollRadians);
+        double rollSine = Math.sin(rollRadians);
+        double x = point.x() * rollCosine - point.y() * rollSine;
+        double y = point.x() * rollSine + point.y() * rollCosine;
+        double pitchRadians = Math.toRadians(pitch);
+        double pitchCosine = Math.cos(pitchRadians);
+        double pitchSine = Math.sin(pitchRadians);
+        return new Vector(x, y * pitchCosine - point.z() * pitchSine,
+                y * pitchSine + point.z() * pitchCosine);
     }
 
     /** Direct server-side translation of PlaneEntity#updateVehicleMotion. */
@@ -1205,6 +1414,17 @@ public final class LandVehicle {
         this.velocity = velocity.clone();
     }
 
+    /** Reconstructs vanilla's transient on-ground flag after persisted entities respawn. */
+    public void refreshGroundState() {
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        onGround = VehicleCollisionMover.move(world, location,
+                new Vector(0.0D, -0.001D, 0.0D), false,
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight()).onGround();
+    }
+
     public float traction() {
         return traction;
     }
@@ -1219,7 +1439,8 @@ public final class LandVehicle {
             return driver().isEmpty() && supported && Math.abs(waterSpeed) < 0.001F
                     && velocity.lengthSquared() < 1.0E-6D && motion.lengthSquared() < 1.0E-6D;
         }
-        if (spec.motionType() == LandVehicleSpec.MotionType.AIR) {
+        if (spec.motionType() == LandVehicleSpec.MotionType.AIR
+                || spec.motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
             return driver().isEmpty() && onGround && velocity.lengthSquared() < 1.0E-8D
                     && motion.lengthSquared() < 1.0E-8D && Math.abs(propellerSpeed) < 0.01F;
         }
@@ -1239,7 +1460,8 @@ public final class LandVehicle {
     }
 
     public float planeRoll() {
-        return planeRoll;
+        return spec.motionType() == LandVehicleSpec.MotionType.HELICOPTER
+                ? planeBodyRoll : planeRoll;
     }
 
     public float propellerSpeed() {
@@ -1256,17 +1478,23 @@ public final class LandVehicle {
 
     public void restorePlaneState(float pitch, float roll, float restoredPropellerSpeed,
                                   float restoredFlapAngle, float restoredElevatorAngle) {
-        if (spec.motionType() != LandVehicleSpec.MotionType.AIR) {
+        if (spec.motionType() != LandVehicleSpec.MotionType.AIR
+                && spec.motionType() != LandVehicleSpec.MotionType.HELICOPTER) {
             return;
         }
         location.setPitch(pitch);
-        planeRoll = roll;
         propellerSpeed = restoredPropellerSpeed;
-        flapAngle = restoredFlapAngle;
-        elevatorAngle = restoredElevatorAngle;
         bodyPitch = pitch;
         planeBodyRoll = roll;
-        rig.setPlaneAnimations(propellerRotation, flapAngle, elevatorAngle);
+        if (spec.motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
+            rig.setHelicopterAnimations(propellerRotation,
+                    helicopterJoystickForward, helicopterJoystickStrafe);
+        } else {
+            planeRoll = roll;
+            flapAngle = restoredFlapAngle;
+            elevatorAngle = restoredElevatorAngle;
+            rig.setPlaneAnimations(propellerRotation, flapAngle, elevatorAngle);
+        }
         rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
                 bodyPitch, planeBodyRoll, false, age);
     }

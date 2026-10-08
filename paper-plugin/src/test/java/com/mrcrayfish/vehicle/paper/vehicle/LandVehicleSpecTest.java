@@ -314,7 +314,52 @@ class LandVehicleSpecTest {
         assertEquals(180.0F, spec.seats().get(3).yawOffset(), EPSILON);
         assertFalse(spec.canTowTrailers());
         assertEquals(spec, LandVehicleSpec.byId("golf_cart"));
-        assertEquals(12, LandVehicleSpec.ids().size());
+        assertEquals(13, LandVehicleSpec.ids().size());
+    }
+
+    @Test
+    void compactHelicopterMatchesGeneratedPropertiesAndComplexModelRig() {
+        LandVehicleSpec spec = LandVehicleSpec.COMPACT_HELICOPTER;
+        assertEquals(LandVehicleSpec.MotionType.HELICOPTER, spec.motionType());
+        assertEquals(2.0F, spec.entityWidth(), EPSILON);
+        assertEquals(2.0F, spec.entityHeight(), EPSILON);
+        assertEquals(1.0F, spec.bodyScale(), EPSILON);
+        assertEquals(0.0F, spec.axleOffset(), EPSILON);
+        assertEquals(0.0F, spec.wheelOffset(), EPSILON);
+        assertPoint(spec.bodyOrigin(), 0.0F, 0.5F, 0.0F);
+        assertEquals(25.0F, spec.enginePower(), EPSILON);
+        assertEquals(15_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(0.25F, spec.energyPerTick(), EPSILON);
+        assertEquals(0.5F, spec.minEnginePitch(), EPSILON);
+        assertEquals(1.0F, spec.maxEnginePitch(), EPSILON);
+        assertEquals("vehicle:entity.vehicle.helicopter_rotor", spec.engineSound());
+        assertTrue(spec.exhaustFumes());
+        assertPoint(spec.exhaustPosition(), -0.597275F, 1.96875F, -2.3870437F);
+        assertNull(spec.engine());
+        assertNull(spec.steering());
+        assertNull(spec.fuelFiller());
+        assertNull(spec.ignition());
+        assertTrue(spec.wheels().isEmpty());
+        assertEquals(2, spec.seats().size());
+        assertPoint(spec.seats().getFirst().sourceOffset(), -0.46875F, 0.625F, 0.1875F);
+        assertPoint(spec.seats().getLast().sourceOffset(), 0.46875F, 0.625F, 0.1875F);
+        assertEquals(4, spec.bodyParts().size());
+        assertPoint(spec.bodyParts().get(0).center(), 0.0F, 0.6875F, 0.0F);
+        assertPoint(spec.bodyParts().get(1).center(), -0.46875F, 0.75F, 0.84375F);
+        assertPoint(spec.bodyParts().get(2).center(), 0.0F, 2.8125F, -0.5625F);
+        assertPoint(spec.bodyParts().get(3).center(), 0.1875F, 2.03125F, -5.09375F);
+        assertEquals(4.0F, spec.modelScaleCorrection("compact_helicopter_body"), EPSILON);
+        assertEquals(3.0F, spec.modelScaleCorrection("compact_helicopter_blades"), EPSILON);
+        assertEquals(1.0F, spec.modelScaleCorrection("compact_helicopter_tail_rotor"), EPSILON);
+        assertPoint(spec.wheeliePivot(), 0.0F, 0.0F, 0.0F);
+
+        LandVehicleSpec.Helicopter helicopter = spec.helicopter();
+        assertNotNull(helicopter);
+        assertEquals(0.015F, helicopter.movementStrength(), EPSILON);
+        assertEquals(0.05F, helicopter.rotateStrength(), EPSILON);
+        assertEquals(30.0F, helicopter.maxLeanAngle(), EPSILON);
+        assertEquals(0.001F, helicopter.drag(), EPSILON);
+        assertEquals(spec, LandVehicleSpec.byId("compact_helicopter"));
     }
 
     @Test

@@ -62,6 +62,9 @@ public final class LandVehicleRig {
     private float propellerRotation;
     private float flapAngle;
     private float elevatorAngle;
+    private float helicopterBladeRotation;
+    private float helicopterJoystickForward;
+    private float helicopterJoystickStrafe;
     private boolean removed;
 
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
@@ -274,7 +277,9 @@ public final class LandVehicleRig {
         }
 
         float yaw = root.getYaw();
-        Quaternionf chassisRotation = SourceTransforms.chassisRotation(wheelieAngle, bodyRoll);
+        Quaternionf chassisRotation = usesAircraftBodyRotation()
+                ? SourceTransforms.aircraftRotation(wheelieAngle, bodyRoll)
+                : SourceTransforms.chassisRotation(wheelieAngle, bodyRoll);
         Vector3f bodyOrigin = point(spec.bodyOrigin());
         Vector3f driverSeat = pigAnchor(chassis(driverSeatOffset(), wheelieAngle, bodyRoll));
         Location renderAnchor = local(root, driverSeat);
@@ -445,7 +450,7 @@ public final class LandVehicleRig {
                 new Vector3f(visualScale), sourceRotation);
     }
 
-    /** Reproduces the actions in the two original Sports Plane complex-model files. */
+    /** Reproduces the actions in the original plane and helicopter complex-model files. */
     private void applyPlanePartRotation(Quaternionf rotation, String model) {
         switch (model) {
             case "sports_plane_propeller" -> rotation.rotateZ(radians(propellerRotation));
@@ -461,6 +466,11 @@ public final class LandVehicleRig {
             case "sports_plane_joystick" -> rotation
                     .rotateX(radians(elevatorAngle * -0.25F))
                     .rotateZ(radians(flapAngle * -0.25F));
+            case "compact_helicopter_blades" -> rotation.rotateY(radians(helicopterBladeRotation));
+            case "compact_helicopter_tail_rotor" -> rotation.rotateX(radians(helicopterBladeRotation));
+            case "compact_helicopter_joystick" -> rotation
+                    .rotateX(radians(helicopterJoystickForward * 10.0F))
+                    .rotateZ(radians(helicopterJoystickStrafe * -10.0F));
             default -> {
             }
         }
@@ -470,6 +480,13 @@ public final class LandVehicleRig {
         this.propellerRotation = propellerRotation;
         this.flapAngle = flapAngle;
         this.elevatorAngle = elevatorAngle;
+    }
+
+    public void setHelicopterAnimations(float bladeRotation, float joystickForward,
+                                        float joystickStrafe) {
+        this.helicopterBladeRotation = bladeRotation;
+        this.helicopterJoystickForward = joystickForward;
+        this.helicopterJoystickStrafe = joystickStrafe;
     }
 
     private void placePropertyPart(ItemDisplay display, LandVehicleSpec.Part part,
@@ -566,8 +583,16 @@ public final class LandVehicleRig {
     }
 
     private Vector3f chassis(Vector3f sourcePoint, float wheelieAngle, float bodyRoll) {
+        if (usesAircraftBodyRotation()) {
+            return SourceTransforms.aircraftPoint(sourcePoint, wheelieAngle, bodyRoll);
+        }
         return SourceTransforms.chassisPoint(
                 sourcePoint, point(spec.wheeliePivot()), wheelieAngle, bodyRoll);
+    }
+
+    private boolean usesAircraftBodyRotation() {
+        return spec.motionType() == LandVehicleSpec.MotionType.AIR
+                || spec.motionType() == LandVehicleSpec.MotionType.HELICOPTER;
     }
 
     private static Vector3f relativeToSeat(Vector3f point, Vector3f seat) {

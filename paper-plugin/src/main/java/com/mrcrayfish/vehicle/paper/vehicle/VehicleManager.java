@@ -195,8 +195,14 @@ public final class VehicleManager {
             return;
         }
         if (vehicle.mount(player)) {
-            player.sendRichMessage("<gray>W/S accelerație, A/D direcție, Space frână de mână, Shift coborâre. "
-                    + "Inimile monturii indică nivelul combustibilului.</gray>");
+            if (vehicle.spec().motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
+                player.sendRichMessage("<gray>W/S înainte/înapoi, A/D deplasare laterală, "
+                        + "Space urcare, Sprint coborâre, privește pentru direcție. "
+                        + "Inimile monturii indică nivelul combustibilului.</gray>");
+            } else {
+                player.sendRichMessage("<gray>W/S accelerație, A/D direcție, Space frână de mână, "
+                        + "Shift coborâre. Inimile monturii indică nivelul combustibilului.</gray>");
+            }
         } else {
             player.sendRichMessage("<red>Nu mai este niciun loc liber în acest vehicul.</red>");
         }
@@ -319,6 +325,7 @@ public final class VehicleManager {
     private void restore(StoredVehicle stored, LandVehicleSpec spec, World world) {
         Location location = new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F);
         LandVehicle vehicle = spawn(stored.id(), spec, location);
+        vehicle.refreshGroundState();
         vehicle.setFuel(stored.fuel());
         vehicle.setVelocity(new Vector(stored.velocityX(), stored.velocityY(), stored.velocityZ()));
         vehicle.setTraction(stored.traction());
