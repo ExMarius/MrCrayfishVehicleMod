@@ -23,3 +23,7 @@ run
 logs
 
 classes
+
+# Local Python bytecode
+__pycache__/
+*.py[cod]
