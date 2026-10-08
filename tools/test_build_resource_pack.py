@@ -204,6 +204,26 @@ class ResourcePackBuildTest(unittest.TestCase):
             self.assertEqual([0, 0, 2, 17], rail["faces"]["up"]["uv"])
             self.assertEqual([0, 0, 2, 17], rail["faces"]["down"]["uv"])
 
+    def test_standard_wheel_declares_its_authored_texture_size(self):
+        # r37: the source model authors its UV against its own declared 32x32
+        # canvas (max coordinate used is 11.5, deliberately confined to the small
+        # top-left region of wheel.png where the artwork lives; the rest of the
+        # 32x32 texture is transparent). Dropping that declaration and falling
+        # back to vanilla's 16x16 default reinterprets the same raw UV numbers as
+        # roughly double their intended fraction, sampling past the artwork into
+        # the transparent region -- the "purple missing pixels" seen on every
+        # vehicle's wheels (shared by all land vehicles and trailers via this one
+        # model); see SOURCE_POSITION_AUDIT.md r37 entry.
+        model = self.read_json("assets/vehicle/models/item/standard_wheel.json")
+        self.assertEqual([32, 32], model["texture_size"])
+        max_uv = max(
+            value
+            for element in model["elements"]
+            for face in element["faces"].values()
+            for value in face["uv"]
+        )
+        self.assertLessEqual(max_uv, model["texture_size"][0])
+
     def test_jet_ski_body_and_engine_are_complete(self):
 
         model = self.read_json("assets/vehicle/models/item/jet_ski_body.json")
@@ -311,10 +331,17 @@ class ResourcePackBuildTest(unittest.TestCase):
     def test_atv_mini_bike_smart_car_and_boat_models_use_released_geometry_and_audio(self):
         atv_body = self.read_json("assets/vehicle/models/item/atv_body.json")
         self.assertEqual(46, len(atv_body["elements"]))
-        self.assertEqual("minecraft:block/lime_concrete", atv_body["textures"]["body"])
+        # The vendored source model (exported with MrCrayfish's own Model Creator,
+        # the closest available reference for this un-decompiled vehicle) declares
+        # "body": white_concrete and "frame": anvil itself. r37 restores those
+        # values; an earlier port had substituted lime_concrete/gray_concrete with
+        # no documented reason, rendering the default-white, dyeable ATV green.
+        self.assertEqual("minecraft:block/white_concrete", atv_body["textures"]["body"])
+        self.assertEqual("minecraft:block/anvil", atv_body["textures"]["frame"])
         atv_handles = self.read_json("assets/vehicle/models/item/atv_handles.json")
         self.assertEqual(11, len(atv_handles["elements"]))
-        self.assertEqual("minecraft:block/lime_concrete", atv_handles["textures"]["handles"])
+        self.assertEqual("minecraft:block/black_concrete", atv_handles["textures"]["handles"])
+        self.assertEqual("minecraft:block/stone", atv_handles["textures"]["frame_alt"])
         self.assertIn("assets/vehicle/sounds/entity/atv/engine.ogg", self.entries)
 
         mini_bike_body = self.read_json("assets/vehicle/models/item/mini_bike_body.json")

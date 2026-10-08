@@ -129,7 +129,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r36 — twenty-three vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r37 — twenty-three vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -495,21 +495,30 @@ def build(output: Path) -> tuple[Path, str]:
             ROOT / "tools/source_assets/vehicle_atv_body.json",
             namespace / "models/item/atv_body.json",
             {
+                # The vendored source model (exported with MrCrayfish's own Model
+                # Creator, the closest available reference for this un-decompiled
+                # vehicle) declares "body": white_concrete and "frame": anvil itself.
+                # An earlier port substituted lime_concrete/gray_concrete here with
+                # no documented reason, turning the dyeable default-white ATV green;
+                # restored to the vendored file's own choices. See
+                # SOURCE_POSITION_AUDIT.md r37 entry.
                 "seat": "minecraft:block/black_wool",
                 "axel": "minecraft:block/light_gray_concrete",
-                "body": "minecraft:block/lime_concrete",
-                "frame": "minecraft:block/gray_concrete",
-                "particle": "minecraft:block/lime_concrete",
+                "body": "minecraft:block/white_concrete",
+                "frame": "minecraft:block/anvil",
+                "particle": "minecraft:block/white_concrete",
             },
         )
         convert_model(
             ROOT / "tools/source_assets/vehicle_atv_handles.json",
             namespace / "models/item/atv_handles.json",
             {
-                "handles": "minecraft:block/lime_concrete",
-                "frame_alt": "minecraft:block/light_gray_concrete",
+                # Same restoration as atv_body above: the vendored source model
+                # declares "handles": black_concrete and "frame_alt": stone itself.
+                "handles": "minecraft:block/black_concrete",
+                "frame_alt": "minecraft:block/stone",
                 "frame_main": "minecraft:block/gray_concrete",
-                "particle": "minecraft:block/lime_concrete",
+                "particle": "minecraft:block/black_concrete",
             },
         )
         convert_model(
@@ -694,6 +703,17 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/item/standard_wheel.json",
             namespace / "models/item/standard_wheel.json",
             {"particle": "vehicle:item/standard_wheel", "wheel": "vehicle:item/standard_wheel"},
+            # The source model authors its UV against its own declared 32x32 canvas
+            # (max coordinate used is 11.5, deliberately confined to the small
+            # top-left region of wheel.png where the actual artwork lives; the rest
+            # of the 32x32 texture is transparent). Dropping that declaration and
+            # falling back to vanilla's 16x16 default reinterprets the same raw UV
+            # numbers as roughly double their intended fraction (e.g. 11.5/16=72%
+            # instead of 11.5/32=36%), which samples past the drawn artwork into the
+            # transparent region — this is the "purple missing pixels" users see on
+            # every vehicle's wheels (shared by all land vehicles and trailers via
+            # this one model); see SOURCE_POSITION_AUDIT.md r37 entry.
+            texture_size=[32, 32],
         )
         convert_model(
             ASSETS / "models/item/small_engine.json",
@@ -1025,7 +1045,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r36.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r37.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")
