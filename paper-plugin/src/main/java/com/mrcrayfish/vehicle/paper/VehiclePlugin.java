@@ -24,7 +24,7 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
 
         vehicleManager.start();
-        getLogger().info("Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, four aircraft, and five trailers are ready.");
+        getLogger().info("Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, and five trailers are ready.");
     }
 
     @Override
