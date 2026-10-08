@@ -50,6 +50,30 @@ jobs:
           install -m 700 oracle-panel/start-services.sh "$ROOT/start.sh"
           ln -sfn "$ROOT/start.sh" "$HOME/start.sh"
 
+          # localIP is a dial target for FRPC, not a listener address. The old
+          # wildcard value causes the remote proxy to reset instead of reaching
+          # the panel/Minecraft listeners on this Cloud Shell machine.
+          python3 - "$ROOT/frp" <<'PY'
+          import os
+          import re
+          import sys
+          directory = sys.argv[1]
+          pattern = re.compile(r'(?m)^(\s*(?:localIP|local_ip)\s*[:=]\s*)["\x27]?0\.0\.0\.0["\x27]?')
+          for name in ("frpc.yaml", "frpc.yml", "frpc.toml"):
+              path = os.path.join(directory, name)
+              if not os.path.isfile(path):
+                  continue
+              with open(path, "r") as source:
+                  original = source.read()
+              updated, count = pattern.subn(r'\g<1>"127.0.0.1"', original)
+              if count:
+                  temporary = path + ".panel-tmp"
+                  with open(temporary, "w") as output:
+                      output.write(updated)
+                  os.chmod(temporary, 0o600)
+                  os.replace(temporary, path)
+          PY
+
           python3 "$PANEL/panel.py" --root "$ROOT" --init-auth
           test -s "$PANEL/auth.json"
           test "$(stat -c %a "$PANEL/auth.json")" = 600
