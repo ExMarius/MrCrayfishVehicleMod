@@ -314,7 +314,7 @@ class LandVehicleSpecTest {
         assertEquals(180.0F, spec.seats().get(3).yawOffset(), EPSILON);
         assertFalse(spec.canTowTrailers());
         assertEquals(spec, LandVehicleSpec.byId("golf_cart"));
-        assertEquals(13, LandVehicleSpec.ids().size());
+        assertEquals(14, LandVehicleSpec.ids().size());
     }
 
     @Test
@@ -360,6 +360,38 @@ class LandVehicleSpecTest {
         assertEquals(30.0F, helicopter.maxLeanAngle(), EPSILON);
         assertEquals(0.001F, helicopter.drag(), EPSILON);
         assertEquals(spec, LandVehicleSpec.byId("compact_helicopter"));
+    }
+
+    @Test
+    void sofacopterMatchesGeneratedPropertiesAndReleasedFurnitureBody() {
+        LandVehicleSpec spec = LandVehicleSpec.SOFACOPTER;
+        assertEquals(LandVehicleSpec.MotionType.HELICOPTER, spec.motionType());
+        assertEquals(1.0F, spec.entityWidth(), EPSILON);
+        assertEquals(1.0F, spec.entityHeight(), EPSILON);
+        assertEquals(1.0F, spec.bodyScale(), EPSILON);
+        assertPoint(spec.bodyOrigin(), 0.0F, 0.5F, 0.003875F);
+        assertEquals(15.0F, spec.enginePower(), EPSILON);
+        assertEquals(40_000.0F, spec.energyCapacity(), EPSILON);
+        assertEquals(0.5F, spec.energyPerTick(), EPSILON);
+        assertEquals(0.5F, spec.minEnginePitch(), EPSILON);
+        assertEquals(1.25F, spec.maxEnginePitch(), EPSILON);
+        assertNull(spec.engineSound());
+        assertFalse(spec.exhaustFumes());
+        assertNull(spec.engine());
+        assertNull(spec.steering());
+        assertPoint(spec.fuelFiller().center(), 0.0F, 0.09375F, 0.503875F);
+        assertEquals(0.45F, spec.fuelFiller().scale(), EPSILON);
+        assertPoint(spec.ignition().center(), -0.578125F, 0.5F, 0.316375F);
+        assertEquals(0.8F, spec.ignition().scale(), EPSILON);
+        assertEquals(2, spec.bodyParts().size());
+        assertPoint(spec.bodyParts().get(0).center(), 0.0F, 1.0F, 0.003875F);
+        assertPoint(spec.bodyParts().get(1).center(), 0.0F, 2.5F, 0.003875F);
+        assertEquals(1.5F, spec.bodyParts().get(1).scale(), EPSILON);
+        assertEquals(3.0F, spec.modelScaleCorrection("sofacopter_blades"), EPSILON);
+        assertTrue(spec.wheels().isEmpty());
+        assertEquals(1, spec.seats().size());
+        assertPoint(spec.seats().getFirst().sourceOffset(), 0.0F, 0.0F, 0.003875F);
+        assertEquals(spec, LandVehicleSpec.byId("sofacopter"));
     }
 
     @Test

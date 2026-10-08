@@ -41,6 +41,9 @@ public final class EngineSoundController {
 
     public void tick(Location location, boolean active, float targetPitch, float targetVolume,
                      Collection<UUID> riders) {
+        /* Released HelicopterEntity deliberately returns no engine sound for the
+         * Sofacopter; keep that source silence instead of inventing a sample. */
+        active = active && hasEngineSound();
         volume += ((active ? Math.max(0.0F, targetVolume) : 0.0F) - volume) * INTERPOLATION;
         pitch += (clampPitch(targetPitch) - pitch) * INTERPOLATION;
 
@@ -63,7 +66,9 @@ public final class EngineSoundController {
     }
 
     public void stop(Location location) {
-        if (location.getWorld() == null) {
+        if (!hasEngineSound() || location.getWorld() == null) {
+            playing = false;
+            ticksUntilReplay = 0.0D;
             return;
         }
         SoundStop stop = SoundStop.namedOnSource(Key.key(spec.engineSound()), Sound.Source.NEUTRAL);
@@ -76,8 +81,12 @@ public final class EngineSoundController {
         ticksUntilReplay = 0.0D;
     }
 
+    private boolean hasEngineSound() {
+        return spec.engineSound() != null && !spec.engineSound().isBlank();
+    }
+
     private void play(Location location, Collection<UUID> riders) {
-        if (location.getWorld() == null || !rig.valid()) {
+        if (!hasEngineSound() || location.getWorld() == null || !rig.valid()) {
             return;
         }
         for (Player player : location.getWorld().getPlayers()) {
@@ -105,6 +114,9 @@ public final class EngineSoundController {
 
     /** Original OGG sample duration divided by pitch; one tick overlap avoids an audible gap. */
     public static double replayTicks(String sound, float pitch) {
+        if (sound == null || sound.isBlank()) {
+            return 1.0D;
+        }
         double ticksAtPitchOne;
         if (sound.endsWith("go_kart.engine")) {
             ticksAtPitchOne = 74.43083900226758D;

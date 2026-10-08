@@ -470,6 +470,11 @@ public final class LandVehicle {
         soundController.tick(location, driver != null && enginePowered,
                 targetPitch, targetVolume, riders);
 
+        /* Rotor downwash and transformed exhaust are CompactHelicopterEntity overrides,
+         * not generic HelicopterEntity behavior inherited by the Sofacopter. */
+        if (!"compact_helicopter".equals(spec.id())) {
+            return;
+        }
         World world = location.getWorld();
         if (world == null) {
             return;

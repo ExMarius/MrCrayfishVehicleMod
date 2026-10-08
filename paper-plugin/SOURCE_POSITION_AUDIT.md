@@ -151,6 +151,18 @@ The Compact-specific exhaust point `(-9.5564,23.5,-38.1927)` model pixels is tra
 
 As with the Sports Plane, only protocol-incompatible asset details are adapted: the 91-element body is normalized to one quarter and the four-element main blades to one third around `(8,8,8)`, with exact inverse display scales `4` and `3`; all five original helicopter models retain their elements and textures, and unsupported element rotations are mapped to the nearest 1.21.4-legal angle rather than replaced with fallback geometry.
 
+### Sofacopter source recovery and renderer
+
+The Sofacopter is explicitly registered as dependent on MrCrayfish's Furniture Mod and its renderer references `cfm:red_sofa`. The last complete released `1.16.X` renderer draws that sofa; the dev renderer comments out only the draw call while still registering the red sofa in its interaction-ray transforms. Resource pack r26 therefore restores the intended body with the exact official CFM `sofa_single` 11-element geometry, red-wool texture, and oak-log supports instead of treating an accidental commented line as an invisible vehicle.
+
+The remainder follows the dev source: the six-element `sofa_helicopter_arm` is translated upward by eight model pixels, and the 12-element Sports Plane wing is translated upward by 32 pixels, rotates around Y with blade rotation, and has source scale `1.5`. The wing's already-required one-third vanilla normalization is inverted by display scale `3`, preserving the source rotor size and pivot. The arm's legacy anvil texture reference is represented by vanilla gray concrete, with light-gray concrete retained for its bright metal sections, avoiding a missing-texture fallback while preserving its geometry and material contrast. The unused `sofa_helicopter_skid` remains unrendered because both released and dev renderers leave its old item draw block commented and the current entity exposes no skid item or transform.
+
+The serialized body translation is `0.062` model pixels, giving body origin `(0,0.5,0.003875)`. The arm center is `(0,1.0,0.003875)` and rotor center `(0,2.5,0.003875)`. The generated seat at zero becomes `(0,0,0.003875)` before the accepted global rider correction. The fuel filler is `(0,0.09375,0.503875)` at scale `0.45`; the source-default-hidden ignition transform is `(-0.578125,0.5,0.316375)` at scale `0.8`.
+
+`SofacopterEntity` adds no motion override, so it inherits the exact default HelicopterProperties and generic blade/lift/movement/yaw/drag/lean equations already audited for the Compact Helicopter, but with generated engine power `15`, capacity `40,000`, and consumption `0.5/tick`. Its entity dimensions are `1 × 1`. It does not inherit `CompactHelicopterEntity`'s exhaust/downwash override. The released `HelicopterEntity#getEngineSound()` explicitly returns `null`, and the dev generated properties still omit `engineSound`; r26 therefore preserves source silence rather than assigning the Compact rotor sample. Blade speed and velocity retain the shared helicopter persistence path.
+
+The source custom Sofacopter limb pose (`-55°` arms and `-90°` legs with side angles) is not representable for one mounted player on an unmodified client. It uses the same accepted stable vanilla mount pose and global rider-height correction as the other vehicles, without forcing player camera or body yaw.
+
 ### Vehicle Trailer passenger offsets
 
 The serialized or source-default offsets are:
@@ -167,7 +179,8 @@ The serialized or source-default offsets are:
 - Golf Cart `(0, 0, 0)` (source default);
 - Jet Ski `(0, -0.094, -0.650)` (serialized from generator input `-0.09375`);
 - Sports Plane `(0, 0, 0)` (source default);
-- Compact Helicopter `(0, 0, 0)` (source default).
+- Compact Helicopter `(0, 0, 0)` (source default);
+- Sofacopter `(0, 0, 0)` (source default).
 
 The Vehicle Trailer contributes the source `+0.5 Y` passenger-riding offset before these values.
 
@@ -208,6 +221,7 @@ Fertilizer and Seeder cargo displays now use the original per-stack count diviso
 19. Sports Car steering uses a display-only `(-3, +5, +2)`-pixel correction derived from the transformed wheel and dashboard-column bounds, which overlap on all three axes; source geometry, scale, rotation, and animation remain unchanged.
 20. The r23/r24 Sports Plane port adds its complete source body/complex rig, generated wheel and seat positions, flight/control-surface equations, persistence, and original engine sample; r24 narrowly legalizes source element angles rejected by vanilla 1.21.4.
 21. The r25 Compact Helicopter port adds its complete 91-element body and four cosmetic models, exact two-seat/pivot geometry, helicopter force/blade/yaw/lean equations, joystick and both rotor animations, source sound/fuel/persistence, transformed exhaust, and rotor downwash.
+22. The r26 Sofacopter port restores the official Furniture Mod red sofa named by both source renderer generations, retains the dev rotor arm and wing selection/pivots, and applies its generated 15-power, 40,000-capacity helicopter behavior without inventing sound or Compact-only effects.
 
 ## Exact ports versus vanilla-client adaptations
 
@@ -222,7 +236,8 @@ Exact matrix/equation ports:
 - Golf Cart body/wheel/seat/rear-yaw/steering/filler/ignition geometry and source-selected rotor sample;
 - Jet Ski boat-renderer/body/seat/handle/filler coordinates, released water-state and buoyancy equations, and original engine sample;
 - Sports Plane body/wheel/seat/part pivots, flight and control-surface equations, persistence, and original engine sample;
-- Compact Helicopter body/seat/cosmetic pivots, blade/lift/movement/yaw/drag/lean equations, fuel/persistence, exhaust/downwash behavior, and original rotor sample.
+- Compact Helicopter body/seat/cosmetic pivots, blade/lift/movement/yaw/drag/lean equations, fuel/persistence, exhaust/downwash behavior, and original rotor sample;
+- Sofacopter serialized body/seat/filler/ignition positions, rotor-arm/wing pivots and scale, generic helicopter equations, capacity/consumption, silence, and persistence.
 
 Vanilla-client adaptations that intentionally remain:
 
@@ -237,4 +252,5 @@ Vanilla-client adaptations that intentionally remain:
 - the Jet Ski restores the parent repository's last complete released `1.16.X` boat motion because the audited dev method is empty. Fluid heights and source/flowing classification are mapped to Paper `Levelled`/`Waterlogged` block data, and directional wake velocity is represented with Paper's closest particle spread controls;
 - source element rotations unsupported by vanilla 1.21.4 are mapped to the nearest legal `0`, `±22.5`, or `±45` degree angle; oversized source geometry is normalized around the item origin and exactly inverse-scaled by its display. This affects only static model compatibility, not part pivots or runtime animation angles;
 - the Compact Helicopter's custom dust particle is represented by the struck block's vanilla block particle, while its source splash, bubble, cloud, smoke, ray distance, spread, and velocity equations remain available to unmodified clients;
+- the Sofacopter recovers the official red sofa from the last renderer generation that actually executes its draw call because the dev renderer still ray-traces that model but comments out only rendering. Its arm's obsolete anvil-atlas reference uses gray concrete to avoid fallback, and its special per-limb seated pose uses the accepted native mount pose;
 - custom per-limb player pose animation, damage wobble/destroy overlays, open fuel-door animation, and inserted-key animation are not representable with the current vanilla-client rig. These limitations do not change the audited static part coordinates.

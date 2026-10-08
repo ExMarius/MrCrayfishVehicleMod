@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r25_pack(self):
+    def test_configured_sha1_matches_deterministic_r26_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -206,6 +206,24 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertIn("entity.vehicle.helicopter_rotor", sounds)
         rotor = self.archive.read("assets/vehicle/sounds/entity/vehicle/helicopter_rotor.ogg")
         self.assertEqual(27_922, self.last_ogg_granule(rotor))
+
+    def test_sofacopter_models_use_the_original_sofa_arm_and_wing_assets(self):
+        expected_elements = {
+            "sofacopter_sofa": 11,
+            "sofacopter_arm": 6,
+            "sofacopter_blades": 12,
+        }
+        for model, count in expected_elements.items():
+            data = self.read_json(f"assets/vehicle/models/item/{model}.json")
+            self.assertEqual(count, len(data["elements"]), model)
+            self.assertIn(f"assets/vehicle/items/{model}.json", self.entries)
+        sofa = self.read_json("assets/vehicle/models/item/sofacopter_sofa.json")
+        self.assertEqual("minecraft:block/red_wool", sofa["textures"]["wool"])
+        self.assertEqual("minecraft:block/oak_log", sofa["textures"]["support"])
+        arm = self.read_json("assets/vehicle/models/item/sofacopter_arm.json")
+        self.assertEqual("minecraft:block/gray_concrete", arm["textures"]["0"])
+        blades = self.read_json("assets/vehicle/models/item/sofacopter_blades.json")
+        self.assertEqual("vehicle:item/sports_plane_wings", blades["textures"]["wings"])
 
     @staticmethod
     def last_ogg_granule(data):

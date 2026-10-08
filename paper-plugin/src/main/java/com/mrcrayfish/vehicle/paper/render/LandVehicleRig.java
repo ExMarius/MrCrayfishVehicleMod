@@ -466,7 +466,8 @@ public final class LandVehicleRig {
             case "sports_plane_joystick" -> rotation
                     .rotateX(radians(elevatorAngle * -0.25F))
                     .rotateZ(radians(flapAngle * -0.25F));
-            case "compact_helicopter_blades" -> rotation.rotateY(radians(helicopterBladeRotation));
+            case "compact_helicopter_blades", "sofacopter_blades" ->
+                    rotation.rotateY(radians(helicopterBladeRotation));
             case "compact_helicopter_tail_rotor" -> rotation.rotateX(radians(helicopterBladeRotation));
             case "compact_helicopter_joystick" -> rotation
                     .rotateX(radians(helicopterJoystickForward * 10.0F))

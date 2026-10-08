@@ -97,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r25 — thirteen vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r26 — fourteen vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -156,6 +156,9 @@ def build(output: Path) -> tuple[Path, str]:
             "compact_helicopter_joystick": ("vehicle:item/compact_helicopter_joystick", 16383998),
             "compact_helicopter_seat": ("vehicle:item/compact_helicopter_seat", 16383998),
             "compact_helicopter_tail_rotor": ("vehicle:item/compact_helicopter_tail_rotor", 16383998),
+            "sofacopter_sofa": ("vehicle:item/sofacopter_sofa", 0xFFFFFF),
+            "sofacopter_arm": ("vehicle:item/sofacopter_arm", 0xFFFFFF),
+            "sofacopter_blades": ("vehicle:item/sofacopter_blades", 0xFFFFFF),
             "go_kart_steering_wheel": ("vehicle:item/go_kart_steering_wheel", 0xFFFFFF),
             "tow_bar": ("vehicle:item/tow_bar", 0xFFFFFF),
             "fertilizer_body": ("vehicle:item/fertilizer_body", 16383998),
@@ -357,6 +360,35 @@ def build(output: Path) -> tuple[Path, str]:
                 geometry_scale=geometry_scale,
                 legalize_rotations=True,
             )
+        convert_model(
+            ROOT / "tools/source_assets/cfm_sofa_single.json",
+            namespace / "models/item/sofacopter_sofa.json",
+            {
+                "wool": "minecraft:block/red_wool",
+                "support": "minecraft:block/oak_log",
+                "particle": "minecraft:block/red_wool",
+            },
+        )
+        convert_model(
+            ASSETS / "models/vehicle/sofa_helicopter_arm.json",
+            namespace / "models/item/sofacopter_arm.json",
+            {
+                "0": "minecraft:block/gray_concrete",
+                "1": "minecraft:block/light_gray_concrete",
+                "particle": "minecraft:block/light_gray_concrete",
+            },
+            legalize_rotations=True,
+        )
+        convert_model(
+            ASSETS / "models/vehicle/sports_plane/cosmetics/wings.json",
+            namespace / "models/item/sofacopter_blades.json",
+            {
+                "wings": "vehicle:item/sports_plane_wings",
+                "particle": "vehicle:item/sports_plane_wings",
+            },
+            geometry_scale=1.0 / 3.0,
+            legalize_rotations=True,
+        )
         convert_model(
             ASSETS / "models/vehicle/go_kart_steering_wheel.json",
             namespace / "models/item/go_kart_steering_wheel.json",
@@ -694,7 +726,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r25.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

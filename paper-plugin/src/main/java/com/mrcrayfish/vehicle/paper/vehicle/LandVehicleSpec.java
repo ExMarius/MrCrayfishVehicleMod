@@ -6,8 +6,8 @@ import java.util.Map;
 
 /**
  * Immutable Paper-side equivalent of the generated VehicleProperties,
- * PoweredProperties, LandProperties, and PlaneProperties used by the original mod. Values in
- * these definitions are copied from the generated JSON and source renderers.
+ * PoweredProperties, LandProperties, PlaneProperties, and HelicopterProperties used by the
+ * original mod. Values in these definitions are copied from generated JSON and source renderers.
  */
 public record LandVehicleSpec(
         String id,
@@ -538,6 +538,40 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* Sofacopter is a Furniture Mod-dependent HelicopterEntity. The released renderer
+     * supplies the intended red sofa body that the dev renderer still ray-traces, while
+     * the dev renderer supplies the current arm and Sports Plane wing rotor selection. */
+    public static final LandVehicleSpec SOFACOPTER = new LandVehicleSpec(
+            "sofacopter", "Sofacopter", "sofacopter_sofa",
+            1.0F, 1.0F, 0.6F,
+            1.0F, 0.0F, 0.0F,
+            15.0F, 35.0F, 0.0F, 0.0F, 5.0F,
+            40_000.0F, 0.5F, 0.5F, 1.25F, null,
+            false, new Point(0.0F, 0.0F, 0.0F),
+            null, null,
+            new Part("fuel_door_closed",
+                    new Point(0.0F, 0.09375F, 8.0F * MODEL_UNIT + 0.062F * MODEL_UNIT),
+                    0.45F, 0.0F, 0.0F, 0.0F),
+            new Part("key_hole",
+                    new Point(-9.25F * MODEL_UNIT, 0.5F,
+                            5.0F * MODEL_UNIT + 0.062F * MODEL_UNIT),
+                    0.8F, 0.0F, 0.0F, 0.0F),
+            List.of(
+                    new Part("sofacopter_arm",
+                            new Point(0.0F, 1.0F, 0.062F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sofacopter_blades",
+                            new Point(0.0F, 2.5F, 0.062F * MODEL_UNIT),
+                            1.5F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(),
+            List.of(new Seat(true,
+                    new Point(0.0F, 0.0F, 0.062F * MODEL_UNIT), 0.0F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
     /* PlaneEntity uses the generated Sports Plane body transform (Z -8), display scale
      * 0.85, default four-pixel wheel offset, one driver seat, and three source wheels.
      * Complex-model children are represented as independent displays so their original
@@ -600,7 +634,8 @@ public record LandVehicleSpec(
             Map.entry(GOLF_CART.id, GOLF_CART),
             Map.entry(JET_SKI.id, JET_SKI),
             Map.entry(SPORTS_PLANE.id, SPORTS_PLANE),
-            Map.entry(COMPACT_HELICOPTER.id, COMPACT_HELICOPTER)
+            Map.entry(COMPACT_HELICOPTER.id, COMPACT_HELICOPTER),
+            Map.entry(SOFACOPTER.id, SOFACOPTER)
     );
 
     public static LandVehicleSpec byId(String id) {
@@ -618,8 +653,11 @@ public record LandVehicleSpec(
                 translation.z());
     }
 
-    /** Boat rendering applies its body translation before scale and without the land renderer's pixel conversion. */
+    /** Source renderer body translation after each vehicle's scale and pixel conversion rules. */
     public Point bodyRenderTranslation() {
+        if ("sofacopter".equals(id)) {
+            return new Point(0.0F, 0.0F, 0.062F * MODEL_UNIT);
+        }
         return switch (motionType()) {
             case WATER -> new Point(0.0F, 0.0F, 0.25F);
             case AIR -> new Point(0.0F, 0.0F, -0.425F);
@@ -634,7 +672,8 @@ public record LandVehicleSpec(
         if ("sports_plane".equals(id)) {
             return MotionType.AIR;
         }
-        return "compact_helicopter".equals(id) ? MotionType.HELICOPTER : MotionType.LAND;
+        return "compact_helicopter".equals(id) || "sofacopter".equals(id)
+                ? MotionType.HELICOPTER : MotionType.LAND;
     }
 
     public Plane plane() {
@@ -643,7 +682,7 @@ public record LandVehicleSpec(
                 45.0F, 0.15F, 0.075F, 2.0F) : null;
     }
 
-    /** Exact default HelicopterProperties inherited by the Compact Helicopter. */
+    /** Exact default HelicopterProperties inherited by both implemented helicopter entities. */
     public Helicopter helicopter() {
         return motionType() == MotionType.HELICOPTER
                 ? new Helicopter(0.015F, 0.05F, 30.0F, 0.001F)
@@ -688,6 +727,9 @@ public record LandVehicleSpec(
                 case "compact_helicopter_blades" -> 3.0F;
                 default -> 1.0F;
             };
+        }
+        if ("sofacopter".equals(id) && "sofacopter_blades".equals(model)) {
+            return 3.0F;
         }
         return 1.0F;
     }

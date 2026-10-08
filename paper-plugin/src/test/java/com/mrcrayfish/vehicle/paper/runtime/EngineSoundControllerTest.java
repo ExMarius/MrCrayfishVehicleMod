@@ -51,6 +51,7 @@ class EngineSoundControllerTest {
         assertEquals(11.6630D,
                 EngineSoundController.replayTicks(
                         "vehicle:entity.vehicle.helicopter_rotor", 1.0F), 0.001D);
+        assertEquals(1.0D, EngineSoundController.replayTicks(null, 1.0F), 0.0D);
     }
 
     @Test
