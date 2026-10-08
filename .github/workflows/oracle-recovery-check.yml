@@ -34,7 +34,7 @@ jobs:
             java+="pid=$pid cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || echo unknown)|"
           done < <(pgrep -x java 2>/dev/null || true)
           sessions=$(screen -ls 2>/dev/null | tr '\n' '|' || true)
-          checks="server.jar=$(test -s "$ROOT/mc/server.jar" && echo yes || echo no) world=$(test -f "$ROOT/mc/world/level.dat" && echo yes || echo no) vehicle=$(test -s "$ROOT/mc/plugins/MrCrayfishVehiclePlugin.jar" && echo yes || echo no) scripts=$(test -x "$ROOT/bin/start-minecraft.sh" && echo yes || echo no)"
+          checks="server.jar=$(test -s "$ROOT/mc/server.jar" && echo yes || echo no) world=$(test -f "$ROOT/mc/world/level.dat" && echo yes || echo no) vehicle=$(test -s "$ROOT/mc/plugins/MrCrayfishVehiclePlugin.jar" && echo yes || echo no) scripts=$(test -x "$ROOT/bin/start-minecraft.sh" && echo yes || echo no) frpc-bin=$(test -x "$ROOT/frp/frpc" && echo yes || echo no) frpc-config=$(test -s "$ROOT/frp/frpc.toml" -o -s "$ROOT/frp/frpc.yaml" && echo yes || echo no)"
           notice "disk=$(df -hP "$HOME" | tail -1 | awk '{print $3" used, "$4" free of "$2}') entries=${entries:-none}"
           notice "sizes=${sizes:-none}"
           notice "java=${java:-none} screen=${sessions:-none}"
