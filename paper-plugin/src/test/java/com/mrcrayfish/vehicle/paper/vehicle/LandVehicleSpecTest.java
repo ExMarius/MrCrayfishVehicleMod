@@ -278,8 +278,11 @@ class LandVehicleSpecTest {
         assertEquals(20, slidingDoor.openable().animationLength());
         assertTrue(spec.canTowTrailers());
         assertEquals("big_tow_bar", spec.towBarModel());
-        assertPoint(spec.towBarVisualCenter(), 0.0F, 0.5F, -2.03125F);
-        assertPoint(spec.towBarPhysicsOffset(), 0.0F, 0.0F, -2.03125F);
+        /* AbstractLandVehicleRenderer translates the tow bar by the raw model-unit
+         * offset (-25.0 * 0.0625) BEFORE matrixStack.scale(bodyScale) is ever applied,
+         * so Mini Bus's 1.3x body scale must not multiply this offset. */
+        assertPoint(spec.towBarVisualCenter(), 0.0F, 0.5F, -1.5625F);
+        assertPoint(spec.towBarPhysicsOffset(), 0.0F, 0.0F, -1.5625F);
     }
 
     @Test
@@ -688,9 +691,13 @@ class LandVehicleSpecTest {
 
     @Test
     void towBarsKeepSeparateSourceVisualAndPhysicsOrigins() {
-        assertTowBar(LandVehicleSpec.LAWN_MOWER, -1.25F);
-        assertTowBar(LandVehicleSpec.QUAD_BIKE, -1.1F);
+        /* Tow bar offsets are raw model-unit translations applied before the body's
+         * uniform scale in AbstractLandVehicleRenderer, so they must NOT be multiplied
+         * by each vehicle's bodyScale (regression test for the detached ATV tow hitch). */
+        assertTowBar(LandVehicleSpec.LAWN_MOWER, -1.0F);
+        assertTowBar(LandVehicleSpec.QUAD_BIKE, -1.0F);
         assertTowBar(LandVehicleSpec.TRACTOR, -1.53125F);
+        assertTowBar(LandVehicleSpec.ATV, -1.3F);
     }
 
     @Test

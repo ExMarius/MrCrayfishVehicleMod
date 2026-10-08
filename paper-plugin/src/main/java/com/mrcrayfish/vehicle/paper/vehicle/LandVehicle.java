@@ -960,6 +960,14 @@ public final class LandVehicle {
     }
 
     private void updateWheelRotations() {
+        /* Bath has no wheels at all (spec.wheels() is empty) since it never touches the
+         * ground on its own axles — reusing firstFrontWheel()/firstRearWheel() below would
+         * throw NoSuchElementException on every tick and silently break the entity (it
+         * never crashed visibly, but the exception aborted tickPlane() every tick, so the
+         * vehicle's display rig was never updated after spawn and appeared invisible). */
+        if (spec.wheels().isEmpty()) {
+            return;
+        }
         double direction = forward(location.getYaw()).dot(normalized(motion));
         if (onGround || throttle != 0.0F) {
             rearWheelRotationSpeed = (float) (motion.length() * direction * 20.0D);

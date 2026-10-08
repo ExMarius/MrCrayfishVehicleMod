@@ -1048,22 +1048,27 @@ public record LandVehicleSpec(
      * The common source renderer draws the tow bar after cancelling body scale,
      * but before the axle/wheel translations and wheelie matrix. Its model origin
      * therefore keeps the renderer's standalone +0.5 Y correction and never
-     * follows a boost wheelie.
+     * follows a boost wheelie. Crucially, AbstractLandVehicleRenderer multiplies
+     * this offset by the raw 0.0625 model unit ONLY — never by bodyScale, since
+     * the translation happens before matrixStack.scale(bodyScale) is applied.
+     * Multiplying by bodyScale here (as a prior revision did) pushes the tow bar
+     * further from the body than the source for every vehicle whose body isn't
+     * scale 1.0 (e.g. the ATV at 1.25x), making it look visibly detached.
      */
     public Point towBarVisualCenter() {
         return new Point(
-                towBarOffset.x * bodyScale * MODEL_UNIT,
-                0.5F + towBarOffset.y * bodyScale * MODEL_UNIT,
-                towBarOffset.z * bodyScale * MODEL_UNIT
+                towBarOffset.x * MODEL_UNIT,
+                0.5F + towBarOffset.y * MODEL_UNIT,
+                towBarOffset.z * MODEL_UNIT
         );
     }
 
     /** Source trailer physics uses the same X/Z offset without visual +0.5 Y. */
     public Point towBarPhysicsOffset() {
         return new Point(
-                towBarOffset.x * bodyScale * MODEL_UNIT,
-                towBarOffset.y * bodyScale * MODEL_UNIT,
-                towBarOffset.z * bodyScale * MODEL_UNIT
+                towBarOffset.x * MODEL_UNIT,
+                towBarOffset.y * MODEL_UNIT,
+                towBarOffset.z * MODEL_UNIT
         );
     }
 
