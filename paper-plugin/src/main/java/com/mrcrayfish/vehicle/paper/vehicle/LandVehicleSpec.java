@@ -538,9 +538,9 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
-    /* Sofacopter is a Furniture Mod-dependent HelicopterEntity. The released renderer
-     * supplies the intended red sofa body that the dev renderer still ray-traces, while
-     * the dev renderer supplies the current arm and Sports Plane wing rotor selection. */
+    /* Sofacopter is a Furniture Mod-dependent HelicopterEntity. Its original renderer
+     * uses the CFM red sofa, Vehicle Mod arm, and CFM ceiling_fan_fans as the rotor;
+     * later aluminum-boat/plane-wing choices were compatibility placeholders. */
     public static final LandVehicleSpec SOFACOPTER = new LandVehicleSpec(
             "sofacopter", "Sofacopter", "sofacopter_sofa",
             1.0F, 1.0F, 0.6F,
@@ -727,9 +727,6 @@ public record LandVehicleSpec(
                 case "compact_helicopter_blades" -> 3.0F;
                 default -> 1.0F;
             };
-        }
-        if ("sofacopter".equals(id) && "sofacopter_blades".equals(model)) {
-            return 3.0F;
         }
         return 1.0F;
     }

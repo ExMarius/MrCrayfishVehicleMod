@@ -35,7 +35,7 @@ jobs:
         run: |
           set -euo pipefail
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f -print -quit)
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip"
           test -s "$JAR"
           unzip -t "$PACK"
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
@@ -64,12 +64,12 @@ jobs:
           mkdir release
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
           cp "$JAR" release/MrCrayfishVehiclePlugin-Paper-1.21.4-LandVehicles.jar
-          cp paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip release/
+          cp paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip release/
           (
             cd release
             sha256sum MrCrayfishVehiclePlugin-Paper-1.21.4-LandVehicles.jar \
-              MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip > SHA256SUMS.txt
-            sha1sum MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip > RESOURCE-PACK-SHA1.txt
+              MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip > SHA256SUMS.txt
+            sha1sum MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip > RESOURCE-PACK-SHA1.txt
           )
 
       - name: Publish immutable GitHub milestone
@@ -78,21 +78,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TAG="paper-land-vehicles-milestone-2026-10-08-r26"
+          TAG="paper-land-vehicles-milestone-2026-10-08-r27"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; refusing to overwrite the immutable milestone."
             exit 1
           fi
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
-            --title "Paper 1.21.4 land vehicles milestone r26 — 2026-10-08" \
+            --title "Paper 1.21.4 land vehicles milestone r27 — 2026-10-08" \
             --prerelease \
             --notes-file - <<'EOF'
           Immutable backup of the validated land-vehicle checkpoint for Paper 1.21.4 and Java 21.
 
           Included:
           - server plugin JAR with ten land vehicles, the Jet Ski, Sports Plane, Compact Helicopter, Sofacopter, and all five original trailers;
-          - mandatory vanilla-client resource pack r26, including the complete Compact Helicopter and Sports Plane rigs, the recovered official Sofacopter furniture body/rotor rig, released aquatic physics, and source-accurate audio or silence;
+          - mandatory vanilla-client resource pack r27, including the complete Compact Helicopter and Sports Plane rigs, the recovered official Sofacopter furniture body/rotor rig, released aquatic physics, and source-accurate audio or silence;
           - SHA-256 checksums for both artifacts;
           - the resource-pack SHA-1 used by Paper configuration.
 

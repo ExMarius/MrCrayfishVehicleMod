@@ -57,7 +57,7 @@ jobs:
           python3 -m unittest tools/test_build_resource_pack.py tools/test_configure_server_resource_pack.py
           gradle -p paper-plugin clean build resourcePack
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f -print -quit)
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip"
           test -s "$JAR"
           unzip -t "$PACK"
           EXPECTED=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)

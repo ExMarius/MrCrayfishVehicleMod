@@ -97,7 +97,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r26 — fourteen vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r27 — fourteen vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -380,13 +380,13 @@ def build(output: Path) -> tuple[Path, str]:
             legalize_rotations=True,
         )
         convert_model(
-            ASSETS / "models/vehicle/sports_plane/cosmetics/wings.json",
+            ROOT / "tools/source_assets/cfm_ceiling_fan_fans.json",
             namespace / "models/item/sofacopter_blades.json",
             {
-                "wings": "vehicle:item/sports_plane_wings",
-                "particle": "vehicle:item/sports_plane_wings",
+                "0": "minecraft:block/gray_concrete",
+                "1": "minecraft:block/white_concrete",
+                "particle": "minecraft:block/white_concrete",
             },
-            geometry_scale=1.0 / 3.0,
             legalize_rotations=True,
         )
         convert_model(
@@ -726,7 +726,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

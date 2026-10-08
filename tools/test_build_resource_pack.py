@@ -26,7 +26,7 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
-    def test_configured_sha1_matches_deterministic_r26_pack(self):
+    def test_configured_sha1_matches_deterministic_r27_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
         self.assertIsNotNone(configured)
@@ -207,11 +207,11 @@ class ResourcePackBuildTest(unittest.TestCase):
         rotor = self.archive.read("assets/vehicle/sounds/entity/vehicle/helicopter_rotor.ogg")
         self.assertEqual(27_922, self.last_ogg_granule(rotor))
 
-    def test_sofacopter_models_use_the_original_sofa_arm_and_wing_assets(self):
+    def test_sofacopter_models_use_the_original_sofa_arm_and_ceiling_fan_rotor(self):
         expected_elements = {
             "sofacopter_sofa": 11,
             "sofacopter_arm": 6,
-            "sofacopter_blades": 12,
+            "sofacopter_blades": 10,
         }
         for model, count in expected_elements.items():
             data = self.read_json(f"assets/vehicle/models/item/{model}.json")
@@ -223,7 +223,12 @@ class ResourcePackBuildTest(unittest.TestCase):
         arm = self.read_json("assets/vehicle/models/item/sofacopter_arm.json")
         self.assertEqual("minecraft:block/gray_concrete", arm["textures"]["0"])
         blades = self.read_json("assets/vehicle/models/item/sofacopter_blades.json")
-        self.assertEqual("vehicle:item/sports_plane_wings", blades["textures"]["wings"])
+        self.assertEqual("minecraft:block/gray_concrete", blades["textures"]["0"])
+        self.assertEqual("minecraft:block/white_concrete", blades["textures"]["1"])
+        self.assertEqual("fan_base_1", blades["elements"][0]["name"])
+        self.assertEqual("fan_4", blades["elements"][-1]["name"])
+        self.assertEqual([-3.4, 7.0, 6.5], blades["elements"][6]["from"])
+        self.assertEqual([9.5, 8.0, 19.4], blades["elements"][-1]["to"])
 
     @staticmethod
     def last_ogg_granule(data):

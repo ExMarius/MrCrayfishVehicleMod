@@ -387,7 +387,7 @@ class LandVehicleSpecTest {
         assertPoint(spec.bodyParts().get(0).center(), 0.0F, 1.0F, 0.003875F);
         assertPoint(spec.bodyParts().get(1).center(), 0.0F, 2.5F, 0.003875F);
         assertEquals(1.5F, spec.bodyParts().get(1).scale(), EPSILON);
-        assertEquals(3.0F, spec.modelScaleCorrection("sofacopter_blades"), EPSILON);
+        assertEquals(1.0F, spec.modelScaleCorrection("sofacopter_blades"), EPSILON);
         assertTrue(spec.wheels().isEmpty());
         assertEquals(1, spec.seats().size());
         assertPoint(spec.seats().getFirst().sourceOffset(), 0.0F, 0.0F, 0.003875F);

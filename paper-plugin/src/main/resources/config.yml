@@ -1,8 +1,8 @@
-# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip.
+# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip.
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
-  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r26.zip"
-  sha1: "ac59afd247c924fc7800af8a8800dd373bc6a80e"
+  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r27.zip"
+  sha1: "c9ceeac78cb123342d3ed2316c0524b0098c1b7a"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
 
