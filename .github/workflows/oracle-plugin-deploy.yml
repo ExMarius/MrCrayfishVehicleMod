@@ -174,9 +174,13 @@ jobs:
           grep -q '^require-resource-pack=true$' "$BACKUP/server.properties.updated"
           phase "Updated server.properties prepared and validated"
 
-          bash "$ROOT/bin/stop-minecraft.sh"
+          if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
+            bash "$ROOT/bin/stop-minecraft.sh"
+            phase "Minecraft stopped cleanly"
+          else
+            phase "Minecraft was already stopped"
+          fi
           server_changed=true
-          phase "Minecraft stopped cleanly"
           find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
           install -m 600 "$JAR" "$TARGET"
           install -m 600 "$CONFIG" "$DATA/config.yml"
