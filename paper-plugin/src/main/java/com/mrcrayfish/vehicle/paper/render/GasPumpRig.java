@@ -62,9 +62,6 @@ public final class GasPumpRig {
      *  nozzle pass an identity {@code sourceRightRotation}. Needed here too, separately, so
      *  {@link #pivotCompensation} can be fed the rotation it actually has to cancel out. */
     private static final Quaternionf PLACE_RIGHT_ROTATION = new Quaternionf().rotateY((float) Math.PI);
-    /** Raises the whole rig half a block above the registered pump position, per in-game
-     *  testing feedback -- flush with the targeted block looked too low. */
-    private static final double VERTICAL_OFFSET = 0.5D;
 
     private final UUID pumpId;
     private final List<Entity> all = new ArrayList<>();
@@ -107,8 +104,17 @@ public final class GasPumpRig {
 
         List<Entity> all = new ArrayList<>();
 
+        // The original mod's two pump halves are ordinary blocks, not displays: the bottom
+        // block occupies exactly [x, x+1] x [y, y+1] x [z, z+1] and the top block the one
+        // directly above it, with zero extra vertical offset -- see GasPumpTileEntity/
+        // GasPumpBlock (a vanilla two-tall block pair) and GasPumpManager#createPump, which
+        // stores the *bottom* block's own coordinates as the pump's position. An earlier
+        // revision of this rig added a fabricated "VERTICAL_OFFSET = 0.5" here (justified only
+        // as "per in-game testing feedback"), floating the whole rig half a block above the
+        // registered position -- removed per direct instruction to stop tuning by guesswork
+        // and instead match the original's real, flush block placement exactly.
         Interaction interaction = world.spawn(
-                new Location(world, x + 0.5D, y + VERTICAL_OFFSET, z + 0.5D), Interaction.class, hitbox -> {
+                new Location(world, x + 0.5D, y, z + 0.5D), Interaction.class, hitbox -> {
             hitbox.setInteractionWidth(1.0F);
             hitbox.setInteractionHeight(2.0F);
             hitbox.setResponsive(true);
@@ -118,10 +124,10 @@ public final class GasPumpRig {
         interaction.addScoreboardTag("mcv_pump_" + pumpId);
         all.add(interaction);
 
-        ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y + VERTICAL_OFFSET, z + 0.5D),
+        ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y, z + 0.5D),
                 "gas_pump_bottom", entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(),
                 new Vector3f(1.0F), new Quaternionf(), pumpId, all);
-        ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1 + VERTICAL_OFFSET, z + 0.5D),
+        ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1, z + 0.5D),
                 "gas_pump_top", entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(),
                 new Vector3f(1.0F), new Quaternionf(), pumpId, all);
 
@@ -129,7 +135,7 @@ public final class GasPumpRig {
         // TOP block's own minimum corner (matching how its TileEntityRenderer receives its
         // matrix stack) -- see GasPumpRenderer#render and CollisionHelper#fixRotation.
         double topCornerX = x;
-        double topCornerY = y + 1 + VERTICAL_OFFSET;
+        double topCornerY = y + 1;
         double topCornerZ = z;
 
         double[] hoseStartXZ = fixRotation(facing, 0.620625D, 1.05D, 0.620625D, 1.05D);
