@@ -55,6 +55,13 @@ public final class GasPumpRig {
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
+    private static final Vector3f NOZZLE_SCALE = new Vector3f(0.8F);
+    /** The effective right rotation every {@link #place} call renders with, since it always
+     *  bakes an extra 180-degree yaw onto whatever {@code sourceRightRotation} it's given (see
+     *  {@link #place}'s own body) and both of this rig's {@code place} call sites for the
+     *  nozzle pass an identity {@code sourceRightRotation}. Needed here too, separately, so
+     *  {@link #pivotCompensation} can be fed the rotation it actually has to cancel out. */
+    private static final Quaternionf PLACE_RIGHT_ROTATION = new Quaternionf().rotateY((float) Math.PI);
     /** Raises the whole rig half a block above the registered pump position, per in-game
      *  testing feedback -- flush with the targeted block looked too low. */
     private static final double VERTICAL_OFFSET = 0.5D;
@@ -193,8 +200,8 @@ public final class GasPumpRig {
         }
         if (!nozzleRestTransformApplied) {
             nozzleRestTransformApplied = true;
-            place(nozzle, nozzleRestLocation, new Vector3f(0.0F), nozzleRestRotation,
-                    new Vector3f(0.8F), new Quaternionf());
+            Vector3f translation = pivotCompensation(nozzleRestRotation, NOZZLE_SCALE, PLACE_RIGHT_ROTATION);
+            place(nozzle, nozzleRestLocation, translation, nozzleRestRotation, NOZZLE_SCALE, new Quaternionf());
         }
         if (!idleHoseApplied) {
             idleHoseApplied = true;
@@ -245,8 +252,8 @@ public final class GasPumpRig {
         Quaternionf nozzleHandRotation = new Quaternionf()
                 .rotateY(radians(-bodyYawDegrees)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
         Location tipLocation = new Location(nozzle.getWorld(), nozzleTip.x, nozzleTip.y, nozzleTip.z);
-        place(nozzle, tipLocation, new Vector3f(0.0F), nozzleHandRotation, new Vector3f(0.8F),
-                new Quaternionf());
+        Vector3f translation = pivotCompensation(nozzleHandRotation, NOZZLE_SCALE, PLACE_RIGHT_ROTATION);
+        place(nozzle, tipLocation, translation, nozzleHandRotation, NOZZLE_SCALE, new Quaternionf());
     }
 
     private void layHose(Vector3f startPos, Vector3f startTangent, Vector3f endPos, Vector3f endTangent) {
@@ -315,6 +322,35 @@ public final class GasPumpRig {
      *  {@link ItemDisplay} it feeds into) can be unit-tested without a running server. */
     static Vector3f hoseSegmentPivotCompensation(Quaternionf rotation, float length) {
         return rotation.transform(new Vector3f(0.5F, 0.5F, 0.5F * length)).sub(0.5F, 0.5F, 0.5F);
+    }
+
+    /**
+     * The translation that cancels an {@code ItemDisplay}'s forced center pivot for a prop
+     * that should stay anchored at its own model-space origin -- i.e. so {@code modelPos =
+     * (0, 0, 0)} (the point the original's {@code matrixStack.translate(...)} call placed at
+     * this entity's own position) renders with zero offset from that position, exactly like
+     * {@link #hoseSegmentPivotCompensation} does for one hose segment. That method is the
+     * {@code rightRotation = identity} special case of this same derivation; this is the
+     * general form, needed for the nozzle prop since unlike a hose segment it has both a real
+     * (non-identity) {@code leftRotation} (its facing/hold orientation) <em>and</em> a
+     * {@code rightRotation} (the 180-degree compensation every {@link #place} call bakes in --
+     * see {@link #PLACE_RIGHT_ROTATION}), neither of which commutes away for a lopsided prop
+     * the way they harmlessly do for a full, symmetric cube like the pump's own body (whose
+     * {@code part} calls get away with the constant {@code (-0.5, 0, -0.5)} precisely because
+     * their {@code leftRotation} is identity and their model spans the whole unit cube).
+     *
+     * <p>Solving {@code center + leftRotation.transform(scale * rightRotation.transform(modelPos
+     * - center)) + translation = 0} for {@code modelPos = (0, 0, 0)} gives {@code translation =
+     * leftRotation.transform(scale * rightRotation.transform(center)) - center}.
+     */
+    static Vector3f pivotCompensation(Quaternionf leftRotation, Vector3f scale, Quaternionf rightRotation) {
+        Vector3f center = new Vector3f(0.5F, 0.5F, 0.5F);
+        Vector3f rotatedCenter = rightRotation.transform(new Vector3f(center));
+        // Component-wise scale, spelled out rather than calling a Vector3f#mul(Vector3f)
+        // overload: see hoseSegmentPivotCompensation's own test for why this file avoids
+        // reaching for a JOML overload with no other already-compiling call site in this repo.
+        Vector3f scaled = new Vector3f(rotatedCenter.x * scale.x, rotatedCenter.y * scale.y, rotatedCenter.z * scale.z);
+        return leftRotation.transform(scaled).sub(center);
     }
 
 

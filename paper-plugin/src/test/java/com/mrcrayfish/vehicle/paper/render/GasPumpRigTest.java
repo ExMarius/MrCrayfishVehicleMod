@@ -110,4 +110,46 @@ class GasPumpRigTest {
             assertVector(rendered, expected.x, expected.y, expected.z);
         }
     }
+
+    /**
+     * Regression coverage for the sibling pivot bug affecting the nozzle prop: both of
+     * {@code GasPumpRig}'s {@code place} call sites for it passed a hardcoded zero translation
+     * despite giving it a real (non-identity) {@code leftRotation} and a {@code 0.8} scale, so
+     * (unlike the pump's own body, whose identity {@code leftRotation} and full-unit-cube model
+     * happen to make a hardcoded {@code (-0.5, 0, -0.5)} correct) the nozzle always rendered
+     * offset from its intended anchor -- resting point or in-hand point alike -- by an amount
+     * that varies with its own current facing/hold rotation. Verifies {@link
+     * GasPumpRig#pivotCompensation} makes the engine's own transform composition (see this
+     * class's other pivot-compensation test, above, for the formula and its citation) place the
+     * model's local origin (the original's own {@code matrixStack.translate(...)} point) exactly
+     * at the anchor, for several rotation/scale/right-rotation combinations spanning the ones
+     * {@code GasPumpRig} actually uses (the nozzle's own facing-dependent rest rotation and
+     * hand rotation, both always paired with the {@code place}-forced 180-degree right
+     * rotation), plus a couple of simpler sanity cases.
+     */
+    @Test
+    void pivotCompensationPlacesTheModelsLocalOriginExactlyAtTheAnchor() {
+        Quaternionf place180 = new Quaternionf().rotateY((float) Math.PI);
+        assertPivotCompensationPlacesOriginAtAnchor(new Quaternionf(), new Vector3f(1.0F), new Quaternionf());
+        assertPivotCompensationPlacesOriginAtAnchor(new Quaternionf(), new Vector3f(0.8F), place180);
+        for (float yAngleDegrees : new float[]{0.0F, -90.0F, 90.0F, 180.0F, 270.0F, 37.0F}) {
+            Quaternionf restRotation = new Quaternionf()
+                    .rotateY((float) Math.toRadians(yAngleDegrees))
+                    .rotateY((float) Math.PI)
+                    .rotateX((float) Math.toRadians(90.0D));
+            assertPivotCompensationPlacesOriginAtAnchor(restRotation, new Vector3f(0.8F), place180);
+        }
+    }
+
+    private static void assertPivotCompensationPlacesOriginAtAnchor(
+            Quaternionf leftRotation, Vector3f scale, Quaternionf rightRotation) {
+        Vector3f translation = GasPumpRig.pivotCompensation(leftRotation, scale, rightRotation);
+        Vector3f center = new Vector3f(0.5F, 0.5F, 0.5F);
+        Vector3f modelPos = new Vector3f(0.0F, 0.0F, 0.0F);
+        Vector3f diff = new Vector3f(modelPos).sub(center);
+        Vector3f rotated = rightRotation.transform(new Vector3f(diff));
+        Vector3f scaled = new Vector3f(rotated.x * scale.x, rotated.y * scale.y, rotated.z * scale.z);
+        Vector3f rendered = leftRotation.transform(new Vector3f(scaled)).add(center).add(translation);
+        assertVector(rendered, 0.0F, 0.0F, 0.0F);
+    }
 }
