@@ -80,7 +80,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                     player.sendRichMessage("<red>Privește spre un bloc, la maximum 6 blocuri distanță.</red>");
                     return;
                 }
-                if (gasPumps.createPump(target)) {
+                if (gasPumps.createPump(target, player)) {
                     player.sendRichMessage("<green>Pompă de benzină creată pe blocul privit.</green>");
                 } else {
                     player.sendRichMessage("<yellow>Blocul acesta este deja o pompă de benzină.</yellow>");

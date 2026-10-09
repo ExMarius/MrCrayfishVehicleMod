@@ -1,0 +1,20 @@
+{
+	"credit": "New asset for the Paper port: a single straight segment of the gas pump's hose. The original mod draws the bent hose as a procedural quad strip in Java (see GasPumpRenderer#drawHose); vanilla clients have no equivalent hook, so the Paper plugin instead chains several of these thin segments together with vanilla display entities and bends the chain through the exact same Hermite-spline math the original renderer used (see HermiteSpline). Native length is one full block along local Z so a single scale.z multiplier can stretch each segment to the sampled distance between two spline points.",
+	"texture_size": [16, 16],
+	"textures": {
+		"1": "vehicle:model/gas_hose_segment",
+		"particle": "vehicle:model/gas_hose_segment"
+	},
+	"elements": [
+		{
+			"from": [7.5, 7.5, 0],
+			"to": [8.5, 8.5, 16],
+			"faces": {
+				"north": {"uv": [0, 0, 16, 16], "texture": "#1"},
+				"south": {"uv": [0, 0, 16, 16], "texture": "#1"},
+				"east": {"uv": [0, 0, 16, 16], "texture": "#1"},
+				"west": {"uv": [0, 0, 16, 16], "texture": "#1"}
+			}
+		}
+	]
+}

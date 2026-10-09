@@ -3,13 +3,18 @@ package com.mrcrayfish.vehicle.paper.economy;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.persistence.GasPumpStore;
 import com.mrcrayfish.vehicle.paper.persistence.StoredGasPump;
+import com.mrcrayfish.vehicle.paper.render.GasPumpRig;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
+import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -35,8 +40,10 @@ public final class GasPumpManager {
     private final Map<UUID, StoredGasPump> pumps = new HashMap<>();
     private final Map<String, UUID> pumpsByBlock = new HashMap<>();
     private final Map<UUID, Session> sessions = new HashMap<>();
+    private final Map<UUID, GasPumpRig> rigs = new HashMap<>();
 
     private BukkitTask tickTask;
+    private BukkitTask rigTask;
     private double pricePerPercent;
     private double fillPercentPerSecond;
     private double maxPumpDistance;
@@ -70,11 +77,16 @@ public final class GasPumpManager {
     }
 
     public void start() {
+        cleanupOrphanedRigs();
         for (StoredGasPump pump : store.loadAll()) {
             pumps.put(pump.id(), pump);
             pumpsByBlock.put(blockKey(pump.worldId(), pump.x(), pump.y(), pump.z()), pump.id());
+            spawnRig(pump);
         }
         tickTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, TICK_INTERVAL, TICK_INTERVAL);
+        // Separate, every-tick task so the hose visibly bends smoothly while a player is
+        // fueling; the slower tick() above only drives the (unrelated) fuel/money math.
+        rigTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tickRigs, 1L, 1L);
     }
 
     public void stop() {
@@ -82,8 +94,42 @@ public final class GasPumpManager {
             tickTask.cancel();
             tickTask = null;
         }
+        if (rigTask != null) {
+            rigTask.cancel();
+            rigTask = null;
+        }
         sessions.clear();
+        for (GasPumpRig rig : rigs.values()) {
+            rig.remove();
+        }
+        rigs.clear();
         save();
+    }
+
+    /** Mirrors {@code VehicleManager#cleanupOrphanedEntities()}: any pump display rig left
+     *  over from a previous run (e.g. a crash) is removed before fresh ones are spawned. */
+    private void cleanupOrphanedRigs() {
+        int removed = 0;
+        for (World world : Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                if (entity.getScoreboardTags().contains(GasPumpRig.ENTITY_TAG)) {
+                    entity.remove();
+                    removed++;
+                }
+            }
+        }
+        if (removed > 0) {
+            plugin.getLogger().info("Removed " + removed + " orphaned gas pump display entities.");
+        }
+    }
+
+    private void spawnRig(StoredGasPump pump) {
+        World world = Bukkit.getWorld(pump.worldId());
+        if (world == null) {
+            return;
+        }
+        Block block = world.getBlockAt(pump.x(), pump.y(), pump.z());
+        rigs.put(pump.id(), GasPumpRig.spawn(block, pump.facing(), pump.id()));
     }
 
     public void save() {
@@ -98,17 +144,39 @@ public final class GasPumpManager {
         return pumps.size();
     }
 
-    /** Registers {@code block} as a new gas pump. Returns {@code false} if already registered. */
-    public boolean createPump(Block block) {
+    /**
+     * Registers {@code block} as a new gas pump, facing the cardinal direction {@code player}
+     * was looking when they ran the command. Returns {@code false} if already registered.
+     */
+    public boolean createPump(Block block, Player player) {
         if (isPump(block)) {
             return false;
         }
+        BlockFace facing = cardinalFacing(player);
         StoredGasPump pump = new StoredGasPump(UUID.randomUUID(), block.getWorld().getUID(),
-                block.getX(), block.getY(), block.getZ());
+                block.getX(), block.getY(), block.getZ(), facing);
         pumps.put(pump.id(), pump);
         pumpsByBlock.put(blockKey(pump.worldId(), pump.x(), pump.y(), pump.z()), pump.id());
+        spawnRig(pump);
         save();
         return true;
+    }
+
+    /** Reduces a player's look yaw to the nearest of the four horizontal cardinal directions. */
+    private static BlockFace cardinalFacing(Player player) {
+        float yaw = player.getLocation().getYaw() % 360.0F;
+        if (yaw < 0.0F) {
+            yaw += 360.0F;
+        }
+        if (yaw >= 315.0F || yaw < 45.0F) {
+            return BlockFace.SOUTH;
+        } else if (yaw < 135.0F) {
+            return BlockFace.WEST;
+        } else if (yaw < 225.0F) {
+            return BlockFace.NORTH;
+        } else {
+            return BlockFace.EAST;
+        }
     }
 
     /** Removes the nearest registered pump within {@code radius} of {@code origin}, if any. */
@@ -135,6 +203,10 @@ public final class GasPumpManager {
         pumps.remove(removedPumpId);
         pumpsByBlock.remove(blockKey(closest.worldId(), closest.x(), closest.y(), closest.z()));
         sessions.values().removeIf(session -> session.pumpId().equals(removedPumpId));
+        GasPumpRig rig = rigs.remove(removedPumpId);
+        if (rig != null) {
+            rig.remove();
+        }
         save();
         return true;
     }
@@ -235,6 +307,36 @@ public final class GasPumpManager {
             }
         }
         toRemove.forEach(sessions::remove);
+    }
+
+    /** Runs every tick so the hose visibly tracks whichever player is currently fueling;
+     *  this is intentionally separate from {@link #tick()}, which only handles the
+     *  (much less time-sensitive) fuel/money bookkeeping every {@link #TICK_INTERVAL} ticks. */
+    private void tickRigs() {
+        if (rigs.isEmpty()) {
+            return;
+        }
+        Map<UUID, Player> activePlayerByPump = new HashMap<>();
+        for (Map.Entry<UUID, Session> sessionEntry : sessions.entrySet()) {
+            Player player = Bukkit.getPlayer(sessionEntry.getKey());
+            if (player != null && player.isOnline()) {
+                activePlayerByPump.put(sessionEntry.getValue().pumpId(), player);
+            }
+        }
+        for (Map.Entry<UUID, GasPumpRig> entry : rigs.entrySet()) {
+            GasPumpRig rig = entry.getValue();
+            if (!rig.valid()) {
+                continue;
+            }
+            Player player = activePlayerByPump.get(entry.getKey());
+            if (player == null) {
+                rig.setIdle();
+                continue;
+            }
+            Location feet = player.getLocation();
+            Vector3f feetVector = new Vector3f((float) feet.getX(), (float) feet.getY(), (float) feet.getZ());
+            rig.updateActive(feetVector, feet.getYaw(), player.getMainHand());
+        }
     }
 
     private static String blockKey(Block block) {
