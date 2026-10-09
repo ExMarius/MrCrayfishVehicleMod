@@ -1,6 +1,7 @@
 package com.mrcrayfish.vehicle.paper.render;
 
 import org.bukkit.block.BlockFace;
+import org.bukkit.inventory.MainHand;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
@@ -62,6 +63,21 @@ class GasPumpRigTest {
     void yRotMatchesVanillasVector3dYRot() {
         Vector3f rotated = GasPumpRig.yRot(new Vector3f(1.0F, 2.0F, 0.0F), (float) (Math.PI / 2));
         assertVector(rotated, 0.0F, 2.0F, -1.0F);
+    }
+
+    /**
+     * Regression coverage for the bug that put the active (held-nozzle) hose and nozzle prop
+     * noticeably out of position versus the original mod: an earlier revision of {@link
+     * GasPumpRig#updateActive} hardcoded a right-hand-only offset that both ignored its own
+     * {@code mainHand} parameter and used tuned-further values instead of {@code
+     * GasPumpRenderer#getNozzlePosition}'s literal {@code (-0.35 * handSide, -0.025, -0.025)}.
+     * Verifies {@link GasPumpRig#nozzleHandOffset} reproduces those exact literal values (for
+     * both hands, at {@code bodyYaw = 0} where {@link GasPumpRig#yRot} is a no-op) instead.
+     */
+    @Test
+    void nozzleHandOffsetMatchesTheOriginalsLiteralGetNozzlePositionConstants() {
+        assertVector(GasPumpRig.nozzleHandOffset(0.0F, MainHand.RIGHT), -0.35F, -0.025F, -0.025F);
+        assertVector(GasPumpRig.nozzleHandOffset(0.0F, MainHand.LEFT), 0.35F, -0.025F, -0.025F);
     }
 
     private static void assertVector(Vector3f actual, float x, float y, float z) {

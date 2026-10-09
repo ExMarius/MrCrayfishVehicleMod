@@ -221,11 +221,14 @@ public final class GasPumpRig {
      * attach a prop to a vanilla player's bones, and routing it through a real off-hand item
      * (tried in an earlier revision of this method) was rejected: it visibly occupied the
      * player's own inventory/off-hand slot, which reads as a bug rather than a cosmetic effect.
-     * So this keeps the original (pre-off-hand) approach of positioning this rig's own prop by
-     * hand -- always on the player's right side to match the original's always-right-hand
-     * bone attachment -- with its forward offset pushed out further than the original's own
-     * (near-zero) value, per direct in-game feedback that the literal source value reads as
-     * glued to the player's hip instead of visibly held out in front of them.
+     * So this instead positions this rig's own prop by hand, at the exact same point the
+     * original's {@code GasPumpRenderer#getNozzlePosition} (non-first-person branch) computes
+     * for the hose's own terminal point -- {@code (-0.35 * handSide, -0.025, -0.025)} rotated
+     * by {@code -bodyYaw}, where {@code handSide} is {@code +1} for the player's actual main
+     * hand being right and {@code -1} for left -- rather than any further-tuned offset: a
+     * previous revision pushed this point out further per in-game feedback that the literal
+     * source value read as glued to the player's hip, but per direct instruction this reverts
+     * that tuning to keep hose and prop alike at the exact position the original mod uses.
      */
     public void updateActive(Vector3f playerFeet, float bodyYawDegrees, MainHand mainHand) {
         if (!valid()) {
@@ -236,12 +239,7 @@ public final class GasPumpRig {
             nozzleRestTransformApplied = false;
         }
 
-        // Always the right side, matching the original's always-right-arm bone attachment
-        // (FuelingHandler#onModelRenderPost's hardcoded HandSide.RIGHT) -- unlike the hose's
-        // own terminal point in the original, which does vary with the player's configured
-        // main hand, this visible prop never did.
-        Vector3f handOffset = new Vector3f(-0.35F, 0.1F, 0.4F);
-        handOffset = yRot(handOffset, -radians(bodyYawDegrees));
+        Vector3f handOffset = nozzleHandOffset(bodyYawDegrees, mainHand);
         Vector3f nozzleTip = new Vector3f(playerFeet).add(0.0F, 0.8F, 0.0F).add(handOffset);
 
         Vector3f lookDirection = directionFromRotation(-20.0F, bodyYawDegrees);
@@ -254,6 +252,25 @@ public final class GasPumpRig {
         Location tipLocation = new Location(nozzle.getWorld(), nozzleTip.x, nozzleTip.y, nozzleTip.z);
         Vector3f translation = pivotCompensation(nozzleHandRotation, NOZZLE_SCALE, PLACE_RIGHT_ROTATION);
         place(nozzle, tipLocation, translation, nozzleHandRotation, NOZZLE_SCALE, new Quaternionf());
+    }
+
+    /**
+     * Direct port of {@code GasPumpRenderer#getNozzlePosition}'s non-first-person branch: the
+     * fixed offset from the fueling player's eye-height feet position to the nozzle, in that
+     * player's own local space (i.e. before being rotated into world space by {@code -bodyYaw}).
+     * {@code handSide} is {@code +1} when {@code mainHand} is the player's actual configured
+     * main hand being right, {@code -1} for left -- exactly like the original's own {@code
+     * player.getMainArm() == HandSide.RIGHT ? 1 : -1} -- so, unlike an earlier revision of this
+     * rig that both hardcoded the right-hand offset (ignoring this method's own {@code mainHand}
+     * parameter) and pushed the offset out further per visual feedback, this now reproduces the
+     * original's exact {@code (-0.35 * handSide, -0.025, -0.025)} literal values. (The slim-skin
+     * nudge the original also applies here is skipped as a disclosed simplification -- see this
+     * class's own top-level javadoc.)
+     */
+    static Vector3f nozzleHandOffset(float bodyYawDegrees, MainHand mainHand) {
+        float handSide = mainHand == MainHand.RIGHT ? 1.0F : -1.0F;
+        Vector3f local = new Vector3f(-0.35F * handSide, -0.025F, -0.025F);
+        return yRot(local, -radians(bodyYawDegrees));
     }
 
     private void layHose(Vector3f startPos, Vector3f startTangent, Vector3f endPos, Vector3f endTangent) {
