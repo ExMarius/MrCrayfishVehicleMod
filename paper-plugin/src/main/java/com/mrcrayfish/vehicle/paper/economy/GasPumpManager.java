@@ -41,6 +41,9 @@ public final class GasPumpManager {
     private final Map<String, UUID> pumpsByBlock = new HashMap<>();
     private final Map<UUID, Session> sessions = new HashMap<>();
     private final Map<UUID, GasPumpRig> rigs = new HashMap<>();
+    /** Maps each rig's invisible Interaction entity back to its pump, since the pump has no
+     *  real block anymore for a vanilla block right-click to land on. */
+    private final Map<UUID, UUID> pumpByInteraction = new HashMap<>();
 
     private BukkitTask tickTask;
     private BukkitTask rigTask;
@@ -103,6 +106,7 @@ public final class GasPumpManager {
             rig.remove();
         }
         rigs.clear();
+        pumpByInteraction.clear();
         save();
     }
 
@@ -129,7 +133,9 @@ public final class GasPumpManager {
             return;
         }
         Block block = world.getBlockAt(pump.x(), pump.y(), pump.z());
-        rigs.put(pump.id(), GasPumpRig.spawn(block, pump.facing(), pump.id()));
+        GasPumpRig rig = GasPumpRig.spawn(block, pump.facing(), pump.id());
+        rigs.put(pump.id(), rig);
+        pumpByInteraction.put(rig.interactionId(), pump.id());
     }
 
     public void save() {
@@ -221,23 +227,43 @@ public final class GasPumpManager {
         sessions.values().removeIf(session -> session.pumpId().equals(removedPumpId));
         GasPumpRig rig = rigs.remove(removedPumpId);
         if (rig != null) {
+            pumpByInteraction.remove(rig.interactionId());
             rig.remove();
         }
         save();
         return true;
     }
 
+    /** Whether {@code entity} is a pump's invisible interaction hitbox. */
+    public boolean isPumpInteraction(Entity entity) {
+        return pumpByInteraction.containsKey(entity.getUniqueId());
+    }
+
+    /** Starts or stops a fueling session for {@code player} at the pump whose interaction
+     *  hitbox {@code entity} is -- this is the primary way players fuel, since the pump has
+     *  no real block anymore for a vanilla block right-click to land on. */
+    public void toggleFuelingByEntity(Player player, Entity entity) {
+        UUID pumpId = pumpByInteraction.get(entity.getUniqueId());
+        if (pumpId != null) {
+            toggleFuelingForPump(player, pumpId);
+        }
+    }
+
     /** Starts or stops a fueling session for {@code player} at {@code clickedBlock} (either
-     *  half of the pump's two-block-tall visual). */
+     *  half of the pump's two-block-tall visual). Kept for any pump whose registered position
+     *  still happens to be a real solid block. */
     public void toggleFueling(Player player, Block clickedBlock) {
         Block pumpBlock = resolvePumpBlock(clickedBlock);
         if (pumpBlock == null) {
             return;
         }
         UUID pumpId = pumpsByBlock.get(blockKey(pumpBlock));
-        if (pumpId == null) {
-            return;
+        if (pumpId != null) {
+            toggleFuelingForPump(player, pumpId);
         }
+    }
+
+    private void toggleFuelingForPump(Player player, UUID pumpId) {
         Session existing = sessions.get(player.getUniqueId());
         if (existing != null && existing.pumpId().equals(pumpId)) {
             sessions.remove(player.getUniqueId());

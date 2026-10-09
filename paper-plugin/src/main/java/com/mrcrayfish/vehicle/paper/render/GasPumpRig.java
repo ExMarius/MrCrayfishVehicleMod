@@ -8,6 +8,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.MainHand;
@@ -49,9 +50,13 @@ public final class GasPumpRig {
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
+    /** Raises the whole rig half a block above the registered pump position, per in-game
+     *  testing feedback -- flush with the targeted block looked too low. */
+    private static final double VERTICAL_OFFSET = 0.5D;
 
     private final UUID pumpId;
     private final List<Entity> all = new ArrayList<>();
+    private final Interaction interaction;
     private final ItemDisplay bottom;
     private final ItemDisplay top;
     private final ItemDisplay nozzle;
@@ -65,10 +70,11 @@ public final class GasPumpRig {
     private boolean nozzleRestTransformApplied;
     private boolean idleHoseApplied;
 
-    private GasPumpRig(UUID pumpId, ItemDisplay bottom, ItemDisplay top, ItemDisplay nozzle,
-                        ItemStack nozzleModel, Vector3f hoseStart, Vector3f idleEnd,
+    private GasPumpRig(UUID pumpId, Interaction interaction, ItemDisplay bottom, ItemDisplay top,
+                        ItemDisplay nozzle, ItemStack nozzleModel, Vector3f hoseStart, Vector3f idleEnd,
                         Location nozzleRestLocation, Quaternionf nozzleRestRotation) {
         this.pumpId = pumpId;
+        this.interaction = interaction;
         this.bottom = bottom;
         this.top = top;
         this.nozzle = nozzle;
@@ -89,18 +95,29 @@ public final class GasPumpRig {
 
         List<Entity> all = new ArrayList<>();
 
-        ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y, z + 0.5D), "gas_pump_bottom",
-                entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(), new Vector3f(1.0F),
-                new Quaternionf(), pumpId, all);
-        ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1, z + 0.5D), "gas_pump_top",
-                entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(), new Vector3f(1.0F),
-                new Quaternionf(), pumpId, all);
+        Interaction interaction = world.spawn(
+                new Location(world, x + 0.5D, y + VERTICAL_OFFSET, z + 0.5D), Interaction.class, hitbox -> {
+            hitbox.setInteractionWidth(1.0F);
+            hitbox.setInteractionHeight(2.0F);
+            hitbox.setResponsive(true);
+            hitbox.setPersistent(false);
+        });
+        interaction.addScoreboardTag(ENTITY_TAG);
+        interaction.addScoreboardTag("mcv_pump_" + pumpId);
+        all.add(interaction);
+
+        ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y + VERTICAL_OFFSET, z + 0.5D),
+                "gas_pump_bottom", entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(),
+                new Vector3f(1.0F), new Quaternionf(), pumpId, all);
+        ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1 + VERTICAL_OFFSET, z + 0.5D),
+                "gas_pump_top", entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(),
+                new Vector3f(1.0F), new Quaternionf(), pumpId, all);
 
         // All offsets below are the original renderer's fixRotation() outputs, measured from the
         // TOP block's own minimum corner (matching how its TileEntityRenderer receives its
         // matrix stack) -- see GasPumpRenderer#render and CollisionHelper#fixRotation.
         double topCornerX = x;
-        double topCornerY = y + 1;
+        double topCornerY = y + 1 + VERTICAL_OFFSET;
         double topCornerZ = z;
 
         double[] hoseStartXZ = fixRotation(facing, 0.620625D, 1.05D, 0.620625D, 1.05D);
@@ -132,8 +149,8 @@ public final class GasPumpRig {
             hoseSegments.add(segment);
         }
 
-        GasPumpRig rig = new GasPumpRig(pumpId, bottom, top, nozzle, nozzleModel, hoseStart, idleEnd,
-                nozzleRestLocation, nozzleRestRotation);
+        GasPumpRig rig = new GasPumpRig(pumpId, interaction, bottom, top, nozzle, nozzleModel,
+                hoseStart, idleEnd, nozzleRestLocation, nozzleRestRotation);
         rig.all.addAll(all);
         rig.hoseSegments.addAll(hoseSegments);
         rig.setIdle();
@@ -141,8 +158,14 @@ public final class GasPumpRig {
     }
 
     public boolean valid() {
-        return bottom.isValid() && top.isValid() && nozzle.isValid()
+        return interaction.isValid() && bottom.isValid() && top.isValid() && nozzle.isValid()
                 && hoseSegments.stream().allMatch(Entity::isValid);
+    }
+
+    /** The invisible hitbox players actually right-click to start/stop fueling, since the
+     *  pump has no real block for a vanilla block-click to land on. */
+    public UUID interactionId() {
+        return interaction.getUniqueId();
     }
 
     public void remove() {

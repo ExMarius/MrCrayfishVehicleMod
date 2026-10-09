@@ -173,6 +173,13 @@ public final class VehicleListener implements Listener {
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
             vehicles.trailers().handleInteraction(event.getPlayer(), event.getRightClicked());
+        } else if (gasPumps.isPumpInteraction(event.getRightClicked())) {
+            // The pump's registered position is usually open air now (it sits on the block
+            // face the player clicked, not inside the targeted block), so there's no real
+            // block for a block right-click to land on -- this invisible hitbox entity is
+            // what actually catches the click, mirroring how vehicles are clicked.
+            event.setCancelled(true);
+            gasPumps.toggleFuelingByEntity(event.getPlayer(), event.getRightClicked());
         }
     }
 
