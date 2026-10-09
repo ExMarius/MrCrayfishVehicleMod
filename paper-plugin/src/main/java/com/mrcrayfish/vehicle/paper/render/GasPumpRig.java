@@ -114,10 +114,18 @@ public final class GasPumpRig {
         // place() got, rather than at fixRotation/get2DDataValue (which stay untouched here).
         Quaternionf rotation = bodyRotation(facing.getOppositeFace());
 
+        // Deliberate, isolated diagnostic per direct instruction: nudges only the clickable
+        // body (the interaction hitbox plus the bottom/top blocks) half a block to the east --
+        // the admin's right hand when standing facing north, as given -- while every hose/nozzle
+        // anchor below (topCornerX/topCornerZ, hoseStart, idleEnd, nozzleRestLocation) keeps
+        // using the original, un-nudged x/z so the hose and nozzle don't move at all.
+        double bodyX = x + 0.5D + 0.5D;
+        double bodyZ = z + 0.5D;
+
         List<Entity> all = new ArrayList<>();
 
         Interaction interaction = world.spawn(
-                new Location(world, x + 0.5D, y, z + 0.5D), Interaction.class, hitbox -> {
+                new Location(world, bodyX, y, bodyZ), Interaction.class, hitbox -> {
             hitbox.setInteractionWidth(1.0F);
             hitbox.setInteractionHeight(2.0F);
             hitbox.setResponsive(true);
@@ -127,10 +135,10 @@ public final class GasPumpRig {
         interaction.addScoreboardTag("mcv_pump_" + pumpId);
         all.add(interaction);
 
-        ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y, z + 0.5D),
+        ItemDisplay bottom = part(world, new Location(world, bodyX, y, bodyZ),
                 "gas_pump_bottom", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
                 new Vector3f(1.0F), pumpId, all);
-        ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1, z + 0.5D),
+        ItemDisplay top = part(world, new Location(world, bodyX, y + 1, bodyZ),
                 "gas_pump_top", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
                 new Vector3f(1.0F), pumpId, all);
 
