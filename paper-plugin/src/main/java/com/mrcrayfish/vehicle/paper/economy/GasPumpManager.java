@@ -133,7 +133,7 @@ public final class GasPumpManager {
         }
         pumps.remove(closest.id());
         pumpsByBlock.remove(blockKey(closest.worldId(), closest.x(), closest.y(), closest.z()));
-        sessions.values().removeIf(session -> session.pumpId.equals(closest.id()));
+        sessions.values().removeIf(session -> session.pumpId().equals(closest.id()));
         save();
         return true;
     }
@@ -145,7 +145,7 @@ public final class GasPumpManager {
             return;
         }
         Session existing = sessions.get(player.getUniqueId());
-        if (existing != null && existing.pumpId.equals(pumpId)) {
+        if (existing != null && existing.pumpId().equals(pumpId)) {
             sessions.remove(player.getUniqueId());
             player.sendRichMessage("<yellow>Alimentare oprită.</yellow>");
             return;
@@ -189,12 +189,12 @@ public final class GasPumpManager {
                 toRemove.add(playerId);
                 continue;
             }
-            StoredGasPump pump = pumps.get(session.pumpId);
+            StoredGasPump pump = pumps.get(session.pumpId());
             if (pump == null) {
                 toRemove.add(playerId);
                 continue;
             }
-            Optional<LandVehicle> vehicleOptional = vehicles.byId(session.vehicleId);
+            Optional<LandVehicle> vehicleOptional = vehicles.byId(session.vehicleId());
             if (vehicleOptional.isEmpty()) {
                 toRemove.add(playerId);
                 player.sendRichMessage("<red>Vehiculul nu mai există, alimentare oprită.</red>");
