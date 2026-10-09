@@ -131,9 +131,10 @@ public final class GasPumpManager {
         if (closest == null) {
             return false;
         }
-        pumps.remove(closest.id());
+        UUID removedPumpId = closest.id();
+        pumps.remove(removedPumpId);
         pumpsByBlock.remove(blockKey(closest.worldId(), closest.x(), closest.y(), closest.z()));
-        sessions.values().removeIf(session -> session.pumpId().equals(closest.id()));
+        sessions.values().removeIf(session -> session.pumpId().equals(removedPumpId));
         save();
         return true;
     }
