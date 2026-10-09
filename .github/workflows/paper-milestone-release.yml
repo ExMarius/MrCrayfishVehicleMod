@@ -2,6 +2,20 @@ name: Paper land vehicles milestone release
 
 on:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag for the release (must not already exist)'
+        required: true
+        default: 'v1.0.0'
+      title:
+        description: 'Release title'
+        required: true
+        default: 'MrCrayfish Vehicle Plugin v1.0.0'
+      prerelease:
+        description: 'Mark as a pre-release'
+        type: boolean
+        required: true
+        default: false
 
 permissions:
   contents: write
@@ -87,34 +101,44 @@ jobs:
       - name: Publish immutable GitHub milestone
         env:
           GH_TOKEN: ${{ github.token }}
+          TAG: ${{ inputs.tag }}
+          TITLE: ${{ inputs.title }}
+          PRERELEASE: ${{ inputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
-          TAG="paper-land-vehicles-milestone-2026-10-08-r29"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; refusing to overwrite the immutable milestone."
             exit 1
           fi
+          PRERELEASE_FLAG=()
+          if [ "$PRERELEASE" = "true" ]; then
+            PRERELEASE_FLAG=(--prerelease)
+          fi
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
-            --title "Paper 1.21.4 land vehicles milestone r29 — 2026-10-08" \
-            --prerelease \
+            --title "$TITLE" \
+            "${PRERELEASE_FLAG[@]}" \
             --notes-file - <<'EOF'
-          Immutable backup of the validated land-vehicle checkpoint for Paper 1.21.4 and Java 21.
+          Full checkpoint of the server-side Paper port of MrCrayfish's Vehicle Mod, built for vanilla clients (no Forge/mod required on the player side).
 
-          Included:
-          - server plugin JAR with seventeen land vehicles, the two-seat Jet Ski and Speed Boat, four-seat Aluminum Boat, Sports Plane, Compact Helicopter, Sofacopter, Couch, and all five original trailers;
-          - mandatory vanilla-client resource pack r29, adding the released `1.16.X` ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, and Couch (exact generated axle/wheel/seat/fuel-port geometry, the ATV's dune-buggy-style tilted-fork handlebar steering ratio, the Mini Bike's fork-steered handlebars shared with the Dirt Bike/Moped pattern, and original engine samples reused per each entity's `getEngineSound()`), while retaining the complete Dune Buggy, Compact Helicopter, Sports Plane, and Sofacopter rigs, and source-accurate audio or silence;
+          Included vehicles (23): Go Kart, Lawn Mower, Quad Bike, Dune Buggy, Tractor, Dirt Bike, Moped, Off Roader, Sports Car, Mini Bus, Golf Cart, Jet Ski, Compact Helicopter, Sofacopter, Sports Plane, ATV, Mini Bike, Smart Car, Speed Boat, Aluminum Boat, Couch, Bumper Car, Shopping Cart.
+          Included trailers (5): all original trailers with source-aligned towing/transport behaviour.
+
+          Package contents:
+          - server plugin JAR;
+          - mandatory vanilla-client resource pack (models, textures, item-display geometry, and engine/ambient sounds per vehicle);
           - SHA-256 checksums for both artifacts;
-          - the resource-pack SHA-1 used by Paper configuration.
+          - the resource-pack SHA-1 used by the plugin's Paper resource-pack configuration.
 
-          Verified in GitHub Actions:
+          Verified in GitHub Actions before publishing:
           - clean Java 21 Gradle test/build;
           - non-empty plugin JAR output;
-          - resource-pack ZIP integrity, license, Sports Car assets, and configured SHA-1.
+          - resource-pack ZIP integrity and SHA-1 match against the plugin's `config.yml`.
 
-          Vanilla-client limitations:
+          Vanilla-client limitations (disclosed deviations from the original Forge mod):
           - players use Minecraft's standard horse-style mounted posture because Paper cannot set individual player limb angles;
           - ItemDisplays and server-side interaction rays replace Forge render and ray-trace objects;
-          - a mandatory resource pack is required for the original models, textures, and sounds.
+          - a mandatory resource pack is required for the original models, textures, and sounds;
+          - Couch and Sofacopter remain dependent on MrCrayfish's Furniture Mod, matching the original mod's own cross-mod dependency; the Bath vehicle is excluded (it only existed via a cross-mod dependency in the original).
           EOF
