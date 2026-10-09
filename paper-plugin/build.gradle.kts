@@ -8,10 +8,16 @@ version = "0.1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://jitpack.io")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    // Vault's Economy API only — the actual Vault plugin jar (installed separately on
+    // the server) provides the implementation at runtime. This is a soft dependency:
+    // the plugin works without Vault installed, just without paid fuel (see
+    // com.mrcrayfish.vehicle.paper.economy.FuelEconomyService).
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7")
     testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

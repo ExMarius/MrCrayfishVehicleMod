@@ -2,6 +2,7 @@ package com.mrcrayfish.vehicle.paper.listener;
 
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.economy.GasPumpManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
@@ -41,10 +42,12 @@ public final class VehicleListener implements Listener {
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
+    private final GasPumpManager gasPumps;
 
-    public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles) {
+    public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles, GasPumpManager gasPumps) {
         this.plugin = plugin;
         this.vehicles = vehicles;
+        this.gasPumps = gasPumps;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -173,6 +176,18 @@ public final class VehicleListener implements Listener {
         }
     }
 
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onGasPumpInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getHand() != EquipmentSlot.HAND
+                || event.getClickedBlock() == null) {
+            return;
+        }
+        if (gasPumps.isPump(event.getClickedBlock())) {
+            event.setCancelled(true);
+            gasPumps.toggleFueling(event.getPlayer(), event.getClickedBlock());
+        }
+    }
+
     @EventHandler(priority = EventPriority.HIGH)
     public void onPlaceCarriedVehicle(PlayerInteractEvent event) {
         boolean carryingWaterVehicle = vehicles.trailers().isCarryingWaterVehicle(event.getPlayer());
@@ -258,12 +273,14 @@ public final class VehicleListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
+        gasPumps.onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
     }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
+        gasPumps.onPlayerQuit(event.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)

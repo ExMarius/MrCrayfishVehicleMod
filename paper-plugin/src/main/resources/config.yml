@@ -16,3 +16,16 @@ performance:
 
 persistence:
   autosave-seconds: 300
+
+# Gas pumps are new (not part of the original mod): admins mark a block with
+# "/vehicle pump create" and players refuel the nearest vehicle by right-clicking it.
+# Paid fuel requires Vault plus any economy plugin that hooks into it (e.g. EssentialsX).
+# Without Vault, pumps automatically dispense fuel for free instead of blocking play.
+economy:
+  # Price per 1% of a vehicle's tank. Live-adjustable with "/vehicle fuelprice <value>".
+  fuel-price-per-percent: 1.0
+  # How much of the tank fills per second while a player holds a pump active.
+  fill-percent-per-second: 10.0
+  # Maximum distance (blocks) a player may stray from the pump or the vehicle
+  # before fueling stops automatically.
+  max-pump-distance: 5.0
