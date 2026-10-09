@@ -92,21 +92,22 @@ public final class GasPumpRig {
     public static GasPumpRig spawn(Block block, BlockFace facing, UUID pumpId) {
         World world = block.getWorld();
         int x = block.getX();
-        int y = block.getY();
         int z = block.getZ();
+        // The theoretical "zero extra vertical offset" placement (the registered block's own
+        // bottom-corner Y, with no adjustment -- see the removed VERTICAL_OFFSET this comment
+        // used to describe) turned out, per direct in-game visual confirmation standing at the
+        // actual spawned rig, to render the whole rig half a block into the ground. Unlike that
+        // theoretical argument (which was never checked against a live client), this +0.5 is a
+        // live-tested correction: the admin-visible "block=(x, y, z)" position names the
+        // *ground* block the pump's registered at, not literally the display geometry's own
+        // bottom-corner Y, so the whole rig (body, hose, and nozzle alike) needs to render one
+        // half-block higher than that registered Y to sit flush on top of it instead of
+        // clipping into it.
+        double y = block.getY() + 0.5D;
         Quaternionf rotation = bodyRotation(facing);
 
         List<Entity> all = new ArrayList<>();
 
-        // The original mod's two pump halves are ordinary blocks, not displays: the bottom
-        // block occupies exactly [x, x+1] x [y, y+1] x [z, z+1] and the top block the one
-        // directly above it, with zero extra vertical offset -- see GasPumpTileEntity/
-        // GasPumpBlock (a vanilla two-tall block pair) and GasPumpManager#createPump, which
-        // stores the *bottom* block's own coordinates as the pump's position. An earlier
-        // revision of this rig added a fabricated "VERTICAL_OFFSET = 0.5" here (justified only
-        // as "per in-game testing feedback"), floating the whole rig half a block above the
-        // registered position -- removed per direct instruction to stop tuning by guesswork
-        // and instead match the original's real, flush block placement exactly.
         Interaction interaction = world.spawn(
                 new Location(world, x + 0.5D, y, z + 0.5D), Interaction.class, hitbox -> {
             hitbox.setInteractionWidth(1.0F);
