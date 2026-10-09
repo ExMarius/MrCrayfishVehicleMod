@@ -204,8 +204,16 @@ public final class GasPumpRig {
      * {@code FuelingHandler#onRenderHand}/{@code onModelRenderPost}, which likewise draw the
      * nozzle model near the holding player's hand instead of on the pump once picked up).
      * {@code bodyYawDegrees} substitutes the player's plain look yaw for the original's
-     * interpolated body yaw (see class javadoc), and the non-first-person hand offset is
-     * always used since the server cannot tell which players are in first person.
+     * interpolated body yaw (see class javadoc).
+     *
+     * <p>The original renderer picks between two different hand offsets depending on the
+     * fueling player's own client-side camera mode: a small, low, hand-side-dependent offset
+     * for third person, and a taller, further-forward, hand-side-independent offset
+     * ({@code (-0.25, 0.5, -0.25)} rotated by look yaw) for first person. The server has no way
+     * to know any player's camera mode, so this always uses the first-person offset, since that
+     * is Minecraft's default view and therefore what most players see while fueling; {@code
+     * mainHand} is accepted but unused as a result, since the original's first-person branch
+     * does not depend on it either.</p>
      */
     public void updateActive(Vector3f playerFeet, float bodyYawDegrees, MainHand mainHand) {
         if (!valid()) {
@@ -216,8 +224,7 @@ public final class GasPumpRig {
             nozzleRestTransformApplied = false;
         }
 
-        float handSide = mainHand == MainHand.RIGHT ? 1.0F : -1.0F;
-        Vector3f handOffset = new Vector3f(-0.35F * handSide, -0.025F, -0.025F);
+        Vector3f handOffset = new Vector3f(-0.25F, 0.5F, -0.25F);
         handOffset = yRot(handOffset, -radians(bodyYawDegrees));
         Vector3f nozzleTip = new Vector3f(playerFeet).add(0.0F, 0.8F, 0.0F).add(handOffset);
 
