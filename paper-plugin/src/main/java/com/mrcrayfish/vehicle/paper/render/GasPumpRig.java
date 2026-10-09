@@ -199,7 +199,10 @@ public final class GasPumpRig {
 
     /**
      * Bends the hose from the pump toward {@code playerFeet} (that player's current feet
-     * position) and hides the idle nozzle prop, since the hose now ends at the player's hand.
+     * position) and moves the nozzle prop to that same point, so it now reads as "in the
+     * fueling player's hand" instead of resting on its idle holder (matching
+     * {@code FuelingHandler#onRenderHand}/{@code onModelRenderPost}, which likewise draw the
+     * nozzle model near the holding player's hand instead of on the pump once picked up).
      * {@code bodyYawDegrees} substitutes the player's plain look yaw for the original's
      * interpolated body yaw (see class javadoc), and the non-first-person hand offset is
      * always used since the server cannot tell which players are in first person.
@@ -210,7 +213,7 @@ public final class GasPumpRig {
         }
         if (!active) {
             active = true;
-            nozzle.setItemStack(new ItemStack(Material.AIR));
+            nozzleRestTransformApplied = false;
         }
 
         float handSide = mainHand == MainHand.RIGHT ? 1.0F : -1.0F;
@@ -222,6 +225,16 @@ public final class GasPumpRig {
         Vector3f endTangent = new Vector3f(lookDirection).mul(3.0F);
 
         layHose(hoseStart, HOSE_START_TANGENT, nozzleTip, endTangent);
+
+        // Same rotation formula as the idle holder's (rotateY(yAngle).rotateY(180).rotateX(90)),
+        // just driven by the player's continuous look yaw instead of the pump's quantized
+        // cardinal facing -- see GasPumpManager#cardinalFacing for why these two yaw
+        // conventions line up (both treat yaw 0/90/180/270 as south/west/north/east).
+        Quaternionf nozzleHandRotation = new Quaternionf()
+                .rotateY(radians(-bodyYawDegrees)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
+        Location tipLocation = new Location(nozzle.getWorld(), nozzleTip.x, nozzleTip.y, nozzleTip.z);
+        place(nozzle, tipLocation, new Vector3f(0.0F), nozzleHandRotation, new Vector3f(0.8F),
+                new Quaternionf());
     }
 
     private void layHose(Vector3f startPos, Vector3f startTangent, Vector3f endPos, Vector3f endTangent) {
@@ -234,14 +247,8 @@ public final class GasPumpRig {
         for (int i = 0; i < HOSE_SEGMENTS; i++) {
             Vector3f from = samples[i];
             Vector3f to = samples[i + 1];
-            Vector3f midpoint = new Vector3f(from).add(to).mul(0.5F);
             Vector3f direction = new Vector3f(to).sub(from);
             float length = direction.length();
-            ItemDisplay segment = hoseSegments.get(i);
-            Location anchor = segment.getLocation();
-            anchor.setX(midpoint.x);
-            anchor.setY(midpoint.y);
-            anchor.setZ(midpoint.z);
             Quaternionf rotation;
             if (length < 1.0E-5F) {
                 rotation = new Quaternionf();
@@ -250,10 +257,29 @@ public final class GasPumpRig {
                 direction.div(length);
                 rotation = new Quaternionf().rotationTo(FORWARD, direction);
             }
-            place(segment, anchor, new Vector3f(0.0F), rotation, new Vector3f(1.0F, 1.0F, length),
-                    new Quaternionf());
+            placeSegment(hoseSegments.get(i), from, rotation, length);
         }
     }
+
+    /**
+     * Positions one hose segment so it runs exactly from {@code from} to {@code from + length *
+     * rotation(FORWARD)}, i.e. {@code from} is the segment's own entity position, not its
+     * midpoint. This only works because {@code gas_hose_segment.json}'s element is centered on
+     * (and starts at) the model's own local origin -- unlike every other part in this rig
+     * (ported straight from real exported block models), this one is new geometry authored for
+     * this port, so it doesn't need the universal left/right-rotation compensation {@link
+     * #place} and {@link #part} apply for those; a plain rotate-then-scale is enough.
+     */
+    private static void placeSegment(ItemDisplay segment, Vector3f from, Quaternionf rotation, float length) {
+        Location anchor = segment.getLocation();
+        anchor.setX(from.x);
+        anchor.setY(from.y);
+        anchor.setZ(from.z);
+        segment.teleport(anchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        segment.setTransformation(new Transformation(new Vector3f(0.0F), rotation,
+                new Vector3f(1.0F, 1.0F, length), new Quaternionf()));
+    }
+
 
     private static ItemDisplay part(World world, Location location, String modelName, float entityYaw,
                                      Vector3f translation, Quaternionf leftRotation, Vector3f scale,

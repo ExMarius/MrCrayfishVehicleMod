@@ -815,6 +815,24 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "textures/item/gas_hose_segment.png",
         )
 
+        # Nozzle pick-up/put-down and the fueling "glug" sound -- GasPumpManager plays these
+        # by the same vehicle:block.gas_pump.nozzle.* / vehicle:item.jerry_can.liquid_glug
+        # event names the original mod registered, so the .ogg files and their sounds.json
+        # entries need to ship in this pack too (previously only the models/textures were
+        # copied over, so the sounds silently never played).
+        copy(
+            ASSETS / "sounds/block/gas_pump/nozzle/pick_up.ogg",
+            namespace / "sounds/block/gas_pump/nozzle/pick_up.ogg",
+        )
+        copy(
+            ASSETS / "sounds/block/gas_pump/nozzle/put_down.ogg",
+            namespace / "sounds/block/gas_pump/nozzle/put_down.ogg",
+        )
+        copy(
+            ASSETS / "sounds/item/jerry_can/liquid_glug.ogg",
+            namespace / "sounds/item/jerry_can/liquid_glug.ogg",
+        )
+
         copy(
             ASSETS / "textures/vehicle/go_kart/base.png",
             namespace / "textures/item/go_kart_body.png",
@@ -1052,6 +1070,15 @@ def build(output: Path) -> tuple[Path, str]:
         ):
             copy(ASSETS / f"sounds/{source}", namespace / f"sounds/{source}")
         write_json(namespace / "sounds.json", {
+            "block.gas_pump.nozzle.pick_up": {
+                "sounds": [{"name": "vehicle:block/gas_pump/nozzle/pick_up"}]
+            },
+            "block.gas_pump.nozzle.put_down": {
+                "sounds": [{"name": "vehicle:block/gas_pump/nozzle/put_down"}]
+            },
+            "item.jerry_can.liquid_glug": {
+                "sounds": [{"name": "vehicle:item/jerry_can/liquid_glug"}]
+            },
             "entity.go_kart.engine": {
                 "sounds": [{"name": "vehicle:entity/go_kart/engine", "preload": True}]
             },

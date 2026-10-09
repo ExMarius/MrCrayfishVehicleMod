@@ -8,6 +8,7 @@ import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -52,6 +53,11 @@ public final class GasPumpManager {
 
     private BukkitTask tickTask;
     private BukkitTask rigTask;
+    /** Counts {@link #tick()} invocations so the glug sound below can be throttled to about
+     *  once a second, matching the original's {@code fuelTickCounter % 20 == 0} (that one
+     *  counts client ticks 1:1; this one counts {@link #TICK_INTERVAL}-tick invocations, so
+     *  it rolls over four times as fast to land on the same real-world cadence). */
+    private long tickCounter;
     private double pricePerPercent;
     private double fillPercentPerSecond;
     private double maxPumpDistance;
@@ -284,6 +290,7 @@ public final class GasPumpManager {
         if (pumpId.equals(currentlyHeld)) {
             stopFuelingSession(playerId);
             holding.remove(playerId);
+            playNozzleSound(pumpId, "vehicle:block.gas_pump.nozzle.put_down");
             player.sendRichMessage("<yellow>Ai pus duza la loc.</yellow>");
             return;
         }
@@ -291,11 +298,27 @@ public final class GasPumpManager {
             // Matches the original: you can only hold one pump's nozzle at a time.
             stopFuelingSession(playerId);
             holding.remove(playerId);
+            playNozzleSound(currentlyHeld, "vehicle:block.gas_pump.nozzle.put_down");
         }
         holding.put(playerId, pumpId);
+        playNozzleSound(pumpId, "vehicle:block.gas_pump.nozzle.pick_up");
         player.sendRichMessage("<green>Ai luat duza.</green> <gray>Apropie-te de un vehicul "
                 + "și dă click dreapta pe el pentru a-l alimenta. Click din nou pe pompă pentru "
                 + "a pune duza la loc.</gray>");
+    }
+
+    /** Matches the original's {@code GasPumpBlock#use} playing
+     *  {@code BLOCK_GAS_PUMP_NOZZLE_PICK_UP}/{@code PUT_DOWN} at the pump block itself. */
+    private void playNozzleSound(UUID pumpId, String soundKey) {
+        StoredGasPump pump = pumps.get(pumpId);
+        if (pump == null) {
+            return;
+        }
+        World world = Bukkit.getWorld(pump.worldId());
+        if (world == null) {
+            return;
+        }
+        world.playSound(pumpCenter(pump), soundKey, SoundCategory.BLOCKS, 1.0F, 1.0F);
     }
 
     /** Called from {@code VehicleListener} when a player holding a pump's nozzle right-clicks
@@ -366,9 +389,11 @@ public final class GasPumpManager {
 
     private void tick() {
         dropNozzlesOutOfRange();
+        tickCounter++;
         if (sessions.isEmpty()) {
             return;
         }
+        boolean playGlug = tickCounter % Math.max(1L, 20L / TICK_INTERVAL) == 0L;
         double incrementPercent = fillPercentPerSecond * (TICK_INTERVAL / 20.0D);
         List<UUID> toRemove = new ArrayList<>();
         for (Map.Entry<UUID, Session> entry : sessions.entrySet()) {
@@ -402,6 +427,14 @@ public final class GasPumpManager {
                 toRemove.add(playerId);
                 player.sendRichMessage("<yellow>Prea departe de pompă, alimentare oprită.</yellow>");
                 continue;
+            }
+
+            if (playGlug) {
+                // Matches the original's FuelingHandler playing ITEM_JERRY_CAN_LIQUID_GLUG
+                // roughly once a second at the nozzle's location while fuel is flowing.
+                Location vehicleLocation = vehicle.location();
+                vehicleLocation.getWorld().playSound(vehicleLocation, "vehicle:item.jerry_can.liquid_glug",
+                        SoundCategory.PLAYERS, 0.6F, 1.0F + 0.1F * player.getWorld().getRandom().nextFloat());
             }
 
             double balance = economy.balance(player);
