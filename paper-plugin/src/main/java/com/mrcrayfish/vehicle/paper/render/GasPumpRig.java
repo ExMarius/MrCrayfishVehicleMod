@@ -208,9 +208,14 @@ public final class GasPumpRig {
         sb.append("nozzle      @ ").append(describe(nozzle.getLocation()))
                 .append(' ').append(describe(nozzle.getTransformation())).append('\n');
         sb.append("nozzleRestLocation=").append(describe(nozzleRestLocation)).append('\n');
-        sb.append("hoseStart=").append(hoseStart).append(" idleEnd=").append(idleEnd).append('\n');
-        if (!hoseSegments.isEmpty()) {
-            sb.append("hoseSegment[0] @ ").append(describe(hoseSegments.get(0).getLocation())).append('\n');
+        sb.append("active=").append(active).append(" hoseStart=").append(hoseStart)
+                .append(" idleEnd=").append(idleEnd).append('\n');
+        for (int i = 0; i < hoseSegments.size(); i++) {
+            ItemDisplay segment = hoseSegments.get(i);
+            Transformation t = segment.getTransformation();
+            sb.append("hoseSegment[").append(i).append("] @ ").append(describe(segment.getLocation()))
+                    .append(" scaleZ=").append(String.format("%.4f", t.getScale().z))
+                    .append(" leftRotation=").append(describe(t.getLeftRotation())).append('\n');
         }
         return sb.toString();
     }

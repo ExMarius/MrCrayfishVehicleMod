@@ -274,6 +274,8 @@ public final class GasPumpManager {
         StringBuilder sb = new StringBuilder();
         sb.append("stored pump: block=(").append(closest.x()).append(", ").append(closest.y())
                 .append(", ").append(closest.z()).append(") facing=").append(closest.facing()).append('\n');
+        Block groundBlock = origin.getWorld().getBlockAt(closest.x(), closest.y() - 1, closest.z());
+        sb.append("block directly below the pump's bottom (y-1) = ").append(groundBlock.getType()).append('\n');
         if (rig == null) {
             sb.append("(no live rig found for this pump!)");
         } else {
