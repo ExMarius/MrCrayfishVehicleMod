@@ -149,21 +149,30 @@ public final class GasPumpRig {
         double topCornerY = y + 1;
         double topCornerZ = z;
 
+        // Two more isolated diagnostics per direct instruction, on top of the body-only
+        // east nudge above: slide the whole idle hose (both its anchor points, so the curve
+        // translates as a unit instead of stretching) half a block to the west -- the admin's
+        // left hand facing north -- and slide the nozzle's own rest spot 1 pixel (1/16 block,
+        // Minecraft's standard texture-pixel unit) to the east, the admin's right hand. Neither
+        // offset touches the other part, nor the body position/rotation handled above.
+        double hoseOffsetX = -0.5D;
+        double nozzlePixelOffsetX = 1.0D / 16.0D;
+
         double[] hoseStartXZ = fixRotation(facing, 0.620625D, 1.05D, 0.620625D, 1.05D);
         Vector3f hoseStart = new Vector3f(
-                (float) (topCornerX + hoseStartXZ[0]),
+                (float) (topCornerX + hoseStartXZ[0] + hoseOffsetX),
                 (float) (topCornerY + 0.6425D),
                 (float) (topCornerZ + hoseStartXZ[1]));
 
         double[] idleEndXZ = fixRotation(facing, 0.345D, 1.06D, 0.345D, 1.06D);
         Vector3f idleEnd = new Vector3f(
-                (float) (topCornerX + idleEndXZ[0]),
+                (float) (topCornerX + idleEndXZ[0] + hoseOffsetX),
                 (float) (topCornerY + 0.1D),
                 (float) (topCornerZ + idleEndXZ[1]));
 
         double[] nozzleRestXZ = fixRotation(facing, 0.29D, 1.06D, 0.29D, 1.06D);
         Location nozzleRestLocation = new Location(world,
-                topCornerX + nozzleRestXZ[0], topCornerY + 0.5D, topCornerZ + nozzleRestXZ[1]);
+                topCornerX + nozzleRestXZ[0] + nozzlePixelOffsetX, topCornerY + 0.5D, topCornerZ + nozzleRestXZ[1]);
 
         float yAngle = get2DDataValue(facing) * -90.0F;
         Quaternionf nozzleRestRotation = new Quaternionf()
