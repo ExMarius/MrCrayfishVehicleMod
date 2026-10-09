@@ -434,7 +434,8 @@ public final class GasPumpManager {
                 // roughly once a second at the nozzle's location while fuel is flowing.
                 Location vehicleLocation = vehicle.location();
                 vehicleLocation.getWorld().playSound(vehicleLocation, "vehicle:item.jerry_can.liquid_glug",
-                        SoundCategory.PLAYERS, 0.6F, 1.0F + 0.1F * player.getWorld().getRandom().nextFloat());
+                        SoundCategory.PLAYERS, 0.6F,
+                        1.0F + 0.1F * java.util.concurrent.ThreadLocalRandom.current().nextFloat());
             }
 
             double balance = economy.balance(player);
