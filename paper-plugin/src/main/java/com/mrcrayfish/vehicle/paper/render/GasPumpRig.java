@@ -44,9 +44,14 @@ import java.util.UUID;
  */
 public final class GasPumpRig {
     public static final String ENTITY_TAG = "mcv_plugin_gaspump";
-    private static final int VANILLA_ENTITY_LERP_TICKS = 3;
-    /** Matches the original's {@code Config.CLIENT.hoseSegments} default of 10. */
-    private static final int HOSE_SEGMENTS = 10;
+    /** The original's own {@code Config.CLIENT.hoseSegments} default is 10, but that was tuned
+     *  for its continuously-varying, per-vertex-blended procedural quad strip (see
+     *  {@code GasPumpRenderer#drawHose}). This port instead chains rigid straight prisms, each
+     *  with one constant orientation along its whole length, so the same 10-way split leaves a
+     *  visible facet/notch at every joint where the chain bends sharply (most noticeably right
+     *  where the hose leaves the pump). Raised well past the original's value, as a disclosed
+     *  deviation, to keep those joint angles small enough to read as a smooth curve instead. */
+    private static final int HOSE_SEGMENTS = 24;
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
@@ -198,26 +203,22 @@ public final class GasPumpRig {
     }
 
     /**
-     * Bends the hose from the pump toward roughly where {@code playerFeet} is holding it.
+     * Bends the hose from the pump toward {@code playerFeet} (that player's current feet
+     * position) and moves this rig's own nozzle prop to roughly that same point, so it reads
+     * as "in the fueling player's hand" instead of resting on its idle holder.
      *
-     * <p>Re-reading the original's own {@code FuelingHandler} (its client-side render hook,
-     * separate from {@code GasPumpRenderer}) found that this port's earlier approach -- moving
-     * this rig's own nozzle prop to a hand-offset point computed from the player's position --
-     * was never how the original showed the nozzle "in hand" at all. The original always
-     * renders the held nozzle by attaching it directly to the player model's own right-arm
-     * bone ({@code onModelRenderPost}) or hand-render matrix ({@code onRenderHand}), so it
-     * always tracks real arm swing/animation pixel-perfectly; {@code getNozzlePosition} (the
-     * method this port's old offset math came from) is only ever used there for the hose
-     * tube's own terminal point, a much less visually-critical value.
-     *
-     * <p>A Paper plugin cannot attach a prop to a vanilla player's arm bone, but it can do
-     * something that reaches the same result for free: {@code GasPumpManager} now puts a real
-     * copy of the nozzle item in the fueling player's off hand, which every client (including
-     * bystanders, and the fueling player's own first- or third-person view) already knows how
-     * to render correctly, swing animation included. So this rig's own cosmetic nozzle prop is
-     * now just hidden for the duration (see below) and this method only has to aim the hose's
-     * end at a reasonable approximation of chest/hand height, a bit out in front of the
-     * player's body -- it no longer also has to double as the exact rendered nozzle position.
+     * <p>The original mod's real held-nozzle visual is a client-side render hook
+     * ({@code FuelingHandler}) that attaches the nozzle model directly to the player model's
+     * own right arm bone -- always the right arm, regardless of the player's configured main
+     * hand -- so it automatically tracks real arm swing/animation. A Paper plugin has no way to
+     * attach a prop to a vanilla player's bones, and routing it through a real off-hand item
+     * (tried in an earlier revision of this method) was rejected: it visibly occupied the
+     * player's own inventory/off-hand slot, which reads as a bug rather than a cosmetic effect.
+     * So this keeps the original (pre-off-hand) approach of positioning this rig's own prop by
+     * hand -- always on the player's right side to match the original's always-right-hand
+     * bone attachment -- with its forward offset pushed out further than the original's own
+     * (near-zero) value, per direct in-game feedback that the literal source value reads as
+     * glued to the player's hip instead of visibly held out in front of them.
      */
     public void updateActive(Vector3f playerFeet, float bodyYawDegrees, MainHand mainHand) {
         if (!valid()) {
@@ -226,22 +227,26 @@ public final class GasPumpRig {
         if (!active) {
             active = true;
             nozzleRestTransformApplied = false;
-            // Hide this rig's own nozzle prop while a real one sits in the player's off hand,
-            // so the two don't both show up at once. setIdle() restores it on release. Built
-            // fresh here rather than cached in a static field, since eagerly constructing an
-            // ItemStack at class-load time would make GasPumpRigTest's plain-JUnit-without-a-
-            // live-server environment blow up just from loading this class at all (see that
-            // test's own class javadoc).
-            nozzle.setItemStack(new ItemStack(Material.AIR));
         }
 
-        Vector3f forward = directionFromRotation(0.0F, bodyYawDegrees);
-        Vector3f nozzleTip = new Vector3f(playerFeet).add(0.0F, 1.1F, 0.0F).add(forward.mul(0.5F));
+        // Always the right side, matching the original's always-right-arm bone attachment
+        // (FuelingHandler#onModelRenderPost's hardcoded HandSide.RIGHT) -- unlike the hose's
+        // own terminal point in the original, which does vary with the player's configured
+        // main hand, this visible prop never did.
+        Vector3f handOffset = new Vector3f(-0.35F, 0.1F, 0.4F);
+        handOffset = yRot(handOffset, -radians(bodyYawDegrees));
+        Vector3f nozzleTip = new Vector3f(playerFeet).add(0.0F, 0.8F, 0.0F).add(handOffset);
 
         Vector3f lookDirection = directionFromRotation(-20.0F, bodyYawDegrees);
         Vector3f endTangent = new Vector3f(lookDirection).mul(3.0F);
 
         layHose(hoseStart, HOSE_START_TANGENT, nozzleTip, endTangent);
+
+        Quaternionf nozzleHandRotation = new Quaternionf()
+                .rotateY(radians(-bodyYawDegrees)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
+        Location tipLocation = new Location(nozzle.getWorld(), nozzleTip.x, nozzleTip.y, nozzleTip.z);
+        place(nozzle, tipLocation, new Vector3f(0.0F), nozzleHandRotation, new Vector3f(0.8F),
+                new Quaternionf());
     }
 
     private void layHose(Vector3f startPos, Vector3f startTangent, Vector3f endPos, Vector3f endTangent) {
@@ -312,7 +317,16 @@ public final class GasPumpRig {
             entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
             entity.setInterpolationDelay(0);
             entity.setInterpolationDuration(1);
-            entity.setTeleportDuration(VANILLA_ENTITY_LERP_TICKS);
+            // Unlike LandVehicleRig's parts (which ride a continuously, natively-interpolated
+            // vehicle entity and benefit from a few ticks of client-side position smoothing),
+            // this rig's nozzle and hose segments are re-teleported to a freshly computed,
+            // authoritative position every single tick while a session is active. Any extra
+            // teleport smoothing on top of that only fights the fresh target each tick,
+            // showing up as the hose/nozzle visibly lagging behind -- or briefly sliding across
+            // the whole gap -- right when a player picks up or puts down a nozzle, since that's
+            // when the target position jumps the furthest in one tick. Instant teleports keep
+            // position and this tick's freshly-set rotation/scale in sync.
+            entity.setTeleportDuration(0);
             entity.setInvulnerable(true);
             entity.setPersistent(false);
             entity.setShadowRadius(0.0F);
@@ -330,14 +344,6 @@ public final class GasPumpRig {
         meta.setItemModel(new NamespacedKey("vehicle", name));
         item.setItemMeta(meta);
         return item;
-    }
-
-    /** Builds a fresh copy of the same cosmetic nozzle item this rig shows resting on the
-     *  pump's holder. {@code GasPumpManager} puts a copy of this in the fueling player's off
-     *  hand (see {@link #updateActive}'s javadoc for why), instead of this rig trying to
-     *  approximate that itself. */
-    public static ItemStack nozzleItemStack() {
-        return model("gas_pump_nozzle");
     }
 
     /** NORTH/EAST/SOUTH/WEST -> the same "y" rotation this pack's blockstates/gas_pump.json

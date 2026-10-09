@@ -8,14 +8,12 @@ import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.joml.Vector3f;
 
@@ -48,10 +46,6 @@ public final class GasPumpManager {
      *  clicking the pump) and actually transferring fuel (by then clicking a vehicle) are
      *  two separate steps here, just like in the original mod. */
     private final Map<UUID, UUID> holding = new HashMap<>();
-    /** Whatever a player's off hand actually held before they picked up a nozzle, so it can be
-     *  given back untouched when they put the nozzle down -- see {@link #giveNozzleToHand} and
-     *  {@link #takeNozzleFromHand}. A missing entry means their off hand was empty. */
-    private final Map<UUID, ItemStack> savedOffHand = new HashMap<>();
     private final Map<UUID, GasPumpRig> rigs = new HashMap<>();
     /** Maps each rig's invisible Interaction entity back to its pump, since the pump has no
      *  real block anymore for a vanilla block right-click to land on. */
@@ -119,17 +113,7 @@ public final class GasPumpManager {
             rigTask = null;
         }
         sessions.clear();
-        // Give back every held nozzle's real off-hand item before the server state (and each
-        // online player's inventory) gets saved to disk -- otherwise the fake nozzle item
-        // would be written into their player data and reappear, stuck, on their next join.
-        for (UUID playerId : new ArrayList<>(holding.keySet())) {
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                takeNozzleFromHand(player);
-            }
-        }
         holding.clear();
-        savedOffHand.clear();
         for (GasPumpRig rig : rigs.values()) {
             rig.remove();
         }
@@ -253,19 +237,7 @@ public final class GasPumpManager {
         pumps.remove(removedPumpId);
         pumpsByBlock.remove(blockKey(closest.worldId(), closest.x(), closest.y(), closest.z()));
         sessions.values().removeIf(session -> session.pumpId().equals(removedPumpId));
-        List<UUID> playersHoldingThisPump = new ArrayList<>();
-        for (Map.Entry<UUID, UUID> entry : holding.entrySet()) {
-            if (entry.getValue().equals(removedPumpId)) {
-                playersHoldingThisPump.add(entry.getKey());
-            }
-        }
-        for (UUID playerId : playersHoldingThisPump) {
-            holding.remove(playerId);
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                takeNozzleFromHand(player);
-            }
-        }
+        holding.values().removeIf(heldPumpId -> heldPumpId.equals(removedPumpId));
         GasPumpRig rig = rigs.remove(removedPumpId);
         if (rig != null) {
             pumpByInteraction.remove(rig.interactionId());
@@ -318,53 +290,21 @@ public final class GasPumpManager {
         if (pumpId.equals(currentlyHeld)) {
             stopFuelingSession(playerId);
             holding.remove(playerId);
-            takeNozzleFromHand(player);
             playNozzleSound(pumpId, "vehicle:block.gas_pump.nozzle.put_down");
             player.sendRichMessage("<yellow>Ai pus duza la loc.</yellow>");
             return;
         }
         if (currentlyHeld != null) {
-            // Matches the original: you can only hold one pump's nozzle at a time. No
-            // takeNozzleFromHand() here -- giveNozzleToHand() below overwrites their off hand
-            // with the new pump's nozzle directly, and savedOffHand still remembers whatever
-            // was in their off hand before they picked up the first one.
+            // Matches the original: you can only hold one pump's nozzle at a time.
             stopFuelingSession(playerId);
             holding.remove(playerId);
             playNozzleSound(currentlyHeld, "vehicle:block.gas_pump.nozzle.put_down");
         }
         holding.put(playerId, pumpId);
-        giveNozzleToHand(player);
         playNozzleSound(pumpId, "vehicle:block.gas_pump.nozzle.pick_up");
         player.sendRichMessage("<green>Ai luat duza.</green> <gray>Apropie-te de un vehicul "
                 + "și dă click dreapta pe el pentru a-l alimenta. Click din nou pe pompă pentru "
                 + "a pune duza la loc.</gray>");
-    }
-
-    /**
-     * Puts a real copy of the nozzle item in {@code player}'s off hand so vanilla renders it
-     * correctly -- in first or third person, for the player themselves and every bystander
-     * alike, arm swing and all -- instead of this plugin trying to approximate that with a
-     * free-floating prop (see {@code GasPumpRig#updateActive}'s javadoc for why that never
-     * looked right). Their previous off-hand item, if any, is remembered so
-     * {@link #takeNozzleFromHand} can give it back untouched.
-     */
-    private void giveNozzleToHand(Player player) {
-        UUID playerId = player.getUniqueId();
-        if (!savedOffHand.containsKey(playerId)) {
-            ItemStack previous = player.getInventory().getItemInOffHand();
-            savedOffHand.put(playerId, previous.getType() == Material.AIR ? null : previous.clone());
-        }
-        player.getInventory().setItemInOffHand(GasPumpRig.nozzleItemStack());
-    }
-
-    /** Restores whatever {@code player} actually had in their off hand before they picked up a
-     *  nozzle. Safe to call even if they never held one (does nothing in that case). */
-    private void takeNozzleFromHand(Player player) {
-        UUID playerId = player.getUniqueId();
-        if (!savedOffHand.containsKey(playerId)) {
-            return;
-        }
-        player.getInventory().setItemInOffHand(savedOffHand.remove(playerId));
     }
 
     /** Matches the original's {@code GasPumpBlock#use} playing
@@ -444,12 +384,7 @@ public final class GasPumpManager {
     public void onPlayerQuit(Player player) {
         UUID playerId = player.getUniqueId();
         sessions.remove(playerId);
-        if (holding.remove(playerId) != null) {
-            // Must happen before they actually disconnect, while their inventory is still
-            // live and mutable -- otherwise the fake nozzle item gets saved into their player
-            // data and reappears, stuck, next time they join.
-            takeNozzleFromHand(player);
-        }
+        holding.remove(playerId);
     }
 
     private void tick() {
@@ -557,10 +492,6 @@ public final class GasPumpManager {
         for (UUID playerId : toDrop) {
             holding.remove(playerId);
             stopFuelingSession(playerId);
-            Player player = Bukkit.getPlayer(playerId);
-            if (player != null) {
-                takeNozzleFromHand(player);
-            }
         }
     }
 
