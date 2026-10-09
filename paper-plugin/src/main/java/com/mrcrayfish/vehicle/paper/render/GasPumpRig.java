@@ -50,7 +50,6 @@ public final class GasPumpRig {
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
-    private static final ItemStack AIR = new ItemStack(Material.AIR);
     /** Raises the whole rig half a block above the registered pump position, per in-game
      *  testing feedback -- flush with the targeted block looked too low. */
     private static final double VERTICAL_OFFSET = 0.5D;
@@ -228,8 +227,12 @@ public final class GasPumpRig {
             active = true;
             nozzleRestTransformApplied = false;
             // Hide this rig's own nozzle prop while a real one sits in the player's off hand,
-            // so the two don't both show up at once. setIdle() restores it on release.
-            nozzle.setItemStack(AIR);
+            // so the two don't both show up at once. setIdle() restores it on release. Built
+            // fresh here rather than cached in a static field, since eagerly constructing an
+            // ItemStack at class-load time would make GasPumpRigTest's plain-JUnit-without-a-
+            // live-server environment blow up just from loading this class at all (see that
+            // test's own class javadoc).
+            nozzle.setItemStack(new ItemStack(Material.AIR));
         }
 
         Vector3f forward = directionFromRotation(0.0F, bodyYawDegrees);
