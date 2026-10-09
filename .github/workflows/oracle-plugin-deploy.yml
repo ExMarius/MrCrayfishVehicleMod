@@ -65,10 +65,38 @@ jobs:
           test "$EXPECTED" = "$ACTUAL"
           tools/test_fresh_paper_server.sh "$JAR"
 
+      - name: Fetch Vault and EssentialsX plugin jars
+        run: |
+          set -euo pipefail
+          mkdir -p oracle-deployment
+
+          # Vault 1.7.3 (the economy service our gas pump feature hooks into via
+          # softdepend). GitHub never recorded a digest for this 2020-era asset,
+          # so we pin its official byte size as a sanity check and log the sha256
+          # we actually received for audit/future pinning.
+          VAULT_URL="https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
+          VAULT_EXPECTED_SIZE=272259
+          curl -fsSL --retry 5 --retry-delay 5 -o oracle-deployment/Vault.jar "$VAULT_URL"
+          VAULT_ACTUAL_SIZE=$(stat -c %s oracle-deployment/Vault.jar)
+          if [ "$VAULT_ACTUAL_SIZE" != "$VAULT_EXPECTED_SIZE" ]; then
+            echo "::error title=Vault download mismatch::Expected $VAULT_EXPECTED_SIZE bytes, got $VAULT_ACTUAL_SIZE"
+            exit 1
+          fi
+          unzip -t oracle-deployment/Vault.jar >/dev/null
+          echo "Vault.jar sha256: $(sha256sum oracle-deployment/Vault.jar | cut -d' ' -f1)"
+
+          # EssentialsX 2.22.0 provides the actual Economy implementation behind
+          # Vault. GitHub reports a sha256 digest for this asset; pin it exactly.
+          ESSENTIALSX_URL="https://github.com/EssentialsX/Essentials/releases/download/2.22.0/EssentialsX-2.22.0.jar"
+          ESSENTIALSX_SHA256="bda4685105977fca2e209820a9f0ad24275bd103390a03236f38e59bfdac58e6"
+          curl -fsSL --retry 5 --retry-delay 5 -o oracle-deployment/EssentialsX.jar "$ESSENTIALSX_URL"
+          echo "$ESSENTIALSX_SHA256  oracle-deployment/EssentialsX.jar" | sha256sum --check --status
+          unzip -t oracle-deployment/EssentialsX.jar >/dev/null
+
       - name: Stage deployment files
         run: |
           set -euo pipefail
-          mkdir oracle-deployment
+          mkdir -p oracle-deployment
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f -print -quit)
           cp "$JAR" oracle-deployment/MrCrayfishVehiclePlugin.jar
           cp paper-plugin/src/main/resources/config.yml oracle-deployment/config.yml
@@ -104,6 +132,8 @@ jobs:
           JAR="$GITHUB_WORKSPACE/oracle-deployment/MrCrayfishVehiclePlugin.jar"
           CONFIG="$GITHUB_WORKSPACE/oracle-deployment/config.yml"
           CONFIGURE="$GITHUB_WORKSPACE/oracle-deployment/configure_server_resource_pack.py"
+          VAULT_JAR="$GITHUB_WORKSPACE/oracle-deployment/Vault.jar"
+          ESSENTIALSX_JAR="$GITHUB_WORKSPACE/oracle-deployment/EssentialsX.jar"
 
           phase() { echo "::notice title=Oracle deploy phase::$1"; }
           require_file() {
@@ -116,6 +146,8 @@ jobs:
           require_file "$JAR" "Built plugin artifact was not downloaded"
           require_file "$CONFIG" "Plugin config artifact was not downloaded"
           require_file "$CONFIGURE" "Resource-pack synchronization tool was not downloaded"
+          require_file "$VAULT_JAR" "Vault plugin artifact was not downloaded"
+          require_file "$ESSENTIALSX_JAR" "EssentialsX plugin artifact was not downloaded"
           require_file "$ROOT/bin/stop-minecraft.sh" "Minecraft stop script is missing"
           require_file "$ROOT/bin/start-minecraft.sh" "Minecraft start script is missing"
           phase "Artifacts and lifecycle scripts verified"
@@ -124,6 +156,8 @@ jobs:
             echo "::error title=Oracle backup failed::Could not back up the installed plugin JAR"
             exit 1
           fi
+          [ ! -f "$PLUGINS/Vault.jar" ] || cp -p "$PLUGINS/Vault.jar" "$BACKUP/plugins/"
+          [ ! -f "$PLUGINS/EssentialsX.jar" ] || cp -p "$PLUGINS/EssentialsX.jar" "$BACKUP/plugins/"
           [ ! -f "$DATA/config.yml" ] || cp -p "$DATA/config.yml" "$BACKUP/config.yml"
           if ! cp -p "$SERVER/server.properties" "$BACKUP/server.properties"; then
             echo "::error title=Oracle backup failed::Could not back up server.properties"
@@ -140,6 +174,8 @@ jobs:
               bash "$ROOT/bin/stop-minecraft.sh" || true
               find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
               find "$BACKUP/plugins" -maxdepth 1 -type f -name '*.jar' -exec cp -p {} "$PLUGINS/" \;
+              [ -f "$BACKUP/plugins/Vault.jar" ] || rm -f "$PLUGINS/Vault.jar"
+              [ -f "$BACKUP/plugins/EssentialsX.jar" ] || rm -f "$PLUGINS/EssentialsX.jar"
               [ ! -f "$BACKUP/config.yml" ] || cp -p "$BACKUP/config.yml" "$DATA/config.yml"
               cp -p "$BACKUP/server.properties" "$SERVER/server.properties"
               bash "$ROOT/bin/start-minecraft.sh" || true
@@ -207,6 +243,8 @@ jobs:
           find "$PLUGINS" -maxdepth 1 -type f -iname 'MrCrayfishVehiclePlugin*.jar' -delete
           install -m 600 "$JAR" "$TARGET"
           install -m 600 "$CONFIG" "$DATA/config.yml"
+          install -m 600 "$VAULT_JAR" "$PLUGINS/Vault.jar"
+          install -m 600 "$ESSENTIALSX_JAR" "$PLUGINS/EssentialsX.jar"
           install -m 600 "$BACKUP/server.properties.updated" "$SERVER/server.properties"
 
           start_epoch=$(date +%s)
@@ -218,6 +256,8 @@ jobs:
             latest_mtime=$(stat -c %Y "$SERVER/logs/latest.log" 2>/dev/null || echo 0)
             if [ "$latest_mtime" -ge "$start_epoch" ] \
                 && grep -q 'MrCrayfishVehiclePlugin.*Enabling\|Enabling MrCrayfishVehiclePlugin' "$SERVER/logs/latest.log" 2>/dev/null \
+                && grep -q 'Enabling Vault' "$SERVER/logs/latest.log" 2>/dev/null \
+                && grep -q 'Enabling Essentials' "$SERVER/logs/latest.log" 2>/dev/null \
                 && grep -q 'Done (' "$SERVER/logs/latest.log" 2>/dev/null \
                 && ss -ltn 2>/dev/null | grep -q ':25565'; then
               ready=1
@@ -239,4 +279,4 @@ jobs:
           trap - ERR
           find "$ROOT/backups" -mindepth 1 -maxdepth 1 -type d -name 'plugin-*' -printf '%T@ %p\n' \
             | sort -rn | tail -n +6 | cut -d' ' -f2- | xargs -r rm -rf
-          echo "::notice title=Oracle deployment::Plugin deployed, resource pack synchronized, and Minecraft is ready on local port 25565"
+          echo "::notice title=Oracle deployment::Plugin, Vault, and EssentialsX deployed, resource pack synchronized, and Minecraft is ready on local port 25565"
