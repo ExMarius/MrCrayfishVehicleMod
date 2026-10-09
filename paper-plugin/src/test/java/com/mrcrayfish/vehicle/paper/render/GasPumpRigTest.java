@@ -68,4 +68,43 @@ class GasPumpRigTest {
         assertEquals(y, actual.y, EPSILON_F);
         assertEquals(z, actual.z, EPSILON_F);
     }
+
+    /**
+     * Regression coverage for the pivot bug that made the hose render as scattered,
+     * disconnected fragments instead of a smooth chain: a vanilla {@code ItemDisplay}'s
+     * {@code Transformation} always pivots rotation and scale on the model's own center
+     * (Minecraft's own display-entity documentation: "the rotation pivot of the item display's
+     * transformation is the center of the item model" -- unlike a {@code BlockDisplay}, whose
+     * pivot is the model's corner), not on {@code gas_hose_segment.json}'s off-center local
+     * origin. Each test below reproduces the engine's own composition --
+     * {@code center + rotation * scale * (modelPos - center) + translation} for a unit model
+     * space with {@code center = (0.5, 0.5, 0.5)} -- using {@link
+     * GasPumpRig#hoseSegmentPivotCompensation} for {@code translation}, and asserts the
+     * segment's own local center axis ({@code x = y = 0}) lands exactly on {@code from} at
+     * {@code t = 0} and {@code from + length * direction} at {@code t = 1}, for several
+     * directions a real spline segment can take (including ones with no, and with every, axis
+     * in common with the model's native +Z orientation).
+     */
+    @Test
+    void hoseSegmentPivotCompensationKeepsEachSegmentRunningFromItsAnchorToItsTarget() {
+        assertSegmentRunsFromAnchorToTarget(new Vector3f(1.0F, 0.0F, 0.0F), 0.15F);
+        assertSegmentRunsFromAnchorToTarget(new Vector3f(0.0F, -1.0F, 0.3F), 0.08F);
+        assertSegmentRunsFromAnchorToTarget(new Vector3f(0.0F, 0.0F, 1.0F), 1.0F);
+        assertSegmentRunsFromAnchorToTarget(new Vector3f(-0.2F, 0.6F, -0.77F), 0.0421F);
+    }
+
+    private static void assertSegmentRunsFromAnchorToTarget(Vector3f rawDirection, float length) {
+        Vector3f direction = new Vector3f(rawDirection).normalize();
+        Quaternionf rotation = new Quaternionf().rotationTo(new Vector3f(0.0F, 0.0F, 1.0F), direction);
+        Vector3f translation = GasPumpRig.hoseSegmentPivotCompensation(rotation, length);
+
+        for (float t : new float[]{0.0F, 0.5F, 1.0F}) {
+            Vector3f modelPos = new Vector3f(0.0F, 0.0F, t);
+            Vector3f center = new Vector3f(0.5F, 0.5F, 0.5F);
+            Vector3f scaled = new Vector3f(modelPos).sub(center).mul(1.0F, 1.0F, length);
+            Vector3f rendered = rotation.transform(new Vector3f(scaled)).add(center).add(translation);
+            Vector3f expected = new Vector3f(direction).mul(t * length);
+            assertVector(rendered, expected.x, expected.y, expected.z);
+        }
+    }
 }

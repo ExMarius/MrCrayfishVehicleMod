@@ -276,11 +276,28 @@ public final class GasPumpRig {
     /**
      * Positions one hose segment so it runs exactly from {@code from} to {@code from + length *
      * rotation(FORWARD)}, i.e. {@code from} is the segment's own entity position, not its
-     * midpoint. This only works because {@code gas_hose_segment.json}'s element is centered on
-     * (and starts at) the model's own local origin -- unlike every other part in this rig
-     * (ported straight from real exported block models), this one is new geometry authored for
-     * this port, so it doesn't need the universal left/right-rotation compensation {@link
-     * #place} and {@link #part} apply for those; a plain rotate-then-scale is enough.
+     * midpoint.
+     *
+     * <p>An earlier revision of this method assumed {@code from} could be used directly as a
+     * plain rotate-then-scale pivot, reasoning that {@code gas_hose_segment.json}'s element
+     * starts at the model's own local origin rather than its center. That assumption is wrong
+     * for a vanilla {@code ItemDisplay}: per Minecraft's own display-entity documentation,
+     * <i>"the rotation pivot of the item display's transformation is the center of the item
+     * model"</i> -- unlike a {@code BlockDisplay}, whose pivot is the model's bottom-north-west
+     * corner (which is what the old comment's reasoning actually described), and unconditionally
+     * true regardless of {@code ItemDisplayTransform}, including {@code NONE}. Concretely, the
+     * engine renders {@code center + rotation * scale * (modelPos - center) + translation}
+     * (relative to the entity's own position) for a one-unit model space with {@code center =
+     * (0.5, 0.5, 0.5)} -- so leaving {@code translation} at zero left every segment's near end
+     * dangling half its own length <em>and</em> half its cross-section-width off to the side of
+     * {@code from} (the offset rotating into whatever direction that particular segment pointed,
+     * since {@code rotation} varies per segment), instead of running cleanly from {@code from}
+     * to {@code from + length * direction} -- the exact "scattered, disconnected" look reported
+     * in-game, independent of wherever the chain's start and end points themselves are. Solving
+     * that equation for {@code translation} with the segment's own local center axis ({@code x =
+     * y = 0}, not {@code 0.5}) gives the compensation below: {@code rotation.transform(0.5, 0.5,
+     * 0.5 * length) - (0.5, 0.5, 0.5)}, which collapses to exactly zero only in the degenerate
+     * unrotated, unscaled (length 1) case.
      */
     private static void placeSegment(ItemDisplay segment, Vector3f from, Quaternionf rotation, float length) {
         Location anchor = segment.getLocation();
@@ -288,8 +305,16 @@ public final class GasPumpRig {
         anchor.setY(from.y);
         anchor.setZ(from.z);
         segment.teleport(anchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-        segment.setTransformation(new Transformation(new Vector3f(0.0F), rotation,
-                new Vector3f(1.0F, 1.0F, length), new Quaternionf()));
+        segment.setTransformation(new Transformation(hoseSegmentPivotCompensation(rotation, length),
+                rotation, new Vector3f(1.0F, 1.0F, length), new Quaternionf()));
+    }
+
+    /** The translation that cancels an {@code ItemDisplay}'s forced center pivot for one hose
+     *  segment, given its current orientation and length -- see {@link #placeSegment}'s own
+     *  javadoc for the full derivation. Split out purely so the math itself (unlike the real
+     *  {@link ItemDisplay} it feeds into) can be unit-tested without a running server. */
+    static Vector3f hoseSegmentPivotCompensation(Quaternionf rotation, float length) {
+        return rotation.transform(new Vector3f(0.5F, 0.5F, 0.5F * length)).sub(0.5F, 0.5F, 0.5F);
     }
 
 
