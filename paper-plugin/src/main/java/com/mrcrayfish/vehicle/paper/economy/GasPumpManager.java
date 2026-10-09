@@ -40,6 +40,11 @@ public final class GasPumpManager {
     private final Map<UUID, StoredGasPump> pumps = new HashMap<>();
     private final Map<String, UUID> pumpsByBlock = new HashMap<>();
     private final Map<UUID, Session> sessions = new HashMap<>();
+    /** Maps a player to the pump whose nozzle they're currently holding, mirroring the
+     *  original's {@code ModDataKeys.GAS_PUMP} player data key. Picking up the nozzle (by
+     *  clicking the pump) and actually transferring fuel (by then clicking a vehicle) are
+     *  two separate steps here, just like in the original mod. */
+    private final Map<UUID, UUID> holding = new HashMap<>();
     private final Map<UUID, GasPumpRig> rigs = new HashMap<>();
     /** Maps each rig's invisible Interaction entity back to its pump, since the pump has no
      *  real block anymore for a vanilla block right-click to land on. */
@@ -102,6 +107,7 @@ public final class GasPumpManager {
             rigTask = null;
         }
         sessions.clear();
+        holding.clear();
         for (GasPumpRig rig : rigs.values()) {
             rig.remove();
         }
@@ -225,6 +231,7 @@ public final class GasPumpManager {
         pumps.remove(removedPumpId);
         pumpsByBlock.remove(blockKey(closest.worldId(), closest.x(), closest.y(), closest.z()));
         sessions.values().removeIf(session -> session.pumpId().equals(removedPumpId));
+        holding.values().removeIf(heldPumpId -> heldPumpId.equals(removedPumpId));
         GasPumpRig rig = rigs.remove(removedPumpId);
         if (rig != null) {
             pumpByInteraction.remove(rig.interactionId());
@@ -239,19 +246,27 @@ public final class GasPumpManager {
         return pumpByInteraction.containsKey(entity.getUniqueId());
     }
 
-    /** Starts or stops a fueling session for {@code player} at the pump whose interaction
-     *  hitbox {@code entity} is -- this is the primary way players fuel, since the pump has
-     *  no real block anymore for a vanilla block right-click to land on. */
+    /** Whether {@code player} currently holds any pump's nozzle (picked up, not yet put
+     *  back) -- used by {@code VehicleListener} to decide whether a vehicle right-click
+     *  should fuel it instead of mounting it. */
+    public boolean isHoldingNozzle(Player player) {
+        return holding.containsKey(player.getUniqueId());
+    }
+
+    /** Picks up or puts back the nozzle of the pump whose interaction hitbox {@code entity}
+     *  is -- mirrors {@code GasPumpBlock#use}'s nozzle pick-up/put-down branch. This no
+     *  longer starts fueling by itself; the player must then right-click a vehicle while
+     *  holding the nozzle, just like in the original mod. */
     public void toggleFuelingByEntity(Player player, Entity entity) {
         UUID pumpId = pumpByInteraction.get(entity.getUniqueId());
         if (pumpId != null) {
-            toggleFuelingForPump(player, pumpId);
+            toggleNozzle(player, pumpId);
         }
     }
 
-    /** Starts or stops a fueling session for {@code player} at {@code clickedBlock} (either
-     *  half of the pump's two-block-tall visual). Kept for any pump whose registered position
-     *  still happens to be a real solid block. */
+    /** Picks up or puts back the nozzle of the pump at {@code clickedBlock} (either half of
+     *  the pump's two-block-tall visual). Kept for any pump whose registered position still
+     *  happens to be a real solid block. */
     public void toggleFueling(Player player, Block clickedBlock) {
         Block pumpBlock = resolvePumpBlock(clickedBlock);
         if (pumpBlock == null) {
@@ -259,43 +274,98 @@ public final class GasPumpManager {
         }
         UUID pumpId = pumpsByBlock.get(blockKey(pumpBlock));
         if (pumpId != null) {
-            toggleFuelingForPump(player, pumpId);
+            toggleNozzle(player, pumpId);
         }
     }
 
-    private void toggleFuelingForPump(Player player, UUID pumpId) {
-        Session existing = sessions.get(player.getUniqueId());
-        if (existing != null && existing.pumpId().equals(pumpId)) {
-            sessions.remove(player.getUniqueId());
-            player.sendRichMessage("<yellow>Alimentare oprită.</yellow>");
+    private void toggleNozzle(Player player, UUID pumpId) {
+        UUID playerId = player.getUniqueId();
+        UUID currentlyHeld = holding.get(playerId);
+        if (pumpId.equals(currentlyHeld)) {
+            stopFuelingSession(playerId);
+            holding.remove(playerId);
+            player.sendRichMessage("<yellow>Ai pus duza la loc.</yellow>");
             return;
         }
+        if (currentlyHeld != null) {
+            // Matches the original: you can only hold one pump's nozzle at a time.
+            stopFuelingSession(playerId);
+            holding.remove(playerId);
+        }
+        holding.put(playerId, pumpId);
+        player.sendRichMessage("<green>Ai luat duza.</green> <gray>Apropie-te de un vehicul "
+                + "și dă click dreapta pe el pentru a-l alimenta. Click din nou pe pompă pentru "
+                + "a pune duza la loc.</gray>");
+    }
 
-        Optional<LandVehicle> nearest = vehicles.nearest(player.getLocation(), maxPumpDistance);
-        if (nearest.isEmpty()) {
-            player.sendRichMessage("<red>Nu există niciun vehicul lângă pompă.</red>");
-            return;
+    /** Called from {@code VehicleListener} when a player holding a pump's nozzle right-clicks
+     *  {@code vehicle} instead of mounting it -- mirrors the original's continuous
+     *  {@code FUNCTION_FUELING} raytrace, collapsed into a start/stop toggle since a Paper
+     *  plugin cannot observe a held-down right click the way a client-side raytrace can.
+     *
+     * @return true if the click was consumed by fueling (caller should not also mount the
+     * vehicle), false if the player isn't holding any nozzle at all. */
+    public boolean handleVehicleClick(Player player, LandVehicle vehicle) {
+        UUID playerId = player.getUniqueId();
+        UUID pumpId = holding.get(playerId);
+        if (pumpId == null) {
+            return false;
         }
-        LandVehicle vehicle = nearest.get();
+        Session existing = sessions.get(playerId);
+        if (existing != null && existing.pumpId().equals(pumpId) && existing.vehicleId().equals(vehicle.id())) {
+            sessions.remove(playerId);
+            player.sendRichMessage("<yellow>Alimentare întreruptă.</yellow> <gray>Click pe mașină "
+                    + "pentru a continua, sau pe pompă pentru a pune duza la loc.</gray>");
+            return true;
+        }
+        StoredGasPump pump = pumps.get(pumpId);
+        if (pump == null) {
+            player.sendRichMessage("<red>Pompa nu mai există.</red>");
+            return true;
+        }
+        World pumpWorld = Bukkit.getWorld(pump.worldId());
+        if (pumpWorld == null || !pumpWorld.equals(player.getWorld())
+                || player.getLocation().distance(pumpCenter(pump)) > maxPumpDistance) {
+            player.sendRichMessage("<red>Ești prea departe de pompă.</red>");
+            return true;
+        }
+        if (!vehicle.location().getWorld().equals(player.getWorld())
+                || player.getLocation().distance(vehicle.location()) > maxPumpDistance) {
+            player.sendRichMessage("<red>Ești prea departe de vehicul.</red>");
+            return true;
+        }
         if (vehicle.fuel() >= vehicle.spec().energyCapacity() - 1.0E-4F) {
             player.sendRichMessage("<yellow>Rezervorul vehiculului este deja plin.</yellow>");
-            return;
+            return true;
         }
-        sessions.put(player.getUniqueId(), new Session(pumpId, vehicle.id()));
+        sessions.put(playerId, new Session(pumpId, vehicle.id()));
         if (economy.isAvailable()) {
             player.sendRichMessage("<green>Alimentare pornită.</green> <gray>"
                     + String.format(java.util.Locale.ROOT, "%.2f", pricePerPercent)
-                    + " pe fiecare 1% din rezervor. Dreapta-click din nou sau îndepărtează-te pentru a opri.</gray>");
+                    + " pe fiecare 1% din rezervor. Click din nou pe mașină pentru a opri.</gray>");
         } else {
             player.sendRichMessage("<green>Alimentare pornită (gratuit — nu există economie pe server).</green>");
         }
+        return true;
+    }
+
+    private void stopFuelingSession(UUID playerId) {
+        sessions.remove(playerId);
+    }
+
+    private Location pumpCenter(StoredGasPump pump) {
+        World world = Bukkit.getWorld(pump.worldId());
+        return new Location(world, pump.x() + 0.5D, pump.y() + 0.5D, pump.z() + 0.5D);
     }
 
     public void onPlayerQuit(Player player) {
-        sessions.remove(player.getUniqueId());
+        UUID playerId = player.getUniqueId();
+        sessions.remove(playerId);
+        holding.remove(playerId);
     }
 
     private void tick() {
+        dropNozzlesOutOfRange();
         if (sessions.isEmpty()) {
             return;
         }
@@ -356,18 +426,59 @@ public final class GasPumpManager {
         toRemove.forEach(sessions::remove);
     }
 
-    /** Runs every tick so the hose visibly tracks whichever player is currently fueling;
-     *  this is intentionally separate from {@link #tick()}, which only handles the
-     *  (much less time-sensitive) fuel/money bookkeeping every {@link #TICK_INTERVAL} ticks. */
+    /** Mirrors {@code GasPumpTileEntity#tick()}'s distance check: a player who wanders too
+     *  far from the pump they're holding the nozzle of loses it entirely (any active fueling
+     *  session is also stopped), the same way the original "yanks" the hose out of their
+     *  hand. */
+    private void dropNozzlesOutOfRange() {
+        if (holding.isEmpty()) {
+            return;
+        }
+        List<UUID> toDrop = new ArrayList<>();
+        for (Map.Entry<UUID, UUID> entry : holding.entrySet()) {
+            UUID playerId = entry.getKey();
+            Player player = Bukkit.getPlayer(playerId);
+            if (player == null || !player.isOnline()) {
+                toDrop.add(playerId);
+                continue;
+            }
+            StoredGasPump pump = pumps.get(entry.getValue());
+            if (pump == null) {
+                toDrop.add(playerId);
+                continue;
+            }
+            World pumpWorld = Bukkit.getWorld(pump.worldId());
+            if (pumpWorld == null || !pumpWorld.equals(player.getWorld())
+                    || player.getLocation().distance(pumpCenter(pump)) > maxPumpDistance) {
+                toDrop.add(playerId);
+                player.sendRichMessage("<red>Te-ai îndepărtat prea mult de pompă, "
+                        + "ai scăpat duza din mână.</red>");
+            }
+        }
+        for (UUID playerId : toDrop) {
+            holding.remove(playerId);
+            stopFuelingSession(playerId);
+        }
+    }
+
+
+    /** Runs every tick so the hose visibly tracks whichever player is currently holding a
+     *  pump's nozzle; this is intentionally separate from {@link #tick()}, which only
+     *  handles the (much less time-sensitive) fuel/money bookkeeping every
+     *  {@link #TICK_INTERVAL} ticks.
+     *
+     *  <p>Matches the original: {@code GasPumpRenderer} bends the hose toward
+     *  {@code GasPumpTileEntity#getFuelingEntity()} as soon as the nozzle is picked up, not
+     *  only once fuel is actually flowing into a vehicle. */
     private void tickRigs() {
         if (rigs.isEmpty()) {
             return;
         }
         Map<UUID, Player> activePlayerByPump = new HashMap<>();
-        for (Map.Entry<UUID, Session> sessionEntry : sessions.entrySet()) {
-            Player player = Bukkit.getPlayer(sessionEntry.getKey());
+        for (Map.Entry<UUID, UUID> holdingEntry : holding.entrySet()) {
+            Player player = Bukkit.getPlayer(holdingEntry.getKey());
             if (player != null && player.isOnline()) {
-                activePlayerByPump.put(sessionEntry.getValue().pumpId(), player);
+                activePlayerByPump.put(holdingEntry.getValue(), player);
             }
         }
         for (Map.Entry<UUID, GasPumpRig> entry : rigs.entrySet()) {

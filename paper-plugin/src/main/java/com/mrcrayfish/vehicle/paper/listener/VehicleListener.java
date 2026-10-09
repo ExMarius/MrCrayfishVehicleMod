@@ -169,7 +169,14 @@ public final class VehicleListener implements Listener {
             event.setCancelled(true);
         } else if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
-            vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
+            LandVehicle vehicle = vehicles.byEntity(event.getRightClicked()).get();
+            // A player holding a pump's nozzle fuels the vehicle they click instead of
+            // mounting it, mirroring the original's gas-pump-over-normal-interact priority
+            // (there, the continuous fueling raytrace intercepts the click before it ever
+            // reaches the vehicle's own mount-on-interact logic).
+            if (!gasPumps.handleVehicleClick(event.getPlayer(), vehicle)) {
+                vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
+            }
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
             vehicles.trailers().handleInteraction(event.getPlayer(), event.getRightClicked());
