@@ -42,11 +42,39 @@ class GasPumpRigTest {
     }
 
     @Test
-    void entityYawForFacingMatchesTheBlockstatesYValues() {
-        assertEquals(0.0F, GasPumpRig.entityYawForFacing(BlockFace.NORTH));
-        assertEquals(90.0F, GasPumpRig.entityYawForFacing(BlockFace.EAST));
-        assertEquals(180.0F, GasPumpRig.entityYawForFacing(BlockFace.SOUTH));
-        assertEquals(270.0F, GasPumpRig.entityYawForFacing(BlockFace.WEST));
+    void blockstateYDegreesMatchesThePacksVariantTable() {
+        assertEquals(0.0F, GasPumpRig.blockstateYDegrees(BlockFace.NORTH));
+        assertEquals(90.0F, GasPumpRig.blockstateYDegrees(BlockFace.EAST));
+        assertEquals(180.0F, GasPumpRig.blockstateYDegrees(BlockFace.SOUTH));
+        assertEquals(270.0F, GasPumpRig.blockstateYDegrees(BlockFace.WEST));
+    }
+
+    /**
+     * Regression coverage for the bug reported in-game where the pump body spawned shifted
+     * into a corner of its own block instead of rotated cleanly in place: an earlier revision
+     * rotated the body via the display entity's own {@code setRotation(entityYaw, 0)}, whose
+     * exact composition with the {@code Transformation} (order and rotation sign) Mojang's own
+     * docs don't pin down precisely enough to verify without a running client. {@link
+     * GasPumpRig#bodyRotation} instead bakes the whole rotation into the {@code Transformation}
+     * directly, as {@code rotateY(180 - D)} for blockstate degree value {@code D} -- verified
+     * here by reproducing that same {@code "y": D} block rotation independently, via this
+     * class's own already-verified {@link GasPumpRig#yRot} applied as {@code yRot(point, -D)}
+     * (see {@link GasPumpRig#bodyRotation}'s own javadoc for the vanilla furnace precedent this
+     * rests on), composed with this rig's separate universal 180-degree item-display flip.
+     */
+    @Test
+    void bodyRotationMatchesTheBlockstatesOwnYRotationComposedWithTheUniversalItemFlip() {
+        for (BlockFace facing : new BlockFace[]{BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST}) {
+            float degrees = GasPumpRig.blockstateYDegrees(facing);
+            Vector3f point = new Vector3f(0.3F, 0.4F, -0.2F);
+
+            Vector3f expected = GasPumpRig.yRot(point, (float) Math.toRadians(-degrees));
+            expected = GasPumpRig.yRot(expected, (float) Math.PI);
+
+            Vector3f actual = GasPumpRig.bodyRotation(facing).transform(new Vector3f(point));
+
+            assertVector(actual, expected.x, expected.y, expected.z);
+        }
     }
 
     @Test

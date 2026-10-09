@@ -100,7 +100,7 @@ public final class GasPumpRig {
         int x = block.getX();
         int y = block.getY();
         int z = block.getZ();
-        float entityYaw = entityYawForFacing(facing);
+        Quaternionf rotation = bodyRotation(facing);
 
         List<Entity> all = new ArrayList<>();
 
@@ -125,11 +125,11 @@ public final class GasPumpRig {
         all.add(interaction);
 
         ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y, z + 0.5D),
-                "gas_pump_bottom", entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(),
-                new Vector3f(1.0F), new Quaternionf(), pumpId, all);
+                "gas_pump_bottom", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
+                new Vector3f(1.0F), pumpId, all);
         ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1, z + 0.5D),
-                "gas_pump_top", entityYaw, new Vector3f(-0.5F, 0.0F, -0.5F), new Quaternionf(),
-                new Vector3f(1.0F), new Quaternionf(), pumpId, all);
+                "gas_pump_top", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
+                new Vector3f(1.0F), pumpId, all);
 
         // All offsets below are the original renderer's fixRotation() outputs, measured from the
         // TOP block's own minimum corner (matching how its TileEntityRenderer receives its
@@ -377,13 +377,11 @@ public final class GasPumpRig {
     }
 
 
-    private static ItemDisplay part(World world, Location location, String modelName, float entityYaw,
-                                     Vector3f translation, Quaternionf leftRotation, Vector3f scale,
-                                     Quaternionf sourceRightRotation, UUID pumpId, List<Entity> all) {
+    private static ItemDisplay part(World world, Location location, String modelName,
+                                     Vector3f translation, Quaternionf rotation, Vector3f scale,
+                                     UUID pumpId, List<Entity> all) {
         ItemDisplay display = display(world, location, model(modelName), pumpId, all);
-        display.setRotation(entityYaw, 0.0F);
-        Quaternionf compensation = new Quaternionf(sourceRightRotation).rotateY((float) Math.PI);
-        display.setTransformation(new Transformation(translation, leftRotation, scale, compensation));
+        display.setTransformation(new Transformation(translation, rotation, scale, new Quaternionf()));
         return display;
     }
 
@@ -432,11 +430,9 @@ public final class GasPumpRig {
 
     /** NORTH/EAST/SOUTH/WEST -> the same "y" rotation this pack's blockstates/gas_pump.json
      *  gives the real block model for that facing (north = 0, east = 90, south = 180,
-     *  west = 270). The universal item-display 180-degree flip every part in this rig
-     *  needs is handled separately, in {@code part()}'s right-rotation compensation --
-     *  exactly like every other part of {@link LandVehicleRig}, so it is deliberately not
-     *  folded into this table too. */
-    static float entityYawForFacing(BlockFace facing) {
+     *  west = 270). See {@link #bodyRotation} for how this is actually turned into the
+     *  rotation the body parts render with. */
+    static float blockstateYDegrees(BlockFace facing) {
         return switch (facing) {
             case NORTH -> 0.0F;
             case EAST -> 90.0F;
@@ -444,6 +440,40 @@ public final class GasPumpRig {
             case WEST -> 270.0F;
             default -> 0.0F;
         };
+    }
+
+    /**
+     * The rotation each body part's own {@code Transformation} needs to bake in for {@code
+     * facing}, replacing an earlier revision that instead called the display entity's own
+     * {@code setRotation(entityYaw, 0)} with {@link #blockstateYDegrees}'s value directly.
+     *
+     * <p>That earlier approach was never actually verifiable: Mojang's own documentation of
+     * how a display entity's base yaw composes with its {@code Transformation} does not pin
+     * down the composition order or the rotation's sign convention precisely enough to confirm
+     * from outside a running client, and this rig had no test exercising it -- in-game testing
+     * reported the body spawning shifted into a corner of its own block instead of rotated
+     * cleanly in place, consistent with that mechanism not doing what the old table assumed.
+     *
+     * <p>Every other rotation in this class (the nozzle's rest/held orientation, every hose
+     * segment) already avoids this problem entirely by baking its whole rotation into the
+     * {@code Transformation} instead of the entity's own yaw -- this does the same for the
+     * body, using this class's own {@link #yRot} (a direct, already-verified port of vanilla's
+     * {@code Vector3d#yRot}) to confirm the exact angle needed: applying {@code yRot(point,
+     * -D)} to a model point reproduces precisely what a real block's own {@code "y": D}
+     * blockstate rotation does to that point. (Checked against vanilla's own directional
+     * blocks: a furnace's {@code "facing=east"} variant uses {@code "y": 90}, and {@code
+     * yRot((0, 0, -1), -90°)} -- the unrotated model's own north-pointing front -- lands
+     * exactly on {@code (1, 0, 0)}, i.e. east, matching.)
+     *
+     * <p>So the body's combined rotation is exactly {@code rotateY(-D)}, composed with this
+     * rig's universal 180-degree item-display compensation (see this class's own top-level
+     * javadoc and {@link #PLACE_RIGHT_ROTATION}) -- both pure Y-axis rotations, which always
+     * commute, so the two collapse into the single {@code rotateY(180 - D)} below with no
+     * separate left/right split needed.
+     */
+    static Quaternionf bodyRotation(BlockFace facing) {
+        float degrees = 180.0F - blockstateYDegrees(facing);
+        return new Quaternionf().rotateY(radians(degrees));
     }
 
     /** Direct port of {@code Direction.get2DDataValue()} (also the F3 debug screen's "f" value). */
