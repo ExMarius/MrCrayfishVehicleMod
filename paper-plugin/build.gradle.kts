@@ -54,6 +54,6 @@ tasks.register<Exec>("resourcePack") {
         "python3",
         "tools/build_resource_pack.py",
         "--output",
-        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-1.21.4-r37.zip").get().asFile.absolutePath
+        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip").get().asFile.absolutePath
     )
 }
