@@ -208,8 +208,13 @@ class GasPumpRigTest {
      * model's local origin (the original's own {@code matrixStack.translate(...)} point) exactly
      * at the anchor, for several rotation/scale/right-rotation combinations spanning the ones
      * {@code GasPumpRig} actually uses (the nozzle's own facing-dependent rest rotation and
-     * hand rotation, both always paired with the {@code place}-forced 180-degree right
-     * rotation), plus a couple of simpler sanity cases.
+     * hand rotation, each paired here with both an identity right rotation -- what {@link
+     * #place} actually renders with -- and, as a generic sanity case for this pure math
+     * function, a 180-degree one). This test only checks that the model's local origin lands on
+     * the anchor; it is deliberately blind to which {@code rightRotation} is the *correct* one
+     * to use for the nozzle (identity, matching the original's matrix stack -- see {@link
+     * #placeRendersTheNozzleWithExactlyTheOriginalsRotationNoExtra180} for that check), since
+     * {@code pivotCompensation} always finds a translation that zeroes the origin regardless.
      */
     @Test
     void pivotCompensationPlacesTheModelsLocalOriginExactlyAtTheAnchor() {
@@ -221,8 +226,95 @@ class GasPumpRigTest {
                     .rotateY((float) Math.toRadians(yAngleDegrees))
                     .rotateY((float) Math.PI)
                     .rotateX((float) Math.toRadians(90.0D));
+            assertPivotCompensationPlacesOriginAtAnchor(restRotation, new Vector3f(0.8F), new Quaternionf());
             assertPivotCompensationPlacesOriginAtAnchor(restRotation, new Vector3f(0.8F), place180);
         }
+    }
+
+    /**
+     * Regression coverage for a second, independent bug that let the nozzle render with the
+     * wrong <em>orientation</em> even after {@link #pivotCompensationPlacesTheModelsLocalOriginExactlyAtTheAnchor}'s
+     * bug was fixed: {@code place} used to unconditionally bake an extra {@code rotateY(180)}
+     * onto whatever {@code rightRotation} it was given, justified only as "the compensation
+     * every place call needs" -- asserted, never checked against the original. It wasn't
+     * needed: the original's {@code GasPumpRenderer#render} (non-fueling branch) renders the
+     * nozzle with the single literal sequence {@code rotateY(facing * -90) -> rotateY(180) ->
+     * rotateX(90)}, and that one 180 is already fully accounted for by {@code nozzleRestRotation}
+     * / {@code nozzleHandRotation} (both chain exactly that three-rotation sequence, see {@link
+     * #bodyRotationMatchesTheBlockstatesOwnYRotation} and this class's sibling tests for the
+     * same pattern). Baking a second 180 on top, as {@code rightRotation}, flipped the rendered
+     * model's orientation by an extra 180 degrees it should never have had.
+     *
+     * <p>This compares, for each facing, the engine's own render-offset formula (cited in {@link
+     * #pivotCompensationPlacesTheModelsLocalOriginExactlyAtTheAnchor}) evaluated at two model
+     * points against the <em>difference</em> the original's literal matrix stack would produce
+     * for those same two points -- a formulation chosen specifically because the translation
+     * and pivot-center terms cancel out of a two-point difference entirely, leaving a check that
+     * depends only on the rotation actually applied, with no dependency on exactly which model
+     * point the pivot math anchors to the entity's position (that is already covered,
+     * separately, by the sibling pivot test above). An asymmetric probe difference with nonzero
+     * X and Z components is used so a spurious extra {@code rotateY(180)} -- which negates
+     * exactly those two axes and leaves Y alone -- cannot cancel out by coincidence.</p>
+     */
+    @Test
+    void placeRendersTheNozzleWithExactlyTheOriginalsRotationNoExtra180() {
+        Vector3f probeA = new Vector3f(0.9F, 0.3F, 0.1F);
+        Vector3f probeB = new Vector3f(0.1F, 0.3F, 0.9F);
+        Quaternionf identity = new Quaternionf();
+        Quaternionf buggyExtra180 = new Quaternionf().rotateY((float) Math.PI);
+        for (float yAngleDegrees : new float[]{0.0F, -90.0F, 90.0F, 180.0F, 270.0F, 37.0F}) {
+            Quaternionf leftRotation = new Quaternionf()
+                    .rotateY((float) Math.toRadians(yAngleDegrees))
+                    .rotateY((float) Math.PI)
+                    .rotateX((float) Math.toRadians(90.0D));
+
+            Vector3f originalDifference = originalMatrixStackDifference(leftRotation, NOZZLE_SCALE, probeA, probeB);
+
+            Vector3f fixedDifference = engineRenderOffsetDifference(leftRotation, NOZZLE_SCALE, identity, probeA, probeB);
+            assertVector(fixedDifference, originalDifference.x, originalDifference.y, originalDifference.z);
+
+            // The pre-fix behavior (place()'s erroneous extra rotateY(180) as rightRotation)
+            // must NOT match the original -- proving the fix actually changes rendered
+            // behavior, not just its justification.
+            Vector3f buggyDifference = engineRenderOffsetDifference(leftRotation, NOZZLE_SCALE, buggyExtra180, probeA, probeB);
+            assertTrue(new Vector3f(buggyDifference).sub(originalDifference).length() > 0.1F,
+                    "Expected the pre-fix extra-180 rightRotation to visibly diverge from the original at "
+                            + yAngleDegrees + " degrees, but it matched: " + buggyDifference);
+        }
+    }
+
+    private static final Vector3f NOZZLE_SCALE = new Vector3f(0.8F);
+
+    /** The original's literal, Forge matrix-stack-derived world-space difference between two
+     *  raw model-space points for the nozzle: {@code translate(anchor) -> leftRotation ->
+     *  scale -> render}, with the model's own {@code -0.5} recentering (see {@code
+     *  RenderUtil#renderColoredModel}) applied before the rotation/scale, exactly mirroring
+     *  {@code GasPumpRenderer}'s own call order. The anchor/{@code -0.5} terms are constant
+     *  across both points and cancel out of the subtraction, leaving only the rotation-and-scale
+     *  dependent part -- which is the only part in question here. */
+    private static Vector3f originalMatrixStackDifference(
+            Quaternionf leftRotation, Vector3f scale, Vector3f pointA, Vector3f pointB) {
+        Vector3f delta = new Vector3f(pointA).sub(pointB);
+        Vector3f scaled = new Vector3f(delta.x * scale.x, delta.y * scale.y, delta.z * scale.z);
+        return leftRotation.transform(scaled);
+    }
+
+    /** The engine's own {@code Transformation} render-offset formula (same one cited and used
+     *  by {@link #assertPivotCompensationPlacesOriginAtAnchor}), evaluated at two model points
+     *  and subtracted -- the {@code center}/{@code translation} terms are identical for both
+     *  points and cancel out, leaving only the rotation-and-scale dependent part, directly
+     *  comparable with {@link #originalMatrixStackDifference}. */
+    private static Vector3f engineRenderOffsetDifference(
+            Quaternionf leftRotation, Vector3f scale, Quaternionf rightRotation, Vector3f pointA, Vector3f pointB) {
+        Vector3f deltaA = rightRotation.transform(new Vector3f(pointA));
+        Vector3f scaledA = new Vector3f(deltaA.x * scale.x, deltaA.y * scale.y, deltaA.z * scale.z);
+        Vector3f offsetA = leftRotation.transform(scaledA);
+
+        Vector3f deltaB = rightRotation.transform(new Vector3f(pointB));
+        Vector3f scaledB = new Vector3f(deltaB.x * scale.x, deltaB.y * scale.y, deltaB.z * scale.z);
+        Vector3f offsetB = leftRotation.transform(scaledB);
+
+        return new Vector3f(offsetA).sub(offsetB);
     }
 
     private static void assertPivotCompensationPlacesOriginAtAnchor(

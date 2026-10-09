@@ -56,12 +56,6 @@ public final class GasPumpRig {
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
     private static final Vector3f NOZZLE_SCALE = new Vector3f(0.8F);
-    /** The effective right rotation every {@link #place} call renders with, since it always
-     *  bakes an extra 180-degree yaw onto whatever {@code sourceRightRotation} it's given (see
-     *  {@link #place}'s own body) and both of this rig's {@code place} call sites for the
-     *  nozzle pass an identity {@code sourceRightRotation}. Needed here too, separately, so
-     *  {@link #pivotCompensation} can be fed the rotation it actually has to cancel out. */
-    private static final Quaternionf PLACE_RIGHT_ROTATION = new Quaternionf().rotateY((float) Math.PI);
 
     private final UUID pumpId;
     private final List<Entity> all = new ArrayList<>();
@@ -253,7 +247,7 @@ public final class GasPumpRig {
         }
         if (!nozzleRestTransformApplied) {
             nozzleRestTransformApplied = true;
-            Vector3f translation = pivotCompensation(nozzleRestRotation, NOZZLE_SCALE, PLACE_RIGHT_ROTATION);
+            Vector3f translation = pivotCompensation(nozzleRestRotation, NOZZLE_SCALE, new Quaternionf());
             place(nozzle, nozzleRestLocation, translation, nozzleRestRotation, NOZZLE_SCALE, new Quaternionf());
         }
         if (!idleHoseApplied) {
@@ -303,7 +297,7 @@ public final class GasPumpRig {
         Quaternionf nozzleHandRotation = new Quaternionf()
                 .rotateY(radians(-bodyYawDegrees)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
         Location tipLocation = new Location(nozzle.getWorld(), nozzleTip.x, nozzleTip.y, nozzleTip.z);
-        Vector3f translation = pivotCompensation(nozzleHandRotation, NOZZLE_SCALE, PLACE_RIGHT_ROTATION);
+        Vector3f translation = pivotCompensation(nozzleHandRotation, NOZZLE_SCALE, new Quaternionf());
         place(nozzle, tipLocation, translation, nozzleHandRotation, NOZZLE_SCALE, new Quaternionf());
     }
 
@@ -400,14 +394,15 @@ public final class GasPumpRig {
      * (0, 0, 0)} (the point the original's {@code matrixStack.translate(...)} call placed at
      * this entity's own position) renders with zero offset from that position, exactly like
      * {@link #hoseSegmentPivotCompensation} does for one hose segment. That method is the
-     * {@code rightRotation = identity} special case of this same derivation; this is the
-     * general form, needed for the nozzle prop since unlike a hose segment it has both a real
-     * (non-identity) {@code leftRotation} (its facing/hold orientation) <em>and</em> a
-     * {@code rightRotation} (the 180-degree compensation every {@link #place} call bakes in --
-     * see {@link #PLACE_RIGHT_ROTATION}), neither of which commutes away for a lopsided prop
-     * the way they harmlessly do for a full, symmetric cube like the pump's own body (whose
-     * {@code part} calls get away with the constant {@code (-0.5, 0, -0.5)} precisely because
-     * their {@code leftRotation} is identity and their model spans the whole unit cube).
+     * {@code rightRotation = identity}, {@code scale = (1, 1, length)} special case of this
+     * same derivation; this is the general form, kept generic over {@code rightRotation} even
+     * though every current call site (nozzle included, since {@link #place} now passes its
+     * {@code rightRotation} straight through unchanged) happens to use identity -- a lopsided
+     * prop like the nozzle still needs this general form rather than the body's shortcut,
+     * because its {@code leftRotation} (facing/hold orientation) is non-identity and its model
+     * does not span the whole unit cube the way the pump body's does (whose {@code part} calls
+     * get away with the constant {@code (-0.5, 0, -0.5)} precisely because their
+     * {@code leftRotation} is identity and their model spans the whole unit cube).
      *
      * <p>Solving {@code center + leftRotation.transform(scale * rightRotation.transform(modelPos
      * - center)) + translation = 0} for {@code modelPos = (0, 0, 0)} gives {@code translation =
@@ -432,11 +427,25 @@ public final class GasPumpRig {
         return display;
     }
 
+    /**
+     * Places {@code display} at {@code anchor} with the given {@code Transformation}. A
+     * previous revision had this unconditionally bake an extra {@code rotateY(180)} onto
+     * {@code sourceRightRotation} here, justified only as "the compensation every {@code place}
+     * call needs" -- asserted, never independently derived against the original. It was wrong:
+     * the original's {@code GasPumpRenderer#render} renders the nozzle with the single literal
+     * matrix-stack sequence {@code translate(pos) -> rotateY(facing) -> rotateY(180) ->
+     * rotateX(90) -> scale(0.8) -> render}, and that one {@code rotateY(180)} is already fully
+     * accounted for in {@code leftRotation} (see {@code nozzleRestRotation}/{@code
+     * nozzleHandRotation}, both of which chain exactly that three-rotation sequence). Baking a
+     * second one on as {@code rightRotation} here flipped the rendered nozzle's orientation by
+     * an extra 180 degrees on top of the correct one. {@code sourceRightRotation} is passed
+     * straight through unchanged, matching how {@link #part} and {@link #placeSegment} already
+     * use an identity right rotation.
+     */
     private static void place(ItemDisplay display, Location anchor, Vector3f translation,
                                Quaternionf leftRotation, Vector3f scale, Quaternionf sourceRightRotation) {
         display.teleport(anchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-        Quaternionf compensation = new Quaternionf(sourceRightRotation).rotateY((float) Math.PI);
-        display.setTransformation(new Transformation(translation, leftRotation, scale, compensation));
+        display.setTransformation(new Transformation(translation, leftRotation, scale, sourceRightRotation));
     }
 
     private static ItemDisplay display(World world, Location location, ItemStack stack, UUID pumpId,
@@ -513,9 +522,10 @@ public final class GasPumpRig {
      * exactly on {@code (1, 0, 0)}, i.e. east, matching.)
      *
      * <p>The extra "+180 universal item-display compensation" a previous revision composed on
-     * top of {@code rotateY(-D)} here (matching {@link #PLACE_RIGHT_ROTATION}, which really is
-     * needed for {@link #place}'s nozzle/hose pivot math) turned out to be wrong for the body
-     * specifically, and the self-test guarding it never could have caught that: it only checked
+     * top of {@code rotateY(-D)} here (matching a since-removed {@code place}-forced 180-degree
+     * right rotation that turned out to be its own separate, equally unverified bug -- see
+     * {@link #place}'s own javadoc) turned out to be wrong for the body specifically, and the
+     * self-test guarding it never could have caught that: it only checked
      * this method against its own {@code -D} + 180 formula, so it verified internal arithmetic,
      * not which formula is actually correct. The real check is independent of this file: {@code
      * gas_pump_top.json}'s own elements 4-5 model the pump's nozzle-holder bracket sticking out
