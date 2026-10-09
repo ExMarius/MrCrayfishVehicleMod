@@ -102,8 +102,19 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                     player.sendRichMessage("<red>Nu există nicio pompă de benzină la mai puțin de 6 blocuri.</red>");
                 }
             }
+            case "debug" -> {
+                String dump = gasPumps.debugNearestPump(player.getLocation(), 6.0D);
+                if (dump == null) {
+                    player.sendRichMessage("<red>Nu există nicio pompă de benzină la mai puțin de 6 blocuri.</red>");
+                } else {
+                    for (String line : dump.split("\n")) {
+                        player.sendRichMessage("<gray>" + line.replace("<", "\\<") + "</gray>");
+                    }
+                    plugin.getLogger().info("[pump debug]\n" + dump);
+                }
+            }
             default -> player.sendRichMessage(
-                    "<yellow>Utilizare: /vehicle pump <create|remove></yellow>");
+                    "<yellow>Utilizare: /vehicle pump <create|remove|debug></yellow>");
         }
     }
 
@@ -241,7 +252,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(types, args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("pump")) {
-            return filter(List.of("create", "remove"), args[1]);
+            return filter(List.of("create", "remove", "debug"), args[1]);
         }
         return List.of();
     }

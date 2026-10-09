@@ -192,6 +192,48 @@ public final class GasPumpRig {
         }
     }
 
+    /** Raw ground-truth dump of every entity this rig actually spawned -- its live location
+     *  and, for the {@link ItemDisplay} parts, the exact {@link Transformation} Bukkit reports
+     *  back (not merely what this class intended to set), so a live report can be compared
+     *  directly against the formulas in this file without trusting a screenshot's perspective. */
+    public String debugDump() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("interaction @ ").append(describe(interaction.getLocation())).append('\n');
+        sb.append("bottom      @ ").append(describe(bottom.getLocation()))
+                .append(" model=").append(bottom.getItemStack().getItemMeta().getItemModel())
+                .append(' ').append(describe(bottom.getTransformation())).append('\n');
+        sb.append("top         @ ").append(describe(top.getLocation()))
+                .append(" model=").append(top.getItemStack().getItemMeta().getItemModel())
+                .append(' ').append(describe(top.getTransformation())).append('\n');
+        sb.append("nozzle      @ ").append(describe(nozzle.getLocation()))
+                .append(' ').append(describe(nozzle.getTransformation())).append('\n');
+        sb.append("nozzleRestLocation=").append(describe(nozzleRestLocation)).append('\n');
+        sb.append("hoseStart=").append(hoseStart).append(" idleEnd=").append(idleEnd).append('\n');
+        if (!hoseSegments.isEmpty()) {
+            sb.append("hoseSegment[0] @ ").append(describe(hoseSegments.get(0).getLocation())).append('\n');
+        }
+        return sb.toString();
+    }
+
+    private static String describe(Location location) {
+        return String.format("(%.4f, %.4f, %.4f)", location.getX(), location.getY(), location.getZ());
+    }
+
+    private static String describe(Vector3f v) {
+        return String.format("(%.4f, %.4f, %.4f)", v.x, v.y, v.z);
+    }
+
+    private static String describe(Transformation t) {
+        return "translation=" + describe(t.getTranslation())
+                + " leftRotation=" + describe(t.getLeftRotation())
+                + " scale=" + describe(t.getScale())
+                + " rightRotation=" + describe(t.getRightRotation());
+    }
+
+    private static String describe(Quaternionf q) {
+        return String.format("(%.4f, %.4f, %.4f, %.4f)", q.x, q.y, q.z, q.w);
+    }
+
     /** Rests the nozzle on its holder and drapes the hose in its idle curve. Cheap to call
      *  every tick for a pump nobody is using: once idle, it does nothing further until a
      *  fueling session makes it {@link #updateActive} again. */

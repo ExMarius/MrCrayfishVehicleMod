@@ -247,6 +247,41 @@ public final class GasPumpManager {
         return true;
     }
 
+    /** Ground-truth diagnostic dump of the nearest registered pump within {@code radius} of
+     *  {@code origin} -- its stored facing/coordinates plus every entity its rig actually
+     *  spawned, straight from Bukkit, for comparing real server state against the positioning
+     *  code instead of a screenshot. Returns {@code null} if none is in range. */
+    public String debugNearestPump(Location origin, double radius) {
+        StoredGasPump closest = null;
+        double closestDistanceSquared = radius * radius;
+        for (StoredGasPump pump : pumps.values()) {
+            if (!pump.worldId().equals(origin.getWorld().getUID())) {
+                continue;
+            }
+            double dx = pump.x() + 0.5D - origin.getX();
+            double dy = pump.y() + 0.5D - origin.getY();
+            double dz = pump.z() + 0.5D - origin.getZ();
+            double distanceSquared = dx * dx + dy * dy + dz * dz;
+            if (distanceSquared <= closestDistanceSquared) {
+                closest = pump;
+                closestDistanceSquared = distanceSquared;
+            }
+        }
+        if (closest == null) {
+            return null;
+        }
+        GasPumpRig rig = rigs.get(closest.id());
+        StringBuilder sb = new StringBuilder();
+        sb.append("stored pump: block=(").append(closest.x()).append(", ").append(closest.y())
+                .append(", ").append(closest.z()).append(") facing=").append(closest.facing()).append('\n');
+        if (rig == null) {
+            sb.append("(no live rig found for this pump!)");
+        } else {
+            sb.append(rig.debugDump());
+        }
+        return sb.toString();
+    }
+
     /** Whether {@code entity} is a pump's invisible interaction hitbox. */
     public boolean isPumpInteraction(Entity entity) {
         return pumpByInteraction.containsKey(entity.getUniqueId());
