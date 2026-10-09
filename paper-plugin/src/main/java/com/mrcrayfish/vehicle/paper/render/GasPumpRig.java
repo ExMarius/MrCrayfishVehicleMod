@@ -119,8 +119,13 @@ public final class GasPumpRig {
         // the admin's right hand when standing facing north, as given -- while every hose/nozzle
         // anchor below (topCornerX/topCornerZ, hoseStart, idleEnd, nozzleRestLocation) keeps
         // using the original, un-nudged x/z so the hose and nozzle don't move at all.
+        //
+        // Direct instruction, corrected pass: the half-block-south nudge is NOT nozzle-only --
+        // it applies to the *whole rig together* (body, hose, and nozzle alike), so it's folded
+        // into bodyZ/topCornerZ here instead of being added only to nozzleRestLocation below.
+        double rigSouthOffset = 0.5D;
         double bodyX = x + 0.5D + 0.5D;
-        double bodyZ = z + 0.5D;
+        double bodyZ = z + 0.5D + rigSouthOffset;
 
         List<Entity> all = new ArrayList<>();
 
@@ -147,7 +152,7 @@ public final class GasPumpRig {
         // matrix stack) -- see GasPumpRenderer#render and CollisionHelper#fixRotation.
         double topCornerX = x;
         double topCornerY = y + 1;
-        double topCornerZ = z;
+        double topCornerZ = z + rigSouthOffset;
 
         // Two more isolated diagnostics per direct instruction, on top of the body-only
         // east nudge above: slide the whole idle hose (both its anchor points, so the curve
@@ -157,10 +162,6 @@ public final class GasPumpRig {
         // offset touches the other part, nor the body position/rotation handled above.
         double hoseOffsetX = -0.5D;
         double nozzlePixelOffsetX = 1.0D / 16.0D;
-        // Direct instruction, latest pass: on top of that pixel-east nudge, slide the nozzle's
-        // rest spot half a block further south (+Z) too, to close the visual gap and connect it
-        // to the now-correctly-placed hose end, the way the original mod shows them joined.
-        double nozzleOffsetZ = 0.5D;
 
         double[] hoseStartXZ = fixRotation(facing, 0.620625D, 1.05D, 0.620625D, 1.05D);
         Vector3f hoseStart = new Vector3f(
@@ -177,7 +178,8 @@ public final class GasPumpRig {
         double[] nozzleRestXZ = fixRotation(facing, 0.29D, 1.06D, 0.29D, 1.06D);
         Location nozzleRestLocation = new Location(world,
                 topCornerX + nozzleRestXZ[0] + nozzlePixelOffsetX, topCornerY + 0.5D,
-                topCornerZ + nozzleRestXZ[1] + nozzleOffsetZ);
+                topCornerZ + nozzleRestXZ[1]);
+
 
         float yAngle = get2DDataValue(facing) * -90.0F;
         Quaternionf nozzleRestRotation = new Quaternionf()
