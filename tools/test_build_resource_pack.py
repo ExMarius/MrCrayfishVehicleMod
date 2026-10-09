@@ -186,34 +186,48 @@ class ResourcePackBuildTest(unittest.TestCase):
         rotor = self.archive.read("assets/vehicle/sounds/entity/vehicle/helicopter_rotor.ogg")
         self.assertEqual(27_922, self.last_ogg_granule(rotor))
 
-    def test_vehicle_trailer_rails_declare_their_authored_texture_size(self):
-        # r36: these two 17-model-pixel-long side rails author UV 1:1 against their
-        # own real length on all four faces, exceeding the vanilla 16x16 canvas this
-        # port substitutes for the source's own dedicated "frame" art. Declaring the
-        # true canvas size lets vanilla scale that UV proportionally onto the 16x16
-        # sprite instead of letting it overflow into whatever sprite sits next to it
-        # in the atlas; see SOURCE_POSITION_AUDIT.md r36 entry.
+    def test_vehicle_trailer_rails_scale_their_authored_uv_into_vanilla_bounds(self):
+        # r36 declared texture_size: [17, 17] on this model, assuming Minecraft would
+        # rescale these two 17-model-pixel-long side rails' UV (authored 1:1 against
+        # their own real length on all four faces) to fit the vanilla 16x16 canvas
+        # this port substitutes for the source's own dedicated "frame" art. That
+        # field is Blockbench-only editing metadata the game never reads, so the raw
+        # UV (reaching 17, one unit past the substitute sprite's real bounds) was
+        # still being sampled out of range -- the purple/stray pixels reported under
+        # the trailer's sides. The fix instead bakes a 16/17 scale directly into
+        # these faces' own UV numbers so every value actually lands at or under the
+        # substitute sprite's real 16x16 bounds; see SOURCE_POSITION_AUDIT.md.
         model = self.read_json("assets/vehicle/models/item/vehicle_trailer_body.json")
-        self.assertEqual([17, 17], model["texture_size"])
+        self.assertNotIn("texture_size", model)
         rails = [element for element in model["elements"]
                  if element["from"] in ([1, -0.5, -4], [13, -0.5, -4])]
         self.assertEqual(2, len(rails))
+        scale = 16.0 / 17.0
         for rail in rails:
-            self.assertEqual([0, 0, 17, 1.5], rail["faces"]["east"]["uv"])
-            self.assertEqual([0, 0, 17, 1.5], rail["faces"]["west"]["uv"])
-            self.assertEqual([0, 0, 2, 17], rail["faces"]["up"]["uv"])
-            self.assertEqual([0, 0, 2, 17], rail["faces"]["down"]["uv"])
+            for face, expected in (
+                ("east", [0, 0, 17, 1.5]),
+                ("west", [0, 0, 17, 1.5]),
+                ("up", [0, 0, 2, 17]),
+                ("down", [0, 0, 2, 17]),
+            ):
+                uv = rail["faces"][face]["uv"]
+                self.assertEqual([round(value * scale, 4) for value in expected], uv)
+                self.assertLessEqual(max(uv), 16.0)
 
     def test_standard_wheel_declares_its_authored_texture_size(self):
-        # r37: the source model authors its UV against its own declared 32x32
-        # canvas (max coordinate used is 11.5, deliberately confined to the small
-        # top-left region of wheel.png where the artwork lives; the rest of the
-        # 32x32 texture is transparent). Dropping that declaration and falling
-        # back to vanilla's 16x16 default reinterprets the same raw UV numbers as
-        # roughly double their intended fraction, sampling past the artwork into
-        # the transparent region -- the "purple missing pixels" seen on every
-        # vehicle's wheels (shared by all land vehicles and trailers via this one
-        # model); see SOURCE_POSITION_AUDIT.md r37 entry.
+        # r37 declared texture_size: [32, 32] here, but later analysis found this
+        # model never actually had a UV-overflow defect: its own UV stays within
+        # 0-11 (the drawn 22x22-pixel corner of wheel.png's full 32x32 canvas), and
+        # Minecraft always scales a model's 0-16 UV space proportionally against
+        # whatever the texture's real resolution is -- exactly how unmodified
+        # vanilla models already work against higher-resolution resource packs --
+        # so this model's own UV already landed correctly on the drawn artwork
+        # before and after r37's declaration. texture_size is additionally
+        # Blockbench-only editing metadata the game does not read at all; this
+        # model keeps declaring it purely so Blockbench shows the real authored
+        # canvas if ever reopened. See SOURCE_POSITION_AUDIT.md for the
+        # correction, and for the one model that genuinely did have UV
+        # overflowing past 16 (the Vehicle Trailer's side rails).
         model = self.read_json("assets/vehicle/models/item/standard_wheel.json")
         self.assertEqual([32, 32], model["texture_size"])
         max_uv = max(

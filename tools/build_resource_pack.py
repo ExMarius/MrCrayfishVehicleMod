@@ -42,7 +42,8 @@ VANILLA_1_21_4_ELEMENT_ANGLES = (-45.0, -22.5, 0.0, 22.5, 45.0)
 def convert_model(source: Path, destination: Path, textures: dict[str, str] | None = None,
                   geometry_scale: float = 1.0, legalize_rotations: bool = False,
                   texture_size: list[int] | None = None,
-                  element_patch: dict | None = None) -> None:
+                  element_patch: dict | None = None,
+                  texture_uv_scale: dict[str, float] | None = None) -> None:
     """Normalize Forge/Blockbench model metadata to vanilla model JSON.
 
     Framework accepts oversized elements, but vanilla rejects element coordinates
@@ -55,18 +56,28 @@ def convert_model(source: Path, destination: Path, textures: dict[str, str] | No
     source angles must opt into nearest legal rotation conversion; arbitrary angles
     did not become a vanilla feature until after the server's 1.21.4 protocol.
 
-    texture_size declares the canvas the model's own UV coordinates were authored
-    against. It is normally dropped (see below) because every converted texture here
-    is a plain 16x16 vanilla sprite, but a few source models author UV 1:1 against
-    their own element's real pixel length, which can exceed 16 on elements longer
-    than a block; declaring the true value here lets vanilla's loader scale that
-    model's UV proportionally onto the 16x16 substitute sprite instead of letting it
-    overflow past the sprite's edge. See SOURCE_POSITION_AUDIT.md for the specific
-    case this is used for (Vehicle Trailer side rails).
+    texture_size is retained purely as Blockbench-editing metadata (so the model can
+    be reopened and edited against its originally-authored canvas); per Minecraft's
+    own model-format documentation it is one of the fields "used by Blockbench" that
+    "aren't used by Minecraft" at all, so the game itself never reads it or rescales
+    anything because of it — writing it alone does NOT fix oversized UV. (An earlier
+    r36/r37 round of this port incorrectly assumed the game honored it; see
+    SOURCE_POSITION_AUDIT.md for the correction.) Any UV value actually needs to be
+    baked into real 0-16 numbers up front — see texture_uv_scale below — for models
+    whose source authors UV past the substitute sprite's real 16x16 bounds.
+
+    texture_uv_scale optionally multiplies every uv coordinate on faces that use a
+    given "#name" texture variable by a fixed factor, baked directly into the
+    emitted numbers (not relying on any engine-side rescaling). Use this when a
+    source model's own UV for a specific texture was authored 1:1 against an
+    element's real pixel length exceeding 16 (the vanilla sprite this port
+    substitutes for the source's own dedicated art is only 16x16), which Minecraft's
+    model format documents as having "inconsistent" results; see
+    SOURCE_POSITION_AUDIT.md (Vehicle Trailer side rails).
 
     element_patch optionally corrects a specific face's authored UV on a single
     element, identified by its own "from"/"to" coordinates, when the source's own
-    value is an isolated authoring error (not a texture_size mismatch) rather than
+    value is an isolated authoring error (not a UV-overflow mismatch) rather than
     a reproducible discrepancy; see SOURCE_POSITION_AUDIT.md for the one documented
     use of this (Golf Cart's roof strut).
     """
@@ -106,6 +117,13 @@ def convert_model(source: Path, destination: Path, textures: dict[str, str] | No
                 break
         else:
             raise ValueError(f"element_patch target not found in {source}")
+    if texture_uv_scale is not None:
+        for texture_name, scale in texture_uv_scale.items():
+            variable = f"#{texture_name}"
+            for element in model.get("elements", []):
+                for face in element.get("faces", {}).values():
+                    if face.get("texture") == variable and "uv" in face:
+                        face["uv"] = [round(coordinate * scale, 4) for coordinate in face["uv"]]
     model.pop("loader", None)
     model.pop("groups", None)
     if texture_size is not None:
@@ -129,7 +147,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r37 — twenty-three vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r38 — twenty-three vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -670,7 +688,7 @@ def build(output: Path) -> tuple[Path, str]:
             "seed_spiker": "seed_spiker",
         }.items():
             textures = None
-            texture_size = None
+            texture_uv_scale = None
             if source == "trailer_fluid_body":
                 # The four Cray Industries side panels use the original pixels,
                 # but move them from the legacy model/ path to a normal item
@@ -683,36 +701,54 @@ def build(output: Path) -> tuple[Path, str]:
                     "frame": "minecraft:block/light_gray_concrete",
                 }
             if source == "trailer_body":
-                # The two 17-model-pixel-long side rails author their UV 1:1 against
-                # their own real length (consistent across all four of their faces),
-                # which exceeds the vanilla 16x16 canvas this port substitutes for the
-                # source's own dedicated "frame" art. Declaring the model's true
-                # authored canvas size here lets vanilla scale that UV proportionally
-                # onto the 16x16 sprite instead of letting it overflow past its edge
-                # into whatever sprite happens to sit next to it in the atlas; see
-                # SOURCE_POSITION_AUDIT.md r36 entry.
-                texture_size = [17, 17]
+                # The two 17-model-pixel-long side rails ("frame" texture, substituted
+                # with vanilla's 16x16 light_gray_concrete) author their UV 1:1 against
+                # their own real length, consistent across all four of their faces, up
+                # to UV coordinate 17 -- one unit past the substitute sprite's real
+                # 16x16 bounds. Minecraft's own model-format documentation states UV
+                # outside 0-16 has "inconsistent" results (it does not clamp or tile;
+                # it samples past the sprite's edge into whatever the atlas happens to
+                # stitch next to it), which is the source of the purple/stray pixels
+                # reported under the trailer's sides. r36 tried to fix this by
+                # declaring texture_size: [17, 17] on the model, assuming the game
+                # would rescale UV to fit -- but that field is Blockbench-only editing
+                # metadata the game never reads (see convert_model's docstring), so
+                # that round silently fixed nothing. Bake the 16/17 scale into the
+                # "frame" faces' own UV numbers instead, which is engine-agnostic and
+                # actually changes what gets sampled; the substitute texture is a flat
+                # solid color, so the sub-pixel shift this introduces is invisible.
+                # The other two textures sharing this same model ("bed_frame",
+                # "bed_panel") already stay within 0-16 and are left untouched. See
+                # SOURCE_POSITION_AUDIT.md for the full correction.
+                texture_uv_scale = {"frame": 16.0 / 17.0}
             convert_model(
                 ASSETS / f"models/vehicle/{source}.json",
                 namespace / f"models/item/{target}.json",
                 textures,
-                texture_size=texture_size,
+                texture_uv_scale=texture_uv_scale,
             )
 
         convert_model(
             ASSETS / "models/item/standard_wheel.json",
             namespace / "models/item/standard_wheel.json",
             {"particle": "vehicle:item/standard_wheel", "wheel": "vehicle:item/standard_wheel"},
-            # The source model authors its UV against its own declared 32x32 canvas
-            # (max coordinate used is 11.5, deliberately confined to the small
-            # top-left region of wheel.png where the actual artwork lives; the rest
-            # of the 32x32 texture is transparent). Dropping that declaration and
-            # falling back to vanilla's 16x16 default reinterprets the same raw UV
-            # numbers as roughly double their intended fraction (e.g. 11.5/16=72%
-            # instead of 11.5/32=36%), which samples past the drawn artwork into the
-            # transparent region — this is the "purple missing pixels" users see on
-            # every vehicle's wheels (shared by all land vehicles and trailers via
-            # this one model); see SOURCE_POSITION_AUDIT.md r37 entry.
+            # r37 declared texture_size: [32, 32] here on the theory that Minecraft
+            # would otherwise reinterpret this model's own UV (confined to a max
+            # coordinate of 11, i.e. the top-left region of wheel.png where its real
+            # 22x22-pixel artwork lives out of the full 32x32 canvas) against a wrong
+            # 16x16 assumption. That theory does not hold: Minecraft always scales a
+            # model's declared 0-16 UV space proportionally against the texture's own
+            # real resolution, whatever it is (this is exactly how higher-resolution
+            # resource packs already work against unmodified vanilla models), so
+            # wheel.png's unmodified 32x32 copy was already read correctly before and
+            # after r37 -- 11/16 of its full size lands exactly on its drawn 22/32
+            # boundary either way. texture_size is additionally Blockbench-only
+            # editing metadata the game does not use at all (see convert_model's
+            # docstring); r37's declaration here was a harmless no-op kept only so
+            # Blockbench shows the model's real authored canvas if ever reopened.
+            # See SOURCE_POSITION_AUDIT.md for the correction and for where a
+            # genuine instance of this same UV-overflow family of bug was found and
+            # actually fixed (the Vehicle Trailer's side rails).
             texture_size=[32, 32],
         )
         convert_model(
@@ -1045,7 +1081,7 @@ def build(output: Path) -> tuple[Path, str]:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r37.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")
