@@ -104,7 +104,15 @@ public final class GasPumpRig {
         // half-block higher than that registered Y to sit flush on top of it instead of
         // clipping into it.
         double y = block.getY() + 0.5D;
-        Quaternionf rotation = bodyRotation(facing);
+        // Deliberate, isolated diagnostic per direct instruction: spins only the two body
+        // parts (bottom/top) to the opposite cardinal from the registered facing, at the exact
+        // same position, while every hose/nozzle computation below keeps using the registered
+        // facing untouched -- to find out, by direct in-game comparison, whether the body's own
+        // facing-to-rotation mapping is inverted relative to the (already independently
+        // verified) hose/nozzle one. If this turns out to look right, it points at
+        // bodyRotation/blockstateYDegrees needing the same kind of correction the nozzle's
+        // place() got, rather than at fixRotation/get2DDataValue (which stay untouched here).
+        Quaternionf rotation = bodyRotation(facing.getOppositeFace());
 
         List<Entity> all = new ArrayList<>();
 
