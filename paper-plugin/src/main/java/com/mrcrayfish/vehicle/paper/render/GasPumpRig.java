@@ -50,6 +50,7 @@ public final class GasPumpRig {
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
+    private static final ItemStack AIR = new ItemStack(Material.AIR);
     /** Raises the whole rig half a block above the registered pump position, per in-game
      *  testing feedback -- flush with the targeted block looked too low. */
     private static final double VERTICAL_OFFSET = 0.5D;
@@ -198,22 +199,26 @@ public final class GasPumpRig {
     }
 
     /**
-     * Bends the hose from the pump toward {@code playerFeet} (that player's current feet
-     * position) and moves the nozzle prop to that same point, so it now reads as "in the
-     * fueling player's hand" instead of resting on its idle holder (matching
-     * {@code FuelingHandler#onRenderHand}/{@code onModelRenderPost}, which likewise draw the
-     * nozzle model near the holding player's hand instead of on the pump once picked up).
-     * {@code bodyYawDegrees} substitutes the player's plain look yaw for the original's
-     * interpolated body yaw (see class javadoc).
+     * Bends the hose from the pump toward roughly where {@code playerFeet} is holding it.
      *
-     * <p>The original renderer picks between two different hand offsets depending on the
-     * fueling player's own client-side camera mode: a small, low, hand-side-dependent offset
-     * for third person, and a taller, further-forward, hand-side-independent offset
-     * ({@code (-0.25, 0.5, -0.25)} rotated by look yaw) for first person. The server has no way
-     * to know any player's camera mode, so this always uses the first-person offset, since that
-     * is Minecraft's default view and therefore what most players see while fueling; {@code
-     * mainHand} is accepted but unused as a result, since the original's first-person branch
-     * does not depend on it either.</p>
+     * <p>Re-reading the original's own {@code FuelingHandler} (its client-side render hook,
+     * separate from {@code GasPumpRenderer}) found that this port's earlier approach -- moving
+     * this rig's own nozzle prop to a hand-offset point computed from the player's position --
+     * was never how the original showed the nozzle "in hand" at all. The original always
+     * renders the held nozzle by attaching it directly to the player model's own right-arm
+     * bone ({@code onModelRenderPost}) or hand-render matrix ({@code onRenderHand}), so it
+     * always tracks real arm swing/animation pixel-perfectly; {@code getNozzlePosition} (the
+     * method this port's old offset math came from) is only ever used there for the hose
+     * tube's own terminal point, a much less visually-critical value.
+     *
+     * <p>A Paper plugin cannot attach a prop to a vanilla player's arm bone, but it can do
+     * something that reaches the same result for free: {@code GasPumpManager} now puts a real
+     * copy of the nozzle item in the fueling player's off hand, which every client (including
+     * bystanders, and the fueling player's own first- or third-person view) already knows how
+     * to render correctly, swing animation included. So this rig's own cosmetic nozzle prop is
+     * now just hidden for the duration (see below) and this method only has to aim the hose's
+     * end at a reasonable approximation of chest/hand height, a bit out in front of the
+     * player's body -- it no longer also has to double as the exact rendered nozzle position.
      */
     public void updateActive(Vector3f playerFeet, float bodyYawDegrees, MainHand mainHand) {
         if (!valid()) {
@@ -222,26 +227,18 @@ public final class GasPumpRig {
         if (!active) {
             active = true;
             nozzleRestTransformApplied = false;
+            // Hide this rig's own nozzle prop while a real one sits in the player's off hand,
+            // so the two don't both show up at once. setIdle() restores it on release.
+            nozzle.setItemStack(AIR);
         }
 
-        Vector3f handOffset = new Vector3f(-0.25F, 0.5F, -0.25F);
-        handOffset = yRot(handOffset, -radians(bodyYawDegrees));
-        Vector3f nozzleTip = new Vector3f(playerFeet).add(0.0F, 0.8F, 0.0F).add(handOffset);
+        Vector3f forward = directionFromRotation(0.0F, bodyYawDegrees);
+        Vector3f nozzleTip = new Vector3f(playerFeet).add(0.0F, 1.1F, 0.0F).add(forward.mul(0.5F));
 
         Vector3f lookDirection = directionFromRotation(-20.0F, bodyYawDegrees);
         Vector3f endTangent = new Vector3f(lookDirection).mul(3.0F);
 
         layHose(hoseStart, HOSE_START_TANGENT, nozzleTip, endTangent);
-
-        // Same rotation formula as the idle holder's (rotateY(yAngle).rotateY(180).rotateX(90)),
-        // just driven by the player's continuous look yaw instead of the pump's quantized
-        // cardinal facing -- see GasPumpManager#cardinalFacing for why these two yaw
-        // conventions line up (both treat yaw 0/90/180/270 as south/west/north/east).
-        Quaternionf nozzleHandRotation = new Quaternionf()
-                .rotateY(radians(-bodyYawDegrees)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
-        Location tipLocation = new Location(nozzle.getWorld(), nozzleTip.x, nozzleTip.y, nozzleTip.z);
-        place(nozzle, tipLocation, new Vector3f(0.0F), nozzleHandRotation, new Vector3f(0.8F),
-                new Quaternionf());
     }
 
     private void layHose(Vector3f startPos, Vector3f startTangent, Vector3f endPos, Vector3f endTangent) {
@@ -330,6 +327,14 @@ public final class GasPumpRig {
         meta.setItemModel(new NamespacedKey("vehicle", name));
         item.setItemMeta(meta);
         return item;
+    }
+
+    /** Builds a fresh copy of the same cosmetic nozzle item this rig shows resting on the
+     *  pump's holder. {@code GasPumpManager} puts a copy of this in the fueling player's off
+     *  hand (see {@link #updateActive}'s javadoc for why), instead of this rig trying to
+     *  approximate that itself. */
+    public static ItemStack nozzleItemStack() {
+        return model("gas_pump_nozzle");
     }
 
     /** NORTH/EAST/SOUTH/WEST -> the same "y" rotation this pack's blockstates/gas_pump.json

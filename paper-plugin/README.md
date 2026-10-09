@@ -25,7 +25,7 @@ Outputs:
 Published prototype downloads:
 
 - [Plugin JAR](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar)
-- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip) (`SHA-1: 391c6c220b8d2a297cf1b73aa377282ea53e91df`; includes the GPLv3 license)
+- [Mandatory resource pack](https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip) (`SHA-1: 6a2c6d7ea060aba84eab824a8e3da43dc4df57a3`; includes the GPLv3 license)
 
 ## FalixNodes deployment
 
