@@ -1,6 +1,7 @@
 package com.mrcrayfish.vehicle.paper.render;
 
 import org.bukkit.block.BlockFace;
+import org.joml.Quaternionf;
 import org.joml.Vector3f;
 import org.junit.jupiter.api.Test;
 
@@ -101,7 +102,9 @@ class GasPumpRigTest {
         for (float t : new float[]{0.0F, 0.5F, 1.0F}) {
             Vector3f modelPos = new Vector3f(0.0F, 0.0F, t);
             Vector3f center = new Vector3f(0.5F, 0.5F, 0.5F);
-            Vector3f scaled = new Vector3f(modelPos).sub(center).mul(1.0F, 1.0F, length);
+            // scale is (1, 1, length) for a hose segment, so only Z actually needs multiplying.
+            Vector3f diff = new Vector3f(modelPos).sub(center);
+            Vector3f scaled = new Vector3f(diff.x, diff.y, diff.z * length);
             Vector3f rendered = rotation.transform(new Vector3f(scaled)).add(center).add(translation);
             Vector3f expected = new Vector3f(direction).mul(t * length);
             assertVector(rendered, expected.x, expected.y, expected.z);
