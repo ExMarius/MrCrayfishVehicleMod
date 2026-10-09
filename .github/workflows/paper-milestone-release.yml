@@ -1,6 +1,9 @@
 name: Paper land vehicles milestone release
 
 on:
+  push:
+    paths:
+      - ".github/workflows/paper-milestone-release.yml"
   workflow_dispatch:
     inputs:
       tag:
@@ -101,9 +104,9 @@ jobs:
       - name: Publish immutable GitHub milestone
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.tag }}
-          TITLE: ${{ inputs.title }}
-          PRERELEASE: ${{ inputs.prerelease }}
+          TAG: ${{ inputs.tag || 'v1.0.0' }}
+          TITLE: ${{ inputs.title || 'MrCrayfish Vehicle Plugin v1.0.0 (Paper 1.21.4)' }}
+          PRERELEASE: ${{ inputs.prerelease || 'false' }}
         shell: bash
         run: |
           set -euo pipefail
