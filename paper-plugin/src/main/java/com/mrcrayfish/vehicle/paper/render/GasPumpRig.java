@@ -104,33 +104,12 @@ public final class GasPumpRig {
         // half-block higher than that registered Y to sit flush on top of it instead of
         // clipping into it.
         double y = block.getY() + 0.5D;
-        // Deliberate, isolated diagnostic per direct instruction: spins only the two body
-        // parts (bottom/top) to the opposite cardinal from the registered facing, at the exact
-        // same position, while every hose/nozzle computation below keeps using the registered
-        // facing untouched -- to find out, by direct in-game comparison, whether the body's own
-        // facing-to-rotation mapping is inverted relative to the (already independently
-        // verified) hose/nozzle one. If this turns out to look right, it points at
-        // bodyRotation/blockstateYDegrees needing the same kind of correction the nozzle's
-        // place() got, rather than at fixRotation/get2DDataValue (which stay untouched here).
-        Quaternionf rotation = bodyRotation(facing.getOppositeFace());
-
-        // Deliberate, isolated diagnostic per direct instruction: nudges only the clickable
-        // body (the interaction hitbox plus the bottom/top blocks) half a block to the east --
-        // the admin's right hand when standing facing north, as given -- while every hose/nozzle
-        // anchor below (topCornerX/topCornerZ, hoseStart, idleEnd, nozzleRestLocation) keeps
-        // using the original, un-nudged x/z so the hose and nozzle don't move at all.
-        //
-        // Direct instruction, corrected pass: the half-block-south nudge is NOT nozzle-only --
-        // it applies to the *whole rig together* (body, hose, and nozzle alike), so it's folded
-        // into bodyZ/topCornerZ here instead of being added only to nozzleRestLocation below.
-        double rigSouthOffset = 0.5D;
-        double bodyX = x + 0.5D + 0.5D;
-        double bodyZ = z + 0.5D + rigSouthOffset;
+        Quaternionf rotation = bodyRotation(facing);
 
         List<Entity> all = new ArrayList<>();
 
         Interaction interaction = world.spawn(
-                new Location(world, bodyX, y, bodyZ), Interaction.class, hitbox -> {
+                new Location(world, x + 0.5D, y, z + 0.5D), Interaction.class, hitbox -> {
             hitbox.setInteractionWidth(1.0F);
             hitbox.setInteractionHeight(2.0F);
             hitbox.setResponsive(true);
@@ -140,10 +119,10 @@ public final class GasPumpRig {
         interaction.addScoreboardTag("mcv_pump_" + pumpId);
         all.add(interaction);
 
-        ItemDisplay bottom = part(world, new Location(world, bodyX, y, bodyZ),
+        ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y, z + 0.5D),
                 "gas_pump_bottom", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
                 new Vector3f(1.0F), pumpId, all);
-        ItemDisplay top = part(world, new Location(world, bodyX, y + 1, bodyZ),
+        ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1, z + 0.5D),
                 "gas_pump_top", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
                 new Vector3f(1.0F), pumpId, all);
 
@@ -152,34 +131,23 @@ public final class GasPumpRig {
         // matrix stack) -- see GasPumpRenderer#render and CollisionHelper#fixRotation.
         double topCornerX = x;
         double topCornerY = y + 1;
-        double topCornerZ = z + rigSouthOffset;
-
-        // Two more isolated diagnostics per direct instruction, on top of the body-only
-        // east nudge above: slide the whole idle hose (both its anchor points, so the curve
-        // translates as a unit instead of stretching) half a block to the west -- the admin's
-        // left hand facing north -- and slide the nozzle's own rest spot 1 pixel (1/16 block,
-        // Minecraft's standard texture-pixel unit) to the east, the admin's right hand. Neither
-        // offset touches the other part, nor the body position/rotation handled above.
-        double hoseOffsetX = -0.5D;
-        double nozzlePixelOffsetX = 1.0D / 16.0D;
+        double topCornerZ = z;
 
         double[] hoseStartXZ = fixRotation(facing, 0.620625D, 1.05D, 0.620625D, 1.05D);
         Vector3f hoseStart = new Vector3f(
-                (float) (topCornerX + hoseStartXZ[0] + hoseOffsetX),
+                (float) (topCornerX + hoseStartXZ[0]),
                 (float) (topCornerY + 0.6425D),
                 (float) (topCornerZ + hoseStartXZ[1]));
 
         double[] idleEndXZ = fixRotation(facing, 0.345D, 1.06D, 0.345D, 1.06D);
         Vector3f idleEnd = new Vector3f(
-                (float) (topCornerX + idleEndXZ[0] + hoseOffsetX),
+                (float) (topCornerX + idleEndXZ[0]),
                 (float) (topCornerY + 0.1D),
                 (float) (topCornerZ + idleEndXZ[1]));
 
         double[] nozzleRestXZ = fixRotation(facing, 0.29D, 1.06D, 0.29D, 1.06D);
         Location nozzleRestLocation = new Location(world,
-                topCornerX + nozzleRestXZ[0] + nozzlePixelOffsetX, topCornerY + 0.5D,
-                topCornerZ + nozzleRestXZ[1]);
-
+                topCornerX + nozzleRestXZ[0], topCornerY + 0.5D, topCornerZ + nozzleRestXZ[1]);
 
         float yAngle = get2DDataValue(facing) * -90.0F;
         Quaternionf nozzleRestRotation = new Quaternionf()
