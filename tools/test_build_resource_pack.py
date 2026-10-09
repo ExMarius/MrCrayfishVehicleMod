@@ -1,6 +1,7 @@
 import hashlib
 import json
 import re
+import struct
 import tempfile
 import unittest
 import zipfile
@@ -71,7 +72,6 @@ class ResourcePackBuildTest(unittest.TestCase):
                     self.assertIn(float(rotation.get("angle", 0.0)),
                                   build_resource_pack.VANILLA_1_21_4_ELEMENT_ANGLES,
                                   f"{entry} element {index} rotation angle")
-                texture_width, texture_height = model.get("texture_size", [16, 16])
                 for face, definition in element.get("faces", {}).items():
                     texture = definition.get("texture", "")
                     if texture.startswith("#"):
@@ -80,18 +80,81 @@ class ResourcePackBuildTest(unittest.TestCase):
                     uv = definition.get("uv")
                     if uv is not None:
                         u1, v1, u2, v2 = uv
-                        # UV must stay within the model's own declared canvas (defaulting
-                        # to vanilla's implicit 16x16) or it samples past the substituted
-                        # sprite's edge into whatever sprite the atlas happens to pack
-                        # next to it; see SOURCE_POSITION_AUDIT.md r35/r36 entries.
                         self.assertGreaterEqual(min(u1, u2), -0.001,
                                                 f"{entry} element {index} face {face} uv {uv}")
                         self.assertGreaterEqual(min(v1, v2), -0.001,
                                                 f"{entry} element {index} face {face} uv {uv}")
-                        self.assertLessEqual(max(u1, u2), texture_width + 0.001,
-                                             f"{entry} element {index} face {face} uv {uv}")
-                        self.assertLessEqual(max(v1, v2), texture_height + 0.001,
-                                             f"{entry} element {index} face {face} uv {uv}")
+
+    @staticmethod
+    def _png_size(data: bytes) -> tuple[int, int]:
+        return struct.unpack(">II", data[16:24])
+
+    def _resolve_texture(self, textures: dict, reference: str, depth: int = 0) -> str | None:
+        # A face's own "texture" (or a "particle" entry) can itself be another
+        # "#variable" indirection rather than a real resource location; follow the
+        # chain to whatever it ultimately resolves to, the same way Minecraft does.
+        if depth > 10 or reference is None:
+            return None
+        if reference.startswith("#"):
+            return self._resolve_texture(textures, textures.get(reference[1:]), depth + 1)
+        return reference
+
+    def test_every_face_uv_stays_within_its_real_texture_resolution(self):
+        # Minecraft always scales a model's declared UV space proportionally against
+        # the texture's own real pixel resolution, whatever it is -- NOT against any
+        # "texture_size" field declared in the model JSON, which Minecraft's own
+        # documentation lists as Blockbench-only editing metadata the game never
+        # reads (see convert_model's docstring and SOURCE_POSITION_AUDIT.md item 33).
+        # The only correct bound check is therefore against each face's own real,
+        # resolved destination texture file -- not a value the model merely claims.
+        # Every vanilla `minecraft:` block/item texture this pack references is
+        # confirmed (by inspection) to be an ordinary, non-animated 16x16 sprite.
+        vanilla_namespace_size = (16, 16)
+        png_size_cache: dict[str, tuple[int, int]] = {}
+
+        def real_size(texture_reference: str) -> tuple[int, int] | None:
+            if texture_reference.startswith("minecraft:"):
+                return vanilla_namespace_size
+            if texture_reference.startswith("vehicle:"):
+                _, path = texture_reference.split(":", 1)
+                entry = f"assets/vehicle/textures/{path}.png"
+                if entry not in self.entries:
+                    return None
+                if entry not in png_size_cache:
+                    png_size_cache[entry] = self._png_size(self.archive.read(entry))
+                return png_size_cache[entry]
+            return None
+
+        checked_models = 0
+        checked_faces = 0
+        for entry in sorted(path for path in self.entries
+                            if path.startswith("assets/vehicle/models/") and path.endswith(".json")):
+            model = self.read_json(entry)
+            textures = model.get("textures", {})
+            checked_models += 1
+            for index, element in enumerate(model.get("elements", [])):
+                for face, definition in element.get("faces", {}).items():
+                    uv = definition.get("uv")
+                    texture = definition.get("texture")
+                    if uv is None or texture is None:
+                        continue
+                    resolved = self._resolve_texture(textures, texture)
+                    self.assertIsNotNone(resolved, f"{entry} element {index} face {face}: "
+                                                    f"{texture} does not resolve to a real texture")
+                    size = real_size(resolved)
+                    self.assertIsNotNone(size, f"{entry} element {index} face {face}: "
+                                                f"{resolved} has no readable real texture file")
+                    width, height = size
+                    u1, v1, u2, v2 = uv
+                    checked_faces += 1
+                    self.assertLessEqual(max(u1, u2), width + 0.001,
+                                         f"{entry} element {index} face {face} uv {uv} "
+                                         f"exceeds {resolved}'s real {width}x{height} resolution")
+                    self.assertLessEqual(max(v1, v2), height + 0.001,
+                                         f"{entry} element {index} face {face} uv {uv} "
+                                         f"exceeds {resolved}'s real {width}x{height} resolution")
+        self.assertGreater(checked_models, 0)
+        self.assertGreater(checked_faces, 0)
 
     def test_every_pack_png_has_a_valid_nonempty_ihdr(self):
         for entry in sorted(path for path in self.entries if path.endswith(".png")):
