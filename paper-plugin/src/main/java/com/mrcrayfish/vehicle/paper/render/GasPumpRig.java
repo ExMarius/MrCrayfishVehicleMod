@@ -512,14 +512,28 @@ public final class GasPumpRig {
      * yRot((0, 0, -1), -90°)} -- the unrotated model's own north-pointing front -- lands
      * exactly on {@code (1, 0, 0)}, i.e. east, matching.)
      *
-     * <p>So the body's combined rotation is exactly {@code rotateY(-D)}, composed with this
-     * rig's universal 180-degree item-display compensation (see this class's own top-level
-     * javadoc and {@link #PLACE_RIGHT_ROTATION}) -- both pure Y-axis rotations, which always
-     * commute, so the two collapse into the single {@code rotateY(180 - D)} below with no
-     * separate left/right split needed.
+     * <p>The extra "+180 universal item-display compensation" a previous revision composed on
+     * top of {@code rotateY(-D)} here (matching {@link #PLACE_RIGHT_ROTATION}, which really is
+     * needed for {@link #place}'s nozzle/hose pivot math) turned out to be wrong for the body
+     * specifically, and the self-test guarding it never could have caught that: it only checked
+     * this method against its own {@code -D} + 180 formula, so it verified internal arithmetic,
+     * not which formula is actually correct. The real check is independent of this file: {@code
+     * gas_pump_top.json}'s own elements 4-5 model the pump's nozzle-holder bracket sticking out
+     * past the model's +X edge, and the hose/nozzle rest position for the same facing is
+     * computed completely separately, via {@link #fixRotation} (a verbatim port of the
+     * original's own {@code CollisionHelper#fixRotation}, used by the original's real renderer
+     * for exactly this purpose). Those two numbers have no shared code path, so for a correct
+     * body rotation they must land next to each other -- a nozzle doesn't rest 1+ blocks from
+     * its own holder. With the extra 180 included, the bracket (rotated with the body) and the
+     * {@code fixRotation}-computed rest point end up {@code 1.11} blocks apart, identically for
+     * all four facings (so it never looked "only" broken for one orientation); dropping it to
+     * plain {@code rotateY(-D)} brings that down to a steady {@code 0.34} blocks for all four --
+     * consistent with the nozzle hanging just beside, not exactly inside, its holder.
+     *
+     * <p>So the body's rotation is exactly {@code rotateY(-D)}, with no extra composition.
      */
     static Quaternionf bodyRotation(BlockFace facing) {
-        float degrees = 180.0F - blockstateYDegrees(facing);
+        float degrees = -blockstateYDegrees(facing);
         return new Quaternionf().rotateY(radians(degrees));
     }
 

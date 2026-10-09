@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Verifies the small pieces of {@link GasPumpRig} ported verbatim from the original mod's
@@ -56,24 +57,63 @@ class GasPumpRigTest {
      * exact composition with the {@code Transformation} (order and rotation sign) Mojang's own
      * docs don't pin down precisely enough to verify without a running client. {@link
      * GasPumpRig#bodyRotation} instead bakes the whole rotation into the {@code Transformation}
-     * directly, as {@code rotateY(180 - D)} for blockstate degree value {@code D} -- verified
+     * directly, as plain {@code rotateY(-D)} for blockstate degree value {@code D} -- verified
      * here by reproducing that same {@code "y": D} block rotation independently, via this
-     * class's own already-verified {@link GasPumpRig#yRot} applied as {@code yRot(point, -D)}
-     * (see {@link GasPumpRig#bodyRotation}'s own javadoc for the vanilla furnace precedent this
-     * rests on), composed with this rig's separate universal 180-degree item-display flip.
+     * class's own already-verified {@link GasPumpRig#yRot} (see {@link
+     * GasPumpRig#bodyRotation}'s own javadoc for the vanilla furnace precedent this rests on).
      */
     @Test
-    void bodyRotationMatchesTheBlockstatesOwnYRotationComposedWithTheUniversalItemFlip() {
+    void bodyRotationMatchesTheBlockstatesOwnYRotation() {
         for (BlockFace facing : new BlockFace[]{BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST}) {
             float degrees = GasPumpRig.blockstateYDegrees(facing);
             Vector3f point = new Vector3f(0.3F, 0.4F, -0.2F);
 
             Vector3f expected = GasPumpRig.yRot(point, (float) Math.toRadians(-degrees));
-            expected = GasPumpRig.yRot(expected, (float) Math.PI);
 
             Vector3f actual = GasPumpRig.bodyRotation(facing).transform(new Vector3f(point));
 
             assertVector(actual, expected.x, expected.y, expected.z);
+        }
+    }
+
+    /**
+     * The actual regression test for the "hose/nozzle ends up somewhere else on the pump
+     * whenever it's rotated" bug: a previous revision of {@link GasPumpRig#bodyRotation} baked
+     * an extra, never-independently-verified "+180 degrees" on top of the correct {@code
+     * rotateY(-D)} (see that method's own javadoc). Every other test in this file -- including
+     * the one right above -- only ever checked {@code bodyRotation} against its own formula, so
+     * that extra 180 silently passed all of them. This test instead cross-checks it against
+     * something with no shared code path: {@code gas_pump_top.json}'s elements 4 and 5 are the
+     * only ones that stick out past the model's own +X edge, i.e. they physically model the
+     * pump's nozzle-holder bracket on the mesh, and the hose/nozzle rest position for the same
+     * facing is computed completely separately by {@link GasPumpRig#fixRotation} (the original
+     * mod's own {@code CollisionHelper#fixRotation}, used by its real renderer for exactly this
+     * purpose). A correctly-facing body has to put those two right next to each other -- a
+     * nozzle doesn't rest more than a block from its own holder. With the extra 180 included
+     * they land {@code 1.11} blocks apart, identically for all four facings (which is why it
+     * never looked "only" wrong for one orientation); plain {@code rotateY(-D)} brings that
+     * down to a steady {@code ~0.34} blocks, consistent with the nozzle hanging just beside,
+     * not inside, its holder.
+     */
+    @Test
+    void bodyRotationPutsTheModeledNozzleBracketRightNextToFixRotationsIndependentlyComputedRestPoint() {
+        // gas_pump_top.json elements 4 and 5, averaged and converted from their 16-units-per-
+        // block pixel space to this file's normalized [0, 1] space.
+        Vector3f bracketLocal = new Vector3f(1.0434048F, 0.6696271F, 0.375F);
+        Vector3f center = new Vector3f(0.5F, 0.5F, 0.5F);
+
+        for (BlockFace facing : new BlockFace[]{BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST}) {
+            Vector3f bracketWorld = GasPumpRig.bodyRotation(facing)
+                    .transform(new Vector3f(bracketLocal).sub(center)).add(center);
+
+            double[] nozzleXZ = GasPumpRig.fixRotation(facing, 0.29D, 1.06D, 0.29D, 1.06D);
+
+            double dx = bracketWorld.x - nozzleXZ[0];
+            double dz = bracketWorld.z - nozzleXZ[1];
+            double distance = Math.sqrt(dx * dx + dz * dz);
+
+            assertTrue(distance < 0.4D,
+                    facing + ": bracket/nozzle-rest distance was " + distance + ", expected well under 1 block");
         }
     }
 
