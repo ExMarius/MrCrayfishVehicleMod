@@ -1,9 +1,6 @@
 name: Paper land vehicles milestone release
 
 on:
-  push:
-    paths:
-      - ".github/workflows/paper-milestone-release.yml"
   workflow_dispatch:
     inputs:
       tag:
