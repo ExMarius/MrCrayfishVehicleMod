@@ -9,11 +9,13 @@ import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.util.RayTraceResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -75,15 +77,22 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
         switch (action) {
             case "create" -> {
-                Block target = player.getTargetBlockExact(6);
-                if (target == null) {
+                RayTraceResult trace = player.rayTraceBlocks(6.0D);
+                Block target = trace == null ? null : trace.getHitBlock();
+                BlockFace hitFace = trace == null ? null : trace.getHitBlockFace();
+                if (target == null || hitFace == null) {
                     player.sendRichMessage("<red>Privește spre un bloc, la maximum 6 blocuri distanță.</red>");
                     return;
                 }
-                if (gasPumps.createPump(target, player)) {
-                    player.sendRichMessage("<green>Pompă de benzină creată pe blocul privit.</green>");
+                // Anchor the pump on the face you're looking at, exactly like placing a real
+                // block would -- so aiming at the top of a ground block stands the pump on top
+                // of it instead of sinking its model into that block.
+                Block placement = target.getRelative(hitFace);
+                if (gasPumps.createPump(placement, player)) {
+                    player.sendRichMessage("<green>Pompă de benzină creată la " + placement.getX()
+                            + ", " + placement.getY() + ", " + placement.getZ() + ".</green>");
                 } else {
-                    player.sendRichMessage("<yellow>Blocul acesta este deja o pompă de benzină.</yellow>");
+                    player.sendRichMessage("<yellow>Acolo este deja o pompă de benzină.</yellow>");
                 }
             }
             case "remove" -> {

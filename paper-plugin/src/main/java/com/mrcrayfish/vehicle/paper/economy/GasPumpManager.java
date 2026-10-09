@@ -137,7 +137,23 @@ public final class GasPumpManager {
     }
 
     public boolean isPump(Block block) {
-        return pumpsByBlock.containsKey(blockKey(block));
+        return resolvePumpBlock(block) != null;
+    }
+
+    /**
+     * The pump's visual is two blocks tall, so either half should respond to a right-click.
+     * Returns the pump's registered (bottom) block if {@code clicked} is that block or the
+     * one directly above it, otherwise {@code null}.
+     */
+    private Block resolvePumpBlock(Block clicked) {
+        if (pumpsByBlock.containsKey(blockKey(clicked))) {
+            return clicked;
+        }
+        Block below = clicked.getRelative(BlockFace.DOWN);
+        if (pumpsByBlock.containsKey(blockKey(below))) {
+            return below;
+        }
+        return null;
     }
 
     public int pumpCount() {
@@ -211,8 +227,13 @@ public final class GasPumpManager {
         return true;
     }
 
-    /** Starts or stops a fueling session for {@code player} at {@code pumpBlock}. */
-    public void toggleFueling(Player player, Block pumpBlock) {
+    /** Starts or stops a fueling session for {@code player} at {@code clickedBlock} (either
+     *  half of the pump's two-block-tall visual). */
+    public void toggleFueling(Player player, Block clickedBlock) {
+        Block pumpBlock = resolvePumpBlock(clickedBlock);
+        if (pumpBlock == null) {
+            return;
+        }
         UUID pumpId = pumpsByBlock.get(blockKey(pumpBlock));
         if (pumpId == null) {
             return;
