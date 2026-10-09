@@ -49,7 +49,6 @@ public final class GasPumpRig {
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
-    private static final ItemStack AIR = new ItemStack(Material.AIR);
 
     private final UUID pumpId;
     private final List<Entity> all = new ArrayList<>();
@@ -188,7 +187,7 @@ public final class GasPumpRig {
         }
         if (!active) {
             active = true;
-            nozzle.setItemStack(AIR);
+            nozzle.setItemStack(new ItemStack(Material.AIR));
         }
 
         float handSide = mainHand == MainHand.RIGHT ? 1.0F : -1.0F;
