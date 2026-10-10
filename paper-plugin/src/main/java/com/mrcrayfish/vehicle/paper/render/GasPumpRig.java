@@ -22,35 +22,30 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Vanilla-display replica of the original mod's gas pump cosmetics: the two-block body,
- * the idle nozzle resting on its holder, and the hose that bends toward whichever player
- * is fueling. Ported 1:1 from {@code GasPumpRenderer} (the original's TileEntityRenderer)
- * and {@code HermiteInterpolator}, with the Forge-only matrix-stack calls translated to
- * vanilla {@link ItemDisplay} entities since display entities are all a vanilla client can
- * actually render.
+ * Vanilla-display replica of the original mod's gas pump: the two-block body, the idle
+ * nozzle resting on its holder, and the hose that bends toward whichever player is fueling.
+ * A Paper plugin cannot register a custom {@code TileEntityRenderer} for a vanilla client, so
+ * every part is a plain {@link ItemDisplay} entity instead; every position, rotation, and
+ * curve is a direct 1:1 port of the original's {@code GasPumpRenderer}, its
+ * {@code CollisionHelper#fixRotation}, and {@code HermiteInterpolator} (see {@link HermiteSpline}).
  *
- * <p>Two disclosed simplifications versus the original (both unavoidable server-side):
+ * <p>Two small simplifications are unavoidable on a server:
  * <ol>
- *   <li>The original picks a different nozzle-hand offset when the fueling player is the
- *   local client in first-person view. The server can't know any player's camera mode, so
- *   this always uses the (more common) non-first-person "third person" hand offset.</li>
- *   <li>The original uses each player's smoothly-interpolated {@code yBodyRot}, which can
- *   briefly lag behind head yaw during a fast head turn. Bukkit does not expose that value
- *   for remote players, so this substitutes the player's plain look yaw.</li>
+ *   <li>The original nudges the held nozzle's offset when the fueling player is the local
+ *   client in first-person view. The server can't know any player's camera mode, so this
+ *   always uses the (more common) third-person hand offset.</li>
+ *   <li>The original uses the player's smoothly interpolated {@code yBodyRot}. Bukkit doesn't
+ *   expose that for remote players, so this uses the player's plain look yaw instead.</li>
  * </ol>
- * The hose's distance-based red warning tint and the slim-skin hand-offset nudge are also
- * skipped as minor, disclosed simplifications; everything else (geometry, pivot points,
- * and the Hermite-spline bend itself) is a direct port.</p>
+ * The hose's distance-based red warning tint and the slim-skin hand-offset nudge are skipped
+ * for the same reason; everything else is a direct port.</p>
  */
 public final class GasPumpRig {
     public static final String ENTITY_TAG = "mcv_plugin_gaspump";
-    /** The original's own {@code Config.CLIENT.hoseSegments} default is 10, but that was tuned
-     *  for its continuously-varying, per-vertex-blended procedural quad strip (see
-     *  {@code GasPumpRenderer#drawHose}). This port instead chains rigid straight prisms, each
-     *  with one constant orientation along its whole length, so the same 10-way split leaves a
-     *  visible facet/notch at every joint where the chain bends sharply (most noticeably right
-     *  where the hose leaves the pump). Raised well past the original's value, as a disclosed
-     *  deviation, to keep those joint angles small enough to read as a smooth curve instead. */
+    /** The original renders the hose as a continuously-interpolated quad strip; this port
+     *  chains rigid straight prisms instead, so it needs more of them than the original's
+     *  default ({@code Config.CLIENT.hoseSegments} = 10) to keep the joints reading as a
+     *  smooth curve rather than a faceted chain. */
     private static final int HOSE_SEGMENTS = 24;
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
     private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
@@ -93,16 +88,9 @@ public final class GasPumpRig {
         World world = block.getWorld();
         int x = block.getX();
         int z = block.getZ();
-        // The theoretical "zero extra vertical offset" placement (the registered block's own
-        // bottom-corner Y, with no adjustment -- see the removed VERTICAL_OFFSET this comment
-        // used to describe) turned out, per direct in-game visual confirmation standing at the
-        // actual spawned rig, to render the whole rig half a block into the ground. Unlike that
-        // theoretical argument (which was never checked against a live client), this +0.5 is a
-        // live-tested correction: the admin-visible "block=(x, y, z)" position names the
-        // *ground* block the pump's registered at, not literally the display geometry's own
-        // bottom-corner Y, so the whole rig (body, hose, and nozzle alike) needs to render one
-        // half-block higher than that registered Y to sit flush on top of it instead of
-        // clipping into it.
+        // The admin-visible "block=(x, y, z)" names the ground block the pump is registered
+        // at, not the display geometry's own bottom-corner Y, so the whole rig renders one
+        // half-block higher than that registered Y to sit flush on top of it.
         double y = block.getY() + 0.5D;
         Quaternionf rotation = bodyRotation(facing);
 
@@ -126,8 +114,8 @@ public final class GasPumpRig {
                 "gas_pump_top", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
                 new Vector3f(1.0F), pumpId, all);
 
-        // All offsets below are the original renderer's fixRotation() outputs, measured from the
-        // TOP block's own minimum corner (matching how its TileEntityRenderer receives its
+        // All offsets below are the original renderer's fixRotation() outputs, measured from
+        // the TOP block's own minimum corner (matching how its TileEntityRenderer receives its
         // matrix stack) -- see GasPumpRenderer#render and CollisionHelper#fixRotation.
         double topCornerX = x;
         double topCornerY = y + 1;
@@ -187,10 +175,9 @@ public final class GasPumpRig {
         }
     }
 
-    /** Raw ground-truth dump of every entity this rig actually spawned -- its live location
-     *  and, for the {@link ItemDisplay} parts, the exact {@link Transformation} Bukkit reports
-     *  back (not merely what this class intended to set), so a live report can be compared
-     *  directly against the formulas in this file without trusting a screenshot's perspective. */
+    /** Raw dump of every entity this rig spawned -- its live location and, for the
+     *  {@link ItemDisplay} parts, the exact {@link Transformation} Bukkit reports back --
+     *  for comparing a live pump directly against the formulas in this file. */
     public String debugDump() {
         StringBuilder sb = new StringBuilder();
         sb.append("interaction @ ").append(describe(interaction.getLocation())).append('\n');
@@ -262,21 +249,12 @@ public final class GasPumpRig {
      * position) and moves this rig's own nozzle prop to roughly that same point, so it reads
      * as "in the fueling player's hand" instead of resting on its idle holder.
      *
-     * <p>The original mod's real held-nozzle visual is a client-side render hook
-     * ({@code FuelingHandler}) that attaches the nozzle model directly to the player model's
-     * own right arm bone -- always the right arm, regardless of the player's configured main
-     * hand -- so it automatically tracks real arm swing/animation. A Paper plugin has no way to
-     * attach a prop to a vanilla player's bones, and routing it through a real off-hand item
-     * (tried in an earlier revision of this method) was rejected: it visibly occupied the
-     * player's own inventory/off-hand slot, which reads as a bug rather than a cosmetic effect.
-     * So this instead positions this rig's own prop by hand, at the exact same point the
-     * original's {@code GasPumpRenderer#getNozzlePosition} (non-first-person branch) computes
-     * for the hose's own terminal point -- {@code (-0.35 * handSide, -0.025, -0.025)} rotated
-     * by {@code -bodyYaw}, where {@code handSide} is {@code +1} for the player's actual main
-     * hand being right and {@code -1} for left -- rather than any further-tuned offset: a
-     * previous revision pushed this point out further per in-game feedback that the literal
-     * source value read as glued to the player's hip, but per direct instruction this reverts
-     * that tuning to keep hose and prop alike at the exact position the original mod uses.
+     * <p>The original's real held-nozzle visual is a client-side render hook that attaches the
+     * nozzle model directly to the player model's own right arm bone. A Paper plugin has no
+     * way to attach a prop to a vanilla player's bones, so this instead positions this rig's
+     * own prop by hand, at the exact point the original's {@code
+     * GasPumpRenderer#getNozzlePosition} (non-first-person branch) computes for the hose's own
+     * terminal point.
      */
     public void updateActive(Vector3f playerFeet, float bodyYawDegrees, MainHand mainHand) {
         if (!valid()) {
@@ -305,15 +283,10 @@ public final class GasPumpRig {
     /**
      * Direct port of {@code GasPumpRenderer#getNozzlePosition}'s non-first-person branch: the
      * fixed offset from the fueling player's eye-height feet position to the nozzle, in that
-     * player's own local space (i.e. before being rotated into world space by {@code -bodyYaw}).
+     * player's own local space, before being rotated into world space by {@code -bodyYaw}.
      * {@code handSide} is {@code +1} when {@code mainHand} is the player's actual configured
-     * main hand being right, {@code -1} for left -- exactly like the original's own {@code
-     * player.getMainArm() == HandSide.RIGHT ? 1 : -1} -- so, unlike an earlier revision of this
-     * rig that both hardcoded the right-hand offset (ignoring this method's own {@code mainHand}
-     * parameter) and pushed the offset out further per visual feedback, this now reproduces the
-     * original's exact {@code (-0.35 * handSide, -0.025, -0.025)} literal values. (The slim-skin
-     * nudge the original also applies here is skipped as a disclosed simplification -- see this
-     * class's own top-level javadoc.)
+     * main hand being right, {@code -1} for left, exactly like the original's own {@code
+     * player.getMainArm() == HandSide.RIGHT ? 1 : -1}.
      */
     static Vector3f nozzleHandOffset(float bodyYawDegrees, MainHand mainHand) {
         float handSide = mainHand == MainHand.RIGHT ? 1.0F : -1.0F;
@@ -350,26 +323,14 @@ public final class GasPumpRig {
      * rotation(FORWARD)}, i.e. {@code from} is the segment's own entity position, not its
      * midpoint.
      *
-     * <p>An earlier revision of this method assumed {@code from} could be used directly as a
-     * plain rotate-then-scale pivot, reasoning that {@code gas_hose_segment.json}'s element
-     * starts at the model's own local origin rather than its center. That assumption is wrong
-     * for a vanilla {@code ItemDisplay}: per Minecraft's own display-entity documentation,
-     * <i>"the rotation pivot of the item display's transformation is the center of the item
-     * model"</i> -- unlike a {@code BlockDisplay}, whose pivot is the model's bottom-north-west
-     * corner (which is what the old comment's reasoning actually described), and unconditionally
-     * true regardless of {@code ItemDisplayTransform}, including {@code NONE}. Concretely, the
-     * engine renders {@code center + rotation * scale * (modelPos - center) + translation}
-     * (relative to the entity's own position) for a one-unit model space with {@code center =
-     * (0.5, 0.5, 0.5)} -- so leaving {@code translation} at zero left every segment's near end
-     * dangling half its own length <em>and</em> half its cross-section-width off to the side of
-     * {@code from} (the offset rotating into whatever direction that particular segment pointed,
-     * since {@code rotation} varies per segment), instead of running cleanly from {@code from}
-     * to {@code from + length * direction} -- the exact "scattered, disconnected" look reported
-     * in-game, independent of wherever the chain's start and end points themselves are. Solving
-     * that equation for {@code translation} with the segment's own local center axis ({@code x =
-     * y = 0}, not {@code 0.5}) gives the compensation below: {@code rotation.transform(0.5, 0.5,
-     * 0.5 * length) - (0.5, 0.5, 0.5)}, which collapses to exactly zero only in the degenerate
-     * unrotated, unscaled (length 1) case.
+     * <p>A vanilla {@code ItemDisplay}'s {@code Transformation} always pivots rotation and
+     * scale on the model's own center, regardless of where the model's geometry actually sits
+     * in its own local space (unlike a {@code BlockDisplay}, whose pivot is the model's
+     * bottom-north-west corner). Concretely, the engine renders {@code center + rotation *
+     * scale * (modelPos - center) + translation} for a one-unit model space with {@code center
+     * = (0.5, 0.5, 0.5)}. Solving that for {@code translation} with the segment's own local
+     * center axis ({@code x = y = 0}, not {@code 0.5}) gives {@link
+     * #hoseSegmentPivotCompensation}.
      */
     private static void placeSegment(ItemDisplay segment, Vector3f from, Quaternionf rotation, float length) {
         Location anchor = segment.getLocation();
@@ -383,8 +344,7 @@ public final class GasPumpRig {
 
     /** The translation that cancels an {@code ItemDisplay}'s forced center pivot for one hose
      *  segment, given its current orientation and length -- see {@link #placeSegment}'s own
-     *  javadoc for the full derivation. Split out purely so the math itself (unlike the real
-     *  {@link ItemDisplay} it feeds into) can be unit-tested without a running server. */
+     *  javadoc for the derivation. Split out so the math can be unit-tested without a server. */
     static Vector3f hoseSegmentPivotCompensation(Quaternionf rotation, float length) {
         return rotation.transform(new Vector3f(0.5F, 0.5F, 0.5F * length)).sub(0.5F, 0.5F, 0.5F);
     }
@@ -393,17 +353,11 @@ public final class GasPumpRig {
      * The translation that cancels an {@code ItemDisplay}'s forced center pivot for a prop
      * that should stay anchored at its own model-space origin -- i.e. so {@code modelPos =
      * (0, 0, 0)} (the point the original's {@code matrixStack.translate(...)} call placed at
-     * this entity's own position) renders with zero offset from that position, exactly like
-     * {@link #hoseSegmentPivotCompensation} does for one hose segment. That method is the
-     * {@code rightRotation = identity}, {@code scale = (1, 1, length)} special case of this
-     * same derivation; this is the general form, kept generic over {@code rightRotation} even
-     * though every current call site (nozzle included, since {@link #place} now passes its
-     * {@code rightRotation} straight through unchanged) happens to use identity -- a lopsided
-     * prop like the nozzle still needs this general form rather than the body's shortcut,
-     * because its {@code leftRotation} (facing/hold orientation) is non-identity and its model
-     * does not span the whole unit cube the way the pump body's does (whose {@code part} calls
-     * get away with the constant {@code (-0.5, 0, -0.5)} precisely because their
-     * {@code leftRotation} is identity and their model spans the whole unit cube).
+     * this entity's own position) renders with zero offset from that position. {@link
+     * #hoseSegmentPivotCompensation} is the {@code rightRotation = identity}, {@code scale =
+     * (1, 1, length)} special case of this same derivation; this is the general form, needed
+     * for the nozzle since its {@code leftRotation} is non-identity and its model does not
+     * span the whole unit cube the way the pump body's does.
      *
      * <p>Solving {@code center + leftRotation.transform(scale * rightRotation.transform(modelPos
      * - center)) + translation = 0} for {@code modelPos = (0, 0, 0)} gives {@code translation =
@@ -412,13 +366,9 @@ public final class GasPumpRig {
     static Vector3f pivotCompensation(Quaternionf leftRotation, Vector3f scale, Quaternionf rightRotation) {
         Vector3f center = new Vector3f(0.5F, 0.5F, 0.5F);
         Vector3f rotatedCenter = rightRotation.transform(new Vector3f(center));
-        // Component-wise scale, spelled out rather than calling a Vector3f#mul(Vector3f)
-        // overload: see hoseSegmentPivotCompensation's own test for why this file avoids
-        // reaching for a JOML overload with no other already-compiling call site in this repo.
         Vector3f scaled = new Vector3f(rotatedCenter.x * scale.x, rotatedCenter.y * scale.y, rotatedCenter.z * scale.z);
         return leftRotation.transform(scaled).sub(center);
     }
-
 
     private static ItemDisplay part(World world, Location location, String modelName,
                                      Vector3f translation, Quaternionf rotation, Vector3f scale,
@@ -429,19 +379,13 @@ public final class GasPumpRig {
     }
 
     /**
-     * Places {@code display} at {@code anchor} with the given {@code Transformation}. A
-     * previous revision had this unconditionally bake an extra {@code rotateY(180)} onto
-     * {@code sourceRightRotation} here, justified only as "the compensation every {@code place}
-     * call needs" -- asserted, never independently derived against the original. It was wrong:
-     * the original's {@code GasPumpRenderer#render} renders the nozzle with the single literal
+     * Places {@code display} at {@code anchor} with the given {@code Transformation}. The
+     * original's {@code GasPumpRenderer#render} renders the nozzle with the single literal
      * matrix-stack sequence {@code translate(pos) -> rotateY(facing) -> rotateY(180) ->
-     * rotateX(90) -> scale(0.8) -> render}, and that one {@code rotateY(180)} is already fully
-     * accounted for in {@code leftRotation} (see {@code nozzleRestRotation}/{@code
-     * nozzleHandRotation}, both of which chain exactly that three-rotation sequence). Baking a
-     * second one on as {@code rightRotation} here flipped the rendered nozzle's orientation by
-     * an extra 180 degrees on top of the correct one. {@code sourceRightRotation} is passed
-     * straight through unchanged, matching how {@link #part} and {@link #placeSegment} already
-     * use an identity right rotation.
+     * rotateX(90) -> scale(0.8) -> render}; that whole sequence is already baked into {@code
+     * leftRotation} (see {@code nozzleRestRotation}/{@code nozzleHandRotation}), so {@code
+     * sourceRightRotation} is passed straight through unchanged, matching {@link #part} and
+     * {@link #placeSegment}.
      */
     private static void place(ItemDisplay display, Location anchor, Vector3f translation,
                                Quaternionf leftRotation, Vector3f scale, Quaternionf sourceRightRotation) {
@@ -456,15 +400,10 @@ public final class GasPumpRig {
             entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
             entity.setInterpolationDelay(0);
             entity.setInterpolationDuration(1);
-            // Unlike LandVehicleRig's parts (which ride a continuously, natively-interpolated
-            // vehicle entity and benefit from a few ticks of client-side position smoothing),
-            // this rig's nozzle and hose segments are re-teleported to a freshly computed,
-            // authoritative position every single tick while a session is active. Any extra
-            // teleport smoothing on top of that only fights the fresh target each tick,
-            // showing up as the hose/nozzle visibly lagging behind -- or briefly sliding across
-            // the whole gap -- right when a player picks up or puts down a nozzle, since that's
-            // when the target position jumps the furthest in one tick. Instant teleports keep
-            // position and this tick's freshly-set rotation/scale in sync.
+            // This rig's nozzle and hose segments are re-teleported to a freshly computed,
+            // authoritative position every tick while a session is active, so an instant
+            // teleport (rather than any extra client-side smoothing) keeps position and this
+            // tick's freshly-set rotation/scale in sync.
             entity.setTeleportDuration(0);
             entity.setInvulnerable(true);
             entity.setPersistent(false);
@@ -487,8 +426,7 @@ public final class GasPumpRig {
 
     /** NORTH/EAST/SOUTH/WEST -> the same "y" rotation this pack's blockstates/gas_pump.json
      *  gives the real block model for that facing (north = 0, east = 90, south = 180,
-     *  west = 270). See {@link #bodyRotation} for how this is actually turned into the
-     *  rotation the body parts render with. */
+     *  west = 270). */
     static float blockstateYDegrees(BlockFace facing) {
         return switch (facing) {
             case NORTH -> 0.0F;
@@ -501,47 +439,10 @@ public final class GasPumpRig {
 
     /**
      * The rotation each body part's own {@code Transformation} needs to bake in for {@code
-     * facing}, replacing an earlier revision that instead called the display entity's own
-     * {@code setRotation(entityYaw, 0)} with {@link #blockstateYDegrees}'s value directly.
-     *
-     * <p>That earlier approach was never actually verifiable: Mojang's own documentation of
-     * how a display entity's base yaw composes with its {@code Transformation} does not pin
-     * down the composition order or the rotation's sign convention precisely enough to confirm
-     * from outside a running client, and this rig had no test exercising it -- in-game testing
-     * reported the body spawning shifted into a corner of its own block instead of rotated
-     * cleanly in place, consistent with that mechanism not doing what the old table assumed.
-     *
-     * <p>Every other rotation in this class (the nozzle's rest/held orientation, every hose
-     * segment) already avoids this problem entirely by baking its whole rotation into the
-     * {@code Transformation} instead of the entity's own yaw -- this does the same for the
-     * body, using this class's own {@link #yRot} (a direct, already-verified port of vanilla's
-     * {@code Vector3d#yRot}) to confirm the exact angle needed: applying {@code yRot(point,
-     * -D)} to a model point reproduces precisely what a real block's own {@code "y": D}
-     * blockstate rotation does to that point. (Checked against vanilla's own directional
-     * blocks: a furnace's {@code "facing=east"} variant uses {@code "y": 90}, and {@code
-     * yRot((0, 0, -1), -90°)} -- the unrotated model's own north-pointing front -- lands
-     * exactly on {@code (1, 0, 0)}, i.e. east, matching.)
-     *
-     * <p>The extra "+180 universal item-display compensation" a previous revision composed on
-     * top of {@code rotateY(-D)} here (matching a since-removed {@code place}-forced 180-degree
-     * right rotation that turned out to be its own separate, equally unverified bug -- see
-     * {@link #place}'s own javadoc) turned out to be wrong for the body specifically, and the
-     * self-test guarding it never could have caught that: it only checked
-     * this method against its own {@code -D} + 180 formula, so it verified internal arithmetic,
-     * not which formula is actually correct. The real check is independent of this file: {@code
-     * gas_pump_top.json}'s own elements 4-5 model the pump's nozzle-holder bracket sticking out
-     * past the model's +X edge, and the hose/nozzle rest position for the same facing is
-     * computed completely separately, via {@link #fixRotation} (a verbatim port of the
-     * original's own {@code CollisionHelper#fixRotation}, used by the original's real renderer
-     * for exactly this purpose). Those two numbers have no shared code path, so for a correct
-     * body rotation they must land next to each other -- a nozzle doesn't rest 1+ blocks from
-     * its own holder. With the extra 180 included, the bracket (rotated with the body) and the
-     * {@code fixRotation}-computed rest point end up {@code 1.11} blocks apart, identically for
-     * all four facings (so it never looked "only" broken for one orientation); dropping it to
-     * plain {@code rotateY(-D)} brings that down to a steady {@code 0.34} blocks for all four --
-     * consistent with the nozzle hanging just beside, not exactly inside, its holder.
-     *
-     * <p>So the body's rotation is exactly {@code rotateY(-D)}, with no extra composition.
+     * facing}: plain {@code rotateY(-D)} for blockstate degree value {@code D}, reproducing
+     * exactly what a real block's own {@code "y": D} blockstate rotation does to that model
+     * (checked against vanilla's own directional blocks, e.g. a furnace's
+     * {@code facing=east} variant uses {@code "y": 90}).
      */
     static Quaternionf bodyRotation(BlockFace facing) {
         float degrees = -blockstateYDegrees(facing);
