@@ -1,0 +1,42 @@
+name: Gas pump diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/workflows/gaspump-diagnostics.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: Dump registered gas pumps and recent log context
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Report pump store and log context
+        shell: bash
+        run: |
+          set -euo pipefail
+          notice() {
+            local value="$1"
+            value="${value//'%'/'%25'}"; value="${value//$'\r'/'%0D'}"; value="${value//$'\n'/'%0A'}"
+            echo "::notice title=Gas pump diagnostics::$value"
+          }
+          ROOT="$HOME/minecraft-server/mc"
+          PUMPS="$ROOT/plugins/MrCrayfishVehiclePlugin/gaspumps.yml"
+
+          if [ -s "$PUMPS" ]; then
+            notice "gaspumps.yml contents:\n$(cat "$PUMPS")"
+          else
+            notice "gaspumps.yml not found or empty at $PUMPS"
+          fi
+
+          if [ -f "$ROOT/logs/latest.log" ]; then
+            notice "latest.log pump-related lines:\n$(grep -n -i 'pump\|gas pump\|\\[pump' "$ROOT/logs/latest.log" | tail -200 || true)"
+          else
+            notice "latest.log not found at $ROOT/logs/latest.log"
+          fi
