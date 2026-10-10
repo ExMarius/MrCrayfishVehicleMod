@@ -13,11 +13,11 @@ permissions:
 
 jobs:
   inspect:
-    name: Dump registered gas pumps straight from the live server
+    name: Clear all registered gas pumps on the live server
     runs-on: self-hosted
     timeout-minutes: 5
     steps:
-      - name: Collect and report live rig dump, one pump per notice
+      - name: Send '/vehicle pump clear' to the console and report the result
         shell: bash
         run: |
           set -euo pipefail
@@ -29,24 +29,21 @@ jobs:
           fi
 
           before=$(wc -l < "$ROOT/logs/latest.log" 2>/dev/null || echo 0)
-          screen -S mcv-minecraft -X stuff 'vehicle pump debug\n'
+          screen -S mcv-minecraft -X stuff 'vehicle pump clear\n'
           sleep 3
-          tail -n +"$((before + 1))" "$ROOT/logs/latest.log" > /tmp/pump_debug_raw.log || true
+          tail -n +"$((before + 1))" "$ROOT/logs/latest.log" > /tmp/pump_clear_raw.log || true
+          sed -E 's/^\[[0-9:]+\] \[[^]]+\]: \[MrCrayfishVehiclePlugin\] //' /tmp/pump_clear_raw.log \
+            > /tmp/pump_clear.log
 
-          # Strip the leading Minecraft log timestamp/thread prefix the console tacks onto
-          # only the very first line of the plugin's multi-line info() call.
-          sed -E 's/^\[[0-9:]+\] \[[^]]+\]: \[MrCrayfishVehiclePlugin\] //' /tmp/pump_debug_raw.log \
-            > /tmp/pump_debug.log
+          result=$(cat /tmp/pump_clear.log)
+          escaped="${result//'%'/'%25'}"; escaped="${escaped//$'\r'/'%0D'}"; escaped="${escaped//$'\n'/'%0A'}"
+          echo "::notice title=Pump clear result::${escaped:-<no console output captured>}"
 
-          python3 - <<'PY'
-          from pathlib import Path
-          text = Path("/tmp/pump_debug.log").read_text()
-          blocks = [b.strip() for b in text.split("\n\n") if b.strip()]
-          if not blocks:
-              print("::notice title=Gas pump diagnostics::no console output captured")
-          for i, block in enumerate(blocks, 1):
-              escaped = block.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
-              print(f"::notice title=Pump dump {i}::{escaped}")
-          PY
-# re-run 1791629410
-# re-run 1791630158
+          PUMPS="$ROOT/plugins/MrCrayfishVehiclePlugin/gaspumps.yml"
+          if [ -s "$PUMPS" ]; then
+            contents=$(cat "$PUMPS")
+          else
+            contents="(file now empty/missing, as expected)"
+          fi
+          escaped2="${contents//'%'/'%25'}"; escaped2="${escaped2//$'\r'/'%0D'}"; escaped2="${escaped2//$'\n'/'%0A'}"
+          echo "::notice title=gaspumps.yml after clear::${escaped2}"
