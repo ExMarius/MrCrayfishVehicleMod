@@ -55,11 +55,12 @@ public final class GasPumpRig {
      *  default ({@code Config.CLIENT.hoseSegments} = 10) to keep the joints reading as a
      *  smooth curve rather than a faceted chain. */
     private static final int HOSE_SEGMENTS = 24;
-    /** Tangent for {@link #hoseStart}, the fixed end of the hose. The original's own value
-     *  here is {@code (0, -5, 0)}, sized for runs of a few blocks out to wherever the fueling
-     *  player stands; scaled down so a player fueling from right up against the pump doesn't
-     *  make the curve overshoot wildly for that much shorter span. */
-    private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -1.0F, 0.0F);
+    /** The direction the hose leaves {@link #hoseStart}, the fixed end of the hose -- straight
+     *  down out of the pump's outlet, same as the original. Unlike the original's hardcoded
+     *  {@code (0, -5, 0)} tangent, {@link #updateActive} scales this to the actual run length
+     *  each tick instead of using it as a fixed-magnitude tangent directly, so it looks right
+     *  whether the fueling player is standing right against the pump or several blocks away. */
+    private static final Vector3f HOSE_START_DIRECTION = new Vector3f(0.0F, -1.0F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
     private static final Vector3f NOZZLE_SCALE = new Vector3f(0.8F);
 
@@ -236,9 +237,21 @@ public final class GasPumpRig {
         Vector3f nozzleTip = new Vector3f(playerFeet).add(0.0F, 0.8F, 0.0F).add(handOffset);
 
         Vector3f lookDirection = directionFromRotation(-20.0F, bodyYawDegrees);
-        Vector3f endTangent = new Vector3f(lookDirection).mul(3.0F);
+        // The original authored its tangent lengths (hoseStart's (0, -5, 0), the end's
+        // lookDirection * 3) around its own typical fueling distance, a few blocks out from
+        // the pump. A fixed magnitude like that only looks right at roughly that distance: a
+        // player fueling from right up against the pump (confirmed live -- about a 1.8 block
+        // hoseStart-to-nozzle run) gets tangents several times LONGER than the entire curve,
+        // which forces the spline to overshoot well past the nozzle before whipping back,
+        // reading as "bent in several directions" instead of one smooth bend. Scaling both
+        // tangents to the actual run length fixes every distance at once instead of just this
+        // one measured case.
+        float distance = new Vector3f(nozzleTip).sub(hoseStart).length();
+        float tangentScale = distance * 0.5F;
+        Vector3f startTangent = new Vector3f(HOSE_START_DIRECTION).mul(tangentScale);
+        Vector3f endTangent = new Vector3f(lookDirection).mul(tangentScale);
 
-        layHose(hoseStart, HOSE_START_TANGENT, nozzleTip, endTangent);
+        layHose(hoseStart, startTangent, nozzleTip, endTangent);
 
         Quaternionf nozzleHandRotation = new Quaternionf()
                 .rotateY(radians(-bodyYawDegrees)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
