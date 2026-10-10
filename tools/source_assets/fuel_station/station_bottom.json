@@ -1,0 +1,61 @@
+{
+    "__comment": "Original geometry authored for this project's brand-new fuel station feature (not ported from any existing mod file). Every face texture is a real vanilla block sprite (see the textures override passed by tools/build_resource_pack.py) rather than custom art, so the look is assembled entirely from stock Minecraft textures.",
+    "textures": {
+        "trim": "minecraft:block/black_concrete",
+        "panel": "minecraft:block/red_concrete",
+        "metal": "minecraft:block/iron_block",
+        "display": "minecraft:block/sea_lantern"
+    },
+    "elements": [
+        {
+            "name": "plinth",
+            "from": [ 1, 0, 1 ],
+            "to": [ 15, 2, 15 ],
+            "faces": {
+                "north": { "texture": "#trim", "uv": [ 0, 0, 14, 2 ] },
+                "east": { "texture": "#trim", "uv": [ 0, 0, 14, 2 ] },
+                "south": { "texture": "#trim", "uv": [ 0, 0, 14, 2 ] },
+                "west": { "texture": "#trim", "uv": [ 0, 0, 14, 2 ] },
+                "up": { "texture": "#trim", "uv": [ 0, 0, 14, 14 ] },
+                "down": { "texture": "#trim", "uv": [ 0, 0, 14, 14 ] }
+            }
+        },
+        {
+            "name": "cabinet",
+            "from": [ 3, 2, 3 ],
+            "to": [ 13, 15, 13 ],
+            "faces": {
+                "north": { "texture": "#panel", "uv": [ 0, 0, 10, 13 ] },
+                "east": { "texture": "#panel", "uv": [ 0, 0, 10, 13 ] },
+                "south": { "texture": "#panel", "uv": [ 0, 0, 10, 13 ] },
+                "west": { "texture": "#panel", "uv": [ 0, 0, 10, 13 ] },
+                "up": { "texture": "#metal", "uv": [ 0, 0, 10, 10 ] },
+                "down": { "texture": "#metal", "uv": [ 0, 0, 10, 10 ] }
+            }
+        },
+        {
+            "name": "display",
+            "from": [ 4, 7, 2.6 ],
+            "to": [ 12, 13, 3 ],
+            "faces": {
+                "north": { "texture": "#display", "uv": [ 0, 0, 8, 6 ] },
+                "east": { "texture": "#display", "uv": [ 0, 0, 1, 6 ] },
+                "west": { "texture": "#display", "uv": [ 0, 0, 1, 6 ] },
+                "up": { "texture": "#display", "uv": [ 0, 0, 8, 1 ] },
+                "down": { "texture": "#display", "uv": [ 0, 0, 8, 1 ] }
+            }
+        },
+        {
+            "name": "holster",
+            "from": [ 11.6, 3, 9 ],
+            "to": [ 13.4, 8, 12 ],
+            "faces": {
+                "north": { "texture": "#trim", "uv": [ 0, 0, 3, 5 ] },
+                "east": { "texture": "#trim", "uv": [ 0, 0, 3, 5 ] },
+                "south": { "texture": "#trim", "uv": [ 0, 0, 3, 5 ] },
+                "west": { "texture": "#trim", "uv": [ 0, 0, 3, 5 ] },
+                "up": { "texture": "#trim", "uv": [ 0, 0, 3, 3 ] }
+            }
+        }
+    ]
+}

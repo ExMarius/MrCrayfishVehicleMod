@@ -14,7 +14,7 @@ repositories {
 // under src/vaultApi (LGPLv3, see the file headers) instead of pulled from JitPack/CodeMC.
 // This source set is compileOnly to "main" and never packaged into the plugin jar, so at
 // runtime the real Vault plugin jar supplies the actual implementation of the exact same
-// net.milkbowl.vault.economy classes — identical behavior to an external compileOnly
+// net.milkbowl.vault.economy classes -- identical behavior to an external compileOnly
 // dependency, but with zero external Maven repository required to build this project.
 sourceSets {
     create("vaultApi") {

@@ -1,0 +1,21 @@
+{
+    "__comment": "Original geometry authored for this project's brand-new fuel station feature (not ported from any existing mod file). A single straight rod the plugin chains and bends into a hose at runtime; basalt's natural vertical striations read as a ribbed rubber hose without needing any custom texture.",
+    "textures": {
+        "hose": "minecraft:block/basalt"
+    },
+    "elements": [
+        {
+            "name": "segment",
+            "from": [ 6, 6, 0 ],
+            "to": [ 10, 10, 16 ],
+            "faces": {
+                "north": { "texture": "#hose", "uv": [ 0, 0, 4, 4 ] },
+                "east": { "texture": "#hose", "uv": [ 0, 0, 16, 4 ] },
+                "south": { "texture": "#hose", "uv": [ 0, 0, 4, 4 ] },
+                "west": { "texture": "#hose", "uv": [ 0, 0, 16, 4 ] },
+                "up": { "texture": "#hose", "uv": [ 0, 0, 4, 16 ] },
+                "down": { "texture": "#hose", "uv": [ 0, 0, 4, 16 ] }
+            }
+        }
+    ]
+}

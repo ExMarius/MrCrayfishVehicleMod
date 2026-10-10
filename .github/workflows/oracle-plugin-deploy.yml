@@ -70,10 +70,10 @@ jobs:
           set -euo pipefail
           mkdir -p oracle-deployment
 
-          # Vault 1.7.3 (the economy service our gas pump feature hooks into via
-          # softdepend). GitHub never recorded a digest for this 2020-era asset,
-          # so we pin its official byte size as a sanity check and log the sha256
-          # we actually received for audit/future pinning.
+          # Vault 1.7.3 (the economy service the fuel station feature hooks into via
+          # softdepend). GitHub never recorded a digest for this 2020-era asset, so we pin
+          # its official byte size as a sanity check and log the sha256 we actually
+          # received for audit/future pinning.
           VAULT_URL="https://github.com/MilkBowl/Vault/releases/download/1.7.3/Vault.jar"
           VAULT_EXPECTED_SIZE=272259
           curl -fsSL --retry 5 --retry-delay 5 -o oracle-deployment/Vault.jar "$VAULT_URL"
@@ -85,12 +85,21 @@ jobs:
           unzip -t oracle-deployment/Vault.jar >/dev/null
           echo "Vault.jar sha256: $(sha256sum oracle-deployment/Vault.jar | cut -d' ' -f1)"
 
-          # EssentialsX 2.22.0 provides the actual Economy implementation behind
-          # Vault. GitHub reports a sha256 digest for this asset; pin it exactly.
+          # EssentialsX 2.22.0 provides the actual Economy implementation behind Vault.
+          # The project itself never publishes a GitHub-side digest, so this is pinned
+          # against the sha512 Modrinth's API reports for the identical release asset
+          # (confirmed via https://api.modrinth.com/v2/version/nY6VN1XH), plus the exact
+          # byte size, as a second independent check.
           ESSENTIALSX_URL="https://github.com/EssentialsX/Essentials/releases/download/2.22.0/EssentialsX-2.22.0.jar"
-          ESSENTIALSX_SHA256="bda4685105977fca2e209820a9f0ad24275bd103390a03236f38e59bfdac58e6"
+          ESSENTIALSX_EXPECTED_SIZE=4861125
+          ESSENTIALSX_SHA512="472ecf71924801723643ca6e1f9931297de5aa0874a544f8a719e2e2f7c81af81ef7bcbd38b6e43f0260a9dae6abe42c97907e70e2430e326ff8cff12ebd61cf"
           curl -fsSL --retry 5 --retry-delay 5 -o oracle-deployment/EssentialsX.jar "$ESSENTIALSX_URL"
-          echo "$ESSENTIALSX_SHA256  oracle-deployment/EssentialsX.jar" | sha256sum --check --status
+          ESSENTIALSX_ACTUAL_SIZE=$(stat -c %s oracle-deployment/EssentialsX.jar)
+          if [ "$ESSENTIALSX_ACTUAL_SIZE" != "$ESSENTIALSX_EXPECTED_SIZE" ]; then
+            echo "::error title=EssentialsX download mismatch::Expected $ESSENTIALSX_EXPECTED_SIZE bytes, got $ESSENTIALSX_ACTUAL_SIZE"
+            exit 1
+          fi
+          echo "$ESSENTIALSX_SHA512  oracle-deployment/EssentialsX.jar" | sha512sum --check --status
           unzip -t oracle-deployment/EssentialsX.jar >/dev/null
 
       - name: Stage deployment files

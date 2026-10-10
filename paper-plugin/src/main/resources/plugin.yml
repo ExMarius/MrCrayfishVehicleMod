@@ -10,7 +10,7 @@ softdepend: [Vault]
 commands:
   vehicle:
     description: Manage server-side vehicles.
-    usage: /vehicle <spawn|remove|refuel|list|save|pack|pump|fuelprice>
+    usage: /vehicle <spawn|remove|refuel|list|save|pack|station>
     permission: vehicle.use
     aliases: [veh, car]
 permissions:
@@ -18,5 +18,5 @@ permissions:
     description: Allows players to use vehicles.
     default: true
   vehicle.admin:
-    description: Allows spawning and removing vehicles, and managing gas pumps.
+    description: Allows spawning and removing vehicles, and managing fuel stations.
     default: op

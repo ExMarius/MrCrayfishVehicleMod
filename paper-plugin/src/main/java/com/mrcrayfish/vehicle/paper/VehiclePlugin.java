@@ -1,44 +1,43 @@
 package com.mrcrayfish.vehicle.paper;
 
 import com.mrcrayfish.vehicle.paper.command.VehicleCommand;
-import com.mrcrayfish.vehicle.paper.economy.FuelEconomyService;
-import com.mrcrayfish.vehicle.paper.economy.GasPumpManager;
+import com.mrcrayfish.vehicle.paper.economy.FuelAccountService;
 import com.mrcrayfish.vehicle.paper.listener.VehicleListener;
+import com.mrcrayfish.vehicle.paper.station.FuelStationManager;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class VehiclePlugin extends JavaPlugin {
     private VehicleManager vehicleManager;
-    private FuelEconomyService economyService;
-    private GasPumpManager gasPumps;
+    private FuelStationManager fuelStations;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
         vehicleManager = new VehicleManager(this);
-        economyService = FuelEconomyService.resolve(this);
-        gasPumps = new GasPumpManager(this, vehicleManager, economyService);
+        FuelAccountService account = FuelAccountService.resolve(this);
+        fuelStations = new FuelStationManager(this, vehicleManager, account);
 
-        VehicleCommand vehicleCommand = new VehicleCommand(this, vehicleManager, gasPumps);
+        VehicleCommand vehicleCommand = new VehicleCommand(this, vehicleManager, fuelStations);
         PluginCommand command = getCommand("vehicle");
         if (command == null) {
             throw new IllegalStateException("Command 'vehicle' is missing from plugin.yml");
         }
         command.setExecutor(vehicleCommand);
         command.setTabCompleter(vehicleCommand);
-        getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager, gasPumps), this);
+        getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager, fuelStations), this);
 
         vehicleManager.start();
-        gasPumps.start();
+        fuelStations.start();
         getLogger().info("Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, and five trailers are ready.");
     }
 
     @Override
     public void onDisable() {
-        if (gasPumps != null) {
-            gasPumps.stop();
+        if (fuelStations != null) {
+            fuelStations.stop();
         }
         if (vehicleManager != null) {
             vehicleManager.stop();
@@ -49,7 +48,7 @@ public final class VehiclePlugin extends JavaPlugin {
         return vehicleManager;
     }
 
-    public GasPumpManager gasPumps() {
-        return gasPumps;
+    public FuelStationManager fuelStations() {
+        return fuelStations;
     }
 }

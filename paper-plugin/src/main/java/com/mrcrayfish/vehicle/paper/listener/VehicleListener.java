@@ -2,10 +2,10 @@ package com.mrcrayfish.vehicle.paper.listener;
 
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
-import com.mrcrayfish.vehicle.paper.economy.GasPumpManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
+import com.mrcrayfish.vehicle.paper.station.FuelStationManager;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
@@ -42,12 +42,12 @@ public final class VehicleListener implements Listener {
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
-    private final GasPumpManager gasPumps;
+    private final FuelStationManager fuelStations;
 
-    public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles, GasPumpManager gasPumps) {
+    public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles, FuelStationManager fuelStations) {
         this.plugin = plugin;
         this.vehicles = vehicles;
-        this.gasPumps = gasPumps;
+        this.fuelStations = fuelStations;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -170,35 +170,32 @@ public final class VehicleListener implements Listener {
         } else if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
             LandVehicle vehicle = vehicles.byEntity(event.getRightClicked()).get();
-            // A player holding a pump's nozzle fuels the vehicle they click instead of
-            // mounting it, mirroring the original's gas-pump-over-normal-interact priority
-            // (there, the continuous fueling raytrace intercepts the click before it ever
-            // reaches the vehicle's own mount-on-interact logic).
-            if (!gasPumps.handleVehicleClick(event.getPlayer(), vehicle)) {
+            // A player holding a fuel station's nozzle fuels the vehicle they click instead
+            // of mounting it.
+            if (!fuelStations.handleVehicleClick(event.getPlayer(), vehicle)) {
                 vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
             }
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
             vehicles.trailers().handleInteraction(event.getPlayer(), event.getRightClicked());
-        } else if (gasPumps.isPumpInteraction(event.getRightClicked())) {
-            // The pump's registered position is usually open air now (it sits on the block
-            // face the player clicked, not inside the targeted block), so there's no real
-            // block for a block right-click to land on -- this invisible hitbox entity is
-            // what actually catches the click, mirroring how vehicles are clicked.
+        } else if (fuelStations.isStationInteraction(event.getRightClicked())) {
+            // The station's registered position is open air once it's placed on a block's
+            // face rather than inside it, so there's no real block for a right-click to land
+            // on; this invisible hitbox entity is what actually catches the click.
             event.setCancelled(true);
-            gasPumps.toggleFuelingByEntity(event.getPlayer(), event.getRightClicked());
+            fuelStations.toggleNozzleByInteraction(event.getPlayer(), event.getRightClicked());
         }
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onGasPumpInteract(PlayerInteractEvent event) {
+    public void onStationBlockInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getHand() != EquipmentSlot.HAND
                 || event.getClickedBlock() == null) {
             return;
         }
-        if (gasPumps.isPump(event.getClickedBlock())) {
+        if (fuelStations.isRegistered(event.getClickedBlock())) {
             event.setCancelled(true);
-            gasPumps.toggleFueling(event.getPlayer(), event.getClickedBlock());
+            fuelStations.toggleNozzleByBlock(event.getPlayer(), event.getClickedBlock());
         }
     }
 
@@ -287,14 +284,14 @@ public final class VehicleListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
-        gasPumps.onPlayerQuit(event.getPlayer());
+        fuelStations.onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
     }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
-        gasPumps.onPlayerQuit(event.getPlayer());
+        fuelStations.onPlayerQuit(event.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)

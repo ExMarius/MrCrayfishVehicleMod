@@ -234,12 +234,12 @@ def build(output: Path) -> tuple[Path, str]:
             "aluminum_boat_body": ("vehicle:item/aluminum_boat_body", 16383998),
             "bumper_car_body": ("vehicle:item/bumper_car_body", 16383998),
             "shopping_cart_body": ("vehicle:item/shopping_cart_body", 16383998),
-            # Gas pump visual rig (Paper plugin display-entity port of GasPumpBlock's two
-            # halves, its idle nozzle, and the hose it draws toward a fueling player).
-            "gas_pump_bottom": ("vehicle:item/gas_pump_bottom", 0xFFFFFF),
-            "gas_pump_top": ("vehicle:item/gas_pump_top", 0xFFFFFF),
-            "gas_pump_nozzle": ("vehicle:item/gas_pump_nozzle", 0xFFFFFF),
-            "gas_hose_segment": ("vehicle:item/gas_hose_segment", 0xFFFFFF),
+            # Fuel station visual rig: brand-new geometry (tools/source_assets/fuel_station/),
+            # built entirely from real vanilla block textures rather than any custom art.
+            "fuel_station_bottom": ("vehicle:item/fuel_station_bottom", 16383998),
+            "fuel_station_top": ("vehicle:item/fuel_station_top", 16383998),
+            "fuel_station_nozzle": ("vehicle:item/fuel_station_nozzle", 16383998),
+            "fuel_station_hose_segment": ("vehicle:item/fuel_station_hose_segment", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -776,63 +776,6 @@ def build(output: Path) -> tuple[Path, str]:
              "particle": "vehicle:item/iron_large_engine"},
         )
 
-        # Gas pump visual rig: the block's own two-half model plus its idle nozzle,
-        # ported as display-entity items the same way vehicle bodies already are.
-        # The hose itself has no original model (the mod drew it procedurally in
-        # Java) so gas_hose_segment is new geometry: a single straight rod that the
-        # Paper plugin chains and bends through the ported Hermite-spline math.
-        convert_model(
-            ASSETS / "models/block/gas_pump_bottom.json",
-            namespace / "models/item/gas_pump_bottom.json",
-            {"1": "vehicle:item/gas_pump", "particle": "vehicle:item/gas_pump"},
-        )
-        convert_model(
-            ASSETS / "models/block/gas_pump_top.json",
-            namespace / "models/item/gas_pump_top.json",
-            {"1": "vehicle:item/gas_pump", "particle": "vehicle:item/gas_pump"},
-        )
-        convert_model(
-            ASSETS / "models/vehicle/nozzle.json",
-            namespace / "models/item/gas_pump_nozzle.json",
-            {"2": "vehicle:item/gas_pump_nozzle", "particle": "vehicle:item/gas_pump_nozzle"},
-        )
-        convert_model(
-            ASSETS / "models/vehicle/gas_hose_segment.json",
-            namespace / "models/item/gas_hose_segment.json",
-            {"1": "vehicle:item/gas_hose_segment", "particle": "vehicle:item/gas_hose_segment"},
-        )
-
-        copy(
-            ASSETS / "textures/model/gas_pump.png",
-            namespace / "textures/item/gas_pump.png",
-        )
-        copy(
-            ASSETS / "textures/model/nozzle.png",
-            namespace / "textures/item/gas_pump_nozzle.png",
-        )
-        copy(
-            ASSETS / "textures/model/gas_hose_segment.png",
-            namespace / "textures/item/gas_hose_segment.png",
-        )
-
-        # Nozzle pick-up/put-down and the fueling "glug" sound -- GasPumpManager plays these
-        # by the same vehicle:block.gas_pump.nozzle.* / vehicle:item.jerry_can.liquid_glug
-        # event names the original mod registered, so the .ogg files and their sounds.json
-        # entries need to ship in this pack too (previously only the models/textures were
-        # copied over, so the sounds silently never played).
-        copy(
-            ASSETS / "sounds/block/gas_pump/nozzle/pick_up.ogg",
-            namespace / "sounds/block/gas_pump/nozzle/pick_up.ogg",
-        )
-        copy(
-            ASSETS / "sounds/block/gas_pump/nozzle/put_down.ogg",
-            namespace / "sounds/block/gas_pump/nozzle/put_down.ogg",
-        )
-        copy(
-            ASSETS / "sounds/item/jerry_can/liquid_glug.ogg",
-            namespace / "sounds/item/jerry_can/liquid_glug.ogg",
-        )
-
         copy(
             ASSETS / "textures/vehicle/go_kart/base.png",
             namespace / "textures/item/go_kart_body.png",
@@ -1069,16 +1012,55 @@ def build(output: Path) -> tuple[Path, str]:
             "entity/vehicle/hood/close.ogg",
         ):
             copy(ASSETS / f"sounds/{source}", namespace / f"sounds/{source}")
+
+        # Fuel station visual rig: brand-new geometry authored for this project (not a port
+        # of any existing mod model). Every element's faces reference real vanilla block
+        # sprites below rather than any custom texture file, so there is nothing new to
+        # copy() here -- the look comes entirely from stock Minecraft textures already
+        # present in every vanilla client.
+        convert_model(
+            ROOT / "tools/source_assets/fuel_station/station_bottom.json",
+            namespace / "models/item/fuel_station_bottom.json",
+            {
+                "trim": "minecraft:block/black_concrete",
+                "panel": "minecraft:block/red_concrete",
+                "metal": "minecraft:block/iron_block",
+                "display": "minecraft:block/sea_lantern",
+                "particle": "minecraft:block/red_concrete",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/fuel_station/station_top.json",
+            namespace / "models/item/fuel_station_top.json",
+            {
+                "metal": "minecraft:block/iron_block",
+                "panel": "minecraft:block/red_concrete",
+                "sign": "minecraft:block/yellow_concrete",
+                "beacon": "minecraft:block/redstone_lamp",
+                "particle": "minecraft:block/iron_block",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/fuel_station/nozzle.json",
+            namespace / "models/item/fuel_station_nozzle.json",
+            {
+                "grip": "minecraft:block/black_concrete",
+                "guard": "minecraft:block/gray_concrete",
+                "spout": "minecraft:block/iron_block",
+                "accent": "minecraft:block/redstone_block",
+                "particle": "minecraft:block/iron_block",
+            },
+        )
+        convert_model(
+            ROOT / "tools/source_assets/fuel_station/hose_segment.json",
+            namespace / "models/item/fuel_station_hose_segment.json",
+            {
+                "hose": "minecraft:block/basalt",
+                "particle": "minecraft:block/basalt",
+            },
+        )
+
         write_json(namespace / "sounds.json", {
-            "block.gas_pump.nozzle.pick_up": {
-                "sounds": [{"name": "vehicle:block/gas_pump/nozzle/pick_up"}]
-            },
-            "block.gas_pump.nozzle.put_down": {
-                "sounds": [{"name": "vehicle:block/gas_pump/nozzle/put_down"}]
-            },
-            "item.jerry_can.liquid_glug": {
-                "sounds": [{"name": "vehicle:item/jerry_can/liquid_glug"}]
-            },
             "entity.go_kart.engine": {
                 "sounds": [{"name": "vehicle:entity/go_kart/engine", "preload": True}]
             },
