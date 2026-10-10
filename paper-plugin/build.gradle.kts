@@ -10,9 +10,25 @@ repositories {
     maven("https://repo.papermc.io/repository/maven-public/")
 }
 
+// Vault's Economy API (just the two interfaces this plugin calls) is vendored verbatim
+// under src/vaultApi (LGPLv3, see the file headers) instead of pulled from JitPack/CodeMC.
+// This source set is compileOnly to "main" and never packaged into the plugin jar, so at
+// runtime the real Vault plugin jar supplies the actual implementation of the exact same
+// net.milkbowl.vault.economy classes — identical behavior to an external compileOnly
+// dependency, but with zero external Maven repository required to build this project.
+sourceSets {
+    create("vaultApi") {
+        java.srcDir("src/vaultApi/java")
+    }
+}
+
 dependencies {
+    "vaultApiCompileOnly"("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly(sourceSets["vaultApi"].output)
     testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    testCompileOnly(sourceSets["vaultApi"].output)
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
