@@ -27,7 +27,10 @@ import java.util.UUID;
  * A Paper plugin cannot register a custom {@code TileEntityRenderer} for a vanilla client, so
  * every part is a plain {@link ItemDisplay} entity instead; every position, rotation, and
  * curve is a direct 1:1 port of the original's {@code GasPumpRenderer}, its
- * {@code CollisionHelper#fixRotation}, and {@code HermiteInterpolator} (see {@link HermiteSpline}).
+ * {@code CollisionHelper#fixRotation}, and {@code HermiteInterpolator} (see {@link HermiteSpline}),
+ * with one deliberate exception: the idle hose's own Hermite tangents are rescaled (see
+ * {@link #HOSE_START_TANGENT}) because the original's own values make the curve dip well
+ * below ground here, as confirmed on a live server -- see that field's own javadoc.
  *
  * <p>Two small simplifications are unavoidable on a server:
  * <ol>
@@ -47,8 +50,17 @@ public final class GasPumpRig {
      *  default ({@code Config.CLIENT.hoseSegments} = 10) to keep the joints reading as a
      *  smooth curve rather than a faceted chain. */
     private static final int HOSE_SEGMENTS = 24;
-    private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -5.0F, 0.0F);
-    private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 3.0F, 0.0F);
+    /** The original's own tangents for this same pair of points are {@code (0, -5, 0)} and
+     *  {@code (0, 3, 0)} -- fine for its continuously-interpolated ribbon mesh, but those
+     *  magnitudes are 2-9x the {@code 0.54}-block vertical gap between {@link #hoseStart} and
+     *  {@link #idleEnd}, so the Hermite curve massively overshoots: sampling it confirms the
+     *  curve dips to about {@code 1.27} blocks below the hose's own start point, i.e. well
+     *  below this rig's own bottom block and partway into the ground it's standing on. These
+     *  values are deliberately NOT a 1:1 port of the original's: they're scaled down to the
+     *  same order of magnitude as that vertical gap, which keeps the idle hose's little
+     *  resting loop near the nozzle holder instead of clipping through the floor. */
+    private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -1.0F, 0.0F);
+    private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 0.5F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
     private static final Vector3f NOZZLE_SCALE = new Vector3f(0.8F);
 
