@@ -1,0 +1,45 @@
+name: Gas pump diagnostics
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/workflows/gaspump-diagnostics.yml
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    name: Confirm the gas pump feature left no trace on the live server
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Check plugin status, data files, and recent log for pump mentions
+        shell: bash
+        run: |
+          set -euo pipefail
+          ROOT="$HOME/minecraft-server/mc"
+          PLUGINS="$ROOT/plugins"
+          DATA="$PLUGINS/MrCrayfishVehiclePlugin"
+
+          if ! screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
+            echo "::notice title=Gas pump diagnostics::mcv-minecraft screen session not running"
+            exit 0
+          fi
+
+          echo "::notice title=Vault.jar present::$([ -f "$PLUGINS/Vault.jar" ] && echo yes || echo no)"
+          echo "::notice title=EssentialsX.jar present::$([ -f "$PLUGINS/EssentialsX.jar" ] && echo yes || echo no)"
+          echo "::notice title=gaspumps.yml present::$([ -f "$DATA/gaspumps.yml" ] && echo yes || echo no)"
+
+          before=$(wc -l < "$ROOT/logs/latest.log" 2>/dev/null || echo 0)
+          screen -S mcv-minecraft -X stuff 'vehicle pump\n'
+          screen -S mcv-minecraft -X stuff 'vehicle fuelprice\n'
+          screen -S mcv-minecraft -X stuff 'help vehicle\n'
+          sleep 3
+          tail -n +"$((before + 1))" "$ROOT/logs/latest.log" > /tmp/pump_cmd_check.log || true
+          result=$(cat /tmp/pump_cmd_check.log)
+          escaped="${result//'%'/'%25'}"; escaped="${escaped//$'\r'/'%0D'}"; escaped="${escaped//$'\n'/'%0A'}"
+          echo "::notice title=Console output after trying pump/fuelprice::${escaped:-<nothing>}"
