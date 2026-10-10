@@ -99,7 +99,7 @@ run_server_cycle() {
       break
     fi
     if grep -Fq 'Done (' "$SERVER_LOG" \
-        && [ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, and five trailers are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
+        && [ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
       ready=true
       break
     fi
@@ -137,12 +137,12 @@ test -f "$DATA_DIR/vehicles.yml" || fail "vehicles.yml was not created on shutdo
 test -f "$DATA_DIR/trailers.yml" || fail "trailers.yml was not created on shutdown"
 grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip' "$DATA_DIR/config.yml" \
   || fail "generated config does not select resource pack r38"
-grep -Fq '9c80c4a7ab951a4f324c150c889104ff4e7bf232' "$DATA_DIR/config.yml" \
+grep -Fq 'e93439ee85ea8b0e19b0fa78ea1dd540df6a27f4' "$DATA_DIR/config.yml" \
   || fail "generated config does not contain the verified r38 SHA-1"
 
 run_server_cycle 2
 
-[ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, and five trailers are ready.' "$SERVER_LOG")" -eq 2 ] \
+[ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -eq 2 ] \
   || fail "plugin did not enable exactly once per startup"
 [ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred for unavailable worlds/types.' "$SERVER_LOG")" -eq 2 ] \
   || fail "empty vehicle persistence did not load on both starts"

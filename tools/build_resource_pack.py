@@ -234,6 +234,11 @@ def build(output: Path) -> tuple[Path, str]:
             "aluminum_boat_body": ("vehicle:item/aluminum_boat_body", 16383998),
             "bumper_car_body": ("vehicle:item/bumper_car_body", 16383998),
             "shopping_cart_body": ("vehicle:item/shopping_cart_body", 16383998),
+            "gas_pump": ("vehicle:item/gas_pump", 16383998),
+            "gas_pump_bottom": ("vehicle:item/gas_pump_bottom", 16383998),
+            "gas_pump_top": ("vehicle:item/gas_pump_top", 16383998),
+            "nozzle": ("vehicle:item/nozzle", 16383998),
+            "hose_segment": ("vehicle:item/hose_segment", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -943,6 +948,90 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "textures/model/small_fuel_port_closed.png",
             namespace / "textures/item/small_fuel_port_closed.png",
         )
+
+        # --- Gas pump --------------------------------------------------------
+        # A faithful port of the original mod's own GasPumpBlock: same models,
+        # textures and nozzle pickup/put-down sounds, reused directly from the
+        # mod's assets (see tools/build_resource_pack.py's established pattern
+        # above of copying real vehicle art into this vanilla-client pack).
+        # The pump is placed/broken as a two-part display rig instead of a real
+        # block (a vanilla client cannot register new block types), and fuel is
+        # free/instant instead of draining a real Forge FluidTank (no vanilla
+        # equivalent exists yet); see GasPumpManager for the exact behaviour.
+        convert_model(
+            ASSETS / "models/item/gas_pump.json",
+            namespace / "models/item/gas_pump.json",
+            {"8": "vehicle:item/gas_pump", "particle": "vehicle:item/gas_pump"},
+        )
+        convert_model(
+            ASSETS / "models/block/gas_pump_bottom.json",
+            namespace / "models/item/gas_pump_bottom.json",
+            {"1": "vehicle:item/gas_pump_bottom", "particle": "vehicle:item/gas_pump_bottom"},
+        )
+        convert_model(
+            ASSETS / "models/block/gas_pump_top.json",
+            namespace / "models/item/gas_pump_top.json",
+            {"1": "vehicle:item/gas_pump_top", "particle": "vehicle:item/gas_pump_top"},
+        )
+        convert_model(
+            ASSETS / "models/vehicle/nozzle.json",
+            namespace / "models/item/nozzle.json",
+            {"2": "vehicle:item/nozzle", "particle": "vehicle:item/nozzle"},
+        )
+        copy(
+            ASSETS / "textures/model/gas_pump.png",
+            namespace / "textures/item/gas_pump.png",
+        )
+        copy(
+            ASSETS / "textures/model/gas_pump.png",
+            namespace / "textures/item/gas_pump_bottom.png",
+        )
+        copy(
+            ASSETS / "textures/model/gas_pump.png",
+            namespace / "textures/item/gas_pump_top.png",
+        )
+        copy(
+            ASSETS / "textures/model/nozzle.png",
+            namespace / "textures/item/nozzle.png",
+        )
+        # The original renders the hose as a custom curved mesh built directly in
+        # Java (GasPumpRenderer#drawHose); there is no separate model/texture for
+        # it to reuse. A vanilla client cannot render that mesh either, so this is
+        # the one genuinely new asset: a plain thin rod, one display per hose
+        # segment, tinted with a vanilla dark texture like the other all-new parts
+        # above (e.g. the trailer's black wool/concrete trim).
+        write_json(namespace / "models/item/hose_segment.json", {
+            "textures": {"0": "minecraft:block/black_concrete", "particle": "minecraft:block/black_concrete"},
+            "elements": [
+                {
+                    "from": [7, 7, 0],
+                    "to": [9, 9, 16],
+                    "faces": {
+                        "north": {"uv": [7, 7, 9, 9], "texture": "#0"},
+                        "south": {"uv": [7, 7, 9, 9], "texture": "#0"},
+                        "east": {"uv": [0, 7, 16, 9], "texture": "#0"},
+                        "west": {"uv": [0, 7, 16, 9], "texture": "#0"},
+                        "up": {"uv": [7, 0, 9, 16], "texture": "#0"},
+                        "down": {"uv": [7, 0, 9, 16], "texture": "#0"},
+                    },
+                }
+            ],
+        })
+        copy(
+            ASSETS / "sounds/block/gas_pump/nozzle/pick_up.ogg",
+            namespace / "sounds/block/gas_pump/nozzle_pick_up.ogg",
+        )
+        copy(
+            ASSETS / "sounds/block/gas_pump/nozzle/put_down.ogg",
+            namespace / "sounds/block/gas_pump/nozzle_put_down.ogg",
+        )
+        # FuelingHandler plays this (originally the Jerry Can's own sample) every
+        # 20 ticks while fuel is actively flowing; reused here for the same cue.
+        copy(
+            ASSETS / "sounds/item/jerry_can/liquid_glug.ogg",
+            namespace / "sounds/item/jerry_can/liquid_glug.ogg",
+        )
+
         copy(
             ASSETS / "sounds/entity/go_kart/engine.ogg",
             namespace / "sounds/entity/go_kart/engine.ogg",
@@ -1060,6 +1149,15 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "entity.vehicle.hood.close": {
                 "sounds": [{"name": "vehicle:entity/vehicle/hood/close", "preload": True}]
+            },
+            "block.gas_pump.nozzle_pick_up": {
+                "sounds": [{"name": "vehicle:block/gas_pump/nozzle_pick_up"}]
+            },
+            "block.gas_pump.nozzle_put_down": {
+                "sounds": [{"name": "vehicle:block/gas_pump/nozzle_put_down"}]
+            },
+            "item.jerry_can.liquid_glug": {
+                "sounds": [{"name": "vehicle:item/jerry_can/liquid_glug"}]
             },
         })
 

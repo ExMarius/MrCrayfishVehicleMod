@@ -2,6 +2,8 @@ package com.mrcrayfish.vehicle.paper.command;
 
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.gaspump.GasPumpItem;
+import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
@@ -12,6 +14,7 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -22,10 +25,12 @@ import java.util.Locale;
 public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
+    private final GasPumpManager gasPumps;
 
-    public VehicleCommand(VehiclePlugin plugin, VehicleManager vehicles) {
+    public VehicleCommand(VehiclePlugin plugin, VehicleManager vehicles, GasPumpManager gasPumps) {
         this.plugin = plugin;
         this.vehicles = vehicles;
+        this.gasPumps = gasPumps;
     }
 
     @Override
@@ -39,10 +44,12 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "spawn" -> spawn(sender, args);
             case "remove" -> remove(sender);
             case "refuel" -> refuel(sender);
+            case "gaspump" -> gaspump(sender);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
                     + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
-                    + vehicles.trailers().trailers().size() + " remorci</gray>");
+                    + vehicles.trailers().trailers().size() + " remorci, "
+                    + gasPumps.pumps().size() + " pompe de benzină</gray>");
             case "save" -> {
                 if (!sender.hasPermission("vehicle.admin")) {
                     sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
@@ -126,6 +133,19 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }, () -> player.sendRichMessage("<red>Nu există niciun vehicul la mai puțin de 6 blocuri.</red>"));
     }
 
+    /** Any player may run this, no permission gate: a gas pump is a placeable item, not an admin spawn. */
+    private void gaspump(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        ItemStack item = GasPumpItem.create();
+        player.getInventory().addItem(item).values().forEach(leftover ->
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+        player.sendRichMessage("<green>Ai primit o pompă de benzină.</green> "
+                + "<gray>Plaseaz-o cu click dreapta, ca pe un bloc normal.</gray>");
+    }
+
     private void pack(CommandSender sender) {
         if (sender instanceof Player player) {
             if (ResourcePackSender.send(plugin, player)) {
@@ -144,6 +164,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " spawn <tip></yellow> <gray>- creează un vehicul sau una dintre cele 5 remorci</gray>");
         sender.sendRichMessage("<yellow>/" + label + " remove</yellow> <gray>- elimină vehiculul apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " gaspump</yellow> <gray>- primești o pompă de benzină plasabilă</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
     }
@@ -152,7 +173,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
             List<String> types = new ArrayList<>(LandVehicleSpec.ids());
