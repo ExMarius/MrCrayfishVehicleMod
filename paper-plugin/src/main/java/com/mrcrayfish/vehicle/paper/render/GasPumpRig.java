@@ -22,15 +22,20 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Vanilla-display replica of the original mod's gas pump: the two-block body, the idle
- * nozzle resting on its holder, and the hose that bends toward whichever player is fueling.
- * A Paper plugin cannot register a custom {@code TileEntityRenderer} for a vanilla client, so
- * every part is a plain {@link ItemDisplay} entity instead; every position, rotation, and
- * curve is a direct 1:1 port of the original's {@code GasPumpRenderer}, its
- * {@code CollisionHelper#fixRotation}, and {@code HermiteInterpolator} (see {@link HermiteSpline}),
- * with one deliberate exception: the idle hose's own Hermite tangents are rescaled (see
- * {@link #HOSE_START_TANGENT}) because the original's own values make the curve dip well
- * below ground here, as confirmed on a live server -- see that field's own javadoc.
+ * Vanilla-display replica of the original mod's gas pump: the two-block body, plus the nozzle
+ * and hose that only exist while a player is actually holding the nozzle. A Paper plugin
+ * cannot register a custom {@code TileEntityRenderer} for a vanilla client, so every part is a
+ * plain {@link ItemDisplay} entity instead; the body placement, the hose's bend toward the
+ * fueling player, and the nozzle's in-hand offset are all direct 1:1 ports of the original's
+ * {@code GasPumpRenderer}, its {@code CollisionHelper#fixRotation}, and
+ * {@code HermiteInterpolator} (see {@link HermiteSpline}).
+ *
+ * <p>Unlike the original -- which always shows the nozzle resting on a holder with the hose
+ * draped between it and the pump -- this rig has no idle nozzle/hose display at all: nobody
+ * is holding anything until a player actually picks the nozzle up, so there's nothing to
+ * anchor a resting pose to that wouldn't just be floating prop geometry. The nozzle and every
+ * hose segment are spawned the moment a player picks up the nozzle and removed the moment they
+ * put it back, so the only things ever visible on an unused pump are its two body blocks.</p>
  *
  * <p>Two small simplifications are unavoidable on a server:
  * <ol>
@@ -50,52 +55,37 @@ public final class GasPumpRig {
      *  default ({@code Config.CLIENT.hoseSegments} = 10) to keep the joints reading as a
      *  smooth curve rather than a faceted chain. */
     private static final int HOSE_SEGMENTS = 24;
-    /** The original's own tangents for this same pair of points are {@code (0, -5, 0)} and
-     *  {@code (0, 3, 0)} -- fine for its continuously-interpolated ribbon mesh, but those
-     *  magnitudes are 2-9x the {@code 0.54}-block vertical gap between {@link #hoseStart} and
-     *  {@link #idleEnd}, so the Hermite curve massively overshoots: sampling it confirms the
-     *  curve dips to about {@code 1.27} blocks below the hose's own start point, i.e. well
-     *  below this rig's own bottom block and partway into the ground it's standing on. These
-     *  values are deliberately NOT a 1:1 port of the original's: they're scaled down to the
-     *  same order of magnitude as that vertical gap, which keeps the idle hose's little
-     *  resting loop near the nozzle holder instead of clipping through the floor. */
+    /** Tangent for {@link #hoseStart}, the fixed end of the hose. The original's own value
+     *  here is {@code (0, -5, 0)}, sized for runs of a few blocks out to wherever the fueling
+     *  player stands; scaled down so a player fueling from right up against the pump doesn't
+     *  make the curve overshoot wildly for that much shorter span. */
     private static final Vector3f HOSE_START_TANGENT = new Vector3f(0.0F, -1.0F, 0.0F);
-    private static final Vector3f IDLE_END_TANGENT = new Vector3f(0.0F, 0.5F, 0.0F);
     private static final Vector3f FORWARD = new Vector3f(0.0F, 0.0F, 1.0F);
     private static final Vector3f NOZZLE_SCALE = new Vector3f(0.8F);
 
     private final UUID pumpId;
+    private final World world;
     private final List<Entity> all = new ArrayList<>();
     private final Interaction interaction;
     private final ItemDisplay bottom;
     private final ItemDisplay top;
-    private final ItemDisplay nozzle;
-    private final ItemStack nozzleModel;
-    private final List<ItemDisplay> hoseSegments = new ArrayList<>();
     private final Vector3f hoseStart;
-    private final Vector3f idleEnd;
-    private final Location nozzleRestLocation;
-    private final Quaternionf nozzleRestRotation;
+    private ItemDisplay nozzle;
+    private final List<ItemDisplay> hoseSegments = new ArrayList<>();
     private boolean active;
-    private boolean nozzleRestTransformApplied;
-    private boolean idleHoseApplied;
 
-    private GasPumpRig(UUID pumpId, Interaction interaction, ItemDisplay bottom, ItemDisplay top,
-                        ItemDisplay nozzle, ItemStack nozzleModel, Vector3f hoseStart, Vector3f idleEnd,
-                        Location nozzleRestLocation, Quaternionf nozzleRestRotation) {
+    private GasPumpRig(UUID pumpId, World world, Interaction interaction, ItemDisplay bottom,
+                        ItemDisplay top, Vector3f hoseStart) {
         this.pumpId = pumpId;
+        this.world = world;
         this.interaction = interaction;
         this.bottom = bottom;
         this.top = top;
-        this.nozzle = nozzle;
-        this.nozzleModel = nozzleModel;
         this.hoseStart = hoseStart;
-        this.idleEnd = idleEnd;
-        this.nozzleRestLocation = nozzleRestLocation;
-        this.nozzleRestRotation = nozzleRestRotation;
     }
 
-    /** Spawns the full rig for a freshly-registered pump at {@code block}, facing {@code facing}. */
+    /** Spawns the body for a freshly-registered pump at {@code block}, facing {@code facing}.
+     *  The nozzle and hose don't exist yet -- see {@link #updateActive}. */
     public static GasPumpRig spawn(Block block, BlockFace facing, UUID pumpId) {
         World world = block.getWorld();
         int x = block.getX();
@@ -106,8 +96,6 @@ public final class GasPumpRig {
         double y = block.getY() + 0.5D;
         Quaternionf rotation = bodyRotation(facing);
 
-        List<Entity> all = new ArrayList<>();
-
         Interaction interaction = world.spawn(
                 new Location(world, x + 0.5D, y, z + 0.5D), Interaction.class, hitbox -> {
             hitbox.setInteractionWidth(1.0F);
@@ -115,19 +103,17 @@ public final class GasPumpRig {
             hitbox.setResponsive(true);
             hitbox.setPersistent(false);
         });
-        interaction.addScoreboardTag(ENTITY_TAG);
-        interaction.addScoreboardTag("mcv_pump_" + pumpId);
-        all.add(interaction);
+        tag(interaction, pumpId);
 
         ItemDisplay bottom = part(world, new Location(world, x + 0.5D, y, z + 0.5D),
                 "gas_pump_bottom", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
-                new Vector3f(1.0F), pumpId, all);
+                new Vector3f(1.0F), pumpId);
         ItemDisplay top = part(world, new Location(world, x + 0.5D, y + 1, z + 0.5D),
                 "gas_pump_top", new Vector3f(-0.5F, 0.0F, -0.5F), rotation,
-                new Vector3f(1.0F), pumpId, all);
+                new Vector3f(1.0F), pumpId);
 
-        // All offsets below are the original renderer's fixRotation() outputs, measured from
-        // the TOP block's own minimum corner (matching how its TileEntityRenderer receives its
+        // The offset below is the original renderer's fixRotation() output, measured from the
+        // TOP block's own minimum corner (matching how its TileEntityRenderer receives its
         // matrix stack) -- see GasPumpRenderer#render and CollisionHelper#fixRotation.
         double topCornerX = x;
         double topCornerY = y + 1;
@@ -139,40 +125,17 @@ public final class GasPumpRig {
                 (float) (topCornerY + 0.6425D),
                 (float) (topCornerZ + hoseStartXZ[1]));
 
-        double[] idleEndXZ = fixRotation(facing, 0.345D, 1.06D, 0.345D, 1.06D);
-        Vector3f idleEnd = new Vector3f(
-                (float) (topCornerX + idleEndXZ[0]),
-                (float) (topCornerY + 0.1D),
-                (float) (topCornerZ + idleEndXZ[1]));
-
-        double[] nozzleRestXZ = fixRotation(facing, 0.29D, 1.06D, 0.29D, 1.06D);
-        Location nozzleRestLocation = new Location(world,
-                topCornerX + nozzleRestXZ[0], topCornerY + 0.5D, topCornerZ + nozzleRestXZ[1]);
-
-        float yAngle = get2DDataValue(facing) * -90.0F;
-        Quaternionf nozzleRestRotation = new Quaternionf()
-                .rotateY(radians(yAngle)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
-
-        ItemStack nozzleModel = model("gas_pump_nozzle");
-        ItemDisplay nozzle = display(world, nozzleRestLocation, nozzleModel, pumpId, all);
-
-        List<ItemDisplay> hoseSegments = new ArrayList<>();
-        for (int i = 0; i < HOSE_SEGMENTS; i++) {
-            ItemDisplay segment = display(world, nozzleRestLocation, model("gas_hose_segment"), pumpId, all);
-            hoseSegments.add(segment);
-        }
-
-        GasPumpRig rig = new GasPumpRig(pumpId, interaction, bottom, top, nozzle, nozzleModel,
-                hoseStart, idleEnd, nozzleRestLocation, nozzleRestRotation);
-        rig.all.addAll(all);
-        rig.hoseSegments.addAll(hoseSegments);
-        rig.setIdle();
+        GasPumpRig rig = new GasPumpRig(pumpId, world, interaction, bottom, top, hoseStart);
+        rig.all.add(interaction);
+        rig.all.add(bottom);
+        rig.all.add(top);
         return rig;
     }
 
+    /** Whether this rig's permanent body entities are still alive. Doesn't depend on the
+     *  nozzle/hose, which are expected to not exist at all while nobody holds the nozzle. */
     public boolean valid() {
-        return interaction.isValid() && bottom.isValid() && top.isValid() && nozzle.isValid()
-                && hoseSegments.stream().allMatch(Entity::isValid);
+        return interaction.isValid() && bottom.isValid() && top.isValid();
     }
 
     /** The invisible hitbox players actually right-click to start/stop fueling, since the
@@ -182,13 +145,14 @@ public final class GasPumpRig {
     }
 
     public void remove() {
+        despawnActiveEntities();
         for (Entity entity : all) {
             entity.remove();
         }
     }
 
-    /** Raw dump of every entity this rig spawned -- its live location and, for the
-     *  {@link ItemDisplay} parts, the exact {@link Transformation} Bukkit reports back --
+    /** Raw dump of every entity this rig currently has spawned -- its live location and, for
+     *  the {@link ItemDisplay} parts, the exact {@link Transformation} Bukkit reports back --
      *  for comparing a live pump directly against the formulas in this file. */
     public String debugDump() {
         StringBuilder sb = new StringBuilder();
@@ -199,11 +163,13 @@ public final class GasPumpRig {
         sb.append("top         @ ").append(describe(top.getLocation()))
                 .append(" model=").append(top.getItemStack().getItemMeta().getItemModel())
                 .append(' ').append(describe(top.getTransformation())).append('\n');
+        sb.append("active=").append(active).append(" hoseStart=").append(hoseStart).append('\n');
+        if (!active || nozzle == null) {
+            sb.append("(nozzle/hose not spawned -- nobody is holding this pump's nozzle)\n");
+            return sb.toString();
+        }
         sb.append("nozzle      @ ").append(describe(nozzle.getLocation()))
                 .append(' ').append(describe(nozzle.getTransformation())).append('\n');
-        sb.append("nozzleRestLocation=").append(describe(nozzleRestLocation)).append('\n');
-        sb.append("active=").append(active).append(" hoseStart=").append(hoseStart)
-                .append(" idleEnd=").append(idleEnd).append('\n');
         for (int i = 0; i < hoseSegments.size(); i++) {
             ItemDisplay segment = hoseSegments.get(i);
             Transformation t = segment.getTransformation();
@@ -233,33 +199,22 @@ public final class GasPumpRig {
         return String.format("(%.4f, %.4f, %.4f, %.4f)", q.x, q.y, q.z, q.w);
     }
 
-    /** Rests the nozzle on its holder and drapes the hose in its idle curve. Cheap to call
-     *  every tick for a pump nobody is using: once idle, it does nothing further until a
-     *  fueling session makes it {@link #updateActive} again. */
+    /** Removes the nozzle and hose, if anyone was holding them. Cheap to call every tick for
+     *  a pump nobody is using: once idle, there's nothing left to do until a fueling session
+     *  makes it {@link #updateActive} again. */
     public void setIdle() {
-        if (!valid()) {
+        if (!active) {
             return;
         }
-        if (active) {
-            active = false;
-            idleHoseApplied = false;
-            nozzle.setItemStack(nozzleModel);
-        }
-        if (!nozzleRestTransformApplied) {
-            nozzleRestTransformApplied = true;
-            Vector3f translation = pivotCompensation(nozzleRestRotation, NOZZLE_SCALE, new Quaternionf());
-            place(nozzle, nozzleRestLocation, translation, nozzleRestRotation, NOZZLE_SCALE, new Quaternionf());
-        }
-        if (!idleHoseApplied) {
-            idleHoseApplied = true;
-            layHose(hoseStart, HOSE_START_TANGENT, idleEnd, IDLE_END_TANGENT);
-        }
+        active = false;
+        despawnActiveEntities();
     }
 
     /**
      * Bends the hose from the pump toward {@code playerFeet} (that player's current feet
      * position) and moves this rig's own nozzle prop to roughly that same point, so it reads
-     * as "in the fueling player's hand" instead of resting on its idle holder.
+     * as "in the fueling player's hand". Spawns the nozzle and every hose segment first if
+     * this is the start of a new session.
      *
      * <p>The original's real held-nozzle visual is a client-side render hook that attaches the
      * nozzle model directly to the player model's own right arm bone. A Paper plugin has no
@@ -274,7 +229,7 @@ public final class GasPumpRig {
         }
         if (!active) {
             active = true;
-            nozzleRestTransformApplied = false;
+            spawnActiveEntities();
         }
 
         Vector3f handOffset = nozzleHandOffset(bodyYawDegrees, mainHand);
@@ -287,9 +242,31 @@ public final class GasPumpRig {
 
         Quaternionf nozzleHandRotation = new Quaternionf()
                 .rotateY(radians(-bodyYawDegrees)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
-        Location tipLocation = new Location(nozzle.getWorld(), nozzleTip.x, nozzleTip.y, nozzleTip.z);
+        Location tipLocation = new Location(world, nozzleTip.x, nozzleTip.y, nozzleTip.z);
         Vector3f translation = pivotCompensation(nozzleHandRotation, NOZZLE_SCALE, new Quaternionf());
         place(nozzle, tipLocation, translation, nozzleHandRotation, NOZZLE_SCALE, new Quaternionf());
+    }
+
+    /** Creates the nozzle and every hose segment at a throwaway location -- {@link
+     *  #updateActive} repositions all of them for real in the same call, before any of this
+     *  is ever sent to a client. */
+    private void spawnActiveEntities() {
+        Location placeholder = new Location(world, hoseStart.x, hoseStart.y, hoseStart.z);
+        nozzle = display(world, placeholder, model("gas_pump_nozzle"), pumpId);
+        for (int i = 0; i < HOSE_SEGMENTS; i++) {
+            hoseSegments.add(display(world, placeholder, model("gas_hose_segment"), pumpId));
+        }
+    }
+
+    private void despawnActiveEntities() {
+        if (nozzle != null) {
+            nozzle.remove();
+            nozzle = null;
+        }
+        for (ItemDisplay segment : hoseSegments) {
+            segment.remove();
+        }
+        hoseSegments.clear();
     }
 
     /**
@@ -384,8 +361,8 @@ public final class GasPumpRig {
 
     private static ItemDisplay part(World world, Location location, String modelName,
                                      Vector3f translation, Quaternionf rotation, Vector3f scale,
-                                     UUID pumpId, List<Entity> all) {
-        ItemDisplay display = display(world, location, model(modelName), pumpId, all);
+                                     UUID pumpId) {
+        ItemDisplay display = display(world, location, model(modelName), pumpId);
         display.setTransformation(new Transformation(translation, rotation, scale, new Quaternionf()));
         return display;
     }
@@ -395,9 +372,8 @@ public final class GasPumpRig {
      * original's {@code GasPumpRenderer#render} renders the nozzle with the single literal
      * matrix-stack sequence {@code translate(pos) -> rotateY(facing) -> rotateY(180) ->
      * rotateX(90) -> scale(0.8) -> render}; that whole sequence is already baked into {@code
-     * leftRotation} (see {@code nozzleRestRotation}/{@code nozzleHandRotation}), so {@code
-     * sourceRightRotation} is passed straight through unchanged, matching {@link #part} and
-     * {@link #placeSegment}.
+     * leftRotation} (see {@code nozzleHandRotation}), so {@code sourceRightRotation} is passed
+     * straight through unchanged, matching {@link #part} and {@link #placeSegment}.
      */
     private static void place(ItemDisplay display, Location anchor, Vector3f translation,
                                Quaternionf leftRotation, Vector3f scale, Quaternionf sourceRightRotation) {
@@ -405,8 +381,7 @@ public final class GasPumpRig {
         display.setTransformation(new Transformation(translation, leftRotation, scale, sourceRightRotation));
     }
 
-    private static ItemDisplay display(World world, Location location, ItemStack stack, UUID pumpId,
-                                        List<Entity> all) {
+    private static ItemDisplay display(World world, Location location, ItemStack stack, UUID pumpId) {
         ItemDisplay display = world.spawn(location, ItemDisplay.class, entity -> {
             entity.setItemStack(stack);
             entity.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
@@ -422,10 +397,13 @@ public final class GasPumpRig {
             entity.setShadowRadius(0.0F);
             entity.setShadowStrength(0.0F);
         });
-        display.addScoreboardTag(ENTITY_TAG);
-        display.addScoreboardTag("mcv_pump_" + pumpId);
-        all.add(display);
+        tag(display, pumpId);
         return display;
+    }
+
+    private static void tag(Entity entity, UUID pumpId) {
+        entity.addScoreboardTag(ENTITY_TAG);
+        entity.addScoreboardTag("mcv_pump_" + pumpId);
     }
 
     private static ItemStack model(String name) {
