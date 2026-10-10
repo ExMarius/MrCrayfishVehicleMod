@@ -68,15 +68,25 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private void pump(CommandSender sender, String[] args) {
         String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
         if (!(sender instanceof Player player)) {
-            // The console has no in-world location, so it can't create/remove/debug "the
-            // nearest" pump -- except "debug", which it can run across every registered pump
-            // at once, for checking live rig state without needing a player online.
-            if (sender.hasPermission("vehicle.admin") && action.equals("debug")) {
-                String dump = gasPumps.debugAllPumps();
-                plugin.getLogger().info("[pump debug all]\n" + dump);
-                sender.sendRichMessage("<gray>Dump trimis în consolă/log.</gray>");
-            } else {
+            // The console has no in-world location, so it can't create/remove-nearest/debug-
+            // nearest a pump -- except "debug" (dumps every pump at once) and "clear" (removes
+            // every pump at once), neither of which need one.
+            if (!sender.hasPermission("vehicle.admin")) {
                 sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+                return;
+            }
+            switch (action) {
+                case "debug" -> {
+                    String dump = gasPumps.debugAllPumps();
+                    plugin.getLogger().info("[pump debug all]\n" + dump);
+                    sender.sendRichMessage("<gray>Dump trimis în consolă/log.</gray>");
+                }
+                case "clear" -> {
+                    int removed = gasPumps.clearAllPumps();
+                    plugin.getLogger().info("[pump clear] Removed " + removed + " gas pump(s).");
+                    sender.sendRichMessage("<green>" + removed + " pompă/pompe eliminate.</green>");
+                }
+                default -> sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             }
             return;
         }
@@ -122,8 +132,12 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                     plugin.getLogger().info("[pump debug]\n" + dump);
                 }
             }
+            case "clear" -> {
+                int removed = gasPumps.clearAllPumps();
+                player.sendRichMessage("<green>" + removed + " pompă/pompe eliminate.</green>");
+            }
             default -> player.sendRichMessage(
-                    "<yellow>Utilizare: /vehicle pump <create|remove|debug></yellow>");
+                    "<yellow>Utilizare: /vehicle pump <create|remove|debug|clear></yellow>");
         }
     }
 
@@ -261,7 +275,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(types, args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("pump")) {
-            return filter(List.of("create", "remove", "debug"), args[1]);
+            return filter(List.of("create", "remove", "debug", "clear"), args[1]);
         }
         return List.of();
     }

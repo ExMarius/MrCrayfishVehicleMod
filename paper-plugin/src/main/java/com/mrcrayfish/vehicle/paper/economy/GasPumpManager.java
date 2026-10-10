@@ -213,6 +213,24 @@ public final class GasPumpManager {
         }
     }
 
+    /** Removes every registered pump and its live rig at once -- e.g. for wiping out test
+     *  pumps left scattered around the world during development, where tracking each one
+     *  down with {@link #removeNearestPump} would be slow. Returns how many were removed. */
+    public int clearAllPumps() {
+        int count = pumps.size();
+        pumps.clear();
+        pumpsByBlock.clear();
+        sessions.clear();
+        holding.clear();
+        for (GasPumpRig rig : rigs.values()) {
+            rig.remove();
+        }
+        rigs.clear();
+        pumpByInteraction.clear();
+        save();
+        return count;
+    }
+
     /** Removes the nearest registered pump within {@code radius} of {@code origin}, if any. */
     public boolean removeNearestPump(Location origin, double radius) {
         StoredGasPump closest = null;
