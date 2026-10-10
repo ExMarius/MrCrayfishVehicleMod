@@ -46,9 +46,9 @@ public final class GasPumpRig {
      *  toward the east, then 1 more pixel (1/16 block) further north. */
     private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.575F, 1.64F, 0.1125F);
     /** Local offset where the nozzle rests when nobody is holding it.
-     *  Net 0.5 block toward the pump's own left (west when the pump faces north): 2 blocks
-     *  west, then corrected 1.5 blocks back east after it overshot. */
-    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-0.5F, 1.5F, 0.26F);
+     *  Net 1.5 blocks toward the pump's own left (west when the pump faces north): 2 blocks
+     *  west, 1.5 blocks back east after it overshot, then 1 more block further west. */
+    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-1.5F, 1.5F, 0.26F);
     /** The nozzle model's own spout faces back toward the pump instead of outward (confirmed
      *  still backward even with zero extra rotation), so it needs a half-turn on top of the
      *  pump's own yaw whenever its rotation is set. */
