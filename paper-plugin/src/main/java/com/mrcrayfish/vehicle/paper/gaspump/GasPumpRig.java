@@ -41,12 +41,13 @@ public final class GasPumpRig {
     private static final float HOSE_THICKNESS = 0.0625F;
 
     /** Local offset of the hose's pump-side anchor, relative to the bottom block's floor.
-     *  Shifted 1 block toward the pump's own left (e.g. west when the pump faces north)
-     *  from the original mod's anchor, per visual adjustment request. */
-    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(1.3F, 1.64F, 0.3F);
+     *  Shifted 1 block toward the pump's own left (west when the pump faces north) from the
+     *  original mod's anchor, per visual adjustment request. The previous attempt at this used
+     *  the wrong sign and moved it east instead; this is the corrected (opposite) direction. */
+    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.7F, 1.64F, 0.3F);
     /** Local offset where the nozzle rests when nobody is holding it.
      *  Shifted 2 pixels (2/16 block) toward the pump's own left, matching the hose anchor move. */
-    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-0.135F, 1.5F, 0.26F);
+    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-0.385F, 1.5F, 0.26F);
 
     private final UUID pumpId;
     private final Interaction interaction;
