@@ -1,0 +1,197 @@
+package com.mrcrayfish.vehicle.paper.command;
+
+import com.mrcrayfish.vehicle.paper.ResourcePackSender;
+import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.gaspump.GasPumpItem;
+import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
+import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
+import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
+import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
+import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
+import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Locale;
+
+public final class VehicleCommand implements CommandExecutor, TabCompleter {
+    private final VehiclePlugin plugin;
+    private final VehicleManager vehicles;
+    private final GasPumpManager gasPumps;
+
+    public VehicleCommand(VehiclePlugin plugin, VehicleManager vehicles, GasPumpManager gasPumps) {
+        this.plugin = plugin;
+        this.vehicles = vehicles;
+        this.gasPumps = gasPumps;
+    }
+
+    @Override
+    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
+                             @NotNull String label, @NotNull String[] args) {
+        if (args.length == 0) {
+            help(sender, label);
+            return true;
+        }
+        switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "spawn" -> spawn(sender, args);
+            case "remove" -> remove(sender);
+            case "refuel" -> refuel(sender);
+            case "gaspump" -> gaspump(sender);
+            case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
+                    + vehicles.vehicles().size() + " active</white><gray>, "
+                    + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
+                    + vehicles.trailers().trailers().size() + " remorci, "
+                    + gasPumps.pumps().size() + " pompe de benzină</gray>");
+            case "save" -> {
+                if (!sender.hasPermission("vehicle.admin")) {
+                    sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+                    return true;
+                }
+                vehicles.save();
+                sender.sendRichMessage("<green>Vehicule salvate.</green>");
+            }
+            case "pack" -> pack(sender);
+            default -> help(sender, label);
+        }
+        return true;
+    }
+
+    private void spawn(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (!sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        String id = args.length < 2 ? "" : args[1];
+        LandVehicleSpec vehicleSpec = LandVehicleSpec.byId(id);
+        TrailerSpec trailerSpec = TrailerSpec.byId(id);
+        if (vehicleSpec == null && trailerSpec == null) {
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle spawn <go_kart|lawn_mower|quad_bike|dune_buggy|tractor|dirt_bike|moped|off_roader|sports_car|mini_bus|golf_cart|jet_ski|sports_plane|compact_helicopter|sofacopter|atv|mini_bike|smart_car|speed_boat|aluminum_boat|couch|bumper_car|shopping_cart|fertilizer|seeder|storage_trailer|fluid_trailer|vehicle_trailer></yellow>");
+            return;
+        }
+        if (vehicleSpec != null) {
+            LandVehicle vehicle = vehicles.spawn(vehicleSpec, player.getLocation());
+            vehicles.save();
+            player.sendRichMessage("<green>" + vehicleSpec.displayName() + " creat.</green> <gray>ID: "
+                    + vehicle.id() + "</gray>");
+        } else {
+            PaperTrailer trailer = vehicles.spawn(trailerSpec, player.getLocation());
+            vehicles.save();
+            player.sendRichMessage("<green>" + trailerSpec.displayName() + " creat.</green> <gray>ID: "
+                    + trailer.id() + "</gray>");
+        }
+    }
+
+    private void remove(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (!sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        LandVehicle vehicle = vehicles.nearest(player.getLocation(), 6.0D).orElse(null);
+        PaperTrailer trailer = vehicles.trailers().nearest(player.getLocation(), 6.0D).orElse(null);
+        if (vehicle == null && trailer == null) {
+            player.sendRichMessage("<red>Nu există niciun vehicul sau remorcă la mai puțin de 6 blocuri.</red>");
+        } else if (trailer != null && (vehicle == null
+                || trailer.location().distanceSquared(player.getLocation())
+                < vehicle.location().distanceSquared(player.getLocation()))) {
+            vehicles.trailers().remove(trailer);
+            player.sendRichMessage("<green>Cea mai apropiată remorcă a fost eliminată.</green>");
+        } else {
+            vehicles.remove(vehicle);
+            player.sendRichMessage("<green>Cel mai apropiat vehicul a fost eliminat.</green>");
+        }
+    }
+
+    private void refuel(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (!sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        vehicles.nearest(player.getLocation(), 6.0D).ifPresentOrElse(vehicle -> {
+            vehicle.setFuel(vehicle.spec().energyCapacity());
+            vehicles.save();
+            player.sendRichMessage("<green>Rezervorul vehiculului a fost umplut.</green>");
+        }, () -> player.sendRichMessage("<red>Nu există niciun vehicul la mai puțin de 6 blocuri.</red>"));
+    }
+
+    /** Any player may run this, no permission gate: a gas pump is a placeable item, not an admin spawn. */
+    private void gaspump(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        ItemStack item = GasPumpItem.create();
+        player.getInventory().addItem(item).values().forEach(leftover ->
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+        player.sendRichMessage("<green>Ai primit o pompă de benzină.</green> "
+                + "<gray>Plaseaz-o cu click dreapta, ca pe un bloc normal.</gray>");
+    }
+
+    private void pack(CommandSender sender) {
+        if (sender instanceof Player player) {
+            if (ResourcePackSender.send(plugin, player)) {
+                player.sendRichMessage("<green>Resource pack-ul a fost retrimis. Acceptă descărcarea.</green>");
+            }
+            return;
+        }
+        String url = plugin.getConfig().getString("resource-pack.url", "");
+        sender.sendRichMessage(url.isBlank()
+                ? "<yellow>Resource pack-ul nu are încă un URL configurat.</yellow>"
+                : "<green>Resource pack configurat:</green> <gray>" + url + "</gray>");
+    }
+
+    private void help(CommandSender sender, String label) {
+        sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>vehicule pentru clienți vanilla</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " spawn <tip></yellow> <gray>- creează un vehicul sau una dintre cele 5 remorci</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " remove</yellow> <gray>- elimină vehiculul apropiat</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " gaspump</yellow> <gray>- primești o pompă de benzină plasabilă</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
+    }
+
+    @Override
+    public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
+                                                 @NotNull String alias, @NotNull String[] args) {
+        if (args.length == 1) {
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "list", "save", "pack"), args[0]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
+            List<String> types = new ArrayList<>(LandVehicleSpec.ids());
+            types.addAll(TrailerSpec.ids());
+            types.sort(String::compareTo);
+            return filter(types, args[1]);
+        }
+        return List.of();
+    }
+
+    private static List<String> filter(List<String> options, String input) {
+        String prefix = input.toLowerCase(Locale.ROOT);
+        List<String> result = new ArrayList<>();
+        for (String option : options) {
+            if (option.startsWith(prefix)) {
+                result.add(option);
+            }
+        }
+        return result;
+    }
+}

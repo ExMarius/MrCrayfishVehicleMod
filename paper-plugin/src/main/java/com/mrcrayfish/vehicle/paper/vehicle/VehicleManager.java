@@ -1,0 +1,695 @@
+package com.mrcrayfish.vehicle.paper.vehicle;
+
+import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
+import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
+import com.mrcrayfish.vehicle.paper.runtime.TrailerManager;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Vector;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.logging.Level;
+
+public final class VehicleManager {
+    private final VehiclePlugin plugin;
+    private final Map<UUID, LandVehicle> vehicles = new HashMap<>();
+    private final Map<UUID, LandVehicle> entities = new HashMap<>();
+    private final Map<UUID, StoredVehicle> pendingWorlds = new HashMap<>();
+    private final Map<UUID, VehicleChunk> chunkTickets = new HashMap<>();
+    private final File storageFile;
+    private final TrailerManager trailers;
+    private BukkitTask tickTask;
+    private BukkitTask saveTask;
+    private int activationTick;
+    /** Short per-vehicle cooldown after a bumper-car bonk so overlapping cars don't
+     * retrigger the jolt and sound every single tick while still touching. */
+    private final Map<UUID, Integer> bumperCarCooldowns = new HashMap<>();
+
+    public VehicleManager(VehiclePlugin plugin) {
+        this.plugin = plugin;
+        this.storageFile = new File(plugin.getDataFolder(), "vehicles.yml");
+        this.trailers = new TrailerManager(plugin, this);
+    }
+
+    public void start() {
+        cleanupOrphanedEntities();
+        load();
+        trailers.start();
+        tickTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
+        long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
+        saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
+    }
+
+    public void stop() {
+        if (tickTask != null) {
+            tickTask.cancel();
+        }
+        if (saveTask != null) {
+            saveTask.cancel();
+        }
+        trailers.returnCarriedVehicles();
+        save();
+        trailers.stop();
+        for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
+            releaseChunkTicket(vehicle);
+            vehicle.remove();
+        }
+        vehicles.clear();
+        entities.clear();
+        chunkTickets.clear();
+    }
+
+    public LandVehicle spawn(LandVehicleSpec spec, Location location) {
+        return spawn(UUID.randomUUID(), spec, location);
+    }
+
+    public PaperTrailer spawn(TrailerSpec spec, Location location) {
+        return trailers.spawn(spec, location);
+    }
+
+    private LandVehicle spawn(UUID id, LandVehicleSpec spec, Location location) {
+        LandVehicle vehicle = LandVehicle.spawn(plugin, id, location, spec, trailers);
+        vehicles.put(id, vehicle);
+        pendingWorlds.remove(id);
+        index(vehicle);
+        updateChunkTicket(vehicle);
+        return vehicle;
+    }
+
+    public CarriedVehicle pickUp(LandVehicle vehicle) {
+        if (vehicle.occupied() || vehicles.remove(vehicle.id()) == null) {
+            return null;
+        }
+        CarriedVehicle carried = new CarriedVehicle(vehicle.spec(), vehicle.fuel(), vehicle.velocity(),
+                vehicle.traction(), vehicle.verticalVelocity(), vehicle.chestAttached(),
+                vehicle.storageContents(), vehicle.openPartStates());
+        unindex(vehicle);
+        releaseChunkTicket(vehicle);
+        trailers.onVehicleRemoved(vehicle.id());
+        vehicle.remove();
+        return carried;
+    }
+
+    public LandVehicle place(CarriedVehicle carried, Location location) {
+        LandVehicle vehicle = spawn(carried.spec(), location);
+        vehicle.setFuel(carried.fuel());
+        vehicle.setVelocity(carried.velocity());
+        vehicle.setTraction(carried.traction());
+        vehicle.setVerticalVelocity(carried.verticalVelocity());
+        vehicle.restoreStorage(carried.chestAttached(), carried.storageContents());
+        vehicle.restoreOpenPartStates(carried.openPartStates());
+        return vehicle;
+    }
+
+    public boolean remove(LandVehicle vehicle) {
+        if (vehicles.remove(vehicle.id()) == null) {
+            return false;
+        }
+        unindex(vehicle);
+        releaseChunkTicket(vehicle);
+        trailers.onVehicleRemoved(vehicle.id());
+        vehicle.remove();
+        save();
+        return true;
+    }
+
+    public Optional<LandVehicle> byEntity(Entity entity) {
+        return Optional.ofNullable(entities.get(entity.getUniqueId()));
+    }
+
+    public Optional<LandVehicle> byId(UUID id) {
+        return Optional.ofNullable(vehicles.get(id));
+    }
+
+    public boolean hasVehicleId(UUID id) {
+        return vehicles.containsKey(id) || pendingWorlds.containsKey(id);
+    }
+
+    public TrailerManager trailers() {
+        return trailers;
+    }
+
+    public Optional<LandVehicle> nearest(Location origin, double maximumDistance) {
+        if (origin.getWorld() == null) {
+            return Optional.empty();
+        }
+        LandVehicle nearest = null;
+        double nearestDistance = maximumDistance * maximumDistance;
+        for (LandVehicle vehicle : vehicles.values()) {
+            Location location = vehicle.location();
+            if (location.getWorld() == null || !location.getWorld().equals(origin.getWorld())) {
+                continue;
+            }
+            double distance = location.distanceSquared(origin);
+            if (distance <= nearestDistance) {
+                nearestDistance = distance;
+                nearest = vehicle;
+            }
+        }
+        return Optional.ofNullable(nearest);
+    }
+
+    public Collection<LandVehicle> vehicles() {
+        return java.util.Collections.unmodifiableCollection(vehicles.values());
+    }
+
+    public int pendingVehicleCount() {
+        return pendingWorlds.size();
+    }
+
+    public void handleInteraction(Player player, Entity clicked) {
+        LandVehicle vehicle = entities.get(clicked.getUniqueId());
+        if (vehicle == null) {
+            return;
+        }
+        if (!player.hasPermission("vehicle.use")) {
+            player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
+            return;
+        }
+        if (vehicle.handleSpecialInteraction(player, clicked)) {
+            save();
+            return;
+        }
+        if ("shopping_cart".equals(vehicle.spec().id()) && player.isSneaking()) {
+            togglePush(player, vehicle);
+            return;
+        }
+        if (trailers.attachHeldToVehicle(player, vehicle)) {
+            return;
+        }
+        if (player.isSneaking() && trailers.pickUpVehicle(player, vehicle)) {
+            return;
+        }
+        /* r37 bug fix: a player who was still registered as the Shopping Cart's pusher
+         * (e.g. they sneak-interacted to grab it, then clicked it again without
+         * sneaking) could also mount its seat. LandVehicle#tick runs tickPushed()
+         * first whenever a pusher is set, which re-derives the cart's position from
+         * the pushing player's own location every tick; but a mounted player's
+         * location is itself re-derived from the seat's position by the server's
+         * native passenger sync. Together those formed a feedback loop that pushed
+         * both the cart and the player upward indefinitely - the reported "infinite
+         * flight" exploit. Mounting while still the pusher is refused outright. */
+        if (player.getUniqueId().equals(vehicle.pusher())) {
+            player.sendRichMessage("<red>Lasă căruciorul (ghemuit + interacționează) "
+                    + "înainte să urci în el.</red>");
+            return;
+        }
+        if (vehicle.mount(player)) {
+            if (vehicle.spec().motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
+                player.sendRichMessage("<gray>W/S înainte/înapoi, A/D deplasare laterală, "
+                        + "Space urcare, Sprint coborâre, privește pentru direcție. "
+                        + "Inimile monturii indică nivelul combustibilului.</gray>");
+            } else {
+                player.sendRichMessage("<gray>W/S accelerație, A/D direcție, Space frână de mână, "
+                        + "Shift coborâre. Inimile monturii indică nivelul combustibilului.</gray>");
+            }
+        } else {
+            player.sendRichMessage("<red>Nu mai este niciun loc liber în acest vehicul.</red>");
+        }
+    }
+
+    /** ShoppingCartEntity has no interact code of its own in the source; sneak-clicking it
+     * to grab/release from behind is this port's stand-in for walking into its hitbox. */
+    private void togglePush(Player player, LandVehicle vehicle) {
+        UUID current = vehicle.pusher();
+        if (player.getUniqueId().equals(current)) {
+            vehicle.setPusher(null);
+            player.sendRichMessage("<gray>Ai lăsat căruciorul.</gray>");
+        } else if (current != null) {
+            player.sendRichMessage("<red>Căruciorul este deja împins de altcineva.</red>");
+        } else if (vehicle.occupied()) {
+            /* r37: the same mount/push feedback loop described in handleInteraction()
+             * can also be entered this way around (mount first, then sneak-interact to
+             * start pushing while still seated), so pushing a cart with anyone already
+             * sitting in it is refused too. */
+            player.sendRichMessage("<red>Cineva stă deja în cărucior.</red>");
+        } else {
+            vehicle.setPusher(player.getUniqueId());
+            player.sendRichMessage("<gray>Împingi căruciorul din spate. Mergi pentru a-l deplasa; "
+                    + "interacționează din nou ghemuit pentru a-l lăsa.</gray>");
+        }
+    }
+
+    public void handleAttack(Player player, Entity clicked) {
+        LandVehicle vehicle = entities.get(clicked.getUniqueId());
+        if (vehicle == null || !player.hasPermission("vehicle.use")) {
+            return;
+        }
+        if (vehicle.handleSpecialAttack(player, clicked)) {
+            save();
+        }
+    }
+
+    public void handleInventoryClose(Inventory inventory) {
+        for (LandVehicle vehicle : vehicles.values()) {
+            if (vehicle.ownsStorage(inventory)) {
+                vehicle.storageClosed(inventory);
+                save();
+                return;
+            }
+        }
+    }
+
+    /** Save to a same-directory temporary file and atomically replace the last good snapshot. */
+    public void save() {
+        trailers.save();
+        YamlConfiguration data = new YamlConfiguration();
+        for (StoredVehicle stored : pendingWorlds.values()) {
+            write(data, stored);
+        }
+        for (LandVehicle vehicle : vehicles.values()) {
+            write(data, StoredVehicle.from(vehicle));
+        }
+
+        File temporary = null;
+        try {
+            if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {
+                throw new IOException("Could not create plugin data folder");
+            }
+            temporary = File.createTempFile("vehicles-", ".yml.tmp", plugin.getDataFolder());
+            data.save(temporary);
+            try {
+                Files.move(temporary.toPath(), storageFile.toPath(),
+                        StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException ignored) {
+                Files.move(temporary.toPath(), storageFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            }
+        } catch (IOException exception) {
+            plugin.getLogger().log(Level.SEVERE, "Could not atomically save vehicles.yml", exception);
+        } finally {
+            if (temporary != null && temporary.exists() && !temporary.delete()) {
+                temporary.deleteOnExit();
+            }
+        }
+    }
+
+    private static void write(YamlConfiguration data, StoredVehicle stored) {
+        String path = "vehicles." + stored.id();
+        data.set(path + ".type", stored.type());
+        data.set(path + ".world", stored.worldId());
+        data.set(path + ".world-name", stored.worldName());
+        data.set(path + ".x", stored.x());
+        data.set(path + ".y", stored.y());
+        data.set(path + ".z", stored.z());
+        data.set(path + ".yaw", stored.yaw());
+        data.set(path + ".pitch", stored.pitch());
+        data.set(path + ".fuel", stored.fuel());
+        data.set(path + ".velocity.x", stored.velocityX());
+        data.set(path + ".velocity.y", stored.velocityY());
+        data.set(path + ".velocity.z", stored.velocityZ());
+        data.set(path + ".traction", stored.traction());
+        data.set(path + ".vertical-velocity", stored.verticalVelocity());
+        data.set(path + ".plane.roll", stored.planeRoll());
+        data.set(path + ".plane.propeller-speed", stored.propellerSpeed());
+        data.set(path + ".plane.flap-angle", stored.flapAngle());
+        data.set(path + ".plane.elevator-angle", stored.elevatorAngle());
+        data.set(path + ".storage.chest-attached", stored.chestAttached());
+        data.set(path + ".storage.items",
+                stored.storageContents().getOrDefault("moped_chest", List.of()));
+        for (Map.Entry<String, List<ItemStack>> entry : stored.storageContents().entrySet()) {
+            data.set(path + ".storage.compartments." + entry.getKey(), entry.getValue());
+        }
+        for (Map.Entry<String, Boolean> entry : stored.openPartStates().entrySet()) {
+            data.set(path + ".cosmetics.open." + entry.getKey(), entry.getValue());
+        }
+    }
+
+    private void load() {
+        if (storageFile.isFile()) {
+            YamlConfiguration data = YamlConfiguration.loadConfiguration(storageFile);
+            ConfigurationSection section = data.getConfigurationSection("vehicles");
+            if (section != null) {
+                for (String key : section.getKeys(false)) {
+                    try {
+                        StoredVehicle stored = StoredVehicle.read(data, key);
+                        LandVehicleSpec spec = LandVehicleSpec.byId(stored.type());
+                        pendingWorlds.put(stored.id(), stored);
+                        if (spec == null) {
+                            plugin.getLogger().warning("Keeping unsupported vehicle " + stored.id()
+                                    + " in storage until its type is implemented: " + stored.type());
+                        } else if (world(stored.worldId(), stored.worldName()) == null) {
+                            plugin.getLogger().warning("Deferring vehicle " + stored.id() + ": its world is not loaded");
+                        }
+                    } catch (RuntimeException exception) {
+                        plugin.getLogger().log(Level.WARNING, "Could not load vehicle entry " + key, exception);
+                    }
+                }
+            }
+        }
+        plugin.getLogger().info("Loaded " + vehicles.size() + " vehicle(s); "
+                + pendingWorlds.size() + " deferred for unavailable worlds/types.");
+    }
+
+    public void onWorldLoaded(World loadedWorld) {
+        activateNearbyVehicles(loadedWorld);
+    }
+
+    private void restore(StoredVehicle stored, LandVehicleSpec spec, World world) {
+        Location location = new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F);
+        LandVehicle vehicle = spawn(stored.id(), spec, location);
+        vehicle.refreshGroundState();
+        vehicle.setFuel(stored.fuel());
+        vehicle.setVelocity(new Vector(stored.velocityX(), stored.velocityY(), stored.velocityZ()));
+        vehicle.setTraction(stored.traction());
+        vehicle.setVerticalVelocity(stored.verticalVelocity());
+        vehicle.restoreStorage(stored.chestAttached(), stored.storageContents());
+        vehicle.restoreOpenPartStates(stored.openPartStates());
+        vehicle.restorePlaneState(stored.pitch(), stored.planeRoll(), stored.propellerSpeed(),
+                stored.flapAngle(), stored.elevatorAngle());
+    }
+
+    private static boolean matchesWorld(StoredVehicle stored, World world) {
+        return world.getUID().toString().equals(stored.worldId()) || world.getName().equals(stored.worldName());
+    }
+
+    private World world(String uuid, String name) {
+        if (uuid != null) {
+            try {
+                World world = Bukkit.getWorld(UUID.fromString(uuid));
+                if (world != null) {
+                    return world;
+                }
+            } catch (IllegalArgumentException ignored) {
+                // Try the name fallback below.
+            }
+        }
+        return name == null ? null : Bukkit.getWorld(name);
+    }
+
+    private void tick() {
+        if (++activationTick % 10 == 0) {
+            activateNearbyVehicles(null);
+        }
+        double globalSpeedLimit = plugin.getConfig().getDouble("physics.global-speed-limit", 100.0D);
+        double fuelFactor = plugin.getConfig().getDouble("physics.fuel-consumption-factor", 1.0D);
+        double activationDistance = Math.max(16.0D,
+                plugin.getConfig().getDouble("performance.activation-distance", 64.0D));
+        for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
+            try {
+                if (!vehicle.rig().valid()) {
+                    hibernate(vehicle);
+                    continue;
+                }
+                vehicle.tick(globalSpeedLimit, fuelFactor);
+                if (vehicle.resting()) {
+                    releaseChunkTicket(vehicle);
+                    if (!trailers.referencesVehicle(vehicle.id())
+                            && !hasNearbyPlayer(vehicle.location(), activationDistance)) {
+                        hibernate(vehicle);
+                    }
+                } else {
+                    updateChunkTicket(vehicle);
+                }
+            } catch (RuntimeException exception) {
+                plugin.getLogger().log(Level.SEVERE, "Vehicle tick failed for " + vehicle.id(), exception);
+                hibernate(vehicle);
+            }
+        }
+        trailers.tick();
+        handleBumperCarCollisions();
+    }
+
+    /**
+     * BumperCarEntity#push adds the colliding car's own current motion back onto
+     * itself (a sudden jolt in whatever direction it was already travelling) and
+     * immediately cuts its drive speed, rather than bouncing the two cars apart by
+     * their relative velocity. This reproduces that same jolt-then-settle feel
+     * using the exposed velocity vector, since the internal currentSpeed state
+     * that the original debuffs isn't part of this port's public surface.
+     */
+    private void handleBumperCarCollisions() {
+        List<LandVehicle> bumperCars = new ArrayList<>();
+        for (LandVehicle vehicle : vehicles.values()) {
+            if ("bumper_car".equals(vehicle.spec().id()) && !vehicle.transported() && !vehicle.resting()) {
+                bumperCars.add(vehicle);
+            }
+        }
+        for (Map.Entry<UUID, Integer> entry : bumperCarCooldowns.entrySet()) {
+            entry.setValue(entry.getValue() - 1);
+        }
+        bumperCarCooldowns.values().removeIf(ticks -> ticks <= 0);
+        for (int i = 0; i < bumperCars.size(); i++) {
+            LandVehicle a = bumperCars.get(i);
+            for (int j = i + 1; j < bumperCars.size(); j++) {
+                LandVehicle b = bumperCars.get(j);
+                if (bumperCarCooldowns.containsKey(a.id()) || bumperCarCooldowns.containsKey(b.id())) {
+                    continue;
+                }
+                Location la = a.location();
+                Location lb = b.location();
+                if (la.getWorld() == null || !la.getWorld().equals(lb.getWorld())
+                        || Math.abs(la.getY() - lb.getY()) > 1.5D) {
+                    continue;
+                }
+                double dx = la.getX() - lb.getX();
+                double dz = la.getZ() - lb.getZ();
+                double distanceSquared = dx * dx + dz * dz;
+                double threshold = a.spec().entityWidth();
+                if (distanceSquared >= threshold * threshold) {
+                    continue;
+                }
+                double distance = Math.sqrt(Math.max(distanceSquared, 1.0E-4D));
+                double nx = dx / distance;
+                double nz = dz / distance;
+                boltBumperCar(a, nx, nz);
+                boltBumperCar(b, -nx, -nz);
+                World world = la.getWorld();
+                Location midpoint = la.clone().add(lb).multiply(0.5D);
+                float pitch = 0.6F + 0.1F * (float) Math.min(1.0D,
+                        (a.velocity().length() + b.velocity().length()) / 2.0D);
+                world.playSound(midpoint, "vehicle:entity.bumper_car.bonk",
+                        org.bukkit.SoundCategory.NEUTRAL, 1.0F, pitch);
+                bumperCarCooldowns.put(a.id(), 10);
+                bumperCarCooldowns.put(b.id(), 10);
+            }
+        }
+    }
+
+    private static void boltBumperCar(LandVehicle vehicle, double nx, double nz) {
+        Vector current = vehicle.velocity();
+        Vector jolted = new Vector(current.getX() + nx * 0.5D, current.getY(), current.getZ() + nz * 0.5D)
+                .multiply(0.75D);
+        vehicle.setVelocity(jolted);
+    }
+
+    private void activateNearbyVehicles(World onlyWorld) {
+        double activationDistance = Math.max(16.0D,
+                plugin.getConfig().getDouble("performance.activation-distance", 64.0D));
+        for (StoredVehicle stored : new ArrayList<>(pendingWorlds.values())) {
+            LandVehicleSpec spec = LandVehicleSpec.byId(stored.type());
+            World world = world(stored.worldId(), stored.worldName());
+            if (spec == null || world == null || (onlyWorld != null && !world.equals(onlyWorld))
+                    || !matchesWorld(stored, world)) {
+                continue;
+            }
+            Location location = new Location(world, stored.x(), stored.y(), stored.z());
+            if (!world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)
+                    || !hasNearbyPlayer(location, activationDistance)) {
+                continue;
+            }
+            try {
+                restore(stored, spec, world);
+            } catch (RuntimeException exception) {
+                plugin.getLogger().log(Level.WARNING, "Could not activate vehicle " + stored.id(), exception);
+            }
+        }
+    }
+
+    private static boolean hasNearbyPlayer(Location location, double distance) {
+        World world = location.getWorld();
+        if (world == null) {
+            return false;
+        }
+        double maximumSquared = distance * distance;
+        for (Player player : world.getPlayers()) {
+            if (player.getLocation().distanceSquared(location) <= maximumSquared) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void hibernate(LandVehicle vehicle) {
+        if (vehicles.remove(vehicle.id()) == null) {
+            return;
+        }
+        try {
+            pendingWorlds.put(vehicle.id(), StoredVehicle.from(vehicle));
+        } finally {
+            unindex(vehicle);
+            releaseChunkTicket(vehicle);
+            vehicle.remove();
+        }
+    }
+
+    private void index(LandVehicle vehicle) {
+        for (Entity entity : vehicle.rig().entities()) {
+            entities.put(entity.getUniqueId(), vehicle);
+        }
+    }
+
+    private void unindex(LandVehicle vehicle) {
+        for (Entity entity : vehicle.rig().entities()) {
+            entities.remove(entity.getUniqueId());
+        }
+    }
+
+    private void updateChunkTicket(LandVehicle vehicle) {
+        Location location = vehicle.location();
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        VehicleChunk next = new VehicleChunk(world, location.getBlockX() >> 4, location.getBlockZ() >> 4);
+        VehicleChunk previous = chunkTickets.get(vehicle.id());
+        if (next.equals(previous)) {
+            return;
+        }
+        next.world().addPluginChunkTicket(next.x(), next.z(), plugin);
+        if (previous != null) {
+            previous.world().removePluginChunkTicket(previous.x(), previous.z(), plugin);
+        }
+        chunkTickets.put(vehicle.id(), next);
+    }
+
+    private void releaseChunkTicket(LandVehicle vehicle) {
+        VehicleChunk chunk = chunkTickets.remove(vehicle.id());
+        if (chunk != null) {
+            chunk.world().removePluginChunkTicket(chunk.x(), chunk.z(), plugin);
+        }
+    }
+
+    private void cleanupOrphanedEntities() {
+        int removed = 0;
+        for (World world : Bukkit.getWorlds()) {
+            for (Entity entity : world.getEntities()) {
+                if (entity.getScoreboardTags().contains(LandVehicleRig.ENTITY_TAG)) {
+                    entity.remove();
+                    removed++;
+                }
+            }
+        }
+        if (removed > 0) {
+            plugin.getLogger().info("Removed " + removed + " orphaned vehicle display entities.");
+        }
+    }
+
+    public record CarriedVehicle(LandVehicleSpec spec, float fuel, Vector velocity,
+                                 float traction, double verticalVelocity, boolean chestAttached,
+                                 Map<String, List<ItemStack>> storageContents,
+                                 Map<String, Boolean> openPartStates) {
+    }
+
+    private record VehicleChunk(World world, int x, int z) {
+    }
+
+    private record StoredVehicle(UUID id, String type, String worldId, String worldName,
+                                 double x, double y, double z, float yaw, float pitch, float fuel,
+                                 double velocityX, double velocityY, double velocityZ,
+                                 float traction, double verticalVelocity,
+                                 float planeRoll, float propellerSpeed,
+                                 float flapAngle, float elevatorAngle, boolean chestAttached,
+                                 Map<String, List<ItemStack>> storageContents,
+                                 Map<String, Boolean> openPartStates) {
+        private static StoredVehicle from(LandVehicle vehicle) {
+            Location location = vehicle.location();
+            World world = location.getWorld();
+            if (world == null) {
+                throw new IllegalStateException("Cannot persist a vehicle without a world");
+            }
+            Vector velocity = vehicle.velocity();
+            return new StoredVehicle(vehicle.id(), vehicle.spec().id(), world.getUID().toString(), world.getName(),
+                    location.getX(), location.getY(), location.getZ(), location.getYaw(), location.getPitch(),
+                    vehicle.fuel(), velocity.getX(), velocity.getY(), velocity.getZ(), vehicle.traction(),
+                    vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
+                    vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
+                    vehicle.storageContents(), vehicle.openPartStates());
+        }
+
+        private static StoredVehicle read(YamlConfiguration data, String key) {
+            String path = "vehicles." + key;
+            UUID id = UUID.fromString(key);
+            String type = data.getString(path + ".type", "go_kart");
+            String worldId = data.getString(path + ".world");
+            String worldName = data.getString(path + ".world-name");
+            LandVehicleSpec spec = LandVehicleSpec.byId(type);
+            float defaultFuel = spec == null ? 0.0F : spec.energyCapacity();
+            return new StoredVehicle(id, type, worldId, worldName,
+                    data.getDouble(path + ".x"), data.getDouble(path + ".y"), data.getDouble(path + ".z"),
+                    (float) data.getDouble(path + ".yaw"),
+                    (float) data.getDouble(path + ".pitch"),
+                    (float) data.getDouble(path + ".fuel", defaultFuel),
+                    data.getDouble(path + ".velocity.x"), data.getDouble(path + ".velocity.y"),
+                    data.getDouble(path + ".velocity.z"),
+                    (float) data.getDouble(path + ".traction"),
+                    data.getDouble(path + ".vertical-velocity"),
+                    (float) data.getDouble(path + ".plane.roll"),
+                    (float) data.getDouble(path + ".plane.propeller-speed"),
+                    (float) data.getDouble(path + ".plane.flap-angle"),
+                    (float) data.getDouble(path + ".plane.elevator-angle"),
+                    data.getBoolean(path + ".storage.chest-attached", false),
+                    readStorage(data, path), readOpenPartStates(data, path));
+        }
+
+        private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {
+            Map<String, List<ItemStack>> contents = new LinkedHashMap<>();
+            List<ItemStack> legacyMoped = readStorageList(data, vehiclePath + ".storage.items");
+            if (!legacyMoped.isEmpty()
+                    || data.getBoolean(vehiclePath + ".storage.chest-attached", false)) {
+                contents.put("moped_chest", legacyMoped);
+            }
+            ConfigurationSection section = data.getConfigurationSection(
+                    vehiclePath + ".storage.compartments");
+            if (section != null) {
+                for (String storageKey : section.getKeys(false)) {
+                    contents.put(storageKey, readStorageList(data,
+                            vehiclePath + ".storage.compartments." + storageKey));
+                }
+            }
+            return contents;
+        }
+
+        private static List<ItemStack> readStorageList(YamlConfiguration data, String path) {
+            List<?> serialized = data.getList(path, List.of());
+            List<ItemStack> contents = new ArrayList<>(serialized.size());
+            for (Object value : serialized) {
+                contents.add(value instanceof ItemStack stack ? stack.clone() : null);
+            }
+            return contents;
+        }
+
+        private static Map<String, Boolean> readOpenPartStates(YamlConfiguration data,
+                                                                String vehiclePath) {
+            Map<String, Boolean> states = new LinkedHashMap<>();
+            ConfigurationSection section = data.getConfigurationSection(vehiclePath + ".cosmetics.open");
+            if (section != null) {
+                for (String part : section.getKeys(false)) {
+                    states.put(part, section.getBoolean(part));
+                }
+            }
+            return states;
+        }
+    }
+
+}

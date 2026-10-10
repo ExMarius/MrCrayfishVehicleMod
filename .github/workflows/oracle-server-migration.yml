@@ -1,0 +1,305 @@
+name: Migrate Falix server to Oracle Cloud Shell
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/oracle-migration-request
+      - .github/workflows/oracle-server-migration.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-cloud-shell-server
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Replace the temporary Oracle server with the Falix server
+    runs-on: self-hosted
+    timeout-minutes: 30
+    env:
+      FALIX_SFTP_HOST: ${{ secrets.FALIX_SFTP_HOST }}
+      FALIX_SFTP_PORT: ${{ secrets.FALIX_SFTP_PORT }}
+      FALIX_SFTP_USERNAME: ${{ secrets.FALIX_SFTP_USERNAME }}
+      FALIX_SFTP_PASSWORD: ${{ secrets.FALIX_SFTP_PASSWORD }}
+      SERVER_ROOT: /home/marius7lik/minecraft-server
+      SERVER_DIR: /home/marius7lik/minecraft-server/mc
+      SCREEN_SESSION: mcv-minecraft
+    steps:
+      - name: Checkout deployment request
+        uses: actions/checkout@v4
+
+      - name: Migrate and organize the server
+        if: hashFiles('.github/oracle-migration-request') != ''
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+
+          notice() {
+            local value="$1"
+            value="${value//'%'/'%25'}"
+            value="${value//$'\r'/'%0D'}"
+            value="${value//$'\n'/'%0A'}"
+            echo "::notice title=Oracle migration::$value"
+          }
+          trap 'rc=$?; notice "failure line=$LINENO exit=$rc"; exit $rc' ERR
+
+          for variable in FALIX_SFTP_HOST FALIX_SFTP_PORT FALIX_SFTP_USERNAME FALIX_SFTP_PASSWORD; do
+            if [ -z "${!variable:-}" ]; then
+              echo "::error title=Missing migration secret::$variable is not configured"
+              exit 1
+            fi
+          done
+          if ! [[ "$FALIX_SFTP_PORT" =~ ^[0-9]+$ ]]; then
+            echo "::error title=Invalid migration secret::FALIX_SFTP_PORT must be numeric"
+            exit 1
+          fi
+
+          mkdir -p "$SERVER_ROOT" "$SERVER_ROOT/bin" "$SERVER_ROOT/logs"
+          STAGE="$SERVER_ROOT/.falix-stage-$GITHUB_RUN_ID"
+          OLD="$SERVER_ROOT/.pre-migration-$GITHUB_RUN_ID"
+          rm -rf "$STAGE" "$OLD"
+
+          # Remove only known disposable caches and obsolete duplicate installations.
+          # The running server and FRP installation remain untouched until the Falix copy verifies.
+          rm -rf "$HOME/.cache"/* 2>/dev/null || true
+          rm -rf "$HOME/mcsv" "$HOME/jms-java-download" 2>/dev/null || true
+          rm -rf "$HOME/cache" "$HOME/libraries" "$HOME/versions" "$HOME/logs" 2>/dev/null || true
+          rm -f "$HOME/eula.txt" "$HOME/keepalive.log" "$HOME/minecraft-panel" "$HOME/br" 2>/dev/null || true
+          mkdir -p "$STAGE"
+          notice "space-before-download=$(df -hP "$HOME" | tail -1 | awk '{print $4" free of "$2}')"
+
+          SFTP_HOST="${FALIX_SFTP_HOST#sftp://}"
+          SFTP_HOST="${SFTP_HOST%%/*}"
+          SFTP_HOST="${SFTP_HOST%%:*}"
+          export SSHPASS="$FALIX_SFTP_PASSWORD"
+          cat > /tmp/falix-migration.batch <<EOF
+          lcd $STAGE
+          get banned-ips.json
+          get banned-players.json
+          get bukkit.yml
+          get commands.yml
+          get eula.txt
+          get help.yml
+          get ops.json
+          get permissions.yml
+          get server.jar
+          get server.properties
+          get spigot.yml
+          get usercache.json
+          get whitelist.json
+          get -R config
+          get -R plugins
+          get -R world
+          get -R world_nether
+          get -R world_the_end
+          EOF
+          timeout 900 sshpass -e sftp \
+            -oBatchMode=no \
+            -oPreferredAuthentications=password \
+            -oPubkeyAuthentication=no \
+            -oHostKeyAlgorithms=+ssh-ed25519 \
+            -oStrictHostKeyChecking=accept-new \
+            -oConnectTimeout=20 \
+            -P "$FALIX_SFTP_PORT" \
+            -b /tmp/falix-migration.batch \
+            "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" > /tmp/falix-migration.log
+          unset SSHPASS FALIX_SFTP_PASSWORD
+          rm -f /tmp/falix-migration.batch
+
+          test -s "$STAGE/server.jar"
+          test "$(stat -c %s "$STAGE/server.jar")" -gt 10000000
+          test -s "$STAGE/server.properties"
+          test -f "$STAGE/eula.txt"
+          test -f "$STAGE/world/level.dat"
+          test -f "$STAGE/world_nether/level.dat"
+          test -f "$STAGE/world_the_end/level.dat"
+          test -s "$STAGE/plugins/MrCrayfishVehiclePlugin.jar"
+          if find "$STAGE" -type l -print -quit | grep -q .; then
+            echo "::error title=Unsafe Falix copy::The staged server unexpectedly contains a symbolic link"
+            exit 1
+          fi
+          notice "falix-copy-verified size=$(du -sh "$STAGE" | awk '{print $1}') files=$(find "$STAGE" -type f | wc -l)"
+
+          stop_java_in_directory() {
+            local directory="$1"
+            local deadline
+            if [ -p "$directory/server.fifo" ]; then
+              timeout 3 bash -c "printf 'save-all flush\\nstop\\n' > '$directory/server.fifo'" || true
+            fi
+            deadline=$((SECONDS + 90))
+            while [ "$SECONDS" -lt "$deadline" ]; do
+              local found=0
+              while IFS= read -r pid; do
+                [ -n "$pid" ] || continue
+                if [ "$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)" = "$directory" ]; then
+                  found=1
+                fi
+              done < <(pgrep -x java 2>/dev/null || true)
+              [ "$found" -eq 0 ] && return 0
+              sleep 2
+            done
+            while IFS= read -r pid; do
+              [ -n "$pid" ] || continue
+              if [ "$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)" = "$directory" ]; then
+                kill -TERM "$pid" 2>/dev/null || true
+              fi
+            done < <(pgrep -x java 2>/dev/null || true)
+            sleep 10
+            while IFS= read -r pid; do
+              [ -n "$pid" ] || continue
+              if [ "$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)" = "$directory" ]; then
+                kill -KILL "$pid" 2>/dev/null || true
+              fi
+            done < <(pgrep -x java 2>/dev/null || true)
+          }
+
+          stop_java_in_directory "$SERVER_DIR"
+          while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)
+            if [ "$cwd" = "$SERVER_ROOT" ] && [ "$(cat "/proc/$pid/comm" 2>/dev/null || true)" = python3 ]; then
+              kill -TERM "$pid" 2>/dev/null || true
+            fi
+          done < <(pgrep -x python3 2>/dev/null || true)
+
+          if pgrep -x java >/dev/null 2>&1; then
+            while IFS= read -r pid; do
+              cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)
+              if [ "$cwd" = "$SERVER_DIR" ]; then
+                echo "::error title=Unable to stop old server::Java process $pid is still running"
+                exit 1
+              fi
+            done < <(pgrep -x java)
+          fi
+
+          if [ -d "$SERVER_DIR" ]; then
+            mv "$SERVER_DIR" "$OLD"
+          fi
+          mv "$STAGE" "$SERVER_DIR"
+          chmod -R u+rwX,go-rwx "$SERVER_DIR"
+          if grep -q '^server-port=' "$SERVER_DIR/server.properties"; then
+            sed -i 's/^server-port=.*/server-port=25565/' "$SERVER_DIR/server.properties"
+          else
+            printf '\nserver-port=25565\n' >> "$SERVER_DIR/server.properties"
+          fi
+
+          cat > "$SERVER_ROOT/bin/start-minecraft.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+          SERVER="$ROOT/mc"
+          LOGS="$ROOT/logs"
+          SESSION=mcv-minecraft
+          mkdir -p "$LOGS"
+          screen -wipe >/dev/null 2>&1 || true
+          if screen -list 2>/dev/null | grep -q "[.]$SESSION[[:space:]]"; then
+            echo "Minecraft is already running in screen session $SESSION."
+            exit 0
+          fi
+          env -u RUNNER_TRACKING_ID screen -dmS "$SESSION" bash -lc "cd '$SERVER' && exec java -Xms512M -Xmx2G -XX:+UseG1GC -jar server.jar --nogui >> '$LOGS/server-console.log' 2>&1"
+          echo "Started Minecraft in screen session $SESSION."
+          SCRIPT
+
+          cat > "$SERVER_ROOT/bin/stop-minecraft.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          SESSION=mcv-minecraft
+          if ! screen -list 2>/dev/null | grep -q "[.]$SESSION[[:space:]]"; then
+            echo "Minecraft screen session is not running."
+            exit 0
+          fi
+          screen -S "$SESSION" -p 0 -X stuff $'save-all flush\r'
+          sleep 3
+          screen -S "$SESSION" -p 0 -X stuff $'stop\r'
+          for _ in $(seq 1 60); do
+            if ! screen -list 2>/dev/null | grep -q "[.]$SESSION[[:space:]]"; then
+              echo "Minecraft stopped cleanly."
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Minecraft did not stop within 120 seconds." >&2
+          exit 1
+          SCRIPT
+
+          cat > "$SERVER_ROOT/bin/status.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
+            echo "Minecraft: running"
+          else
+            echo "Minecraft: stopped"
+          fi
+          if pgrep -x frpc >/dev/null 2>&1; then
+            echo "FRP client: running"
+          else
+            echo "FRP client: stopped"
+          fi
+          SCRIPT
+
+          cat > "$SERVER_ROOT/bin/start-frp.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+          if pgrep -x frpc >/dev/null 2>&1; then
+            echo "FRP client is already running."
+            exit 0
+          fi
+          CONFIG="$ROOT/frp/frpc.toml"
+          [ -s "$CONFIG" ] || CONFIG="$ROOT/frp/frpc.yaml"
+          nohup "$ROOT/frp/frpc" -c "$CONFIG" >> "$ROOT/logs/frpc.log" 2>&1 &
+          echo "Started FRP client."
+          SCRIPT
+
+          cat > "$SERVER_ROOT/start.sh" <<'SCRIPT'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          "$ROOT/bin/start-frp.sh"
+          "$ROOT/bin/start-minecraft.sh"
+          SCRIPT
+          chmod 700 "$SERVER_ROOT/bin/"*.sh "$SERVER_ROOT/start.sh"
+
+          # The old web panel contained a second lifecycle system and is no longer needed.
+          rm -rf "$SERVER_ROOT/Untitled"
+          rm -f "$SERVER_ROOT/panel.py" "$SERVER_ROOT/users.json" \
+                "$SERVER_ROOT/panel.log" "$SERVER_ROOT/mc.log" "$SERVER_ROOT/frpc.log"
+          rm -f "$HOME/start.sh"
+          ln -s "$SERVER_ROOT/start.sh" "$HOME/start.sh"
+
+          "$SERVER_ROOT/bin/start-frp.sh"
+          : > "$SERVER_ROOT/logs/server-console.log"
+          "$SERVER_ROOT/bin/start-minecraft.sh"
+
+          ready=0
+          for _ in $(seq 1 90); do
+            if grep -Eq 'Done \([0-9.,]+s\)!|Done \(' "$SERVER_DIR/logs/latest.log" 2>/dev/null; then
+              ready=1
+              break
+            fi
+            if ! screen -list 2>/dev/null | grep -q "[.]$SCREEN_SESSION[[:space:]]"; then
+              break
+            fi
+            sleep 2
+          done
+
+          if [ "$ready" -ne 1 ]; then
+            echo "::error title=Falix migration failed to start::The migrated server did not reach Paper's ready state; restoring the old server"
+            "$SERVER_ROOT/bin/stop-minecraft.sh" || true
+            rm -rf "$SERVER_DIR"
+            if [ -d "$OLD" ]; then
+              mv "$OLD" "$SERVER_DIR"
+              "$SERVER_ROOT/bin/start-minecraft.sh" || true
+            fi
+            tail -80 "$SERVER_ROOT/logs/server-console.log" | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' || true
+            exit 1
+          fi
+
+          rm -rf "$OLD"
+          notice "migration-complete screen=$SCREEN_SESSION plugins=$(find "$SERVER_DIR/plugins" -maxdepth 1 -type f -name '*.jar' | wc -l) worlds=$(du -sh "$SERVER_DIR/world" "$SERVER_DIR/world_nether" "$SERVER_DIR/world_the_end" | tr '\n' '|') disk=$(df -hP "$HOME" | tail -1 | awk '{print $4" free of "$2}')"

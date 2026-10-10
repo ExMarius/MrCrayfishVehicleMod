@@ -1,0 +1,87 @@
+name: Oracle migration recovery check v4
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - .github/workflows/oracle-recovery-check.yml
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Inspect migration state
+        shell: bash
+        run: |
+          set -euo pipefail
+          notice() {
+            local value="$1"
+            value="${value//'%'/'%25'}"; value="${value//$'\r'/'%0D'}"; value="${value//$'\n'/'%0A'}"
+            echo "::notice title=Oracle recovery::$value"
+          }
+          ROOT="$HOME/minecraft-server"
+          entries=$(find "$ROOT" -maxdepth 1 -mindepth 1 -printf '%f\n' 2>/dev/null | sort | paste -sd, -)
+          sizes=$(du -sh "$ROOT"/* "$ROOT"/.[!.]* 2>/dev/null | sort -h | tr '\n' '|' || true)
+          java=""
+          while IFS= read -r pid; do
+            [ -n "$pid" ] || continue
+            java+="pid=$pid cwd=$(readlink -f "/proc/$pid/cwd" 2>/dev/null || echo unknown)|"
+          done < <(pgrep -x java 2>/dev/null || true)
+          sessions=$(screen -ls 2>/dev/null | tr '\n' '|' || true)
+          checks="server.jar=$(test -s "$ROOT/mc/server.jar" && echo yes || echo no) world=$(test -f "$ROOT/mc/world/level.dat" && echo yes || echo no) vehicle=$(test -s "$ROOT/mc/plugins/MrCrayfishVehiclePlugin.jar" && echo yes || echo no) scripts=$(test -x "$ROOT/bin/start-minecraft.sh" && echo yes || echo no) frpc-bin=$(test -x "$ROOT/frp/frpc" && echo yes || echo no) frpc-config=$(test -s "$ROOT/frp/frpc.toml" -o -s "$ROOT/frp/frpc.yaml" && echo yes || echo no)"
+          notice "disk=$(df -hP "$HOME" | tail -1 | awk '{print $3" used, "$4" free of "$2}') entries=${entries:-none}"
+          notice "sizes=${sizes:-none}"
+          notice "java=${java:-none} screen=${sessions:-none}"
+          frpc_state=$(pgrep -x frpc >/dev/null 2>&1 && echo running || echo stopped)
+          frpc_reason=none
+          if [ "$frpc_state" = stopped ] && [ -s "$ROOT/logs/frpc.log" ]; then
+            if grep -Eqi 'authentication.*fail|token.*(invalid|fail)|authorization.*fail' "$ROOT/logs/frpc.log"; then
+              frpc_reason=authentication-failed
+            elif grep -Eqi 'connection refused' "$ROOT/logs/frpc.log"; then
+              frpc_reason=connection-refused
+            elif grep -Eqi 'no route to host|network is unreachable' "$ROOT/logs/frpc.log"; then
+              frpc_reason=network-unreachable
+            elif grep -Eqi 'i/o timeout|timed out|timeout' "$ROOT/logs/frpc.log"; then
+              frpc_reason=connection-timeout
+            elif grep -Eqi 'parse|invalid.*config|unknown field' "$ROOT/logs/frpc.log"; then
+              frpc_reason=config-invalid
+            elif grep -Eqi 'address already in use' "$ROOT/logs/frpc.log"; then
+              frpc_reason=port-conflict
+            else
+              frpc_reason=unclassified-see-private-log
+            fi
+          fi
+          notice "$checks frpc=$frpc_state frpc-reason=$frpc_reason frpc-log-bytes=$(stat -c %s "$ROOT/logs/frpc.log" 2>/dev/null || echo 0)"
+          configured_port=$(sed -n 's/^server-port=//p' "$ROOT/mc/server.properties" | tail -1)
+          frp_local_port=$(sed -nE 's/^[[:space:]]*(localPort|local_port)[[:space:]]*[:=][[:space:]]*([0-9]+).*/\2/p' "$ROOT/frp/frpc.toml" "$ROOT/frp/frpc.yaml" 2>/dev/null | sort -nu | paste -sd, -)
+          listening=$(ss -ltn 2>/dev/null | awk 'NR > 1 {print $4}' | paste -sd, - || true)
+          latest=$(tail -25 "$ROOT/mc/logs/latest.log" 2>/dev/null | sed -E 's/(token|password|secret)([=: ]+)[^ ]+/\1\2<redacted>/Ig' | tr '\n' '|' || true)
+          notice "server-port=${configured_port:-unset} frp-local-port=${frp_local_port:-unset} listeners=${listening:-none} latest-tail=${latest:-empty}"
+
+          plugin_config="$ROOT/mc/plugins/MrCrayfishVehiclePlugin/config.yml"
+          plugin_pack_url=$(sed -n 's/^[[:space:]]*url: *"\([^"]*\)".*/\1/p' "$plugin_config")
+          plugin_pack_sha1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' "$plugin_config")
+          server_pack_url=$(sed -n 's/^resource-pack=//p' "$ROOT/mc/server.properties" | tail -1)
+          # Paper persists Java-properties URL separators as \: after startup.
+          server_pack_url=${server_pack_url//\\:/:}
+          server_pack_sha1=$(sed -n 's/^resource-pack-sha1=//p' "$ROOT/mc/server.properties" | tail -1)
+          notice "pack-plugin=$(basename "$plugin_pack_url") pack-server=$(basename "$server_pack_url") url-match=$(test "$plugin_pack_url" = "$server_pack_url" && echo yes || echo no) sha1-match=$(test "$plugin_pack_sha1" = "$server_pack_sha1" && echo yes || echo no)"
+
+          test "$configured_port" = 25565
+          printf '%s\n' "$frp_local_port" | grep -Eq '(^|,)25565(,|$)'
+          pgrep -x frpc >/dev/null
+          screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'
+          ss -ltn 2>/dev/null | grep -q ':25565'
+          grep -q 'MrCrayfishVehiclePlugin.*Enabling\|Enabling MrCrayfishVehiclePlugin' "$ROOT/mc/logs/latest.log"
+          grep -q 'Done (' "$ROOT/mc/logs/latest.log"
+          test -n "$plugin_pack_url"
+          test "$plugin_pack_url" = "$server_pack_url"
+          test "$plugin_pack_sha1" = "$server_pack_sha1"
+          grep -q '^require-resource-pack=true$' "$ROOT/mc/server.properties"
+          notice "health=ready port=25565 frp=running screen=detached plugin=enabled pack=$(basename "$plugin_pack_url") sha1=$plugin_pack_sha1"

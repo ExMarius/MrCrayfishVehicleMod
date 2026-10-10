@@ -1,0 +1,99 @@
+name: Deploy lightweight Oracle Minecraft panel
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/339da537-mrcrayfishvehiclemod
+    paths:
+      - oracle-panel/**
+      - .github/workflows/oracle-panel-deploy.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: oracle-cloud-shell-control
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Test panel security and authentication helpers
+        run: python3 -m unittest oracle-panel/test_panel.py
+
+      - name: Install one-command services and authenticated panel
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          ROOT="$HOME/minecraft-server"
+          PANEL="$ROOT/panel"
+          mkdir -p "$PANEL" "$ROOT/bin" "$ROOT/logs"
+
+          if [ -x "$ROOT/bin/stop-panel.sh" ]; then
+            "$ROOT/bin/stop-panel.sh" || true
+          fi
+          # Restart the supervisor so a newly deployed FRP lifecycle takes effect.
+          if [ -x "$ROOT/bin/stop-frp.sh" ]; then
+            "$ROOT/bin/stop-frp.sh" || true
+          fi
+
+          install -m 700 oracle-panel/panel.py "$PANEL/panel.py"
+          for script in oracle-panel/scripts/*.sh; do
+            install -m 700 "$script" "$ROOT/bin/$(basename "$script")"
+          done
+          install -m 700 oracle-panel/start-services.sh "$ROOT/start.sh"
+          ln -sfn "$ROOT/start.sh" "$HOME/start.sh"
+
+          # localIP is a dial target for FRPC, not a listener address. The old
+          # wildcard value causes the remote proxy to reset instead of reaching
+          # the panel/Minecraft listeners on this Cloud Shell machine.
+          python3 - "$ROOT/frp" <<'PY'
+          import os
+          import re
+          import sys
+          directory = sys.argv[1]
+          pattern = re.compile(r'(?m)^(\s*(?:localIP|local_ip)\s*[:=]\s*)["\x27]?0\.0\.0\.0["\x27]?')
+          for name in ("frpc.yaml", "frpc.yml", "frpc.toml"):
+              path = os.path.join(directory, name)
+              if not os.path.isfile(path):
+                  continue
+              with open(path, "r") as source:
+                  original = source.read()
+              updated, count = pattern.subn(r'\g<1>"127.0.0.1"', original)
+              if count:
+                  temporary = path + ".panel-tmp"
+                  with open(temporary, "w") as output:
+                      output.write(updated)
+                  os.chmod(temporary, 0o600)
+                  os.replace(temporary, path)
+          PY
+
+          python3 "$PANEL/panel.py" --root "$ROOT" --init-auth
+          test -s "$PANEL/auth.json"
+          test "$(stat -c %a "$PANEL/auth.json")" = 600
+
+          # This architecture deliberately leaves Minecraft under panel/Actions control.
+          "$ROOT/bin/stop-minecraft.sh"
+          # Exercise the exact symlinked one-command path the Cloud Shell user runs.
+          "$HOME/start.sh"
+
+          curl -fsS --connect-timeout 2 http://127.0.0.1:8081/healthz | grep -q '"ok": true'
+          screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]' && {
+            echo "::error title=Panel deployment::Minecraft must remain stopped after service bootstrap"
+            exit 1
+          }
+          test -s "$ROOT/frp/supervisor.pid"
+          kill -0 "$(cat "$ROOT/frp/supervisor.pid")"
+          echo "::notice title=Oracle panel::Panel ready on local port 8081; one-command bootstrap is $HOME/start.sh"
+          if [ -s "$PANEL/initial-password.txt" ]; then
+            echo "::notice title=Oracle panel login::Initial credential is stored privately at $PANEL/initial-password.txt"
+          else
+            echo "::notice title=Oracle panel login::Existing panel authentication was preserved"
+          fi
+          "$ROOT/bin/status.sh"

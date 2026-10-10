@@ -1,0 +1,1250 @@
+package com.mrcrayfish.vehicle.paper.vehicle;
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+/**
+ * Immutable Paper-side equivalent of the generated VehicleProperties,
+ * PoweredProperties, LandProperties, PlaneProperties, and HelicopterProperties used by the
+ * original mod. Values in these definitions are copied from generated JSON and source renderers.
+ */
+public record LandVehicleSpec(
+        String id,
+        String displayName,
+        String bodyModel,
+        float entityWidth,
+        float entityHeight,
+        float stepHeight,
+        float bodyScale,
+        float axleOffset,
+        float wheelOffset,
+        float enginePower,
+        float maxSteeringAngle,
+        float frontAxleOffset,
+        float rearAxleOffset,
+        float maxReverseSpeed,
+        float energyCapacity,
+        float energyPerTick,
+        float minEnginePitch,
+        float maxEnginePitch,
+        String engineSound,
+        boolean exhaustFumes,
+        Point exhaustPosition,
+        Part engine,
+        Part steering,
+        Part fuelFiller,
+        Part ignition,
+        List<Part> bodyParts,
+        List<Wheel> wheels,
+        List<Seat> seats,
+        boolean canTowTrailers,
+        String towBarModel,
+        Point towBarOffset,
+        Point trailerOffset,
+        Motorcycle motorcycle,
+        MopedParts mopedParts,
+        List<StorageCompartment> storageCompartments,
+        boolean lawnMower
+) {
+    public static final float MODEL_UNIT = 1.0F / 16.0F;
+    public static final float STANDARD_TRACTION = 0.8F;
+    public static final float SLIDE_TRACTION = 0.05F;
+    /* 1.21.4's passenger attachment sits two model pixels above the source seat pose. */
+    public static final float RIDER_HEIGHT_CORRECTION = 4.0F * MODEL_UNIT;
+
+    public static final LandVehicleSpec GO_KART = new LandVehicleSpec(
+            "go_kart", "Go Kart", "go_kart_body",
+            1.5F, 0.5F, 1.05F,
+            1.0F, -1.0F, 3.2F,
+            18.0F, 20.0F, 9.0F * MODEL_UNIT, -9.5F * MODEL_UNIT, 5.0F,
+            15_000.0F, 0.5F, 0.9F, 2.0F, "vehicle:entity.go_kart.engine",
+            true, new Point(0.0F, 8.0F * MODEL_UNIT, -1.0F),
+            new Part("iron_small_engine", new Point(0.0F, 0.6F, -11.0F * MODEL_UNIT),
+                    0.8F, 0.0F, 180.0F, 0.0F),
+            new Part("go_kart_steering_wheel",
+                    new Point(0.0F, 0.5F + (-1.0F + 3.2F) * MODEL_UNIT + 0.6814F * MODEL_UNIT,
+                            8.0426F * MODEL_UNIT),
+                    1.0F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", 0.0F, 0.0F, 0.0F,
+                    1.0F, 0.0F, 0.0F, 0.0F, 1.0F, -1.0F, 3.2F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 7.0F, 0.0F, 8.75F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
+                    wheel(1, true, 7.0F, 0.0F, 8.75F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
+                    wheel(-1, false, 7.0F, 0.25F, -9.5F, 1.0F, 0.8625F, 0.8625F, 1.0F, -1.0F, 3.2F),
+                    wheel(1, false, 7.0F, 0.25F, -9.5F, 1.0F, 0.8625F, 0.8625F, 1.0F, -1.0F, 3.2F)
+            ),
+            List.of(seat(true, 0.0F, -3.0F, -1.0F, 1.0F, -1.0F, 3.2F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.375F),
+            null, null, List.of(), false
+    );
+
+    /* wheelOffset = (8 * 0.97 / 2) - 0.8 = 3.08; auto-scaled front wheels become 0.77. */
+    public static final LandVehicleSpec LAWN_MOWER = new LandVehicleSpec(
+            "lawn_mower", "Lawn Mower", "lawn_mower_body",
+            1.2F, 1.0F, 1.0F,
+            1.25F, -2.0F, 3.08F,
+            8.0F, 35.0F, 13.5F * MODEL_UNIT * 1.25F, -10.7F * MODEL_UNIT * 1.25F, 5.0F,
+            5_000.0F, 0.25F, 0.5F, 1.25F, "vehicle:entity.quad_bike.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(0.0F, (0.5F + (-2.0F + 3.08F) * MODEL_UNIT + 0.4F) * 1.25F,
+                            -0.15F * 1.25F),
+                    0.9F * 1.25F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -4.5F, 10.0F, 4.5F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.25F, -2.0F, 3.08F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 6.0F, 0.0F, 13.5F, 0.77F, 0.77F, 0.77F, 1.25F, -2.0F, 3.08F),
+                    wheel(1, true, 6.0F, 0.0F, 13.5F, 0.77F, 0.77F, 0.77F, 1.25F, -2.0F, 3.08F),
+                    wheel(-1, false, 5.0F, 0.8F, -10.7F, 0.97F, 0.97F, 0.97F, 1.25F, -2.0F, 3.08F),
+                    wheel(1, false, 5.0F, 0.8F, -10.7F, 0.97F, 0.97F, 0.97F, 1.25F, -2.0F, 3.08F)
+            ),
+            List.of(seat(true, 0.0F, 7.0F, -9.0F, 1.25F, -2.0F, 3.08F)),
+            true, "tow_bar", new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, -0.01F, -1.0F),
+            null, null, List.of(), true
+    );
+
+    public static final LandVehicleSpec QUAD_BIKE = new LandVehicleSpec(
+            "quad_bike", "Quad Bike", "quad_bike_body",
+            1.5F, 1.0F, 1.0F,
+            1.1F, -0.5F, 4.4F,
+            15.0F, 35.0F, 9.5F * MODEL_UNIT * 1.1F, -11.0F * MODEL_UNIT * 1.1F, 5.0F,
+            20_000.0F, 0.25F, 0.5F, 1.25F, "vehicle:entity.quad_bike.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            new Part("iron_small_engine", new Point(0.0F, 0.611875F, -0.06875F),
+                    0.55F, 0.0F, 180.0F, 0.0F),
+            new Part("quad_bike_handles", new Point(0.0F, 1.230625F, 0.20625F),
+                    1.1F, -35.0F, 0.0F, 0.0F),
+            itemPart("small_fuel_door_closed", 0.0F, 11.288F, 7.5F,
+                    0.6F, -90.0F, 0.0F, 0.0F, 1.1F, -0.5F, 4.4F),
+            itemPart("key_hole", -5.0F, 4.5F, 6.5F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.1F, -0.5F, 4.4F),
+            List.of(),
+            List.of(
+                    wheel(-1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
+                    wheel(1, true, 4.5F, 0.0F, 9.5F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
+                    wheel(-1, false, 4.5F, 0.0F, -11.0F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F),
+                    wheel(1, false, 4.5F, 0.0F, -11.0F, 1.1F, 1.1F, 1.1F, 1.1F, -0.5F, 4.4F)
+            ),
+            List.of(
+                    seat(true, 0.0F, 5.0F, -4.0F, 1.1F, -0.5F, 4.4F),
+                    seat(false, 0.0F, 5.5F, -12.0F, 1.1F, -0.5F, 4.4F)
+            ),
+            true, "tow_bar", new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, -0.55F),
+            null, null, List.of(), false
+    );
+
+    /* Released Dune Buggy properties auto-calculate wheelOffset as
+     * (8 * 0.625 / 2) = 2.5. Its renderer draws the otherwise hidden front
+     * wheel inside the tilted handlebar steering matrix, so renderCenter keeps
+     * that manual position separate from the generated wheel's physics point. */
+    public static final LandVehicleSpec DUNE_BUGGY = new LandVehicleSpec(
+            "dune_buggy", "Dune Buggy", "dune_buggy_body",
+            0.75F, 0.75F, 0.5F,
+            1.3F, -2.3F, 2.5F,
+            10.0F, 35.0F, 5.3F * MODEL_UNIT * 1.3F, -5.7F * MODEL_UNIT * 1.3F, 5.0F,
+            5_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.bumper_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            null,
+            new Part("dune_buggy_handles", new Point(0.0F, 0.66625F, -0.00609375F),
+                    1.3F, 0.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", 0.0F, 3.0F, -7.0F,
+                    0.25F, 0.0F, 180.0F, 0.0F, 1.3F, -2.3F, 2.5F),
+            null,
+            List.of(),
+            List.of(
+                    new Wheel(0, true, 0.0F, 0.203125F, 0.430625F,
+                            0.0F, 0.0F, 0.8125F, 0.8125F, 0.8125F,
+                            new Point(0.0F, 0.20475F, 0.42290625F)),
+                    wheel(-1, false, 2.4F, 0.0F, -5.7F,
+                            0.625F, 0.625F, 0.625F, 1.3F, -2.3F, 2.5F),
+                    wheel(1, false, 2.4F, 0.0F, -5.7F,
+                            0.625F, 0.625F, 0.625F, 1.3F, -2.3F, 2.5F)
+            ),
+            List.of(seat(true, 0.0F, 2.0F, -3.0F, 1.3F, -2.3F, 2.5F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, -0.025F, -0.25F),
+            new Motorcycle(0.0F, 3.125F * MODEL_UNIT * 1.3F, -22.5F, true),
+            null, List.of(), false
+    );
+
+    /* Source wheelOffset = (8 * 2.8 / 2) - 5.5 = 5.7. The front wheel's
+     * auto-scaled Y/Z axes become 5.7 / 4 = 1.425 while X stays at the
+     * generated property's serialized 0.938 value. */
+    public static final LandVehicleSpec TRACTOR = new LandVehicleSpec(
+            "tractor", "Tractor", "tractor_body",
+            1.5F, 1.5F, 1.0F,
+            1.0F, -3.0F, 5.7F,
+            8.0F, 35.0F, 14.0F * MODEL_UNIT, -14.5F * MODEL_UNIT, 5.0F,
+            15_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.tractor.engine",
+            true, new Point(-2.0F * MODEL_UNIT, 32.0F * MODEL_UNIT, 16.0F * MODEL_UNIT),
+            new Part("iron_large_engine", new Point(0.0F, 0.96875F, 7.5F * MODEL_UNIT),
+                    0.85F, 0.0F, 0.0F, 0.0F),
+            /* TractorRenderer translates to (0, .66, -.475), rotates -67.5 degrees,
+             * then translates another -.02 on its local Y axis. */
+            new Part("go_kart_steering_wheel", new Point(0.0F, 1.3210963F, -0.4565224F),
+                    0.9F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -6.0F, 12.0F, -0.5F,
+                    0.6F, 0.0F, -90.0F, 0.0F, 1.0F, -3.0F, 5.7F),
+            itemPart("key_hole", -2.75F, 12.0F, -1.75F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.0F, -3.0F, 5.7F),
+            List.of(),
+            List.of(
+                    wheel(-1, true, 8.0F, 0.0F, 14.0F,
+                            0.938F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
+                    wheel(1, true, 8.0F, 0.0F, 14.0F,
+                            0.938F, 1.425F, 1.425F, 1.0F, -3.0F, 5.7F),
+                    wheel(-1, false, 8.0F, 5.5F, -14.5F,
+                            1.875F, 2.8F, 2.8F, 1.0F, -3.0F, 5.7F),
+                    wheel(1, false, 8.0F, 5.5F, -14.5F,
+                            1.875F, 2.8F, 2.8F, 1.0F, -3.0F, 5.7F)
+            ),
+            List.of(seat(true, 0.0F, 9.0F, -14.0F, 1.0F, -3.0F, 5.7F)),
+            true, "tow_bar", new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* DirtBikeRenderer steers both the handle assembly and the separately rendered
+     * front wheel around a fork axis tilted 22.5 degrees toward the rider. */
+    public static final LandVehicleSpec DIRT_BIKE = new LandVehicleSpec(
+            "dirt_bike", "Dirt Bike", "dirt_bike_body",
+            1.0F, 1.5F, 1.0F,
+            1.0F, 0.0F, 5.6F,
+            16.0F, 35.0F, 14.08F * MODEL_UNIT, -11.61F * MODEL_UNIT, 5.0F,
+            20_000.0F, 0.35F, 0.85F, 1.5F, "vehicle:entity.dirt_bike.engine",
+            true, new Point(-1.0F * MODEL_UNIT, 16.0F * MODEL_UNIT, -16.0F * MODEL_UNIT),
+            new Part("iron_small_engine", new Point(0.0F, 0.7125F, 0.0F),
+                    0.6F, 0.0F, 180.0F, 0.0F),
+            new Part("dirt_bike_handles", new Point(0.0F, 0.85F, 0.0F),
+                    1.0F, 0.0F, 0.0F, 0.0F),
+            itemPart("small_fuel_door_closed", 0.0F, 14.775F, 3.603F,
+                    0.6F, 67.5F, 180.0F, 0.0F, 1.0F, 0.0F, 5.6F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(0, true, 0.0F, 0.0F, 14.08F,
+                            0.938F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F),
+                    wheel(0, false, 0.0F, 0.0F, -11.61F,
+                            0.938F, 1.4F, 1.4F, 1.0F, 0.0F, 5.6F)
+            ),
+            List.of(
+                    seat(true, 0.0F, 8.0F, -2.0F, 1.0F, 0.0F, 5.6F),
+                    seat(false, 0.0F, 9.0F, -9.0F, 1.0F, 0.0F, 5.6F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.312F),
+            new Motorcycle(45.0F, 10.5F * MODEL_UNIT, -22.5F, true), null,
+            List.of(), false
+    );
+
+    /* The Moped renderer steers its handles, mud guard, and manually rendered
+     * front wheel around a fork axis tilted 22.5 degrees toward the rider. */
+    public static final LandVehicleSpec MOPED = new LandVehicleSpec(
+            "moped", "Moped", "moped_body",
+            1.0F, 1.0F, 1.0F,
+            1.2F, -1.0F, 3.2F,
+            12.0F, 45.0F, 14.0F * MODEL_UNIT * 1.2F, -6.7F * MODEL_UNIT * 1.2F, 5.0F,
+            12_000.0F, 0.225F, 0.5F, 1.2F, "vehicle:entity.moped.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("moped_handles", new Point(0.0F, 1.0855425F, 0.6305325F),
+                    1.2F, 0.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", 0.0F, 0.0F, 0.0F,
+                    1.0F, 0.0F, 0.0F, 0.0F, 1.2F, -1.0F, 3.2F),
+            null,
+            List.of(
+                    new Part("moped_stock_seat", new Point(0.0F, 0.69F, -0.4875F),
+                            1.2F, 0.0F, 0.0F, 0.0F),
+                    new Part("moped_stock_tray", new Point(0.0F, 0.69F, -0.4875F),
+                            1.2F, 0.0F, 0.0F, 0.0F),
+                    new Part("moped_stock_front_light", new Point(0.0F, 0.915F, 0.7629F),
+                            1.2F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    wheel(0, true, 0.0F, 0.0F, 14.088F,
+                            0.6F, 0.8F, 0.8F, 1.2F, -1.0F, 3.2F),
+                    wheel(0, false, 0.0F, 0.0F, -6.7F,
+                            1.0F, 0.8F, 0.8F, 1.2F, -1.0F, 3.2F)
+            ),
+            List.of(seat(true, 0.0F, 4.0F, -1.0F, 1.2F, -1.0F, 3.2F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.65F),
+            new Motorcycle(45.0F, 11.5F * MODEL_UNIT * 1.2F, -22.5F, false),
+            new MopedParts(
+                    List.of(new Part("moped_mud_guard", new Point(0.0F, 0.47283F, 0.8863575F),
+                            1.2F, 0.0F, 0.0F, 0.0F)),
+                    new Part("minecraft:chest", new Point(0.0F, 1.065F, -0.7875F),
+                            0.6F, 0.0F, 180.0F, 0.0F),
+                    new Point(0.0F, 1.0F, -0.75F)
+            ),
+            List.of(), false
+    );
+
+    /* Generated Off Roader geometry uses four 1.4-scale wheels inside a 1.4-scale body.
+     * OffRoaderRenderer applies the local -45 degree steering-wheel transform before
+     * its final -0.02 local-Y translation. */
+    public static final LandVehicleSpec OFF_ROADER = new LandVehicleSpec(
+            "off_roader", "Off Roader", "off_roader_body",
+            2.0F, 1.0F, 1.0F,
+            1.4F, -1.0F, 5.6F,
+            16.0F, 35.0F, 14.5F * MODEL_UNIT * 1.4F, -14.5F * MODEL_UNIT * 1.4F, 5.0F,
+            25_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.jet_ski.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.4375F, 1.572701F, 0.299799F),
+                    1.05F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -12.0F, 10.5F, -6.5F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.4F, -1.0F, 5.6F),
+            itemPart("key_hole", 0.0F, 7.0F, 6.2F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.4F, -1.0F, 5.6F),
+            List.of(),
+            List.of(
+                    wheel(-1, true, 10.0F, 0.0F, 14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(1, true, 10.0F, 0.0F, 14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(-1, false, 10.0F, 0.0F, -14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(1, false, 10.0F, 0.0F, -14.5F,
+                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F)
+            ),
+            List.of(
+                    seat(true, 5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
+                    seat(false, -5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
+                    /* The source's 11.5-pixel Y relies on a custom standing/hanging
+                     * limb pose. Vanilla renders every mounted player seated, so
+                     * keep both user-facing rear positions at the lower 3.5-pixel Y. */
+                    seat(false, 5.0F, 3.5F, -14.5F, 1.4F, -1.0F, 5.6F),
+                    seat(false, -5.0F, 3.5F, -18.9F, 1.4F, -1.0F, 5.6F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* Generated Sports Car geometry uses the default body scale/ground offset and
+     * a wheelOffset of (8 * 1.4 / 2) - 3 = 2.6 model pixels. Its seven generated
+     * cosmetic models are required to complete the body; four retain the source
+     * openable actions around their declared cosmetic pivots. */
+    public static final LandVehicleSpec SPORTS_CAR = new LandVehicleSpec(
+            "sports_car", "Sports Car", "sports_car_body",
+            1.5F, 1.0F, 1.0F,
+            1.0F, 0.0F, 2.6F,
+            20.0F, 35.0F, 20.0F * MODEL_UNIT, -19.0F * MODEL_UNIT, 5.0F,
+            20_000.0F, 0.25F, 0.9F, 1.5F, "vehicle:entity.sports_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            new Part("iron_large_engine", new Point(0.0F, 0.763125F, 1.1875F),
+                    0.825F, 0.0F, 0.0F, 0.0F),
+            new Part("sports_car_steering_wheel", new Point(-0.25F, 0.59399375F, 0.1023625F),
+                    0.7F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -10.0F, 6.5F, -14.0F,
+                    0.4F, 0.0F, -90.0F, 0.0F, 1.0F, 0.0F, 2.6F),
+            itemPart("key_hole", -5.0F, 4.5F, 6.5F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.0F, 0.0F, 2.6F),
+            List.of(
+                    new Part("sports_car_hood", new Point(0.0F, 1.00625F, 0.84375F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("hood", Axis.X, -60.0F, 12,
+                                    "vehicle:entity.vehicle.hood.open", "vehicle:entity.vehicle.hood.close",
+                                    new Box(new Point(-0.6875F, -0.198366F, -0.03125F),
+                                            new Point(0.6875F, 0.03125F, 0.883688F)))),
+                    new Part("sports_car_left_door", new Point(0.9375F, 0.225F, 0.625F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("left_door", Axis.Y, -75.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.09375F, 0.0F, -1.1875F),
+                                            new Point(0.288713F, 1.25F, 0.010787F)))),
+                    new Part("sports_car_right_door", new Point(-0.9375F, 0.225F, 0.625F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("right_door", Axis.Y, 90.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.288713F, 0.0F, -1.1875F),
+                                            new Point(0.09375F, 1.25F, 0.010787F)))),
+                    new Part("sports_car_boot", new Point(0.0F, 1.13125F, -1.46875F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("spoiler", Axis.X, 90.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.625F, -0.34375F, -0.468751F),
+                                            new Point(0.625F, 0.031251F, 0.03125F)))),
+                    new Part("sports_car_seat", new Point(0.0F, 0.225F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_car_dashboard", new Point(0.0F, 1.0375F, 0.75F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_car_roof", new Point(0.0F, 1.0375F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    wheel(-1, true, 12.0F, 3.0F, 20.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(1, true, 12.0F, 3.0F, 20.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(-1, false, 12.0F, 3.0F, -19.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(1, false, 12.0F, 3.0F, -19.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F)
+            ),
+            List.of(
+                    seat(true, 7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F),
+                    seat(false, -7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null,
+            List.of(
+                    new StorageCompartment("glove_box", "Glove Box", 1,
+                            new Box(new Point(0.125F, 0.38125F, 0.1875F),
+                                    new Point(0.5F, 0.63125F, 0.3125F))),
+                    new StorageCompartment("trunk", "Trunk", 3,
+                            new Box(new Point(-0.4375F, 0.4125F, -1.1875F),
+                                    new Point(0.4375F, 0.6F, -0.75F)))
+            ),
+            false
+    );
+
+    /* Generated Mini Bus geometry uses body scale 1.3 and wheelOffset
+     * (8 * 1.19 / 2) = 4.76 pixels. The source registers a Mini Bus steering-wheel
+     * model that is absent from its assets; its ray transforms explicitly use the Go Kart wheel,
+     * so that original model is the non-fallback vanilla representation here. */
+    public static final LandVehicleSpec MINI_BUS = new LandVehicleSpec(
+            "mini_bus", "Mini Bus", "mini_bus_body",
+            2.0F, 2.0F, 1.0F,
+            1.3F, 1.0F, 4.76F,
+            14.0F, 35.0F, 13.5F * MODEL_UNIT * 1.3F, -13.5F * MODEL_UNIT * 1.3F, 5.0F,
+            30_000.0F, 0.375F, 0.75F, 1.25F, "vehicle:entity.mini_bus.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.40625F, 1.516441875F, 1.27057125F),
+                    0.91F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -12.0F, 10.0F, -8.75F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.3F, 1.0F, 4.76F),
+            itemPart("key_hole", 0.0F, 6.75F, 19.5F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.3F, 1.0F, 4.76F),
+            List.of(
+                    new Part("mini_bus_stock_roof", new Point(0.0F, 1.52425F, 0.0F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_roof_racks", new Point(0.0F, 2.2555F, 0.0F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_left_door", new Point(0.934375F, 0.87425F, 1.665625F),
+                            1.3F, 0.0F, 0.0F, 0.0F,
+                            new Openable("left_door", Axis.Y, -75.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.040625F, 0.0F, -1.096875F),
+                                            new Point(0.340886F, 1.305712F, 0.040625F)))),
+                    new Part("mini_bus_right_door", new Point(-0.934375F, 0.87425F, 1.665625F),
+                            1.3F, 0.0F, 0.0F, 0.0F,
+                            new Openable("right_door", Axis.Y, 75.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.340886F, 0.0F, -1.096875F),
+                                            new Point(0.040625F, 1.305712F, 0.040625F)))),
+                    new Part("mini_bus_sliding_door", new Point(0.934375F, 0.87425F, -0.609375F),
+                            1.3F, 0.0F, 0.0F, 0.0F,
+                            new Openable("left_sliding_door", Axis.Y, 105.0F, 20,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.040625F, 0.0F, -0.040625F),
+                                            new Point(0.040625F, 1.305712F, 1.015625F)))),
+                    new Part("mini_bus_rear", new Point(0.0F, 0.9555F, -1.7875F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_seat", new Point(0.0F, 0.87425F, 0.0F),
+                            1.3F, 0.0F, 0.0F, 0.0F),
+                    new Part("mini_bus_dashboard", new Point(0.0F, 0.87425F, 1.3F),
+                            1.3F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    wheel(-1, true, 9.0F, 0.0F, 13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F),
+                    wheel(1, true, 9.0F, 0.0F, 13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F),
+                    wheel(-1, false, 9.0F, 0.0F, -13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F),
+                    wheel(1, false, 9.0F, 0.0F, -13.5F,
+                            0.938F, 1.19F, 1.19F, 1.3F, 1.0F, 4.76F)
+            ),
+            List.of(
+                    seat(true, 5.0F, 3.0F, 9.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, -5.0F, 3.0F, 9.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, 5.0F, 3.0F, -3.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, -5.0F, 3.0F, -3.0F, 1.3F, 1.0F, 4.76F),
+                    seat(false, 5.0F, 3.0F, -15.0F, 1.3F, 1.0F, 4.76F)
+            ),
+            true, "big_tow_bar", new Point(0.0F, 0.0F, -25.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* GolfCartEntity inherits unfinished helicopter motion in the 1.16 source and is unable
+     * to drive on the ground (the class itself is marked TODO). The generated wheel, axle,
+     * steering and four-seat definition is therefore run through the source land equations
+     * so the intended cart remains usable by vanilla clients. */
+    public static final LandVehicleSpec GOLF_CART = new LandVehicleSpec(
+            "golf_cart", "Golf Cart", "golf_cart_body",
+            2.0F, 1.0F, 1.0F,
+            1.15F, -0.5F, 4.4F,
+            25.0F, 35.0F, 16.0F * MODEL_UNIT * 1.15F,
+            -12.5F * MODEL_UNIT * 1.15F, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 1.0F, "vehicle:entity.vehicle.helicopter_rotor",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.39675F, 1.3277991F, 0.13126346F),
+                    1.0925F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -13.0F, 5.5F, -6.0F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.15F, -0.5F, 4.4F),
+            itemPart("key_hole", -8.5F, 2.75F, 8.5F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.15F, -0.5F, 4.4F),
+            List.of(),
+            List.of(
+                    wheel(-1, true, 9.0F, 0.0F, 16.0F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F),
+                    wheel(1, true, 9.0F, 0.0F, 16.0F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F),
+                    wheel(-1, false, 9.0F, 0.0F, -12.5F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F),
+                    wheel(1, false, 9.0F, 0.0F, -12.5F,
+                            1.1F, 1.1F, 1.1F, 1.15F, -0.5F, 4.4F)
+            ),
+            List.of(
+                    seat(true, 5.5F, 5.0F, -6.0F, 1.15F, -0.5F, 4.4F),
+                    seat(false, -5.5F, 5.0F, -6.0F, 1.15F, -0.5F, 4.4F),
+                    seat(false, 5.5F, 5.0F, -15.0F, 1.15F, -0.5F, 4.4F, 180.0F),
+                    seat(false, -5.5F, 5.0F, -15.0F, 1.15F, -0.5F, 4.4F, 180.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* BoatEntity's motion is empty in 1.16.X-dev. Runtime uses its last complete released
+     * water-state/buoyancy equations while preserving these dev properties and transforms. */
+    public static final LandVehicleSpec JET_SKI = new LandVehicleSpec(
+            "jet_ski", "Jet Ski", "jet_ski_body",
+            1.5F, 1.0F, 0.0F,
+            1.25F, 2.75F, 0.0F,
+            18.0F, 35.0F, 0.0F, 0.0F, 4.0F,
+            15_000.0F, 0.5F, 1.2F, 2.2F, "vehicle:entity.jet_ski.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("quad_bike_handles",
+                    new Point(0.0F, 1.2835938F, 0.53125F),
+                    1.25F, -45.0F, 0.0F, 0.0F),
+            new Part("small_fuel_door_closed",
+                    new Point(0.0F, 0.9375F, 0.9140625F),
+                    0.4375F, -90.0F, 0.0F, 0.0F),
+            null, List.of(), List.of(),
+            List.of(
+                    new Seat(true, new Point(0.0F, 0.60546875F, 0.015625F), 0.0F),
+                    new Seat(false, new Point(0.0F, 0.60546875F, -0.53125F), 0.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, -0.094F, -0.65F),
+            null, null, List.of(), false
+    );
+
+    /* CompactHelicopterEntity uses the default body transform and the four default
+     * HelicopterProperties values. The complex-model children are separate displays so
+     * the main blades, tail rotor, and joystick retain their source animation pivots. */
+    public static final LandVehicleSpec COMPACT_HELICOPTER = new LandVehicleSpec(
+            "compact_helicopter", "Compact Helicopter", "compact_helicopter_body",
+            2.0F, 2.0F, 0.6F,
+            1.0F, 0.0F, 0.0F,
+            25.0F, 35.0F, 0.0F, 0.0F, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 1.0F, "vehicle:entity.vehicle.helicopter_rotor",
+            true, new Point(-9.5564F * MODEL_UNIT,
+                    0.5F + 23.5F * MODEL_UNIT, -38.1927F * MODEL_UNIT),
+            null, null, null, null,
+            List.of(
+                    new Part("compact_helicopter_seat", new Point(0.0F, 0.6875F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("compact_helicopter_joystick",
+                            new Point(-7.5F * MODEL_UNIT, 0.75F, 13.5F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("compact_helicopter_blades",
+                            new Point(0.0F, 0.5F + 37.0F * MODEL_UNIT, -9.0F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("compact_helicopter_tail_rotor",
+                            new Point(3.0F * MODEL_UNIT, 0.5F + 24.5F * MODEL_UNIT,
+                                    -81.5F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(),
+            List.of(
+                    seat(true, 7.5F, 10.0F, 3.0F, 1.0F, 0.0F, 0.0F),
+                    seat(false, -7.5F, 10.0F, 3.0F, 1.0F, 0.0F, 0.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* Sofacopter is a Furniture Mod-dependent HelicopterEntity. Its original renderer
+     * uses the CFM red sofa, Vehicle Mod arm, and CFM ceiling_fan_fans as the rotor;
+     * later aluminum-boat/plane-wing choices were compatibility placeholders. */
+    public static final LandVehicleSpec SOFACOPTER = new LandVehicleSpec(
+            "sofacopter", "Sofacopter", "sofacopter_sofa",
+            1.0F, 1.0F, 0.6F,
+            1.0F, 0.0F, 0.0F,
+            15.0F, 35.0F, 0.0F, 0.0F, 5.0F,
+            40_000.0F, 0.5F, 0.5F, 1.25F, null,
+            false, new Point(0.0F, 0.0F, 0.0F),
+            null, null,
+            new Part("fuel_door_closed",
+                    new Point(0.0F, 0.09375F, 8.0F * MODEL_UNIT + 0.062F * MODEL_UNIT),
+                    0.45F, 0.0F, 0.0F, 0.0F),
+            new Part("key_hole",
+                    new Point(-9.25F * MODEL_UNIT, 0.5F,
+                            5.0F * MODEL_UNIT + 0.062F * MODEL_UNIT),
+                    0.8F, 0.0F, 0.0F, 0.0F),
+            List.of(
+                    new Part("sofacopter_arm",
+                            new Point(0.0F, 1.0F, 0.062F * MODEL_UNIT),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sofacopter_blades",
+                            new Point(0.0F, 2.5F, 0.062F * MODEL_UNIT),
+                            1.5F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(),
+            List.of(new Seat(true,
+                    new Point(0.0F, 0.0F, 0.062F * MODEL_UNIT), 0.0F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* PlaneEntity uses the generated Sports Plane body transform (Z -8) and default
+     * four-pixel wheel offset, one driver seat, and three source wheels. The JSON's
+     * bodyTransform omits "scale", which ExtraJSONUtils.getAsTransform defaults to 1.0
+     * (confirmed: AbstractPlaneRenderer/AbstractVehicleRenderer only ever read
+     * getBodyTransform(), never getDisplayTransform(), which is GUI/item-only) -- so the
+     * correct in-world body scale is 1.0, not the item displayTransform's 0.85. All
+     * position/scale fields below are the bodyScale=1.0 values (previous revision used
+     * 0.85 for these, scaling the whole plane ~15% too small; frontAxleOffset/
+     * rearAxleOffset already correctly used bodyScale=1.0 per PlaneEntity's own
+     * (bodyPosition.getZ() + axleOffset.z) * 0.0625 * bodyPosition.getScale() formula,
+     * so those two were untouched by this fix).
+     * Complex-model children are represented as independent displays so their original
+     * propeller, aileron, elevator, and joystick actions remain animated for vanilla clients. */
+    public static final LandVehicleSpec SPORTS_PLANE = new LandVehicleSpec(
+            "sports_plane", "Sports Plane", "sports_plane_body",
+            3.0F, 1.6875F, 0.6F,
+            1.0F, 0.0F, 4.0F,
+            24.0F, 25.0F, 0.765625F, -0.40625F, 5.0F,
+            75_000.0F, 1.0F, 0.5F, 1.25F, "vehicle:entity.sports_plane.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            new Part("iron_large_engine", new Point(0.0F, 0.75F, -0.5F),
+                    1.0F, 0.0F, 0.0F, 0.0F),
+            null,
+            new Part("fuel_door_closed", new Point(-0.271875F, 0.625F, -0.875F),
+                    0.5F, 0.0F, -112.5F, 0.0F),
+            null,
+            List.of(
+                    new Part("sports_plane_wings", new Point(0.0F, 1.5F, -0.9375F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_seat", new Point(0.0F, 0.75F, -0.5F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_propeller", new Point(0.0F, 1.125F, 1.4375F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_left_aileron",
+                            new Point(1.8009375F, 1.0F, -0.72893125F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_right_aileron",
+                            new Point(-1.8009375F, 1.0F, -0.72893125F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_elevator", new Point(0.0F, 1.1875F, -4.4375F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_plane_joystick", new Point(0.0F, 0.5625F, 0.28125F),
+                            1.0F, 0.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    new Wheel(0, true, 0.0F, 0.193625F, 1.1766875F,
+                            0.0F, 0.0F, 1.0F, 0.7745F, 0.7745F),
+                    new Wheel(0, false, 0.96875F, 0.25F, -0.84375F,
+                            0.0F, 0.0F, 1.0F, 1.0F, 1.0F),
+                    new Wheel(0, false, -0.96875F, 0.25F, -0.84375F,
+                            0.0F, 0.0F, 1.0F, 1.0F, 1.0F)
+            ),
+            List.of(new Seat(true, new Point(0.0F, 0.625F, -0.5F), 0.0F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F),
+            new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* ATVEntity's setMaxSpeed(15)/setFuelCapacity(20000) and ATVRenderer's handlebar
+     * chain (translate, -45 tilt, small offset, then the dune-buggy-style turn ratio)
+     * match the existing Quad Bike's tuning and non-motorcycle steering pattern closely,
+     * confirming the same real-world vehicle class under a distinct body model. */
+    public static final LandVehicleSpec ATV = new LandVehicleSpec(
+            "atv", "ATV", "atv_body",
+            1.5F, 1.0F, 1.0F,
+            1.25F, -1.5F, 4.624F,
+            15.0F, 35.0F, 10.5F * MODEL_UNIT * 1.25F, -10.5F * MODEL_UNIT * 1.25F, 5.0F,
+            20_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.atv.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("atv_handles", new Point(0.0F, 1.2688404F, 0.3345971F),
+                    1.25F, -45.0F, 0.0F, 0.0F),
+            itemPart("small_fuel_door_closed", 0.0F, 6.55F, 5.0F,
+                    0.35F, -90.0F, 0.0F, 0.0F, 1.25F, -1.5F, 4.624F),
+            itemPart("key_hole", -5.0F, 4.5F, 6.5F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.25F, -1.5F, 4.624F),
+            List.of(),
+            List.of(
+                    wheel(-1, true, 4.0F, 0.0F, 10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F),
+                    wheel(1, true, 4.0F, 0.0F, 10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F),
+                    wheel(-1, false, 4.0F, 0.0F, -10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F),
+                    wheel(1, false, 4.0F, 0.0F, -10.5F, 1.156F, 1.156F, 1.156F, 1.25F, -1.5F, 4.624F)
+            ),
+            List.of(
+                    seat(true, 0.0F, 5.0F, -3.0F, 1.25F, -1.5F, 4.624F),
+                    seat(false, 0.0F, 5.5F, -12.0F, 1.25F, -1.5F, 4.624F)
+            ),
+            /* Nudged from -20.8 to -19.6 (~1.5px closer at this body's 1.25x scale)
+             * per live playtesting feedback: the hitch/jack sat visibly detached
+             * behind the ATV's rear bumper. */
+            true, "tow_bar", new Point(0.0F, 0.0F, -19.6F), new Point(0.0F, 0.0F, -0.55F),
+            null, null, List.of(), false
+    );
+
+    /* MiniBikeEntity extends MotorcycleEntity and reuses the Go Kart engine sound.
+     * shouldRenderFuelPort() returns false, so no fuelFiller model exists. The fork
+     * tilts -22.5 degrees and untilts back before the steering turn is applied, so
+     * at rest the handlebar and front wheel sit at their natural mesh/physics offsets
+     * (the fork rotation is the identity transform whenever steering is centered);
+     * the handlebar position below is the handles mesh's own bounding-box center,
+     * since no generated position entry exists for it, and should be treated as a
+     * reasonable first-pass estimate rather than an exactly sourced value. */
+    public static final LandVehicleSpec MINI_BIKE = new LandVehicleSpec(
+            "mini_bike", "Mini Bike", "mini_bike_body",
+            1.0F, 1.0F, 1.0F,
+            1.05F, -1.7F, 4.12F,
+            18.0F, 35.0F, 13.0F * MODEL_UNIT * 1.05F, -6.7F * MODEL_UNIT * 1.05F, 5.0F,
+            15_000.0F, 0.375F, 0.5F, 1.8F, "vehicle:entity.go_kart.engine",
+            true, new Point(0.0F, 0.55F, 0.0F),
+            itemPart("iron_small_engine", 0.0F, 1.0F, 2.5F,
+                    0.7F, 0.0F, 180.0F, 0.0F, 1.05F, -1.7F, 4.12F),
+            itemPart("mini_bike_handles", 0.0F, 8.65F, 17.9F,
+                    1.0F, 0.0F, 0.0F, 0.0F, 1.05F, -1.7F, 4.12F),
+            null, null,
+            List.of(),
+            List.of(
+                    wheel(0, true, 0.0F, -0.394F, 13.0F, 1.03F, 1.03F, 1.03F, 1.05F, -1.7F, 4.12F),
+                    wheel(0, false, 0.0F, 0.0F, -6.7F, 1.03F, 1.03F, 1.03F, 1.05F, -1.7F, 4.12F)
+            ),
+            List.of(seat(true, 0.0F, 7.0F, -2.0F, 1.05F, -1.7F, 4.12F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.062F, -0.5F),
+            new Motorcycle(45.0F, 10.5F * MODEL_UNIT * 1.05F, -22.5F, true),
+            null, List.of(), false
+    );
+
+    /* SmartCarEntity only overrides engine pitch, maxUpStep, and tow/mount trailer
+     * flags; its steering wheel reuses the Go Kart model behind a static -67.5 tilt,
+     * the same non-motorcycle resting-position pattern as the other wheeled steering
+     * wheels in this file. */
+    public static final LandVehicleSpec SMART_CAR = new LandVehicleSpec(
+            "smart_car", "Smart Car", "smart_car_body",
+            1.85F, 1.15F, 1.0F,
+            1.25F, -1.7F, 3.752F,
+            15.0F, 35.0F, 12.0F * MODEL_UNIT * 1.25F, -12.0F * MODEL_UNIT * 1.25F, 5.0F,
+            15_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.bumper_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel", new Point(0.0F, 1.0257454F, 0.3980970F),
+                    1.125F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -9.0F, 8.7F, -12.3F,
+                    0.25F, 0.0F, -90.0F, 0.0F, 1.25F, -1.7F, 3.752F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F),
+                    wheel(1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F),
+                    wheel(-1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F),
+                    wheel(1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F)
+            ),
+            List.of(seat(true, 0.0F, 0.5F, -2.0F, 1.25F, -1.7F, 3.752F)),
+            true, "tow_bar", new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* SpeedBoatEntity extends the mod's own BoatEntity, same water-motion base as
+     * Jet Ski. AbstractBoatRenderer applies the body's generated translate in raw
+     * block units (unscaled) before the uniform body scale, so fuelFiller and the
+     * steering wheel add that vector on top of the standard pixel-converted offset,
+     * matching the confirmed Jet Ski formula. */
+    public static final LandVehicleSpec SPEED_BOAT = new LandVehicleSpec(
+            "speed_boat", "Speed Boat", "speed_boat_body",
+            1.5F, 1.0F, 0.0F,
+            1.0F, 2.5F, 0.0F,
+            20.0F, 35.0F, 0.0F, 0.0F, 4.0F,
+            25_000.0F, 0.75F, 1.0F, 2.0F, "vehicle:entity.speed_boat.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel", new Point(0.0F, 0.8543921F, 0.5488579F),
+                    1.0F, -45.0F, 0.0F, 0.0F),
+            new Part("small_fuel_door_closed", new Point(0.0F, 0.453375F, -0.59325F),
+                    0.65F, -90.0F, 0.0F, 0.0F),
+            null, List.of(), List.of(),
+            List.of(seat(true, 0.0F, 0.0F, 0.0F, 1.0F, 2.5F, 0.0F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.094F, -0.75F),
+            null, null, List.of(), false
+    );
+
+    /* AluminumBoatEntity extends the mod's own BoatEntity with an explicit
+     * setMaxTurnAngle(20). AluminumBoatRenderer draws no steering wheel or engine
+     * model, and its four seats use the plain pixel-converted seat formula with no
+     * body-translate addition (confirmed against Jet Ski's existing seat values). */
+    public static final LandVehicleSpec ALUMINUM_BOAT = new LandVehicleSpec(
+            "aluminum_boat", "Aluminum Boat", "aluminum_boat_body",
+            2.25F, 0.875F, 0.0F,
+            1.1F, 0.0F, 0.0F,
+            10.0F, 20.0F, 0.0F, 0.0F, 4.0F,
+            25_000.0F, 0.5F, 0.8F, 1.5F, "vehicle:entity.speed_boat.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null, null,
+            new Part("fuel_door_closed", new Point(-1.1F, 0.20625F, -1.0375F),
+                    0.275F, 0.0F, -90.0F, 0.0F),
+            null, List.of(), List.of(),
+            List.of(
+                    seat(true, -7.0F, 8.0F, -15.0F, 1.1F, 0.0F, 0.0F),
+                    seat(false, 7.0F, 6.0F, -15.0F, 1.1F, 0.0F, 0.0F),
+                    seat(false, -7.0F, 6.0F, 3.0F, 1.1F, 0.0F, 0.0F),
+                    seat(false, 7.0F, 6.0F, 3.0F, 1.1F, 0.0F, 0.0F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
+    /* CouchEntity is an otherwise plain LandVehicleEntity that reuses the ATV engine
+     * sound and the CFM red sofa body mesh also used by Sofacopter. SofaCarRenderer's
+     * body translation is a flat (0, 0.0625, 0) literal, handled in
+     * bodyRenderTranslation() below rather than baked into these part offsets.
+     * NOTE: this vehicle's original source model hard-depends on MrCrayfish's
+     * Furniture Mod asset; flagged for the user before shipping. */
+    public static final LandVehicleSpec COUCH = new LandVehicleSpec(
+            "couch", "Couch", "sofacopter_sofa",
+            1.0F, 1.0F, 1.0F,
+            1.0F, -1.5F, 4.4F,
+            10.0F, 35.0F, 7.0F * MODEL_UNIT, -7.0F * MODEL_UNIT, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.atv.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null, null,
+            itemPart("fuel_door_closed", 0.0F, 2.0F, 8.0F,
+                    0.5F, 0.0F, 0.0F, 0.0F, 1.0F, -1.5F, 4.4F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 8.0F, 0.062F, 7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F),
+                    wheel(1, true, 8.0F, 0.062F, 7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F),
+                    wheel(-1, false, 8.0F, 0.062F, -7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F),
+                    wheel(1, false, 8.0F, 0.062F, -7.0F, 1.1F, 1.1F, 1.1F, 1.0F, -1.5F, 4.4F)
+            ),
+            List.of(seat(true, 0.0F, 5.0F, 0.0F, 1.0F, -1.5F, 4.4F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, -0.25F),
+            null, null, List.of(), false
+    );
+
+    /* BumperCarEntity: setMaxSpeed(10), setTurnSensitivity(20), maxUpStep=0.625F explicit;
+     * fuel system is left at LandVehicleEntity defaults (the source literally has a
+     * "//TODO figure out fuel system" comment and never calls setFuelCapacity). Its one
+     * bespoke mechanic, push()'s car-to-car bonk, needs to compare every active Bumper
+     * Car pairwise each tick, so it is handled in VehicleManager rather than here. */
+    public static final LandVehicleSpec BUMPER_CAR = new LandVehicleSpec(
+            "bumper_car", "Bumper Car", "bumper_car_body",
+            1.5F, 1.0F, 0.625F,
+            1.2F, -1.5F, 1.88F,
+            10.0F, 35.0F, 8.5F * MODEL_UNIT * 1.2F, -8.5F * MODEL_UNIT * 1.2F, 5.0F,
+            15_000.0F, 0.25F, 0.5F, 0.8F, "vehicle:entity.bumper_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel", new Point(0.0F, 0.8285F, 0.0F),
+                    1.08F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -8.0F, 6.0F, -8.0F,
+                    0.25F, 0.0F, -90.0F, 0.0F, 1.2F, -1.5F, 1.88F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 7.0F, 0.0F, 8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F),
+                    wheel(1, true, 7.0F, 0.0F, 8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F),
+                    wheel(-1, false, 7.0F, 0.0F, -8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F),
+                    wheel(1, false, 7.0F, 0.0F, -8.5F, 0.47F, 0.47F, 0.47F, 1.2F, -1.5F, 1.88F)
+            ),
+            List.of(seat(true, 0.0F, 1.0F, -6.0F, 1.2F, -1.5F, 1.88F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.562F),
+            null, null, List.of(), false
+    );
+
+    /* ShoppingCartEntity: no setMaxSpeed() override (base 10F default), explicit
+     * setMaxTurnAngle(90) for its tight swivel-front steering, setTurnSensitivity(15),
+     * zero fuel capacity/consumption (it never runs dry). Its one bespoke mechanic — a
+     * nearby player grabbing it from behind and pushing it around, which overrides
+     * normal driving every tick while held — is handled by LandVehicle#tickPushed and
+     * VehicleManager's sneak-interact toggle rather than here. */
+    public static final LandVehicleSpec SHOPPING_CART = new LandVehicleSpec(
+            "shopping_cart", "Shopping Cart", "shopping_cart_body",
+            1.0F, 1.0F, 1.0F,
+            1.05F, -1.0F, 1.88F,
+            10.0F, 90.0F, 9.5F * MODEL_UNIT * 1.05F, -10.5F * MODEL_UNIT * 1.05F, 5.0F,
+            0.0F, 0.0F, 0.5F, 1.2F, "",
+            false, new Point(0.0F, 0.0F, 0.0F), null, null, null, null,
+            List.of(),
+            List.of(
+                    wheel(-1, false, 5.75F, 0.0F, -10.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F),
+                    wheel(1, false, 5.75F, 0.0F, -10.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F),
+                    wheel(-1, true, 4.0F, 0.0F, 9.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F),
+                    wheel(1, true, 4.0F, 0.0F, 9.5F, 0.47F, 0.47F, 0.47F, 1.05F, -1.0F, 1.88F)
+            ),
+            List.of(seat(true, 0.0F, 7.0F, -4.0F, 1.05F, -1.0F, 1.88F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.25F),
+            null, null, List.of(), false
+    );
+
+    /* Bath removed per explicit user direction: BathEntity's own EntityType registration
+     * is entirely gated behind MrCrayfish's Furniture Mod being loaded in the original
+     * source (VehicleUtil.createModDependentEntityType("cfm", "bath", ...)), and this
+     * port only reproduces the Vehicle Mod's own source code/assets, not other mods'. */
+
+    private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
+            Map.entry(GO_KART.id, GO_KART),
+            Map.entry(LAWN_MOWER.id, LAWN_MOWER),
+            Map.entry(QUAD_BIKE.id, QUAD_BIKE),
+            Map.entry(DUNE_BUGGY.id, DUNE_BUGGY),
+            Map.entry(TRACTOR.id, TRACTOR),
+            Map.entry(DIRT_BIKE.id, DIRT_BIKE),
+            Map.entry(MOPED.id, MOPED),
+            Map.entry(OFF_ROADER.id, OFF_ROADER),
+            Map.entry(SPORTS_CAR.id, SPORTS_CAR),
+            Map.entry(MINI_BUS.id, MINI_BUS),
+            Map.entry(GOLF_CART.id, GOLF_CART),
+            Map.entry(JET_SKI.id, JET_SKI),
+            Map.entry(SPORTS_PLANE.id, SPORTS_PLANE),
+            Map.entry(COMPACT_HELICOPTER.id, COMPACT_HELICOPTER),
+            Map.entry(SOFACOPTER.id, SOFACOPTER),
+            Map.entry(ATV.id, ATV),
+            Map.entry(MINI_BIKE.id, MINI_BIKE),
+            Map.entry(SMART_CAR.id, SMART_CAR),
+            Map.entry(SPEED_BOAT.id, SPEED_BOAT),
+            Map.entry(ALUMINUM_BOAT.id, ALUMINUM_BOAT),
+            Map.entry(COUCH.id, COUCH),
+            Map.entry(BUMPER_CAR.id, BUMPER_CAR),
+            Map.entry(SHOPPING_CART.id, SHOPPING_CART)
+    );
+
+    public static LandVehicleSpec byId(String id) {
+        return id == null ? null : BY_ID.get(id.toLowerCase(Locale.ROOT));
+    }
+
+    public static List<String> ids() {
+        return BY_ID.keySet().stream().sorted().toList();
+    }
+
+    public Point bodyOrigin() {
+        Point translation = bodyRenderTranslation();
+        return new Point(translation.x(),
+                translation.y() + (0.5F + (axleOffset + wheelOffset) * MODEL_UNIT) * bodyScale,
+                translation.z());
+    }
+
+    /** Source renderer body translation after each vehicle's scale and pixel conversion rules. */
+    public Point bodyRenderTranslation() {
+        if ("sofacopter".equals(id)) {
+            return new Point(0.0F, 0.0F, 0.062F * MODEL_UNIT);
+        }
+        /* SofaCarRenderer's body translate is a flat (0, 0.0625, 0) literal independent
+         * of the generated position JSON's own -0.062 pixel value (two separate numbers
+         * in the original source), unlike Sofacopter's pixel-converted translate above. */
+        if ("couch".equals(id)) {
+            return new Point(0.0F, 0.0625F, 0.0F);
+        }
+        /* AbstractBoatRenderer applies the body translate in raw block units before
+         * scaling, unlike AbstractLandVehicleRenderer's pixel-converted translate.
+         * Each water vehicle keeps its own distinct generated translate vector. */
+        return switch (motionType()) {
+            case WATER -> switch (id) {
+                case "speed_boat" -> new Point(0.0F, -0.031F, 0.688F);
+                case "aluminum_boat" -> new Point(0.0F, 0.0F, 0.2F);
+                default -> new Point(0.0F, 0.0F, 0.25F);
+            };
+            /* Sports Plane's generated bodyTransform.translate.z is -8.0 raw pixels,
+             * giving -8.0 * MODEL_UNIT * bodyScale(1.0) = -0.5 once bodyScale correctly
+             * uses the bodyTransform default instead of the item displayTransform's 0.85
+             * (see the SPORTS_PLANE comment above). */
+            case AIR -> new Point(0.0F, 0.0F, -0.5F);
+            case LAND, HELICOPTER -> new Point(0.0F, 0.0F, 0.0F);
+        };
+    }
+
+    public MotionType motionType() {
+        if ("jet_ski".equals(id) || "speed_boat".equals(id) || "aluminum_boat".equals(id)) {
+            return MotionType.WATER;
+        }
+        if ("sports_plane".equals(id)) {
+            return MotionType.AIR;
+        }
+        return "compact_helicopter".equals(id) || "sofacopter".equals(id)
+                ? MotionType.HELICOPTER : MotionType.LAND;
+    }
+
+    public Plane plane() {
+        return motionType() == MotionType.AIR ? new Plane(
+                16.0F, 35.0F, 0.25F, 0.1F,
+                45.0F, 0.15F, 0.075F, 2.0F) : null;
+    }
+
+    /** Exact default HelicopterProperties inherited by both implemented helicopter entities. */
+    public Helicopter helicopter() {
+        return motionType() == MotionType.HELICOPTER
+                ? new Helicopter(0.015F, 0.05F, 30.0F, 0.001F)
+                : null;
+    }
+
+    public float steeringVisualAngle() {
+        if ("dune_buggy".equals(id) || "atv".equals(id)) {
+            /* DuneBuggyRenderer and ATVRenderer both use wheelAngle / 45 * 15
+             * rather than normalizing by the vehicle's 35-degree steering limit. */
+            return maxSteeringAngle * 15.0F / 45.0F;
+        }
+        return motionType() == MotionType.WATER ? 15.0F : 25.0F;
+    }
+
+    /**
+     * Vanilla ItemDisplay presentation needs this small Sports Car cabin correction.
+     * The offset aligns the wheel's transformed bounds with the dashboard steering
+     * column while preserving the source model, scale, angle, and animation.
+     */
+    public Point steeringDisplayOffset() {
+        return "sports_car".equals(id)
+                ? new Point(-3.0F * MODEL_UNIT, 5.0F * MODEL_UNIT, 2.0F * MODEL_UNIT)
+                : new Point(0.0F, 0.0F, 0.0F);
+    }
+
+    /** Inverse of the resource-pack normalization required by vanilla's -16..32 model limit. */
+    public float modelScaleCorrection(String model) {
+        if ("sports_car".equals(id)) {
+            return switch (model) {
+                case "sports_car_body", "sports_car_hood", "sports_car_left_door",
+                        "sports_car_right_door", "sports_car_boot", "sports_car_seat",
+                        "sports_car_dashboard", "sports_car_roof" -> 2.0F;
+                default -> 1.0F;
+            };
+        }
+        if ("sports_plane".equals(id)) {
+            return switch (model) {
+                case "sports_plane_body", "sports_plane_wings",
+                        "sports_plane_left_aileron", "sports_plane_right_aileron" -> 3.0F;
+                default -> 1.0F;
+            };
+        }
+        if ("compact_helicopter".equals(id)) {
+            return switch (model) {
+                case "compact_helicopter_body" -> 4.0F;
+                case "compact_helicopter_blades" -> 3.0F;
+                default -> 1.0F;
+            };
+        }
+        return 1.0F;
+    }
+
+    public Point wheeliePivot() {
+        if (motionType() == MotionType.AIR || motionType() == MotionType.HELICOPTER) {
+            return new Point(0.0F, 0.0F, 0.0F);
+        }
+        return new Point(0.0F, wheelOffset * MODEL_UNIT * bodyScale, rearAxleOffset);
+    }
+
+    /**
+     * The common source renderer draws the tow bar after cancelling body scale,
+     * but before the axle/wheel translations and wheelie matrix. Its model origin
+     * therefore keeps the renderer's standalone +0.5 Y correction and never
+     * follows a boost wheelie.
+     *
+     * AbstractLandVehicleRenderer's actual sequence is: scale(bodyScale), then
+     * translate(bodyPos) (so bodyPos's displacement IS scaled by bodyScale); then,
+     * for the tow bar specifically, it pushes a new pose, applies scale(1/bodyScale)
+     * to cancel the scale for the tow bar MODEL's own geometry (so the accessory
+     * model always renders at native 1x size, never stretched by the body scale),
+     * and then explicitly re-multiplies towBarOffset by bodyScale before
+     * translating in that now-unscaled frame. Net effect, confirmed by tracing the
+     * matrix stack numerically: the tow bar's ORIGIN position still scales with
+     * bodyScale (same as every other body-relative offset below), while only its
+     * rendered geometry size stays fixed at 1x (already handled by this port's
+     * hardcoded `scale = 1.0F` in LandVehicleRig's tow bar partDisplay() call).
+     * Do not remove the bodyScale factor here — a bodyScale of 1.25 (e.g. ATV)
+     * genuinely pushes the tow bar 25% further from the body root than a 1.0
+     * body, which is correct/intentional.
+     */
+    public Point towBarVisualCenter() {
+        return new Point(
+                towBarOffset.x * bodyScale * MODEL_UNIT,
+                0.5F + towBarOffset.y * bodyScale * MODEL_UNIT,
+                towBarOffset.z * bodyScale * MODEL_UNIT
+        );
+    }
+
+    /** Source trailer physics uses the same X/Z offset without visual +0.5 Y. */
+    public Point towBarPhysicsOffset() {
+        return new Point(
+                towBarOffset.x * bodyScale * MODEL_UNIT,
+                towBarOffset.y * bodyScale * MODEL_UNIT,
+                towBarOffset.z * bodyScale * MODEL_UNIT
+        );
+    }
+
+    public Wheel firstFrontWheel() {
+        return wheels.stream().filter(Wheel::front).findFirst().orElseThrow();
+    }
+
+    public Wheel firstRearWheel() {
+        return wheels.stream().filter(wheel -> !wheel.front()).findFirst().orElseThrow();
+    }
+
+    /** Mirrors MotorcycleEntity#getBodyRotationRoll: steering ratio times speed/30, capped at full lean. */
+    public float bodyRoll(float steeringAngle, double speed) {
+        if (motorcycle == null || maxSteeringAngle == 0.0F) {
+            return 0.0F;
+        }
+        double speedFactor = Math.max(0.0D, Math.min(1.0D, speed / 30.0D));
+        return (float) (-motorcycle.maxLeanAngle() * (steeringAngle / maxSteeringAngle) * speedFactor);
+    }
+
+    /**
+     * AbstractPoweredRenderer#renderPart translation order for fuel fillers and
+     * ignition models: common body origin, property translation, then -0.5 Y,
+     * then the property's uniform scale and XYZ rotations.
+     */
+    private static Part itemPart(String model, float x, float y, float z,
+                                 float scale, float rotationX, float rotationY, float rotationZ,
+                                 float bodyScale, float axleOffset, float wheelOffset) {
+        float bodyY = (0.5F + (axleOffset + wheelOffset) * MODEL_UNIT) * bodyScale;
+        return new Part(model, new Point(
+                x * MODEL_UNIT * bodyScale,
+                bodyY + (y * MODEL_UNIT - 0.5F) * bodyScale,
+                z * MODEL_UNIT * bodyScale
+        ), scale * bodyScale, rotationX, rotationY, rotationZ);
+    }
+
+    private static Wheel wheel(int side, boolean front, float offsetX, float offsetY, float offsetZ,
+                               float scaleX, float scaleY, float scaleZ,
+                               float bodyScale, float axleOffset, float wheelOffset) {
+        float axleX = side * offsetX * MODEL_UNIT * bodyScale;
+        float centerY = (wheelOffset + offsetY) * MODEL_UNIT * bodyScale;
+        float axleZ = offsetZ * MODEL_UNIT * bodyScale;
+        float halfWidth = side * 4.0F * scaleX * 0.5F * MODEL_UNIT * bodyScale;
+        float contactY = (wheelOffset + offsetY) * MODEL_UNIT * bodyScale
+                - 0.25F * bodyScale * scaleY;
+        return new Wheel(side, front, axleX, centerY, axleZ, halfWidth, contactY,
+                bodyScale * scaleX, bodyScale * scaleY, bodyScale * scaleZ);
+    }
+
+    private static Seat seat(boolean driver, float x, float y, float z,
+                             float bodyScale, float axleOffset, float wheelOffset) {
+        return seat(driver, x, y, z, bodyScale, axleOffset, wheelOffset, 0.0F);
+    }
+
+    private static Seat seat(boolean driver, float x, float y, float z,
+                             float bodyScale, float axleOffset, float wheelOffset,
+                             float yawOffset) {
+        return new Seat(driver, new Point(
+                -x * MODEL_UNIT * bodyScale,
+                (y + axleOffset + wheelOffset) * MODEL_UNIT * bodyScale,
+                z * MODEL_UNIT * bodyScale
+        ), yawOffset);
+    }
+
+    public record Point(float x, float y, float z) {
+    }
+
+    public record Part(String model, Point center, float scale,
+                       float rotationX, float rotationY, float rotationZ,
+                       Openable openable) {
+        public Part(String model, Point center, float scale,
+                    float rotationX, float rotationY, float rotationZ) {
+            this(model, center, scale, rotationX, rotationY, rotationZ, null);
+        }
+    }
+
+    public enum MotionType {
+        LAND, WATER, AIR, HELICOPTER
+    }
+
+    /** Exact PlaneProperties values generated for the Sports Plane. */
+    public record Plane(float minimumSpeedToTakeOff, float maxFlapAngle,
+                        float flapStrength, float flapSensitivity,
+                        float maxElevatorAngle, float elevatorStrength,
+                        float elevatorSensitivity, float maxTurnAngle) {
+    }
+
+    public record Helicopter(float movementStrength, float rotateStrength,
+                             float maxLeanAngle, float drag) {
+    }
+
+    public enum Axis {
+        X, Y, Z
+    }
+
+    public record Openable(String id, Axis axis, float angle, int animationLength,
+                           String openSound, String closeSound, Box interactionBox) {
+    }
+
+    /** Axis-aligned bounds in vehicle-root space, or in an openable part's local pivot space. */
+    public record Box(Point min, Point max) {
+        public double rayIntersection(Point origin, Point direction, double maximumDistance) {
+            double near = 0.0D;
+            double far = maximumDistance;
+            float[] origins = {origin.x, origin.y, origin.z};
+            float[] directions = {direction.x, direction.y, direction.z};
+            float[] minimums = {min.x, min.y, min.z};
+            float[] maximums = {max.x, max.y, max.z};
+            for (int axis = 0; axis < 3; axis++) {
+                double component = directions[axis];
+                if (Math.abs(component) < 1.0E-8D) {
+                    if (origins[axis] < minimums[axis] || origins[axis] > maximums[axis]) {
+                        return Double.POSITIVE_INFINITY;
+                    }
+                    continue;
+                }
+                double first = (minimums[axis] - origins[axis]) / component;
+                double second = (maximums[axis] - origins[axis]) / component;
+                if (first > second) {
+                    double temporary = first;
+                    first = second;
+                    second = temporary;
+                }
+                near = Math.max(near, first);
+                far = Math.min(far, second);
+                if (near > far) {
+                    return Double.POSITIVE_INFINITY;
+                }
+            }
+            return near <= maximumDistance && far >= 0.0D ? Math.max(0.0D, near)
+                    : Double.POSITIVE_INFINITY;
+        }
+    }
+
+    public record StorageCompartment(String key, String title, int rows, Box interactionBox) {
+        public int size() {
+            return rows * 9;
+        }
+    }
+
+    public record Motorcycle(float maxLeanAngle, float steeringPivotZ,
+                             float steeringAxisTilt, boolean frontWheelYaw180) {
+    }
+
+    public record MopedParts(List<Part> forkParts, Part chest, Point chestInteractionOffset) {
+    }
+
+    public record Wheel(int side, boolean front, float axleX, float centerY, float axleZ,
+                        float halfWidthOffset, float contactY,
+                        float scaleX, float scaleY, float scaleZ, Point renderCenter) {
+        public Wheel(int side, boolean front, float axleX, float centerY, float axleZ,
+                     float halfWidthOffset, float contactY,
+                     float scaleX, float scaleY, float scaleZ) {
+            this(side, front, axleX, centerY, axleZ, halfWidthOffset, contactY,
+                    scaleX, scaleY, scaleZ, null);
+        }
+
+        public float contactX() {
+            return axleX + halfWidthOffset;
+        }
+
+        public float contactZ() {
+            return axleZ;
+        }
+
+        /** Renderer-only override for source vehicles that manually draw a generated wheel. */
+        public Point visualCenter() {
+            return renderCenter != null ? renderCenter : new Point(axleX, centerY, axleZ);
+        }
+    }
+
+    public record Seat(boolean driver, Point sourceOffset, float yawOffset) {
+    }
+}

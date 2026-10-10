@@ -1,0 +1,267 @@
+name: Paper plugin
+
+on:
+  push:
+    paths:
+      - "paper-plugin/**"
+      - "tools/build_resource_pack.py"
+      - "tools/test_build_resource_pack.py"
+      - "tools/configure_server_resource_pack.py"
+      - "tools/test_configure_server_resource_pack.py"
+      - "tools/test_fresh_paper_server.sh"
+      - "tools/source_assets/**"
+      - "src/main/resources/assets/vehicle/**"
+      - "src/main/resources/vehicle_mod.png"
+      - ".github/workflows/paper-plugin.yml"
+      - ".github/falix-deploy-request"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: paper-plugin-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Java 21
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Test resource-pack build and server synchronization
+        run: python3 -m unittest tools.test_build_resource_pack tools.test_configure_server_resource_pack
+
+      - name: Build plugin and resource pack
+        run: ./paper-plugin/gradlew -p paper-plugin clean build resourcePack
+
+      - name: Report test failures
+        if: failure()
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          import xml.etree.ElementTree as ET
+          for report in pathlib.Path("paper-plugin/build/test-results/test").glob("TEST-*.xml"):
+              root = ET.parse(report).getroot()
+              for case in root.iter("testcase"):
+                  for failure in case.findall("failure") + case.findall("error"):
+                      message = (failure.get("message") or failure.text or "Test failed").replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+                      print(f"::error title={case.get('classname')}.{case.get('name')}::{message}")
+          PY
+
+      - name: Verify resource pack
+        run: |
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip"
+          unzip -t "$PACK"
+          PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
+          CONFIG_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)
+          echo "Resource-pack SHA-1: $PACK_SHA1"
+          test "$PACK_SHA1" = "$CONFIG_SHA1"
+          unzip -l "$PACK" LICENSE.txt | grep -q LICENSE.txt
+          unzip -l "$PACK" assets/vehicle/textures/item/fluid_trailer_logo.png | grep -q fluid_trailer_logo.png
+          unzip -p "$PACK" assets/vehicle/models/item/fluid_trailer_body.json | \
+            grep -q 'vehicle:item/fluid_trailer_logo'
+          unzip -l "$PACK" assets/vehicle/items/fuel_door_closed.json | grep -q fuel_door_closed.json
+          unzip -l "$PACK" assets/vehicle/items/small_fuel_door_closed.json | grep -q small_fuel_door_closed.json
+          unzip -l "$PACK" assets/vehicle/items/key_hole.json | grep -q key_hole.json
+          unzip -l "$PACK" assets/vehicle/items/moped_body.json | grep -q moped_body.json
+          unzip -l "$PACK" assets/vehicle/items/moped_handles.json | grep -q moped_handles.json
+          unzip -l "$PACK" assets/vehicle/items/moped_mud_guard.json | grep -q moped_mud_guard.json
+          unzip -l "$PACK" assets/vehicle/items/moped_stock_seat.json | grep -q moped_stock_seat.json
+          unzip -l "$PACK" assets/vehicle/items/moped_stock_tray.json | grep -q moped_stock_tray.json
+          unzip -l "$PACK" assets/vehicle/items/moped_stock_front_light.json | grep -q moped_stock_front_light.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/moped/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/items/off_roader_body.json | grep -q off_roader_body.json
+          unzip -l "$PACK" assets/vehicle/models/item/off_roader_body.json | grep -q off_roader_body.json
+          unzip -l "$PACK" assets/vehicle/textures/item/off_roader_spring.png | grep -q off_roader_spring.png
+          unzip -l "$PACK" assets/vehicle/textures/item/off_roader_grill.png | grep -q off_roader_grill.png
+          unzip -l "$PACK" assets/vehicle/textures/item/off_roader_logo.png | grep -q off_roader_logo.png
+          unzip -l "$PACK" assets/vehicle/sounds/entity/jet_ski/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/items/sports_car_body.json | grep -q sports_car_body.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_hood.json | grep -q sports_car_hood.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_left_door.json | grep -q sports_car_left_door.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_right_door.json | grep -q sports_car_right_door.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_boot.json | grep -q sports_car_boot.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_dashboard.json | grep -q sports_car_dashboard.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_roof.json | grep -q sports_car_roof.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_seat.json | grep -q sports_car_seat.json
+          unzip -l "$PACK" assets/vehicle/items/sports_car_steering_wheel.json | grep -q sports_car_steering_wheel.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/sports_car/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/sounds/entity/vehicle/door/open.ogg | grep -q open.ogg
+          unzip -l "$PACK" assets/vehicle/sounds/entity/vehicle/hood/open.ogg | grep -q open.ogg
+          unzip -l "$PACK" assets/vehicle/items/mini_bus_body.json | grep -q mini_bus_body.json
+          unzip -l "$PACK" assets/vehicle/items/mini_bus_stock_roof.json | grep -q mini_bus_stock_roof.json
+          unzip -l "$PACK" assets/vehicle/items/mini_bus_left_door.json | grep -q mini_bus_left_door.json
+          unzip -l "$PACK" assets/vehicle/items/mini_bus_sliding_door.json | grep -q mini_bus_sliding_door.json
+          unzip -l "$PACK" assets/vehicle/items/big_tow_bar.json | grep -q big_tow_bar.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/mini_bus/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/items/compact_helicopter_body.json | grep -q compact_helicopter_body.json
+          unzip -l "$PACK" assets/vehicle/items/compact_helicopter_blades.json | grep -q compact_helicopter_blades.json
+          unzip -l "$PACK" assets/vehicle/items/compact_helicopter_joystick.json | grep -q compact_helicopter_joystick.json
+          unzip -l "$PACK" assets/vehicle/items/compact_helicopter_seat.json | grep -q compact_helicopter_seat.json
+          unzip -l "$PACK" assets/vehicle/items/compact_helicopter_tail_rotor.json | grep -q compact_helicopter_tail_rotor.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/vehicle/helicopter_rotor.ogg | grep -q helicopter_rotor.ogg
+          unzip -l "$PACK" assets/vehicle/items/sofacopter_sofa.json | grep -q sofacopter_sofa.json
+          unzip -l "$PACK" assets/vehicle/items/sofacopter_arm.json | grep -q sofacopter_arm.json
+          unzip -l "$PACK" assets/vehicle/items/sofacopter_blades.json | grep -q sofacopter_blades.json
+          unzip -l "$PACK" assets/vehicle/items/dune_buggy_body.json | grep -q dune_buggy_body.json
+          unzip -l "$PACK" assets/vehicle/items/dune_buggy_handles.json | grep -q dune_buggy_handles.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/bumper_car/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/items/atv_body.json | grep -q atv_body.json
+          unzip -l "$PACK" assets/vehicle/items/atv_handles.json | grep -q atv_handles.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/atv/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/items/mini_bike_body.json | grep -q mini_bike_body.json
+          unzip -l "$PACK" assets/vehicle/items/mini_bike_handles.json | grep -q mini_bike_handles.json
+          unzip -l "$PACK" assets/vehicle/items/smart_car_body.json | grep -q smart_car_body.json
+          unzip -l "$PACK" assets/vehicle/items/speed_boat_body.json | grep -q speed_boat_body.json
+          unzip -l "$PACK" assets/vehicle/sounds/entity/speed_boat/engine.ogg | grep -q engine.ogg
+          unzip -l "$PACK" assets/vehicle/items/aluminum_boat_body.json | grep -q aluminum_boat_body.json
+
+      - name: Test completely fresh Paper 1.21.4 server
+        run: |
+          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
+          tools/test_fresh_paper_server.sh "$JAR"
+
+      - name: Publish prototype release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          BRANCH_HEAD=$(git ls-remote --heads origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)
+          if [ "$GITHUB_SHA" != "$BRANCH_HEAD" ]; then
+            echo "Skipping release upload from stale commit $GITHUB_SHA (branch head is $BRANCH_HEAD)."
+            exit 0
+          fi
+          TAG="vehicle-plugin-prototype-v0.1.0"
+          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$JAR" "$PACK" --clobber
+            gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
+              -f sha="$GITHUB_SHA" -F force=true >/dev/null
+            gh release edit "$TAG" --target "$GITHUB_SHA" \
+              --title "Vehicle Plugin land vehicles prototype v0.1.0 (Paper 1.21.4)" \
+              --notes "Paper 1.21.4 vanilla-client checkpoint with seventeen land vehicles (adding the ATV, Mini Bike, Smart Car, Couch, Bumper Car, and Shopping Cart), the two-seat Jet Ski, Speed Boat, four-seat Aluminum Boat, Sports Plane, Compact Helicopter, and Sofacopter, including source-aligned flight physics, rotor animations, the Bumper Car bonk mechanic, the Shopping Cart push-from-behind mechanic, original transforms/assets, persistence, effects, and source-accurate audio or silence. Requires the attached r38 resource pack."
+          else
+            gh release create "$TAG" "$JAR" "$PACK" \
+              --target "$GITHUB_SHA" \
+              --title "Vehicle Plugin land vehicles prototype v0.1.0 (Paper 1.21.4)" \
+              --notes "Paper 1.21.4 vanilla-client checkpoint with seventeen land vehicles (adding the ATV, Mini Bike, Smart Car, Couch, Bumper Car, and Shopping Cart), the two-seat Jet Ski, Speed Boat, four-seat Aluminum Boat, Sports Plane, Compact Helicopter, and Sofacopter, including source-aligned flight physics, rotor animations, the Bumper Car bonk mechanic, the Shopping Cart push-from-behind mechanic, original transforms/assets, persistence, effects, and source-accurate audio or silence. Requires the attached r38 resource pack." \
+              --prerelease
+          fi
+
+      - name: Deploy to FalixNodes from repository secrets
+        if: hashFiles('.github/falix-deploy-request') != ''
+        env:
+          FALIX_SFTP_HOST: ${{ secrets.FALIX_SFTP_HOST }}
+          FALIX_SFTP_PORT: ${{ secrets.FALIX_SFTP_PORT }}
+          FALIX_SFTP_USERNAME: ${{ secrets.FALIX_SFTP_USERNAME }}
+          FALIX_SFTP_PASSWORD: ${{ secrets.FALIX_SFTP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for variable in FALIX_SFTP_HOST FALIX_SFTP_PORT FALIX_SFTP_USERNAME FALIX_SFTP_PASSWORD; do
+            if [ -z "${!variable:-}" ]; then
+              echo "::error title=Missing FalixNodes secret::${variable} is not configured."
+              exit 1
+            fi
+          done
+          if ! [[ "$FALIX_SFTP_PORT" =~ ^[0-9]+$ ]]; then
+            echo "::error title=Invalid FalixNodes secret::FALIX_SFTP_PORT must be numeric."
+            exit 1
+          fi
+
+          SFTP_HOST="${FALIX_SFTP_HOST#sftp://}"
+          SFTP_HOST="${SFTP_HOST%%/*}"
+          SFTP_HOST="${SFTP_HOST%%:*}"
+          if [ -z "$SFTP_HOST" ]; then
+            echo "::error title=Invalid FalixNodes secret::FALIX_SFTP_HOST does not contain a host name."
+            exit 1
+          fi
+
+          sudo apt-get update -qq
+          sudo apt-get install --yes --quiet sshpass
+          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
+          CONFIG="paper-plugin/src/main/resources/config.yml"
+          export SSHPASS="$FALIX_SFTP_PASSWORD"
+
+          # Supply the vehicle pack once, during login, through server.properties.
+          # The plugin detects the same URL and skips its delayed post-join send.
+          sshpass -e sftp \
+            -oBatchMode=no \
+            -oPreferredAuthentications=password \
+            -oPubkeyAuthentication=no \
+            -oStrictHostKeyChecking=accept-new \
+            -oConnectTimeout=20 \
+            -P "$FALIX_SFTP_PORT" \
+            "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" <<EOF
+          get server.properties /tmp/falix-server.properties
+          EOF
+          test -s /tmp/falix-server.properties
+          python3 tools/configure_server_resource_pack.py \
+            --server-properties /tmp/falix-server.properties \
+            --plugin-config "$CONFIG" \
+            --output /tmp/falix-server.properties.updated
+          if cmp -s /tmp/falix-server.properties /tmp/falix-server.properties.updated; then
+            echo "FalixNodes login-time resource pack is already synchronized."
+          else
+            sshpass -e sftp \
+              -oBatchMode=no \
+              -oPreferredAuthentications=password \
+              -oPubkeyAuthentication=no \
+              -oStrictHostKeyChecking=accept-new \
+              -oConnectTimeout=20 \
+              -P "$FALIX_SFTP_PORT" \
+              "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" <<EOF
+            put /tmp/falix-server.properties server.properties.mcv-backup-$GITHUB_RUN_ID
+            -rm server.properties.uploading
+            put /tmp/falix-server.properties.updated server.properties.uploading
+            -rm server.properties
+            rename server.properties.uploading server.properties
+            ls -l server.properties
+          EOF
+            echo "FalixNodes login-time resource pack synchronized; original settings backed up."
+          fi
+
+          sshpass -e sftp \
+            -oBatchMode=no \
+            -oPreferredAuthentications=password \
+            -oPubkeyAuthentication=no \
+            -oStrictHostKeyChecking=accept-new \
+            -oConnectTimeout=20 \
+            -P "$FALIX_SFTP_PORT" \
+            "${FALIX_SFTP_USERNAME}@${SFTP_HOST}" <<EOF
+          -mkdir plugins
+          -rm plugins/MrCrayfishVehiclePlugin.jar.uploading
+          put "$JAR" plugins/MrCrayfishVehiclePlugin.jar.uploading
+          -rm plugins/MrCrayfishVehiclePlugin.jar
+          -rm plugins/MrCrayfishVehiclePlugin-0.1.0-SNAPSHOT.jar
+          rename plugins/MrCrayfishVehiclePlugin.jar.uploading plugins/MrCrayfishVehiclePlugin.jar
+          -mkdir plugins/MrCrayfishVehiclePlugin
+          put "$CONFIG" plugins/MrCrayfishVehiclePlugin/config.yml.uploading
+          -rm plugins/MrCrayfishVehiclePlugin/config.yml
+          rename plugins/MrCrayfishVehiclePlugin/config.yml.uploading plugins/MrCrayfishVehiclePlugin/config.yml
+          ls -l plugins/MrCrayfishVehiclePlugin.jar
+          ls -l plugins/MrCrayfishVehiclePlugin/config.yml
+          EOF
+          unset SSHPASS FALIX_SFTP_PASSWORD
+          echo "FalixNodes plugin upload completed from repository secrets."
+
+      - name: Upload deliverables
+        uses: actions/upload-artifact@v5
+        with:
+          name: MrCrayfishVehiclePlugin
+          if-no-files-found: error
+          path: |
+            paper-plugin/build/libs/MrCrayfishVehiclePlugin-*.jar
+            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip
