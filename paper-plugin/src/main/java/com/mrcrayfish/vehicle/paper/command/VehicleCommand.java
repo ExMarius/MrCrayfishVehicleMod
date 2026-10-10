@@ -66,15 +66,24 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     }
 
     private void pump(CommandSender sender, String[] args) {
+        String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
         if (!(sender instanceof Player player)) {
-            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            // The console has no in-world location, so it can't create/remove/debug "the
+            // nearest" pump -- except "debug", which it can run across every registered pump
+            // at once, for checking live rig state without needing a player online.
+            if (sender.hasPermission("vehicle.admin") && action.equals("debug")) {
+                String dump = gasPumps.debugAllPumps();
+                plugin.getLogger().info("[pump debug all]\n" + dump);
+                sender.sendRichMessage("<gray>Dump trimis în consolă/log.</gray>");
+            } else {
+                sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            }
             return;
         }
         if (!sender.hasPermission("vehicle.admin")) {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }
-        String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
         switch (action) {
             case "create" -> {
                 RayTraceResult trace = player.rayTraceBlocks(6.0D);

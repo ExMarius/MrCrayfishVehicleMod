@@ -270,12 +270,33 @@ public final class GasPumpManager {
         if (closest == null) {
             return null;
         }
-        GasPumpRig rig = rigs.get(closest.id());
+        return describePump(closest);
+    }
+
+    /** Same ground-truth dump as {@link #debugNearestPump}, but for every registered pump at
+     *  once -- usable from the server console, which has no in-world location to measure
+     *  "nearest" from. Returns one block of text per pump, in no particular order. */
+    public String debugAllPumps() {
+        if (pumps.isEmpty()) {
+            return "(no gas pumps registered)";
+        }
         StringBuilder sb = new StringBuilder();
-        sb.append("stored pump: block=(").append(closest.x()).append(", ").append(closest.y())
-                .append(", ").append(closest.z()).append(") facing=").append(closest.facing()).append('\n');
-        Block groundBlock = origin.getWorld().getBlockAt(closest.x(), closest.y() - 1, closest.z());
-        sb.append("block directly below the pump's bottom (y-1) = ").append(groundBlock.getType()).append('\n');
+        for (StoredGasPump pump : pumps.values()) {
+            sb.append(describePump(pump)).append("\n\n");
+        }
+        return sb.toString().stripTrailing();
+    }
+
+    private String describePump(StoredGasPump pump) {
+        World world = Bukkit.getWorld(pump.worldId());
+        GasPumpRig rig = rigs.get(pump.id());
+        StringBuilder sb = new StringBuilder();
+        sb.append("stored pump: block=(").append(pump.x()).append(", ").append(pump.y())
+                .append(", ").append(pump.z()).append(") facing=").append(pump.facing()).append('\n');
+        if (world != null) {
+            Block groundBlock = world.getBlockAt(pump.x(), pump.y() - 1, pump.z());
+            sb.append("block directly below the pump's bottom (y-1) = ").append(groundBlock.getType()).append('\n');
+        }
         if (rig == null) {
             sb.append("(no live rig found for this pump!)");
         } else {
