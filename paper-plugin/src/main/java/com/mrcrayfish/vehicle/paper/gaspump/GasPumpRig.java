@@ -46,8 +46,13 @@ public final class GasPumpRig {
      *  attempt nudged east instead, which was wrong). */
     private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.7F, 1.64F, 0.175F);
     /** Local offset where the nozzle rests when nobody is holding it.
-     *  Shifted 2 blocks toward the pump's own left (west when the pump faces north). */
-    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-2.0F, 1.5F, 0.26F);
+     *  Net 0.5 block toward the pump's own left (west when the pump faces north): 2 blocks
+     *  west, then corrected 1.5 blocks back east after it overshot. */
+    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-0.5F, 1.5F, 0.26F);
+    /** The nozzle model's own spout faces back toward the pump instead of outward (confirmed
+     *  still backward even with zero extra rotation), so it needs a half-turn on top of the
+     *  pump's own yaw whenever its rotation is set. */
+    private static final float NOZZLE_YAW_OFFSET = 180.0F;
 
     private final UUID pumpId;
     private final Interaction interaction;
@@ -139,7 +144,7 @@ public final class GasPumpRig {
             nozzlePoint = new Vector3f((float) nozzleLocation.getX(), (float) nozzleLocation.getY(),
                     (float) nozzleLocation.getZ());
             nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z));
-            nozzle.setRotation(yaw, 0.0F);
+            nozzle.setRotation(yaw + NOZZLE_YAW_OFFSET, 0.0F);
             nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
                     new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
             endTangent = lookDirection == null ? new Vector3f(0.0F, 3.0F, 0.0F)
@@ -147,7 +152,7 @@ public final class GasPumpRig {
                             (float) lookDirection.getZ()).mul(3.0F);
         } else {
             nozzlePoint = worldPoint(root, NOZZLE_REST_LOCAL);
-            place(nozzle, root, NOZZLE_REST_LOCAL);
+            place(nozzle, root, NOZZLE_REST_LOCAL, NOZZLE_YAW_OFFSET);
             endTangent = new Vector3f(0.0F, 3.0F, 0.0F);
         }
 
@@ -172,8 +177,12 @@ public final class GasPumpRig {
     }
 
     private static void place(ItemDisplay display, Location root, Vector3f center) {
+        place(display, root, center, 0.0F);
+    }
+
+    private static void place(ItemDisplay display, Location root, Vector3f center, float yawOffset) {
         display.teleport(root, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-        display.setRotation(root.getYaw(), 0.0F);
+        display.setRotation(root.getYaw() + yawOffset, 0.0F);
         display.setTransformation(new Transformation(center, new Quaternionf(),
                 new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
     }
