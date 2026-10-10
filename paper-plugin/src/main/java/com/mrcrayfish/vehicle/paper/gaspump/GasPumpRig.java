@@ -42,12 +42,12 @@ public final class GasPumpRig {
 
     /** Local offset of the hose's pump-side anchor, relative to the bottom block's floor.
      *  Shifted 1 block toward the pump's own left (west when the pump faces north) from the
-     *  original mod's anchor, then nudged back 2 pixels (2/16 block) toward the east per a
-     *  follow-up fine-tune. */
-    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.575F, 1.64F, 0.3F);
+     *  original mod's anchor, then nudged 2 pixels (2/16 block) further north (the earlier
+     *  attempt nudged east instead, which was wrong). */
+    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.7F, 1.64F, 0.175F);
     /** Local offset where the nozzle rests when nobody is holding it.
-     *  Shifted 2 pixels (2/16 block) toward the pump's own left, matching the hose anchor move. */
-    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-0.385F, 1.5F, 0.26F);
+     *  Shifted 2 pixels (2/16 block) toward the pump's own left, then a further full block west. */
+    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-1.385F, 1.5F, 0.26F);
     /** The nozzle model's own front faces the opposite way from the pump body's, so it needs an
      *  extra half-turn on top of the pump's yaw whenever its rotation is set, or it renders
      *  facing backwards. */
