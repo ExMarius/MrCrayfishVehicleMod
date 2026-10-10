@@ -13,11 +13,11 @@ permissions:
 
 jobs:
   inspect:
-    name: Dump every live gas pump (including active nozzle/hose, if held)
+    name: Clear all registered gas pumps before removing the feature entirely
     runs-on: self-hosted
     timeout-minutes: 5
     steps:
-      - name: Send '/vehicle pump debug' to the console and report the result
+      - name: Send '/vehicle pump clear' to the console and report the result
         shell: bash
         run: |
           set -euo pipefail
@@ -29,29 +29,16 @@ jobs:
           fi
 
           before=$(wc -l < "$ROOT/logs/latest.log" 2>/dev/null || echo 0)
-          screen -S mcv-minecraft -X stuff 'vehicle pump debug\n'
+          screen -S mcv-minecraft -X stuff 'vehicle pump clear\n'
           sleep 3
-          tail -n +"$((before + 1))" "$ROOT/logs/latest.log" > /tmp/pump_debug_raw.log || true
-          sed -E 's/^\[[0-9:]+\] \[[^]]+\]: \[MrCrayfishVehiclePlugin\] //' /tmp/pump_debug_raw.log \
-            > /tmp/pump_debug.log
+          tail -n +"$((before + 1))" "$ROOT/logs/latest.log" > /tmp/pump_clear_raw.log || true
+          sed -E 's/^\[[0-9:]+\] \[[^]]+\]: \[MrCrayfishVehiclePlugin\] //' /tmp/pump_clear_raw.log \
+            > /tmp/pump_clear.log
 
-          if ! grep -q "stored pump:" /tmp/pump_debug.log; then
-            echo "::notice title=Gas pump diagnostics::No pump debug output captured (is anyone holding a nozzle?)"
-            exit 0
-          fi
+          result=$(cat /tmp/pump_clear.log)
+          escaped="${result//'%'/'%25'}"; escaped="${escaped//$'\r'/'%0D'}"; escaped="${escaped//$'\n'/'%0A'}"
+          echo "::notice title=Pump clear result::${escaped:-<no console output captured>}"
 
-          awk '
-            function flush() {
-              if (block == "") return;
-              gsub(/%/, "%25", block);
-              gsub(/\r/, "%0D", block);
-              gsub(/\n/, "%0A", block);
-              n++;
-              printf "::notice title=Pump dump %d::%s\n", n, block;
-            }
-            /^stored pump:/ { flush(); block = "" }
-            { block = block $0 "\n" }
-            END { flush() }
-          ' /tmp/pump_debug.log
-# re-run 1791633778
-# capture-active 1791633999
+          PUMPS="$ROOT/plugins/MrCrayfishVehiclePlugin/gaspumps.yml"
+          rm -f "$PUMPS"
+          echo "::notice title=gaspumps.yml::removed"
