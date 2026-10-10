@@ -162,6 +162,10 @@ public final class GasPumpRig {
         // offset touches the other part, nor the body position/rotation handled above.
         double hoseOffsetX = -0.5D;
         double nozzlePixelOffsetX = 1.0D / 16.0D;
+        // Direct instruction, latest pass: on top of the pixel-east nudge, slide the nozzle's
+        // rest spot half a block further west too -- the admin's left hand, facing north, same
+        // position as before.
+        double nozzleOffsetX = -0.5D;
 
         double[] hoseStartXZ = fixRotation(facing, 0.620625D, 1.05D, 0.620625D, 1.05D);
         Vector3f hoseStart = new Vector3f(
@@ -177,8 +181,9 @@ public final class GasPumpRig {
 
         double[] nozzleRestXZ = fixRotation(facing, 0.29D, 1.06D, 0.29D, 1.06D);
         Location nozzleRestLocation = new Location(world,
-                topCornerX + nozzleRestXZ[0] + nozzlePixelOffsetX, topCornerY + 0.5D,
+                topCornerX + nozzleRestXZ[0] + nozzlePixelOffsetX + nozzleOffsetX, topCornerY + 0.5D,
                 topCornerZ + nozzleRestXZ[1]);
+
 
 
         float yAngle = get2DDataValue(facing) * -90.0F;
