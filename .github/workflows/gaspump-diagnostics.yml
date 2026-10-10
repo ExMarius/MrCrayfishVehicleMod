@@ -35,16 +35,21 @@ jobs:
           sed -E 's/^\[[0-9:]+\] \[[^]]+\]: \[MrCrayfishVehiclePlugin\] //' /tmp/pump_debug_raw.log \
             > /tmp/pump_debug.log
 
-          # Annotations are capped in length, so split per-pump to stay well under the limit.
-          python3 - <<'PYEOF'
-import re
-text = open('/tmp/pump_debug.log').read()
-blocks = re.split(r'(?=stored pump:)', text)
-blocks = [b for b in blocks if b.strip()]
-if not blocks:
-    print('::notice title=Gas pump diagnostics::No pump debug output captured (is anyone holding a nozzle?)')
-for i, b in enumerate(blocks):
-    b = b.strip()
-    escaped = b.replace('%', '%25').replace('\r', '%0D').replace('\n', '%0A')
-    print(f'::notice title=Pump dump {i+1}::{escaped}')
-PYEOF
+          if ! grep -q "stored pump:" /tmp/pump_debug.log; then
+            echo "::notice title=Gas pump diagnostics::No pump debug output captured (is anyone holding a nozzle?)"
+            exit 0
+          fi
+
+          awk '
+            function flush() {
+              if (block == "") return;
+              gsub(/%/, "%25", block);
+              gsub(/\r/, "%0D", block);
+              gsub(/\n/, "%0A", block);
+              n++;
+              printf "::notice title=Pump dump %d::%s\n", n, block;
+            }
+            /^stored pump:/ { flush(); block = "" }
+            { block = block $0 "\n" }
+            END { flush() }
+          ' /tmp/pump_debug.log
