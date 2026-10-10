@@ -104,14 +104,15 @@ public final class GasPumpRig {
         // half-block higher than that registered Y to sit flush on top of it instead of
         // clipping into it.
         double y = block.getY() + 0.5D;
-        // Direct instruction, latest pass: rotate the whole rig together now, not just the
-        // body -- every facing-driven rotation/offset below (body rotation, hose anchors,
-        // nozzle rest position and orientation) now consistently uses the opposite cardinal
-        // from the registered facing, instead of only the body doing so while hose/nozzle kept
-        // using the registered facing. All of the separately-tuned world-space nudges (body
-        // east, hose west, nozzle pixel-east, rig south) stay exactly as they were.
-        BlockFace renderFacing = facing.getOppositeFace();
-        Quaternionf rotation = bodyRotation(renderFacing);
+        // Deliberate, isolated diagnostic per direct instruction: spins only the two body
+        // parts (bottom/top) to the opposite cardinal from the registered facing, at the exact
+        // same position, while every hose/nozzle computation below keeps using the registered
+        // facing untouched -- to find out, by direct in-game comparison, whether the body's own
+        // facing-to-rotation mapping is inverted relative to the (already independently
+        // verified) hose/nozzle one. If this turns out to look right, it points at
+        // bodyRotation/blockstateYDegrees needing the same kind of correction the nozzle's
+        // place() got, rather than at fixRotation/get2DDataValue (which stay untouched here).
+        Quaternionf rotation = bodyRotation(facing.getOppositeFace());
 
         // Deliberate, isolated diagnostic per direct instruction: nudges only the clickable
         // body (the interaction hitbox plus the bottom/top blocks) half a block to the east --
@@ -162,25 +163,25 @@ public final class GasPumpRig {
         double hoseOffsetX = -0.5D;
         double nozzlePixelOffsetX = 1.0D / 16.0D;
 
-        double[] hoseStartXZ = fixRotation(renderFacing, 0.620625D, 1.05D, 0.620625D, 1.05D);
+        double[] hoseStartXZ = fixRotation(facing, 0.620625D, 1.05D, 0.620625D, 1.05D);
         Vector3f hoseStart = new Vector3f(
                 (float) (topCornerX + hoseStartXZ[0] + hoseOffsetX),
                 (float) (topCornerY + 0.6425D),
                 (float) (topCornerZ + hoseStartXZ[1]));
 
-        double[] idleEndXZ = fixRotation(renderFacing, 0.345D, 1.06D, 0.345D, 1.06D);
+        double[] idleEndXZ = fixRotation(facing, 0.345D, 1.06D, 0.345D, 1.06D);
         Vector3f idleEnd = new Vector3f(
                 (float) (topCornerX + idleEndXZ[0] + hoseOffsetX),
                 (float) (topCornerY + 0.1D),
                 (float) (topCornerZ + idleEndXZ[1]));
 
-        double[] nozzleRestXZ = fixRotation(renderFacing, 0.29D, 1.06D, 0.29D, 1.06D);
+        double[] nozzleRestXZ = fixRotation(facing, 0.29D, 1.06D, 0.29D, 1.06D);
         Location nozzleRestLocation = new Location(world,
                 topCornerX + nozzleRestXZ[0] + nozzlePixelOffsetX, topCornerY + 0.5D,
                 topCornerZ + nozzleRestXZ[1]);
 
 
-        float yAngle = get2DDataValue(renderFacing) * -90.0F;
+        float yAngle = get2DDataValue(facing) * -90.0F;
         Quaternionf nozzleRestRotation = new Quaternionf()
                 .rotateY(radians(yAngle)).rotateY(radians(180.0F)).rotateX(radians(90.0F));
 
