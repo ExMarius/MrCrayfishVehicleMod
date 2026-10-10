@@ -17,31 +17,39 @@ jobs:
     runs-on: self-hosted
     timeout-minutes: 5
     steps:
-      - name: Report pump store and live rig dump
+      - name: Collect pump store and live rig dump
         shell: bash
         run: |
           set -euo pipefail
-          notice() {
-            local value="$1"
-            value="${value//'%'/'%25'}"; value="${value//$'\r'/'%0D'}"; value="${value//$'\n'/'%0A'}"
-            echo "::notice title=Gas pump diagnostics::$value"
-          }
           ROOT="$HOME/minecraft-server/mc"
           PUMPS="$ROOT/plugins/MrCrayfishVehiclePlugin/gaspumps.yml"
+          OUT="$PWD/gaspump-diagnostics.txt"
 
-          if [ -s "$PUMPS" ]; then
-            notice "gaspumps.yml contents:\n$(cat "$PUMPS")"
-          else
-            notice "gaspumps.yml not found or empty at $PUMPS"
-          fi
+          {
+            echo "=== gaspumps.yml ==="
+            if [ -s "$PUMPS" ]; then
+              cat "$PUMPS"
+            else
+              echo "(not found or empty at $PUMPS)"
+            fi
+            echo
+            echo "=== console '/vehicle pump debug' output ==="
+          } > "$OUT"
 
           if screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
             before=$(wc -l < "$ROOT/logs/latest.log" 2>/dev/null || echo 0)
             screen -S mcv-minecraft -X stuff 'vehicle pump debug\n'
             sleep 3
-            after_text=$(tail -n +"$((before + 1))" "$ROOT/logs/latest.log" 2>/dev/null || true)
-            notice "console '/vehicle pump debug' output:\n${after_text:-<no new log lines>}"
+            tail -n +"$((before + 1))" "$ROOT/logs/latest.log" 2>/dev/null >> "$OUT" || true
           else
-            notice "mcv-minecraft screen session not running; cannot dispatch console command"
+            echo "(mcv-minecraft screen session not running)" >> "$OUT"
           fi
-# trigger 1791628578
+
+          cat "$OUT"
+
+      - name: Upload full dump as artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: gaspump-diagnostics
+          path: gaspump-diagnostics.txt
+          retention-days: 1
