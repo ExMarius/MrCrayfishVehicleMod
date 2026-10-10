@@ -1,5 +1,5 @@
 {
-	"credit": "New asset for the Paper port: a single straight segment of the gas pump's hose. The original mod draws the bent hose as a procedural quad strip in Java (see GasPumpRenderer#drawHose); vanilla clients have no equivalent hook, so the Paper plugin instead chains several of these thin segments together with vanilla display entities and bends the chain through the exact same Hermite-spline math the original renderer used (see HermiteSpline). Native length is one full block along local Z, starting exactly at the model's own origin (not its center) so a segment's entity position can be its spline start point directly; the X/Z cross-section is centered on that same origin (not at the block's center, i.e. not [7.5,8.5]) so rotating/stretching the segment pivots cleanly around its own centerline instead of swinging around a point half a block off to the side. The cross-section is a square prism exactly 1 model-pixel wide (0.0625 block, matching the original's own literal `diameter = 0.0625F` leash-strip width in GasPumpRenderer#drawHose, per direct instruction to keep the hose at the mod's exact dimensions) and declares all four long side faces (north/south are only its tiny end caps) so it has real volume from every viewing angle instead of vanishing into a bare line when viewed from above/below, where the original quad strip's lack of up/down faces would have made it do exactly that.",
+	"credit": "New asset for the Paper port: a single straight segment of the gas pump's hose. The original mod draws the bent hose as a procedural quad strip in Java (see GasPumpRenderer#drawHose); vanilla clients have no equivalent hook, so the Paper plugin instead chains several of these thin segments together with vanilla display entities and bends the chain through the exact same Hermite-spline math the original renderer used (see HermiteSpline). Native length is one full block along local Z, starting exactly at the model's own origin (not its center) so a segment's entity position can be its spline start point directly; the X/Z cross-section is centered on that same origin (not at the block's center, i.e. not [7.5,8.5]) so rotating/stretching the segment pivots cleanly around its own centerline instead of swinging around a point half a block off to the side. The cross-section was originally kept at exactly 1 model-pixel wide (0.0625 block), matching the original's own literal `diameter = 0.0625F` leash-strip width in GasPumpRenderer#drawHose -- but on a live server that 1:1 width, split across a chain of short rigid display-entity segments instead of the original's single continuous smooth ribbon, read as all but invisible against the pump body (confirmed directly in-game), so per direct instruction this is widened to 3 model-pixels (0.1875 block), a disclosed cosmetic-only deviation that leaves every position/rotation/spline anchor untouched. It declares all four long side faces (north/south are only its tiny end caps) so it has real volume from every viewing angle instead of vanishing into a bare line when viewed from above/below, where the original quad strip's lack of up/down faces would have made it do exactly that.",
 	"texture_size": [16, 16],
 	"textures": {
 		"1": "vehicle:model/gas_hose_segment",
@@ -7,8 +7,8 @@
 	},
 	"elements": [
 		{
-			"from": [-0.5, -0.5, 0],
-			"to": [0.5, 0.5, 16],
+			"from": [-1.5, -1.5, 0],
+			"to": [1.5, 1.5, 16],
 			"faces": {
 				"north": {"uv": [0, 0, 16, 16], "texture": "#1"},
 				"south": {"uv": [0, 0, 16, 16], "texture": "#1"},
