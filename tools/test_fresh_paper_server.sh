@@ -137,7 +137,7 @@ test -f "$DATA_DIR/vehicles.yml" || fail "vehicles.yml was not created on shutdo
 test -f "$DATA_DIR/trailers.yml" || fail "trailers.yml was not created on shutdown"
 grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip' "$DATA_DIR/config.yml" \
   || fail "generated config does not select resource pack r38"
-grep -Fq '291b87156d8ffcf6933a974f612a84ae101b49a3' "$DATA_DIR/config.yml" \
+grep -Fq '1ddedf15566dd86678d7ce0819e9a3aad3904aef' "$DATA_DIR/config.yml" \
   || fail "generated config does not contain the verified r38 SHA-1"
 
 run_server_cycle 2
