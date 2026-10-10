@@ -42,9 +42,9 @@ public final class GasPumpRig {
 
     /** Local offset of the hose's pump-side anchor, relative to the bottom block's floor.
      *  Shifted 1 block toward the pump's own left (west when the pump faces north) from the
-     *  original mod's anchor, nudged 2 pixels (2/16 block) further north, then nudged 2 more
-     *  pixels back toward the east. */
-    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.575F, 1.64F, 0.175F);
+     *  original mod's anchor, nudged 2 pixels (2/16 block) further north, 2 more pixels
+     *  toward the east, then 1 more pixel (1/16 block) further north. */
+    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.575F, 1.64F, 0.1125F);
     /** Local offset where the nozzle rests when nobody is holding it.
      *  Net 0.5 block toward the pump's own left (west when the pump faces north): 2 blocks
      *  west, then corrected 1.5 blocks back east after it overshot. */
