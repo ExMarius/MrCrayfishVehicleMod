@@ -6,11 +6,10 @@ description: Server-side port of MrCrayfish's Vehicle Mod for vanilla clients.
 author: MrCrayfish
 contributors: [ExMarius]
 website: https://github.com/ExMarius/MrCrayfishVehicleMod
-softdepend: [Vault]
 commands:
   vehicle:
     description: Manage server-side vehicles.
-    usage: /vehicle <spawn|remove|refuel|list|save|pack|pump|fuelprice>
+    usage: /vehicle <spawn|remove|refuel|list|save|pack>
     permission: vehicle.use
     aliases: [veh, car]
 permissions:
@@ -18,5 +17,5 @@ permissions:
     description: Allows players to use vehicles.
     default: true
   vehicle.admin:
-    description: Allows spawning and removing vehicles, and managing gas pumps.
+    description: Allows spawning and removing vehicles.
     default: op
