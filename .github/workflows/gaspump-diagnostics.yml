@@ -21,15 +21,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          notice() {
-            local title="$1" value="$2"
-            value="${value//'%'/'%25'}"; value="${value//$'\r'/'%0D'}"; value="${value//$'\n'/'%0A'}"
-            echo "::notice title=$title::$value"
-          }
           ROOT="$HOME/minecraft-server/mc"
 
           if ! screen -list 2>/dev/null | grep -q '[.]mcv-minecraft[[:space:]]'; then
-            notice "Gas pump diagnostics" "mcv-minecraft screen session not running"
+            echo "::notice title=Gas pump diagnostics::mcv-minecraft screen session not running"
             exit 0
           fi
 
@@ -43,15 +38,13 @@ jobs:
           sed -E 's/^\[[0-9:]+\] \[[^]]+\]: \[MrCrayfishVehiclePlugin\] //' /tmp/pump_debug_raw.log \
             > /tmp/pump_debug.log
 
-          awk -v RS='' '{print; print "@@@SPLIT@@@"}' /tmp/pump_debug.log \
-            | awk -v RS='@@@SPLIT@@@' 'NF' > /tmp/pump_blocks.log
-
-          count=0
-          while IFS= read -r -d '' block; do
-            count=$((count + 1))
-            notice "Pump dump $count" "$block"
-          done < <(awk -v RS='@@@SPLIT@@@' 'NF { printf "%s\0", $0 }' /tmp/pump_debug.log)
-
-          if [ "$count" -eq 0 ]; then
-            notice "Gas pump diagnostics" "no console output captured:\n$(cat /tmp/pump_debug_raw.log)"
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          text = Path("/tmp/pump_debug.log").read_text()
+          blocks = [b.strip() for b in text.split("\n\n") if b.strip()]
+          if not blocks:
+              print("::notice title=Gas pump diagnostics::no console output captured")
+          for i, block in enumerate(blocks, 1):
+              escaped = block.replace("%", "%25").replace("\r", "%0D").replace("\n", "%0A")
+              print(f"::notice title=Pump dump {i}::{escaped}")
+          PY
