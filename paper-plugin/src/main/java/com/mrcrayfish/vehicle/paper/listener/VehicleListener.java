@@ -5,7 +5,6 @@ import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
-import com.mrcrayfish.vehicle.paper.station.FuelStationManager;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
@@ -42,12 +41,10 @@ public final class VehicleListener implements Listener {
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
-    private final FuelStationManager fuelStations;
 
-    public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles, FuelStationManager fuelStations) {
+    public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
         this.vehicles = vehicles;
-        this.fuelStations = fuelStations;
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
@@ -169,33 +166,10 @@ public final class VehicleListener implements Listener {
             event.setCancelled(true);
         } else if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
-            LandVehicle vehicle = vehicles.byEntity(event.getRightClicked()).get();
-            // A player holding a fuel station's nozzle fuels the vehicle they click instead
-            // of mounting it.
-            if (!fuelStations.handleVehicleClick(event.getPlayer(), vehicle)) {
-                vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
-            }
+            vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
             vehicles.trailers().handleInteraction(event.getPlayer(), event.getRightClicked());
-        } else if (fuelStations.isStationInteraction(event.getRightClicked())) {
-            // The station's registered position is open air once it's placed on a block's
-            // face rather than inside it, so there's no real block for a right-click to land
-            // on; this invisible hitbox entity is what actually catches the click.
-            event.setCancelled(true);
-            fuelStations.toggleNozzleByInteraction(event.getPlayer(), event.getRightClicked());
-        }
-    }
-
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onStationBlockInteract(PlayerInteractEvent event) {
-        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getHand() != EquipmentSlot.HAND
-                || event.getClickedBlock() == null) {
-            return;
-        }
-        if (fuelStations.isRegistered(event.getClickedBlock())) {
-            event.setCancelled(true);
-            fuelStations.toggleNozzleByBlock(event.getPlayer(), event.getClickedBlock());
         }
     }
 
@@ -284,14 +258,12 @@ public final class VehicleListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
-        fuelStations.onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
     }
 
     @EventHandler
     public void onDeath(PlayerDeathEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
-        fuelStations.onPlayerQuit(event.getPlayer());
     }
 
     @EventHandler(ignoreCancelled = true)

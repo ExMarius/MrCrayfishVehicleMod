@@ -234,12 +234,6 @@ def build(output: Path) -> tuple[Path, str]:
             "aluminum_boat_body": ("vehicle:item/aluminum_boat_body", 16383998),
             "bumper_car_body": ("vehicle:item/bumper_car_body", 16383998),
             "shopping_cart_body": ("vehicle:item/shopping_cart_body", 16383998),
-            # Fuel station visual rig: brand-new geometry (tools/source_assets/fuel_station/),
-            # built entirely from real vanilla block textures rather than any custom art.
-            "fuel_station_bottom": ("vehicle:item/fuel_station_bottom", 16383998),
-            "fuel_station_top": ("vehicle:item/fuel_station_top", 16383998),
-            "fuel_station_nozzle": ("vehicle:item/fuel_station_nozzle", 16383998),
-            "fuel_station_hose_segment": ("vehicle:item/fuel_station_hose_segment", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -1012,54 +1006,6 @@ def build(output: Path) -> tuple[Path, str]:
             "entity/vehicle/hood/close.ogg",
         ):
             copy(ASSETS / f"sounds/{source}", namespace / f"sounds/{source}")
-
-        # Fuel station visual rig: brand-new geometry authored for this project (not a port
-        # of any existing mod model). Every element's faces reference real vanilla block
-        # sprites below rather than any custom texture file, so there is nothing new to
-        # copy() here -- the look comes entirely from stock Minecraft textures already
-        # present in every vanilla client.
-        convert_model(
-            ROOT / "tools/source_assets/fuel_station/station_bottom.json",
-            namespace / "models/item/fuel_station_bottom.json",
-            {
-                "trim": "minecraft:block/black_concrete",
-                "panel": "minecraft:block/red_concrete",
-                "metal": "minecraft:block/iron_block",
-                "display": "minecraft:block/sea_lantern",
-                "particle": "minecraft:block/red_concrete",
-            },
-        )
-        convert_model(
-            ROOT / "tools/source_assets/fuel_station/station_top.json",
-            namespace / "models/item/fuel_station_top.json",
-            {
-                "metal": "minecraft:block/iron_block",
-                "panel": "minecraft:block/red_concrete",
-                "sign": "minecraft:block/yellow_concrete",
-                "beacon": "minecraft:block/redstone_lamp",
-                "particle": "minecraft:block/iron_block",
-            },
-        )
-        convert_model(
-            ROOT / "tools/source_assets/fuel_station/nozzle.json",
-            namespace / "models/item/fuel_station_nozzle.json",
-            {
-                "grip": "minecraft:block/black_concrete",
-                "guard": "minecraft:block/gray_concrete",
-                "spout": "minecraft:block/iron_block",
-                "accent": "minecraft:block/redstone_block",
-                "particle": "minecraft:block/iron_block",
-            },
-        )
-        convert_model(
-            ROOT / "tools/source_assets/fuel_station/hose_segment.json",
-            namespace / "models/item/fuel_station_hose_segment.json",
-            {
-                "hose": "minecraft:block/basalt",
-                "particle": "minecraft:block/basalt",
-            },
-        )
-
         write_json(namespace / "sounds.json", {
             "entity.go_kart.engine": {
                 "sounds": [{"name": "vehicle:entity/go_kart/engine", "preload": True}]

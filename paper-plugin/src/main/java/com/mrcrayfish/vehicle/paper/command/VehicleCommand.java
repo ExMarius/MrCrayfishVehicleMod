@@ -3,19 +3,15 @@ package com.mrcrayfish.vehicle.paper.command;
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
-import com.mrcrayfish.vehicle.paper.station.FuelStationManager;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
-import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
-import org.bukkit.util.RayTraceResult;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -26,12 +22,10 @@ import java.util.Locale;
 public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
-    private final FuelStationManager fuelStations;
 
-    public VehicleCommand(VehiclePlugin plugin, VehicleManager vehicles, FuelStationManager fuelStations) {
+    public VehicleCommand(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
         this.vehicles = vehicles;
-        this.fuelStations = fuelStations;
     }
 
     @Override
@@ -58,83 +52,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 sender.sendRichMessage("<green>Vehicule salvate.</green>");
             }
             case "pack" -> pack(sender);
-            case "station" -> station(sender, args);
             default -> help(sender, label);
         }
         return true;
-    }
-
-    private void station(CommandSender sender, String[] args) {
-        String action = args.length < 2 ? "" : args[1].toLowerCase(Locale.ROOT);
-        if ("list".equals(action)) {
-            List<String> lines = fuelStations.describeAll();
-            sender.sendRichMessage("<gold>Pompe de alimentare (" + lines.size() + "):</gold>");
-            for (String line : lines) {
-                sender.sendRichMessage("<gray>- " + line + "</gray>");
-            }
-            return;
-        }
-        if ("price".equals(action)) {
-            if (args.length < 3) {
-                sender.sendRichMessage("<gold>Preț combustibil:</gold> <white>"
-                        + String.format(Locale.ROOT, "%.2f", fuelStations.pricePerPercent())
-                        + " per 1% din rezervor</white>"
-                        + (fuelStations.isPriced() ? "" : " <gray>(Vault indisponibil, combustibilul e gratuit)</gray>"));
-                return;
-            }
-            if (!sender.hasPermission("vehicle.admin")) {
-                sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
-                return;
-            }
-            try {
-                double value = Double.parseDouble(args[2]);
-                if (value < 0.0D) {
-                    sender.sendRichMessage("<red>Prețul nu poate fi negativ.</red>");
-                    return;
-                }
-                fuelStations.setPricePerPercent(value);
-                sender.sendRichMessage("<green>Preț actualizat la</green> <white>"
-                        + String.format(Locale.ROOT, "%.2f", value) + "</white> <green>per 1% din rezervor.</green>");
-            } catch (NumberFormatException exception) {
-                sender.sendRichMessage("<red>Utilizare: /vehicle station price <valoare></red>");
-            }
-            return;
-        }
-        if (!(sender instanceof Player player)) {
-            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
-            return;
-        }
-        if (!sender.hasPermission("vehicle.admin")) {
-            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
-            return;
-        }
-        switch (action) {
-            case "create" -> {
-                RayTraceResult trace = player.rayTraceBlocks(6.0D);
-                Block target = trace == null ? null : trace.getHitBlock();
-                BlockFace hitFace = trace == null ? null : trace.getHitBlockFace();
-                if (target == null || hitFace == null) {
-                    player.sendRichMessage("<red>Privește spre un bloc, la maximum 6 blocuri distanță.</red>");
-                    return;
-                }
-                Block placement = target.getRelative(hitFace);
-                if (fuelStations.createStation(placement, player)) {
-                    player.sendRichMessage("<green>Pompă de alimentare creată la " + placement.getX()
-                            + ", " + placement.getY() + ", " + placement.getZ() + ".</green>");
-                } else {
-                    player.sendRichMessage("<yellow>Acolo este deja o pompă de alimentare.</yellow>");
-                }
-            }
-            case "remove" -> {
-                if (fuelStations.removeNearestStation(player.getLocation(), 6.0D)) {
-                    player.sendRichMessage("<green>Cea mai apropiată pompă a fost eliminată.</green>");
-                } else {
-                    player.sendRichMessage("<red>Nu există nicio pompă la mai puțin de 6 blocuri.</red>");
-                }
-            }
-            default -> player.sendRichMessage(
-                    "<yellow>Utilizare: /vehicle station <create|remove|list|price [valoare]></yellow>");
-        }
     }
 
     private void spawn(CommandSender sender, String[] args) {
@@ -226,23 +146,19 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " station <create|remove|list|price></yellow> <gray>- gestionează pompele de alimentare</gray>");
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "list", "save", "pack", "station"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
             List<String> types = new ArrayList<>(LandVehicleSpec.ids());
             types.addAll(TrailerSpec.ids());
             types.sort(String::compareTo);
             return filter(types, args[1]);
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("station")) {
-            return filter(List.of("create", "remove", "list", "price"), args[1]);
         }
         return List.of();
     }
