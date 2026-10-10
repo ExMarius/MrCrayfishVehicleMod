@@ -186,7 +186,13 @@ public final class GasPumpManager {
         if (isPump(block)) {
             return false;
         }
-        BlockFace facing = cardinalFacing(player);
+        // The stored "facing" is the side the hose/nozzle bracket ends up on (it's fed
+        // straight into GasPumpRig's body rotation), so it needs to point TOWARD the player
+        // who placed it -- the opposite of their own look direction -- exactly like vanilla
+        // orients a placed furnace/dispenser's front face. Using the raw look direction here
+        // put the bracket on the far side of the block from whoever placed it, forcing the
+        // hose to bend all the way around the body to reach them.
+        BlockFace facing = cardinalFacing(player).getOppositeFace();
         StoredGasPump pump = new StoredGasPump(UUID.randomUUID(), block.getWorld().getUID(),
                 block.getX(), block.getY(), block.getZ(), facing);
         pumps.put(pump.id(), pump);
