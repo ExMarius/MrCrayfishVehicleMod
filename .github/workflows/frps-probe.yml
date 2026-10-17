@@ -1,0 +1,53 @@
+name: FRP server probe
+
+on:
+  workflow_dispatch:
+    inputs:
+      host:
+        description: "frps host (IP sau domeniu) de verificat"
+        required: true
+        type: string
+      ports:
+        description: "porturi TCP separate prin virgulă"
+        required: false
+        default: "7000,25565,8081"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probe frps reachability
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: TCP reachability
+        env:
+          HOST: ${{ inputs.host }}
+          PORTS: ${{ inputs.ports }}
+        run: |
+          set -uo pipefail
+          echo "Probing $HOST ($PORTS) ..."
+          IFS=',' read -ra arr <<< "$PORTS"
+          for p in "${arr[@]}"; do
+            p="${p//[[:space:]]/}"
+            [ -n "$p" ] || continue
+            if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/$p" 2>/dev/null; then
+              echo "PORT $p: OPEN"
+            else
+              echo "PORT $p: CLOSED or FILTERED"
+            fi
+          done
+
+      - name: Ping
+        env:
+          HOST: ${{ inputs.host }}
+        run: ping -c 3 -W 3 "$HOST" || echo "ICMP: no reply (some hosts block ping; not decisive)"
+
+      - name: HTTP probe for web panel
+        env:
+          HOST: ${{ inputs.host }}
+        run: |
+          code=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" "http://$HOST:8081/healthz" 2>/dev/null || echo "000")
+          echo "GET http://$HOST:8081/healthz -> HTTP $code"
