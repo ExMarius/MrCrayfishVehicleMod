@@ -42,6 +42,15 @@ jobs:
           }
           one_line "$D"
 
+      - name: Dump ufw + auto-fix reguli (22/25565/8081)
+        run: |
+          U=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$VM_USER@$VM_HOST" 'sudo ufw status | tr "\n" ";" ; sudo ufw allow 22/tcp >/dev/null; sudo ufw allow 25565/tcp >/dev/null; sudo ufw allow 8081/tcp >/dev/null; sudo ufw reload >/dev/null; echo UFW-REPARAT' 2>&1) || true
+          echo "$U"
+          v="${U//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+          echo "::notice title=UFW::${v}"
+          sleep 3
+
       - name: Porturi din exterior
         run: |
           for p in 22 25565 8081; do
