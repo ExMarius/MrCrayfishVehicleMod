@@ -38,27 +38,76 @@ jobs:
             echo "PORT 7000 (frps control): CLOSED or FILTERED"; exit 1
           fi
 
-      - name: "port-25565 minecraft proxy"
-        id: p25565
+      - name: "minecraft-25565 server-list-ping"
+        id: mcping
         continue-on-error: true
         run: |
-          if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/25565" 2>/dev/null; then
-            echo "PORT 25565 (minecraft proxy): OPEN (a backend is connected!)"
-          else
-            echo "PORT 25565 (minecraft proxy): CLOSED or FILTERED (no frpc backend)"; exit 1
-          fi
+          python3 - "$HOST" 25565 <<'PYEOF'
+          import json, socket, sys
 
-      - name: "port-8081 web panel proxy"
-        id: p8081
+          def write_varint(v):
+              out = bytearray()
+              while True:
+                      t = v & 0x7F
+                      v >>= 7
+                      if v: out.append(t | 0x80)
+                      else:
+                          out.append(t); break
+              return bytes(out)
+
+          def read_varint(s):
+              n = 0; sh = 0
+              while True:
+                  b = s.recv(1)
+                  if not b: raise IOError("eof")
+                  n |= (b[0] & 0x7F) << sh
+                  if not b[0] & 0x80: break
+                  sh += 7
+              return n
+
+          host, port = sys.argv[1], int(sys.argv[2])
+          try:
+              s = socket.create_connection((host, port), timeout=6)
+          except OSError as e:
+              print(f"25565: TCP closed/filtered ({e}); no backend connected")
+              sys.exit(1)
+          addr = host.encode()
+          hs = write_varint(0) + write_varint(47) + write_varint(len(addr)) + addr + port.to_bytes(2, "big") + write_varint(1)
+          s.sendall(write_varint(len(hs)) + hs)
+          s.sendall(write_varint(1) + write_varint(0))
+          s.settimeout(6)
+          read_varint(s); read_varint(s)
+          ln = read_varint(s)
+          data = b""
+          while len(data) < ln:
+              chunk = s.recv(ln - len(data))
+              if not chunk: break
+              data += chunk
+          try:
+              d = json.loads(data)
+          except ValueError:
+              print("25565: TCP open but NOT a Minecraft server (garbage response)")
+              sys.exit(1)
+          ver = d.get("version", {})
+          pl = d.get("players", {})
+          motd = d.get("description")
+          if isinstance(motd, dict): motd = motd.get("text", str(motd))
+          print(f"MINECRAFT ONLINE: {ver.get('name')} (protocol {ver.get('protocol')})")
+          print(f"Players: {pl.get('online')}/{pl.get('max')}")
+          print(f"MOTD: {str(motd)[:100]}")
+          PYEOF
+
+      - name: "panel-8081 http probe"
+        id: panel
         continue-on-error: true
         run: |
-          if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/8081" 2>/dev/null; then
-            echo "PORT 8081 (web panel proxy): OPEN"
-          else
-            echo "PORT 8081 (web panel proxy): CLOSED or FILTERED (no frpc backend)"; exit 1
-          fi
-          code=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" "http://$HOST:8081/healthz" 2>/dev/null || echo "000")
-          echo "GET http://$HOST:8081/healthz -> HTTP $code"
+          code=$(curl -sS -m 8 -o /tmp/panel-body -w "%{http_code}" "http://$HOST:8081/" 2>/dev/null || echo "000")
+          echo "GET http://$HOST:8081/ -> HTTP $code"
+          head -c 300 /tmp/panel-body 2>/dev/null || true
+          echo
+          code_h=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" "http://$HOST:8081/healthz" 2>/dev/null || echo "000")
+          echo "GET http://$HOST:8081/healthz -> HTTP $code_h"
+          [ "$code" != "000" ]
 
       - name: "icmp ping"
         id: ping
@@ -71,10 +120,10 @@ jobs:
         run: |
           {
             echo "### Rezultat probe $HOST"
-            echo "| Verificare | Rezultat |"
+            echo "| Verificare | Rezultat (success = OK) |"
             echo "|---|---|"
             echo "| frps control (7000) | ${{ steps.p7000.conclusion }} |"
-            echo "| minecraft proxy (25565) | ${{ steps.p25565.conclusion }} |"
-            echo "| web panel (8081) | ${{ steps.p8081.conclusion }} |"
+            echo "| minecraft SLP (25565) | ${{ steps.mcping.conclusion }} |"
+            echo "| panou web HTTP (8081) | ${{ steps.panel.conclusion }} |"
             echo "| ping | ${{ steps.ping.conclusion }} |"
           } >> "$GITHUB_STEP_SUMMARY"
