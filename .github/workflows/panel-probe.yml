@@ -98,3 +98,4 @@ jobs:
           git add probe-result.txt
           git commit -m "Probe result [skip ci]" || true
           git push origin "HEAD:arena/2f9f7b9e-mrcrayfishvehiclemod" || echo "::warning::push rezultat esuat"
+# retry marker
