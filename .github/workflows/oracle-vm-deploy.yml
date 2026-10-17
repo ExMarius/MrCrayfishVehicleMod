@@ -88,11 +88,18 @@ jobs:
           mkdir -p ~/.ssh && chmod 700 ~/.ssh
           printf '%s\n' "$ORACLE_VM_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
           printf '%s\n' "$ORACLE_VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          if ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
-               "$ORACLE_VM_USER@$ORACLE_VM_HOST" 'echo SSH-OK'; then
+          OUT=$(ssh -v -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes -o ConnectTimeout=10 \
+               "$ORACLE_VM_USER@$ORACLE_VM_HOST" 'echo SSH-OK' 2>&1) && RC=0 || RC=1
+          if [ "$RC" = 0 ]; then
             echo "::notice title=DEPLOY::SSH: conectare reușită"
           else
-            echo "::error title=DEPLOY::SSH eșuat — verifică cheia/known_hosts/host sau IP-ul"
+            REASON=$(echo "$OUT" | grep -Eo 'Permission denied \(publickey[^)]*\)|Host key verification failed[^.]*|Connection timed out[^.]*|Connection refused[^.]*|No route to host[^.]*|Load key[^.]*' | tail -1)
+            emit() {
+              local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+              echo "::error title=DEPLOY-SSH::${v}"
+            }
+            emit "eșuat: ${REASON:-motiv necunoscut (vezi logul run-ului)}"
+            echo "$OUT" | tail -30
             exit 1
           fi
 
