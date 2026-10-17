@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   check:
-    name: Sunt deschise 25565/8081 din exterior?
+    name: Verific 25565 si 8081 din exterior
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
