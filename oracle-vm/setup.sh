@@ -51,7 +51,7 @@ systemctl stop snapd snapd.socket 2>/dev/null || true
 apt-get update -qq
 apt-get purge -y -qq snapd >/dev/null 2>&1 || true
 apt-get autoremove -y -qq --purge >/dev/null 2>&1 || true
-apt-get install -y -qq openjdk-21-jre-headless screen curl git python3 logrotate ca-certificates ufw >/dev/null
+apt-get install -y -qq openjdk-21-jre-headless screen curl git python3 logrotate ca-certificates ufw acl >/dev/null
 update-alternatives --install /usr/bin/java java /usr/lib/jvm/java-21-openjdk-amd64/bin/java 2100 >/dev/null || true
 update-alternatives --set java /usr/lib/jvm/java-21-openjdk-amd64/bin/java >/dev/null
 
@@ -207,6 +207,12 @@ $ROOT/logs/*.log {
 }
 EOF
 chown -R "$APP:$APP" "$ROOT"
+# SFTP-ul userului ubuntu (cheia din wizard) trebuie să poată edita fișierele
+# serverului fără sudo: grup + ACL default care dă serverului write chiar și
+# pe fișierele nou-urcate ca ubuntu. Setup fără sudo pe remoter:
+if id -u ubuntu >/dev/null 2>&1; then usermod -aG "$APP" ubuntu; fi
+setfacl -R -m "g:$APP:rwX" "$ROOT"
+setfacl -R -d -m "g:$APP:rwX" "$ROOT"
 systemctl daemon-reload
 systemctl enable --now mc-ports.service
 systemctl enable --now mcvehicles-panel.service
