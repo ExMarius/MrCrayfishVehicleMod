@@ -1,0 +1,93 @@
+name: OCI fix (deschide porturile 25565/8081 în Security List)
+
+on:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/workflows/vm-oci-fix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  oci-fix:
+    name: Adaug regulile TCP 25565 + 8081 prin API-ul OCI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check secrets
+        id: guard
+        env:
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
+        run: |
+          if [ -z "${OCI_PRIVATE_KEY:-}" ] || [ -z "${OCI_CONFIG:-}" ]; then
+            echo "::error title=OCI-CREDENTIALS::lipsesc secretele OCI_PRIVATE_KEY si/sau OCI_CONFIG — vezi mesajul din conversatie"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else echo "enabled=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Write OCI config + key
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          OCI_PRIVATE_KEY: ${{ secrets.OCI_PRIVATE_KEY }}
+          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
+        run: |
+          mkdir -p ~/.oci && chmod 700 ~/.oci
+          printf '%s\n' "$OCI_PRIVATE_KEY" > ~/.oci/key.pem && chmod 600 ~/.oci/key.pem
+          {
+            echo '[DEFAULT]'
+            echo "$OCI_CONFIG" | tr -d '\r' | grep -Ei '^(user|fingerprint|tenancy|region)='
+            echo 'key_file=~/.oci/key.pem'
+          } > ~/.oci/config && chmod 600 ~/.oci/config
+          head -c 9 ~/.oci/key.pem  # expecta -----BEGIN
+          grep -c '=' ~/.oci/config
+
+      - name: Install OCI CLI
+        if: steps.guard.outputs.enabled == 'true'
+        run: pip install --quiet oci-cli
+
+      - name: Rezolv subnet + security list al VM-ului
+        id: ids
+        if: steps.guard.outputs.enabled == 'true'
+        run: |
+          export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=true
+          TEN=$(grep '^tenancy=' ~/.oci/config | cut -d= -f2)
+          VNIC=$(oci compute vnic-attachment list -c "$TEN" --instance-id "ocid1.instance.oc1.eu-zurich-1.an5heljruv7vo2qczuuyamecffokhhwkch4a66cf3ijz4n65q4ps35bcaqjq" --query 'data[0]."vnic-id"' --raw-output) \
+            || { echo "::error title=OCI-AUTH::autentificarea a esuat — verifica user/fingerprint/tenancy si cheia privata"; exit 1; }
+          SUB=$(oci network vnic get --vnic-id "$VNIC" --query 'data."subnet-id"' --raw-output)
+          SL=$(oci network subnet get --subnet-id "$SUB" --query 'data."security-list-ids"[0]' --raw-output)
+          echo "sl=$SL" >> "$GITHUB_OUTPUT"
+          echo "::notice title=OCI::VM rezolvat (vnic+subnet+security-list)"
+
+      - name: Adaug regulile (pastrez cele existente)
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          SL: ${{ steps.ids.outputs.sl }}
+        run: |
+          export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=true
+          CUR=$(oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"' --raw-output)
+          NEW=$(jq -c '. + [
+            {"protocol":"6","source":"0.0.0.0/0","stateless":false,"description":"minecraft","tcp-options":{"destination-port-range":{"min":25565,"max":25565}}},
+            {"protocol":"6","source":"0.0.0.0/0","stateless":false,"description":"mc-panel","tcp-options":{"destination-port-range":{"min":8081,"max":8081}}}
+          ] | unique_by(.source, (.["tcp-options"]["destination-port-range"]["min"] // 0))' <<<"$CUR")
+          oci network security-list update --security-list-id "$SL" --ingress-rules "$NEW" --force >/dev/null
+          oci network security-list get --security-list-id "$SL" \
+            --query 'data."ingress-security-rules"[?protocol==`6`].{src:source,min:("tcp-options"."destination-port-range".min)}' --output table
+          echo "::notice title=OCI-SL::reguli adaugate in security list"
+
+      - name: Verific final din exterior (daca regulile s-au propagat)
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+        run: |
+          sleep 20
+          for p in 25565 8081; do
+            if timeout 6 bash -c "echo > /dev/tcp/$ORACLE_VM_HOST/$p" 2>/dev/null; then
+              echo "::notice title=PORT-$p::DESCHIS din exterior (propagarea a mers)"
+            else
+              echo "::error title=PORT-$p::inca inchis (regulile pot intarzia 1-2 min — re-rulez verificarea)"
+            fi
+          done
+          exit 0
