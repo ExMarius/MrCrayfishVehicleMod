@@ -1,0 +1,10 @@
+[notice] healthz OK
+[notice] login OK (sesiune+csrf)
+[notice] api/status: HTTP 200 | "server": "stopped" "pid": null "maxPlayers": null 
+[notice] api/logs(conșola live): HTTP 200 | octeti=8911 ultima=[21:35:19] [Server thread/INFO]: Done (143.868s)! For help, type "help"
+[notice] api/comanda(list): HTTP 409 | "ok": false, "message": "Serverul este oprit." "error": "Serverul este oprit." 
+[error] BARA DE COMANDA RUPE: HTTP 409 "ok": false, "message": "Serverul este oprit." "error": "Serverul este oprit." 
+[notice] api/control(restart): HTTP 202 | {"ok": true, "message": "Operația a fost acceptată.", "error": null}
+[notice] dupa restart: server=running → BUTOANE OK
+[notice] comanda post-restart: OK
+done-marker
