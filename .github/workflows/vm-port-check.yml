@@ -61,6 +61,23 @@ jobs:
           echo "::notice title=IPTABLES::${v}"
           sleep 5
 
+      - name: SFTP write diag + auto-fix ACL (plugins upload)
+        run: |
+          U=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$VM_USER@$VM_HOST" '
+                echo "GRUPURI-UBUNTU: $(id ubuntu)"
+                echo "ACL-INAINTE:"; getfacl -p /opt/mcserver/mc/plugins 2>/dev/null | grep -E "group:|group:mcserver|mask" || echo "(fara ACL-uri)"
+                sudo usermod -aG mcserver ubuntu
+                sudo setfacl -R -m g:mcserver:rwX,m::rwX /opt/mcserver
+                sudo setfacl -R -d -m g:mcserver:rwX,m::rwX /opt/mcserver
+                sudo -u ubuntu touch /opt/mcserver/mc/plugins/.sftp-write-test \
+                  && { rm -f /opt/mcserver/mc/plugins/.sftp-write-test; echo WRITE-TEST-OK; } \
+                  || echo WRITE-TEST-FAIL
+              ' 2>&1) || U="SSH-EȘUAT: $(echo "$U" | tail -2)"
+          echo "$U"
+          v="${U//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+          echo "::notice title=SFTP-ACL::${v}"
+
       - name: Porturi din exterior
         run: |
           for p in 22 25565 8081; do
