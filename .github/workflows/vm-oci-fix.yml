@@ -61,7 +61,7 @@ jobs:
           echo "sl=$SL" >> "$GITHUB_OUTPUT"
           echo "::notice title=OCI::VM rezolvat (vnic+subnet+security-list)"
 
-      - name: Adaug regulile (pastrez cele existente)
+      - name: Adaug regulile (pastrez cele existente; cheile JSON sunt kebab-case!)
         if: steps.guard.outputs.enabled == 'true'
         env:
           SL: ${{ steps.ids.outputs.sl }}
@@ -73,11 +73,18 @@ jobs:
           }
           CUR=$(oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"' --raw-output) \
             || { emit "GET reguli esuat"; exit 1; }
-          NEW=$(jq -c '. + [
-            {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"description":"minecraft","tcpOptions":{"destinationPortRange":{"min":25565,"max":25565}}},
-            {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"description":"mc-panel","tcpOptions":{"destinationPortRange":{"min":8081,"max":8081}}}
-          ] | unique_by(.source, (.["tcpOptions"]["destinationPortRange"]["min"] // 0))' <<<"$CUR") \
-            || { emit "jq merge esuat"; exit 1; }
+          echo "reguli curente: $(echo "$CUR" | jq length)"
+          # ATENTIE: cheile in JSON-ul CLI sunt kebab-case ("tcp-options", "is-stateless"…)
+          NEW=$(jq -c '
+            . + [
+              {"protocol":"6","source":"0.0.0.0/0","source-type":"CIDR_BLOCK","is-stateless":false,"description":"ssh","tcp-options":{"destination-port-range":{"min":22,"max":22}}},
+              {"protocol":"6","source":"0.0.0.0/0","source-type":"CIDR_BLOCK","is-stateless":false,"description":"minecraft","tcp-options":{"destination-port-range":{"min":25565,"max":25565}}},
+              {"protocol":"6","source":"0.0.0.0/0","source-type":"CIDR_BLOCK","is-stateless":false,"description":"mc-panel","tcp-options":{"destination-port-range":{"min":8081,"max":8081}}}
+            ]
+            | unique_by(.source, .protocol, (.["tcp-options"]["destination-port-range"].min // 0))
+          ' <<<"$CUR") || { emit "jq merge esuat"; exit 1; }
+          DUMP=$(echo "$NEW" | jq -r '.[] | "\(.source) p\(.protocol) min=\(.["tcp-options"]["destination-port-range"].min // "-") desc=\(.description // "-")"' | tr '\n' ';')
+          echo "REGULI-TO-BE: $DUMP"
           printf '%s' "$NEW" > /tmp/ingress.json
           UPD=$(oci network security-list update --security-list-id "$SL" --ingress-security-rules file:///tmp/ingress.json --force 2>&1) && RC=0 || RC=$?
           if [ "$RC" != 0 ]; then
@@ -86,9 +93,7 @@ jobs:
             echo "$UPD" | tail -15
             exit "$RC"
           fi
-          oci network security-list get --security-list-id "$SL" \
-            --query 'data."ingress-security-rules"[?protocol==`6`].{src:source,min:("tcpOptions"."destinationPortRange".min)}' --output table
-          echo "::notice title=OCI-SL::reguli adaugate in security list"
+          echo "::notice title=OCI-SL::reguli scrise OK | $DUMP"
 
       - name: Verific final din exterior (dupa propagare)
         if: steps.guard.outputs.enabled == 'true'
@@ -98,9 +103,9 @@ jobs:
         run: |
           export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=true
           PORTS=$(oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"' --raw-output \
-                | jq -r '[.[] | (.tcpOptions.destinationPortRange.min // "x")] | unique | join(",")')
-          echo "::notice title=SL-REGULI::porturi min in SL ${SL##*.}: $PORTS"
-          echo "Astept propagarea (90s)…"; sleep 90
+                | jq -r '.[] | "\(.source):min\(.["tcp-options"]["destination-port-range"].min // "-")"' | sort -u | tr '\n' ' ')
+          echo "::notice title=SL-REGULI::stare SL ${SL##*.} → $PORTS"
+          echo "Astept propagarea (60s)…"; sleep 60
           for p in 25565 8081; do
             if timeout 6 bash -c "echo > /dev/tcp/$ORACLE_VM_HOST/$p" 2>/dev/null; then
               echo "::notice title=PORT-$p::DESCHIS din exterior (propagarea a mers)"
