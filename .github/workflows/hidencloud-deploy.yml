@@ -54,7 +54,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
-      - name: Check secret
+      - name: Check secrets present
         id: guard
         env:
           HIDENCLOUD_API_KEY: ${{ secrets.HIDENCLOUD_API_KEY }}
