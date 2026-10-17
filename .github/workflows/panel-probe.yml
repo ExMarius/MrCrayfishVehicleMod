@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   probe:
@@ -17,15 +17,22 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v5
+
       - name: Healthz + login + status + logs + comanda + butoane
         env:
           ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
         run: |
           set +e
           B="http://$ORACLE_VM_HOST:8081"
+          : > /tmp/probe-results.txt
+          RESULT() { # $1=nivel $2=mesaj — scriem ÎN FIȘIER (l-am citit apoi din repo)
+            echo "[$1] $2" | tee -a /tmp/probe-results.txt
+          }
           emit() {
             local v="${2//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
             echo "::${1}title=PANEL::${v:0:700}"
+            RESULT "$1" "${2:0:700}"
           }
           api() { # metoda cale json_extra...
             local m="$1" p="$2"; shift 2
@@ -80,4 +87,14 @@ jobs:
           else
             emit error "serverul nu a revenit running in 6 min dupa restart"
           fi
-          exit 0
+          echo "done-marker" >> /tmp/probe-results.txt
+
+      - name: Comit rezultatul probei in repo (il citesc direct din git)
+        if: always()
+        run: |
+          git config user.name "panel-probe[bot]"
+          git config user.email "panel-probe[bot]@users.noreply.github.com"
+          cp /tmp/probe-results.txt probe-result.txt 2>/dev/null || echo "[error] step-ul principal nu a lasat rezultate / fisier gol" > probe-result.txt
+          git add probe-result.txt
+          git commit -m "Probe result [skip ci]" || true
+          git push origin "HEAD:arena/2f9f7b9e-mrcrayfishvehiclemod" || echo "::warning::push rezultat esuat"
