@@ -77,6 +77,25 @@ jobs:
           name: plugin-jar
           path: dist
 
+      - name: SSH connectivity precheck
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          ORACLE_VM_USER: ${{ secrets.ORACLE_VM_USER }}
+          ORACLE_VM_SSH_KEY: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          ORACLE_VM_KNOWN_HOSTS: ${{ secrets.ORACLE_VM_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$ORACLE_VM_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$ORACLE_VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          if ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+               "$ORACLE_VM_USER@$ORACLE_VM_HOST" 'echo SSH-OK'; then
+            echo "::notice title=DEPLOY::SSH: conectare reușită"
+          else
+            echo "::error title=DEPLOY::SSH eșuat — verifică cheia/known_hosts/host sau IP-ul"
+            exit 1
+          fi
+
       - name: Deploy + restart
         if: steps.guard.outputs.enabled == 'true'
         env:
