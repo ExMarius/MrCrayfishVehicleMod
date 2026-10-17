@@ -42,13 +42,23 @@ jobs:
           }
           one_line "$D"
 
-      - name: Dump ufw + auto-fix reguli (22/25565/8081)
+      - name: Dump ufw + iptables INPUT, auto-fix REJECT-ul din imaginea OCI
         run: |
           U=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
-              "$VM_USER@$VM_HOST" 'sudo ufw status | tr "\n" ";" ; sudo ufw allow 22/tcp >/dev/null; sudo ufw allow 25565/tcp >/dev/null; sudo ufw allow 8081/tcp >/dev/null; sudo ufw reload >/dev/null; echo UFW-REPARAT' 2>&1) || true
+              "$VM_USER@$VM_HOST" '
+                IN=$(sudo iptables -L INPUT -n --line-numbers | head -12 | tr "\n" ";")
+                echo "IPTABLES-INPUT: $IN"
+                for p in 25565 8081; do
+                  sudo iptables -C INPUT -p tcp --dport $p -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null \
+                    || sudo iptables -I INPUT -p tcp --dport $p -m conntrack --ctstate NEW -j ACCEPT
+                done
+                # persistență peste reboot:
+                if command -v netfilter-persistent >/dev/null 2>&1; then sudo netfilter-persistent save >/dev/null 2>&1 || true; fi
+                echo IPTABLES-FIX-DONE
+              ' 2>&1) || true
           echo "$U"
           v="${U//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
-          echo "::notice title=UFW::${v}"
+          echo "::notice title=IPTABLES::${v}"
           sleep 3
 
       - name: Porturi din exterior
