@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   oci-fix:
-    name: Adaug regulile TCP 25565 + 8081 prin API-ul OCI
+    name: Adaug regulile TCP 25565 si 8081 prin API-ul OCI
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
