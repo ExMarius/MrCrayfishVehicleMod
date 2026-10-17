@@ -31,32 +31,17 @@ jobs:
           echo "VM_USER=$ORACLE_VM_USER" >> "$GITHUB_ENV"
           echo "VM_HOST=$ORACLE_VM_HOST" >> "$GITHUB_ENV"
 
+      - uses: actions/checkout@v5
+
       - name: Pornesc listeneri temporari pe VM (ufw off 2 min)
         run: |
+          scp -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            oracle-vm/probe_listener.py "$VM_USER@$VM_HOST:/tmp/probe_listener.py"
           ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
-            "$VM_USER@$VM_HOST" '
-              sudo ufw --force disable >/dev/null 2>&1 || true
-              nohup timeout 130 python3 - <<PYEOF >/tmp/probe-listen.log 2>&1 &
-import socket, select, time
-ports = [80,443,3000,3478,7000,7777,8000,8080,8443,8888,9000,19132,27015]
-socks=[]
-for p in ports:
-    s=socket.socket()
-    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    try:
-        s.bind(("0.0.0.0",p)); s.listen(1); socks.append(s)
-    except OSError:
-        s.close()
-end=time.time()+130
-while time.time()<end and socks:
-    r,_,_=select.select(socks,[],[],1)
-    for s in r:
-        try:
-            c,_=s.accept(); c.close()
-        except OSError:
-            pass
-PYEOF
-              sleep 2; echo "listeners-up"'
+            "$VM_USER@$VM_HOST" \
+            'sudo ufw --force disable >/dev/null 2>&1 || true
+             nohup timeout 130 python3 /tmp/probe_listener.py >/tmp/probe-listen.log 2>&1 &
+             sleep 2; echo "listeners-up"'
           echo "::notice title=PROBE::listeneri porniți pe VM (fereastră de 2 min)"
 
       - name: Testez din exterior (de pe runner GitHub)
