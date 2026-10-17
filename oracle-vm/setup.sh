@@ -76,7 +76,7 @@ echo "==> [3/9] Utilizator de sistem '$APP' + directoare…"
 id -u "$APP" >/dev/null 2>&1 || useradd --system --home "$ROOT" --shell /usr/sbin/nologin "$APP"
 mkdir -p "$ROOT"/{bin,panel,logs,mc,frp}
 
-echo "==> [4/9] Fișiere din repo (scripturi + panel.py + systemd + config reglat)…"
+echo "==> [4/9] (v2 zombie-safe)" Fișiere din repo (scripturi + panel.py + systemd + config reglat)…"
 TMPDIR_CLONE=$(mktemp -d)
 git clone --depth 1 --branch "${REPO_BRANCH}" --quiet "https://github.com/$REPO.git" "$TMPDIR_CLONE/repo"
 cp "$TMPDIR_CLONE"/repo/oracle-panel/scripts/*.sh "$ROOT/bin/"
