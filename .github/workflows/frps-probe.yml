@@ -30,8 +30,8 @@ jobs:
       - name: TCP reachability
         env:
           # On push runs there are no dispatch inputs; fall back to the known host.
-          HOST: ${{ inputs.host || '140.238.218.210' }}
-          PORTS: ${{ inputs.ports || '7000,25565,8081' }}
+          HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
+          PORTS: ${{ github.event.inputs.ports || '7000,25565,8081' }}
         run: |
           set -uo pipefail
           echo "Probing $HOST ($PORTS) ..."
@@ -48,12 +48,12 @@ jobs:
 
       - name: Ping
         env:
-          HOST: ${{ inputs.host || '140.238.218.210' }}
+          HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
         run: ping -c 3 -W 3 "$HOST" || echo "ICMP: no reply (some hosts block ping; not decisive)"
 
       - name: HTTP probe for web panel
         env:
-          HOST: ${{ inputs.host || '140.238.218.210' }}
+          HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
         run: |
           code=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" "http://$HOST:8081/healthz" 2>/dev/null || echo "000")
           echo "GET http://$HOST:8081/healthz -> HTTP $code"
