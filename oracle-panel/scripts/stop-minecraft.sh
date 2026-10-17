@@ -36,6 +36,15 @@ if [ -n "$(sessions)" ]; then
   kill -KILL "$screen_pid" 2>/dev/null || true
 fi
 screen -wipe >/dev/null 2>&1 || true
+# Urmărire: java poate fi rămasă orfană dacă a ignorat comanda "stop" (blocată).
+SERVER="$(cd "$(dirname "${BASH_SOURCE[0]}")/../mc" && pwd)"
+for pid in $(pgrep -x java 2>/dev/null || true); do
+  if [ "$(readlink -f "/proc/$pid/cwd" 2>/dev/null || true)" = "$SERVER" ]; then
+    kill -TERM "$pid" 2>/dev/null || true
+    sleep 5
+    kill -KILL "$pid" 2>/dev/null || true
+  fi
+done
 if [ -n "$(sessions)" ]; then
   echo "Sesiunea Minecraft nu a putut fi închisă." >&2
   exit 1

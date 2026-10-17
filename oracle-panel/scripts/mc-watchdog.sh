@@ -5,8 +5,11 @@
 #  - NU s-a oprit intenționat din panou (markerul .manual-stop nu există),
 #  - listenerul 25565 a dispărut (java a murit în screen, ex. crash/OOM).
 set -u
-systemctl is-active --quiet minecraft.service || exit 0
-[ "$(systemctl show -p ActiveState --value minecraft.service)" = "active" ] || exit 0
+systemctl is-active --quiet minecraft.service || FAILED_STATE=$(systemctl show -p ActiveState --value minecraft.service)
+STATE=$(systemctl show -p ActiveState --value minecraft.service)
+# Acoperim și starea "failed" (restart eșuat repetat) — start scriptul curăță
+# și javaughele orfane, deci batem la sigur.
+case "$STATE" in active|failed) ;; *) exit 0;; esac
 [ ! -e /opt/mcserver/logs/.manual-stop ] || exit 0
 A=$(systemctl show minecraft.service -p ActiveEnterTimestampMonotonic --value)
 B=$(cut -d. -f1 /proc/uptime)

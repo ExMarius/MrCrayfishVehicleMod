@@ -78,6 +78,21 @@ jobs:
           v="${U//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
           echo "::notice title=SFTP-ACL::${v}"
 
+      - name: Scoatem spark de pe VM (bugetul RAM nu il duce la boot)
+        run: |
+          R=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$VM_USER@$VM_HOST" '
+                if ls /opt/mcserver/mc/plugins/spark* >/dev/null 2>&1; then
+                  mkdir -p /opt/mcserver/plugins-disabled
+                  mv /opt/mcserver/mc/plugins/spark* /opt/mcserver/plugins-disabled/ 2>/dev/null
+                  echo "spark MUTAT in plugins-disabled (OOM la incubator)"
+                else
+                  echo "fara spark pe server (curat)"
+                fi' 2>&1) || R="SSH-EȘUAT"
+          echo "$R"
+          v="${R//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+          echo "::notice title=SPARK::${v}"
+
       - name: Restart java daca listenerul 25565 a disparut (OOM-watch)
         run: |
           R=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
