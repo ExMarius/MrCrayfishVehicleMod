@@ -67,14 +67,26 @@ jobs:
           SL: ${{ steps.ids.outputs.sl }}
         run: |
           export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=true
-          CUR=$(oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"' --raw-output)
+          emit() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::error title=OCI-SL::${v}"
+          }
+          CUR=$(oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"' --raw-output) \
+            || { emit "GET reguli esuat"; exit 1; }
           NEW=$(jq -c '. + [
-            {"protocol":"6","source":"0.0.0.0/0","stateless":false,"description":"minecraft","tcp-options":{"destination-port-range":{"min":25565,"max":25565}}},
-            {"protocol":"6","source":"0.0.0.0/0","stateless":false,"description":"mc-panel","tcp-options":{"destination-port-range":{"min":8081,"max":8081}}}
-          ] | unique_by(.source, (.["tcp-options"]["destination-port-range"]["min"] // 0))' <<<"$CUR")
-          oci network security-list update --security-list-id "$SL" --ingress-rules "$NEW" --force >/dev/null
+            {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"description":"minecraft","tcpOptions":{"destinationPortRange":{"min":25565,"max":25565}}},
+            {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"description":"mc-panel","tcpOptions":{"destinationPortRange":{"min":8081,"max":8081}}}
+          ] | unique_by(.source, (.["tcpOptions"]["destinationPortRange"]["min"] // 0))' <<<"$CUR") \
+            || { emit "jq merge esuat"; exit 1; }
+          UPD=$(oci network security-list update --security-list-id "$SL" --ingress-rules "$NEW" --force 2>&1) && RC=0 || RC=$?
+          if [ "$RC" != 0 ]; then
+            REASON=$(echo "$UPD" | grep -oE '"message": *"[^"]+"|"code": *"[^"]+"' | head -2 | tr '\n' ' ')
+            emit "update esuat rc=$RC | ${REASON:-$(echo "$UPD" | tail -1 | head -c 300)}"
+            echo "$UPD" | tail -15
+            exit "$RC"
+          fi
           oci network security-list get --security-list-id "$SL" \
-            --query 'data."ingress-security-rules"[?protocol==`6`].{src:source,min:("tcp-options"."destination-port-range".min)}' --output table
+            --query 'data."ingress-security-rules"[?protocol==`6`].{src:source,min:("tcpOptions"."destinationPortRange".min)}' --output table
           echo "::notice title=OCI-SL::reguli adaugate in security list"
 
       - name: Verific final din exterior (daca regulile s-au propagat)
