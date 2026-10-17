@@ -85,6 +85,7 @@ chmod +x "$ROOT"/bin/*.sh
 sed -i "s/-Xms512M -Xmx2G/-Xms${JAVA_XMS:-256M} -Xmx${JAVA_XMX:-640M}/" "$ROOT/bin/start-minecraft.sh"
 install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/minecraft.service /etc/systemd/system/
 install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/mcvehicles-panel.service /etc/systemd/system/
+install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/mc-ports.service /etc/systemd/system/
 [ -f "$ROOT/mc/server.properties" ] || install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/config/server.properties "$ROOT/mc/server.properties"
 mkdir -p "$ROOT/mc/config"
 [ -f "$ROOT/mc/config/paper-world-defaults.yml" ] || install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/config/paper-world-defaults.yml "$ROOT/mc/config/paper-world-defaults.yml"
@@ -178,12 +179,18 @@ if os.path.exists(old):
     os.remove(old)
 PYEOF
 
-echo "==> [8/9] Firewall (ufw): SSH + joc + panou…"
+echo "==> [8/9] Firewall: ufw + gaură în REJECT-ul implicit al imaginii Oracle…"
 ufw allow 22/tcp >/dev/null
 ufw allow "${GAME_PORT:-25565}/tcp" >/dev/null
 ufw allow "${PANEL_PORT:-8081}/tcp" >/dev/null
 echo "y" | ufw enable >/dev/null
-echo "   ufw: $(ufw status | head -1)"
+# Imaginea Ubuntu OCI are INPUT: ACCEPT tcp/22 apoi `REJECT all` ÎNAINTEA
+# lanțurilor ufw — ufw nu prinde șansa să accepte. Inserăm ACCEPT-uri deasupra:
+for p in 22 "${GAME_PORT:-25565}" "${PANEL_PORT:-8081}"; do
+  iptables -C INPUT -p tcp --dport "$p" -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null \
+    || iptables -I INPUT -p tcp --dport "$p" -m conntrack --ctstate NEW -j ACCEPT
+done
+echo "   ufw: $(ufw status | head -1); iptables: ACCEPT 22/${GAME_PORT:-25565}/${PANEL_PORT:-8081} insertate"
 echo "   ⚠️  Nu uita: aceleași 2 porturi trebuie deschise și în OCI (Security List) — vezi oracle-vm/README.md"
 
 echo "==> [9/9] Permisiuni, logrotate, servicii…"
@@ -201,6 +208,7 @@ $ROOT/logs/*.log {
 EOF
 chown -R "$APP:$APP" "$ROOT"
 systemctl daemon-reload
+systemctl enable --now mc-ports.service
 systemctl enable --now mcvehicles-panel.service
 systemctl enable --now minecraft.service
 sleep 8

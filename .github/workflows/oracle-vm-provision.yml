@@ -7,6 +7,8 @@ on:
     paths:
       - ".github/workflows/oracle-vm-provision.yml"
       - "oracle-vm/setup.sh"
+      - "oracle-vm/etc/**"
+      - "oracle-vm/config/**"
   workflow_dispatch:
 
 permissions:

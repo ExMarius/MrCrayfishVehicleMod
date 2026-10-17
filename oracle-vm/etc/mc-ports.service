@@ -1,0 +1,14 @@
+[Unit]
+Description=Accept iptables pentru porturile Minecraft/panel (gaura in REJECT-ul implicit al imaginii Oracle Ubuntu)
+After=ufw.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c '/usr/sbin/iptables -C INPUT -p tcp --dport 22    -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null || /usr/sbin/iptables -I INPUT -p tcp --dport 22    -m conntrack --ctstate NEW -j ACCEPT'
+ExecStart=/bin/sh -c '/usr/sbin/iptables -C INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null || /usr/sbin/iptables -I INPUT -p tcp --dport 25565 -m conntrack --ctstate NEW -j ACCEPT'
+ExecStart=/bin/sh -c '/usr/sbin/iptables -C INPUT -p tcp --dport 8081  -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null || /usr/sbin/iptables -I INPUT -p tcp --dport 8081  -m conntrack --ctstate NEW -j ACCEPT'
+
+[Install]
+WantedBy=multi-user.target
