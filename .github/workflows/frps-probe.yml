@@ -25,24 +25,34 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      # Each probe is its own always-running step so per-port results are
-      # readable both in the Actions UI and via the REST API step list,
-      # without needing access to log archives.
       - name: "port-7000 frps control"
-        id: p7000
         continue-on-error: true
+        env:
+          CHECK: p7000
         run: |
+          emit() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=PROBE-RESULT::$CHECK: $v"
+          }
           if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/7000" 2>/dev/null; then
             echo "PORT 7000 (frps control): OPEN"
+            emit "OPEN (frps rulează)"
           else
-            echo "PORT 7000 (frps control): CLOSED or FILTERED"; exit 1
+            echo "PORT 7000 (frps control): CLOSED"
+            emit "CLOSED-or-FILTERED (frps oprit sau firewall)"
+            exit 1
           fi
 
       - name: "minecraft-25565 server-list-ping"
-        id: mcping
         continue-on-error: true
+        env:
+          CHECK: mcping
         run: |
-          python3 - "$HOST" 25565 <<'PYEOF'
+          emit() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=PROBE-RESULT::$CHECK: $v"
+          }
+          OUT=$(python3 - "$HOST" 25565 <<'PYEOF'
           import json, socket, sys
 
           def write_varint(v):
@@ -69,7 +79,7 @@ jobs:
           try:
               s = socket.create_connection((host, port), timeout=6)
           except OSError as e:
-              print(f"25565: TCP closed/filtered ({e}); no backend connected")
+              print("OFFLINE|TCP closed (%s)" % e)
               sys.exit(1)
           addr = host.encode()
           hs = write_varint(0) + write_varint(47) + write_varint(len(addr)) + addr + port.to_bytes(2, "big") + write_varint(1)
@@ -86,44 +96,56 @@ jobs:
           try:
               d = json.loads(data)
           except ValueError:
-              print("25565: TCP open but NOT a Minecraft server (garbage response)")
+              print("GARBAGE|TCP open dar nu raspunde ca un server Minecraft")
               sys.exit(1)
           ver = d.get("version", {})
           pl = d.get("players", {})
           motd = d.get("description")
           if isinstance(motd, dict): motd = motd.get("text", str(motd))
-          print(f"MINECRAFT ONLINE: {ver.get('name')} (protocol {ver.get('protocol')})")
-          print(f"Players: {pl.get('online')}/{pl.get('max')}")
-          print(f"MOTD: {str(motd)[:100]}")
+          print("ONLINE|%s (proto %s)|jucatori %s/%s|motd %s" % (
+              ver.get("name"), ver.get("protocol"), pl.get("online"), pl.get("max"),
+              str(motd)[:80].replace("|", "/")))
           PYEOF
+          ) || RC=1
+          RC=${RC:-0}
+          echo "$OUT"
+          emit "$OUT"
+          [ "$RC" = "0" ] || exit 1
 
       - name: "panel-8081 http probe"
-        id: panel
         continue-on-error: true
+        env:
+          CHECK: panel
         run: |
-          code=$(curl -sS -m 8 -o /tmp/panel-body -w "%{http_code}" "http://$HOST:8081/" 2>/dev/null || echo "000")
-          echo "GET http://$HOST:8081/ -> HTTP $code"
-          head -c 300 /tmp/panel-body 2>/dev/null || true
-          echo
+          emit() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=PROBE-RESULT::$CHECK: $v"
+          }
+          code=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" "http://$HOST:8081/" 2>/dev/null || echo "000")
           code_h=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" "http://$HOST:8081/healthz" 2>/dev/null || echo "000")
-          echo "GET http://$HOST:8081/healthz -> HTTP $code_h"
-          [ "$code" != "000" ]
+          echo "/ -> HTTP $code ; /healthz -> HTTP $code_h"
+          emit "/=$code healthz=$code_h"
+          [ "$code" != "000" ] || exit 1
 
       - name: "icmp ping"
-        id: ping
         continue-on-error: true
+        env:
+          CHECK: ping
         run: |
-          ping -c 3 -W 3 "$HOST" || { echo "ICMP: no reply"; exit 1; }
+          emit() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=PROBE-RESULT::$CHECK: $v"
+          }
+          if ping -c 3 -W 3 "$HOST" >/dev/null 2>&1; then
+            echo "ping OK"
+            emit "replies"
+          else
+            echo "ICMP: no reply (Poate fi blocat de firewall — nu e decisiv)"
+            emit "no-reply"
+            exit 1
+          fi
 
       - name: summary
         if: always()
         run: |
-          {
-            echo "### Rezultat probe $HOST"
-            echo "| Verificare | Rezultat (success = OK) |"
-            echo "|---|---|"
-            echo "| frps control (7000) | ${{ steps.p7000.conclusion }} |"
-            echo "| minecraft SLP (25565) | ${{ steps.mcping.conclusion }} |"
-            echo "| panou web HTTP (8081) | ${{ steps.panel.conclusion }} |"
-            echo "| ping | ${{ steps.ping.conclusion }} |"
-          } >> "$GITHUB_STEP_SUMMARY"
+          echo "Vezi adnotările PROBE-RESULT ale acestui run pentru rezultatul fiecărei verificări." >> "$GITHUB_STEP_SUMMARY"
