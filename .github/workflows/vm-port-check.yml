@@ -34,7 +34,7 @@ jobs:
       - name: Diag pe VM (listeneri + ufw + servicii)
         run: |
           D=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
-              "$VM_USER@$VM_HOST" 'L25565=$(ss -tlnH "sport = :25565" | wc -l); L8081=$(ss -tlnH "sport = :8081" | wc -l); SVC=$(systemctl is-active minecraft),$(systemctl is-active mcvehicles-panel); UFW=$(sudo ufw status 2>/dev/null | head -1); WDG="e:$(systemctl is-enabled mc-watchdog.timer 2>/dev/null) a:$(systemctl is-active mc-watchdog.timer 2>/dev/null)"; echo "listen25565=$L25565 listen8081=$L8081 servicii=$SVC ufw=$UFW watchdog=$WDG"' 2>&1) || D="SSH-EȘUAT: $(echo "$D" | tail -1)"
+              "$VM_USER@$VM_HOST" 'L25565=$(ss -tlnH "sport = :25565" | wc -l); L8081=$(ss -tlnH "sport = :8081" | wc -l); SVC=$(systemctl is-active minecraft),$(systemctl is-active mcvehicles-panel); UFW=$(sudo ufw status 2>/dev/null | head -1); echo "listen25565=$L25565 listen8081=$L8081 servicii=$SVC ufw=$UFW"; echo "OOM: $(sudo dmesg 2>/dev/null | grep -iE "killed process|oom" | tail -3 | tr "\n" ";" )"; echo "CONSOLE-TAIL: $(tail -4 /opt/mcserver/logs/server-console.log 2>/dev/null | tr "\n" ";")"' 2>&1) || D="SSH-EȘUAT: $(echo "$D" | tail -1)"
           echo "$D"
           one_line() {
             local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
