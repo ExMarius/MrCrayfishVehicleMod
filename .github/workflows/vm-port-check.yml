@@ -59,7 +59,7 @@ jobs:
           echo "$U"
           v="${U//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
           echo "::notice title=IPTABLES::${v}"
-          sleep 5
+          sleep 4
 
       - name: SFTP write diag + auto-fix ACL (plugins upload)
         run: |
