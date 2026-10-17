@@ -1,0 +1,46 @@
+name: VM info (metadata OCI via SSH)
+
+on:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/workflows/vm-info.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  info:
+    name: Citesc OCID-urile instanței (pt. Cloud Shell)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Secrets guard + SSH creds
+        id: s
+        env:
+          ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          ORACLE_VM_USER: ${{ secrets.ORACLE_VM_USER }}
+          ORACLE_VM_SSH_KEY: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          ORACLE_VM_KNOWN_HOSTS: ${{ secrets.ORACLE_VM_KNOWN_HOSTS }}
+        run: |
+          [ -n "$ORACLE_VM_HOST$ORACLE_VM_USER$ORACLE_VM_SSH_KEY$ORACLE_VM_KNOWN_HOSTS" ] || { echo "::error::lipsesc secretele ORACLE_VM_*"; exit 1; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$ORACLE_VM_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$ORACLE_VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "VM_USER=$ORACLE_VM_USER" >> "$GITHUB_ENV"
+          echo "VM_HOST=$ORACLE_VM_HOST" >> "$GITHUB_ENV"
+
+      - name: Instance metadata (169.254.169.254)
+        run: |
+          J=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$VM_USER@$VM_HOST" 'curl -fsS -H "Authorization: Bearer Oracle" -m 5 http://169.254.169.254/opc/v2/instance/') \
+            || { echo "::error title=VMINFO::metadata endpoint nedisponibil"; exit 1; }
+          M=$(echo "$J" | jq -c '{inst:.id, comp:.compartmentId, ten:.tenancyId, reg:.canonicalRegionName, name:.displayName, stato:.lifecycleState}')
+          echo "$M"
+          one_line() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=VMINFO::${v}"
+          }
+          one_line "$M"
