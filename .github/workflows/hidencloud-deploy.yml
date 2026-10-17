@@ -80,16 +80,24 @@ jobs:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
           set -e
-          AUTH="Authorization: Bearer $K3Y"
-          CODE=$(curl -sS -m 15 -o /tmp/acc.json -w '%{http_code}' -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/account")
-          echo "GET /api/client/account → HTTP $CODE"
-          echo "corp: $(head -c 300 /tmp/acc.json)"
-          if [ "$CODE" != 200 ]; then
-            MSG=$(head -c 250 /tmp/acc.json | tr '\n' ' ')
-            echo "::error title=HIDENCLOUD::account HTTP $CODE | ${MSG:-(fără corp)}"
+          for URL in "$PANEL" "https://panel.hidencloud.com"; do
+            for HDR in "Authorization: Bearer $K3Y" "X-API-Key: $K3Y"; do
+              CODE=$(curl -sS -m 15 -o /tmp/acc_probe.json -w '%{http_code}' -H "$HDR" -H 'Accept: application/json' "$URL/api/client/account")
+              echo "probe $URL | ${HDR%%:*} → $CODE"
+              if [ "$CODE" = 200 ]; then
+                WORK_URL="$URL"; WORK_HDR="$HDR"; echo "WORK_$URL_OK=1" >> "$GITHUB_ENV"
+                echo "::notice title=HIDENCLOUD::API funcționează via $URL (${HDR%%:*})"
+                break 2
+              fi
+            done
+          done
+          if [ -z "${WORK_URL:-}" ]; then
+            echo "::error title=HIDENCLOUD::nici o combinație nu merge (a4e04808 are nevoie de cheie făcută ÎN ACELAȘI panou ca serverul) — vezi conversația"
             exit 1
           fi
-          EMAIL=$(jq -r '.attributes.email // "?"' /tmp/acc.json)
+          PANEL="$WORK_URL"; AUTH="$WORK_HDR"
+          echo "PANEL=$PANEL" >> "$GITHUB_ENV"; echo "AUTH_MODE=$(echo "$AUTH" | cut -d: -f1)" >> "$GITHUB_ENV"
+          EMAIL=$(jq -r '.attributes.email // "?"' /tmp/acc_probe.json)
           echo "::notice title=HIDENCLOUD::cheie validă (cont: $EMAIL)"
           SRV=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/servers/$SERVER_ID") \
             || { echo "::error title=HIDENCLOUD::serverul $SERVER_ID nu există sau nu e al contului"; exit 1; }
@@ -114,10 +122,12 @@ jobs:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
           set -e
-          U=$(curl -fsS -m 15 -X GET -H "Authorization: Bearer $K3Y" -H 'Accept: application/json' \
+          if [ "${AUTH_MODE:-}" = "X-API-Key" ]; then AUTH="X-API-Key: $K3Y"; else AUTH="Authorization: Bearer $K3Y"; fi
+          U=$(curl -fsS -m 15 -X GET -H "$AUTH" -H 'Accept: application/json' \
                "$PANEL/api/client/servers/$SERVER_ID/files/upload" | jq -r '.attributes.url') \
             || { echo "::error title=HC-UPLOAD::nu am primit URL de upload"; exit 1; }
-          CODE=$(curl -fsS -m 60 -o /dev/null -w '%{http_code}' --request POST --header "Authorization: Bearer $K3Y" --form files=@bundle.tgz "$U")
+          # URL-ul are deja tokenul semnat în el — fără Authorization pe POST.
+          CODE=$(curl -fsS -m 60 -o /dev/null -w '%{http_code}' --request POST --form files=@bundle.tgz "$U")
           echo "upload: HTTP $CODE"
           [ "$CODE" = 204 -o "$CODE" = 200 -o "$CODE" = 201 ] || { echo "::error title=HC-UPLOAD::upload esuat ($CODE)"; exit 1; }
           echo "::notice title=HC-UPLOAD::bundle urcat (HTTP $CODE)"
@@ -128,7 +138,7 @@ jobs:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
           set -e
-          AUTH="Authorization: Bearer $K3Y"
+          if [ "${AUTH_MODE:-}" = "X-API-Key" ]; then AUTH="X-API-Key: $K3Y"; else AUTH="Authorization: Bearer $K3Y"; fi
           D=$(curl -fsS -m 60 -X POST -H "$AUTH" -H 'Content-Type: application/json' \
                -d '{"root": "/", "file": "bundle.tgz"}' \
                -o /dev/null -w '%{http_code}' "$PANEL/api/client/servers/$SERVER_ID/files/decompress")
@@ -143,7 +153,7 @@ jobs:
         env:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
-          AUTH="Authorization: Bearer $K3Y"
+          if [ "${AUTH_MODE:-}" = "X-API-Key" ]; then AUTH="X-API-Key: $K3Y"; else AUTH="Authorization: Bearer $K3Y"; fi
           F=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' -H "$AUTH" \
                "$PANEL/api/client/servers/$SERVER_ID/files/contents?file=%2Fplugins%2FMrCrayfishVehiclePlugin%2Fconfig.yml")
           if [ "$F" = 404 ]; then
@@ -176,7 +186,7 @@ jobs:
         env:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
-          AUTH="Authorization: Bearer $K3Y"
+          if [ "${AUTH_MODE:-}" = "X-API-Key" ]; then AUTH="X-API-Key: $K3Y"; else AUTH="Authorization: Bearer $K3Y"; fi
           P=$(curl -sS -m 30 -o /dev/null -w '%{http_code}' -X POST -H "$AUTH" -H 'Content-Type: application/json' \
                -d '{"signal":"restart"}' "$PANEL/api/client/servers/$SERVER_ID/power")
           [ "$P" = 204 ] || { echo "::error title=HC-POWER::restart HTTP $P"; exit 1; }
