@@ -49,7 +49,8 @@ jobs:
       - name: Ping
         env:
           HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
-        run: ping -c 3 -W 3 "$HOST" || echo "ICMP: no reply (some hosts block ping; not decisive)"
+        run: |
+          ping -c 3 -W 3 "$HOST" || echo "ICMP: no reply (some hosts block ping; not decisive)"
 
       - name: HTTP probe for web panel
         env:
