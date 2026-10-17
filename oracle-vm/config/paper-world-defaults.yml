@@ -1,0 +1,30 @@
+# Reglat pentru 1 CPU / 1 GB RAM (Oracle Micro). Cheile lipsă primesc valorile
+# implicite Paper — fișierul e instalat doar dacă nu există deja.
+chunks:
+  delay-chunk-unloads-by: 6s
+  io-threads: 1
+  max-auto-save-chunks-per-tick: 6
+  prevent-moving-into-unloaded-chunks: true
+  worker-threads: 1
+spawning:
+  keep-spawn-loaded: false
+  keep-spawn-loaded-range: 2
+entities:
+  activation-range:
+    animals: 16
+    flying-monsters: 32
+    misc: 8
+    monsters: 24
+    raiders: 48
+    villagers: 16
+    water: 8
+  armor-stands:
+    do-collision-entity-lookups: false
+    tick: true
+tick-rates:
+  container-update: 2
+  grass-spread: 450
+  mob-spawner: 3
+misc:
+  region-file-cache-size: 96
+  fix-entity-position-desync: true

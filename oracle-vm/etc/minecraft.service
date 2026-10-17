@@ -1,0 +1,21 @@
+[Unit]
+Description=Paper Minecraft Server (mcv-minecraft screen session)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=forking
+User=mcserver
+Group=mcserver
+WorkingDirectory=/opt/mcserver
+ExecStart=/opt/mcserver/bin/start-minecraft.sh
+ExecStop=/opt/mcserver/bin/stop-minecraft.sh
+RemainAfterExit=yes
+TimeoutStopSec=180
+# Fără restart automat: serverul se pornește/oprește controlat din panou sau
+# cu systemctl start/stop minecraft. Un crash e vizibil în panou și în
+# `journalctl -u minecraft`.
+OOMScoreAdjust=200
+
+[Install]
+WantedBy=multi-user.target

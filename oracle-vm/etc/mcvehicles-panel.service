@@ -1,0 +1,21 @@
+[Unit]
+Description=MC Vehicles web control panel
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mcserver
+Group=mcserver
+WorkingDirectory=/opt/mcserver
+ExecStartPre=/usr/bin/python3 /opt/mcserver/panel/panel.py --root /opt/mcserver --init-auth
+ExecStart=/usr/bin/python3 /opt/mcserver/panel/panel.py --root /opt/mcserver --host 0.0.0.0 --port 8081
+Restart=always
+RestartSec=10
+# ~25 MB RAM. Panoul e expus direct pe IP public (fără FRP); are autentificare.
+OOMScoreAdjust=-200
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
