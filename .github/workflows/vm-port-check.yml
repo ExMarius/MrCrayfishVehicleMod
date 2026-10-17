@@ -13,20 +13,42 @@ permissions:
 
 jobs:
   check:
-    name: Verific 25565 si 8081 din exterior
+    name: Verific 25565 si 8081 din exterior + diag pe VM
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: Porturi
+      - name: Secrets + SSH creds
         env:
           ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          ORACLE_VM_USER: ${{ secrets.ORACLE_VM_USER }}
+          ORACLE_VM_SSH_KEY: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          ORACLE_VM_KNOWN_HOSTS: ${{ secrets.ORACLE_VM_KNOWN_HOSTS }}
         run: |
-          [ -n "$ORACLE_VM_HOST" ] || { echo "::error::lipsește secretul ORACLE_VM_HOST"; exit 1; }
-          for p in 25565 8081; do
-            if timeout 6 bash -c "echo > /dev/tcp/$ORACLE_VM_HOST/$p" 2>/dev/null; then
+          [ -n "$ORACLE_VM_HOST$ORACLE_VM_USER$ORACLE_VM_SSH_KEY$ORACLE_VM_KNOWN_HOSTS" ] || { echo "::error::lipsesc secretele ORACLE_VM_*"; exit 1; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$ORACLE_VM_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$ORACLE_VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "VM_USER=$ORACLE_VM_USER" >> "$GITHUB_ENV"
+          echo "VM_HOST=$ORACLE_VM_HOST" >> "$GITHUB_ENV"
+
+      - name: Diag pe VM (listeneri + ufw + servicii)
+        run: |
+          D=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$VM_USER@$VM_HOST" 'L25565=$(ss -tlnH "sport = :25565" | wc -l); L8081=$(ss -tlnH "sport = :8081" | wc -l); SVC=$(systemctl is-active minecraft),$(systemctl is-active mcvehicles-panel); UFW=$(sudo ufw status 2>/dev/null | head -1); echo "listen25565=$L25565 listen8081=$L8081 servicii=$SVC ufw=$UFW"' 2>&1) || D="SSH-EȘUAT: $(echo "$D" | tail -1)"
+          echo "$D"
+          one_line() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=VMDIAG::${v}"
+          }
+          one_line "$D"
+
+      - name: Porturi din exterior
+        run: |
+          for p in 22 25565 8081; do
+            if timeout 6 bash -c "echo > /dev/tcp/$VM_HOST/$p" 2>/dev/null; then
               echo "::notice title=PORT-$p::deschis din exterior"
             else
-              echo "::error title=PORT-$p::INCHIS — adaugă regula TCP $p în Security List (OCI Console)"
+              echo "::error title=PORT-$p::INCHIS din exterior"
             fi
           done
           exit 0
