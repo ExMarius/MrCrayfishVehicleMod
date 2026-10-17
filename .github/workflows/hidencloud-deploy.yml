@@ -81,9 +81,15 @@ jobs:
         run: |
           set -e
           AUTH="Authorization: Bearer $K3Y"
-          ACC=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/account") \
-            || { echo "::error title=HIDENCLOUD::cheia API e respinsă (verifică că e cheia contului cu serverul)"; exit 1; }
-          EMAIL=$(echo "$ACC" | jq -r '.attributes.email // "?"')
+          CODE=$(curl -sS -m 15 -o /tmp/acc.json -w '%{http_code}' -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/account")
+          echo "GET /api/client/account → HTTP $CODE"
+          echo "corp: $(head -c 300 /tmp/acc.json)"
+          if [ "$CODE" != 200 ]; then
+            MSG=$(head -c 250 /tmp/acc.json | tr '\n' ' ')
+            echo "::error title=HIDENCLOUD::account HTTP $CODE | ${MSG:-(fără corp)}"
+            exit 1
+          fi
+          EMAIL=$(jq -r '.attributes.email // "?"' /tmp/acc.json)
           echo "::notice title=HIDENCLOUD::cheie validă (cont: $EMAIL)"
           SRV=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/servers/$SERVER_ID") \
             || { echo "::error title=HIDENCLOUD::serverul $SERVER_ID nu există sau nu e al contului"; exit 1; }
