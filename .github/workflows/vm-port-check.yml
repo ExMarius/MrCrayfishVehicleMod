@@ -1,0 +1,32 @@
+name: VM port check
+
+on:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/workflows/vm-port-check.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Sunt deschise 25565/8081 din exterior?
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Porturi
+        env:
+          ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+        run: |
+          [ -n "$ORACLE_VM_HOST" ] || { echo "::error::lipsește secretul ORACLE_VM_HOST"; exit 1; }
+          for p in 25565 8081; do
+            if timeout 6 bash -c "echo > /dev/tcp/$ORACLE_VM_HOST/$p" 2>/dev/null; then
+              echo "::notice title=PORT-$p::deschis din exterior"
+            else
+              echo "::error title=PORT-$p::INCHIS — adaugă regula TCP $p în Security List (OCI Console)"
+            fi
+          done
+          exit 0
