@@ -78,10 +78,11 @@ jobs:
             {"protocol":"6","source":"0.0.0.0/0","sourceType":"CIDR_BLOCK","isStateless":false,"description":"mc-panel","tcpOptions":{"destinationPortRange":{"min":8081,"max":8081}}}
           ] | unique_by(.source, (.["tcpOptions"]["destinationPortRange"]["min"] // 0))' <<<"$CUR") \
             || { emit "jq merge esuat"; exit 1; }
-          UPD=$(oci network security-list update --security-list-id "$SL" --ingress-rules "$NEW" --force 2>&1) && RC=0 || RC=$?
+          printf '%s' "$NEW" > /tmp/ingress.json
+          UPD=$(oci network security-list update --security-list-id "$SL" --ingress-rules file:///tmp/ingress.json --force 2>&1) && RC=0 || RC=$?
           if [ "$RC" != 0 ]; then
-            REASON=$(echo "$UPD" | grep -oE '"message": *"[^"]+"|"code": *"[^"]+"' | head -2 | tr '\n' ' ')
-            emit "update esuat rc=$RC | ${REASON:-$(echo "$UPD" | tail -1 | head -c 300)}"
+            REASON=$(echo "$UPD" | head -4 | tr '\n' ' ' | head -c 400)
+            emit "update esuat rc=$RC | ${REASON:-eroare necunoscuta}"
             echo "$UPD" | tail -15
             exit "$RC"
           fi
