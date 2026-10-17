@@ -7,11 +7,6 @@ on:
         description: "frps host (IP sau domeniu) de verificat"
         required: true
         type: string
-      ports:
-        description: "porturi TCP separate prin virgulă"
-        required: false
-        default: "7000,25565,8081"
-        type: string
   push:
     branches:
       - arena/2f9f7b9e-mrcrayfishvehiclemod
@@ -21,40 +16,65 @@ on:
 permissions:
   contents: read
 
+env:
+  HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
+
 jobs:
   probe:
     name: Probe frps reachability
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
-      - name: TCP reachability
-        env:
-          # On push runs there are no dispatch inputs; fall back to the known host.
-          HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
-          PORTS: ${{ github.event.inputs.ports || '7000,25565,8081' }}
+      # Each probe is its own always-running step so per-port results are
+      # readable both in the Actions UI and via the REST API step list,
+      # without needing access to log archives.
+      - name: "port-7000 frps control"
+        id: p7000
+        continue-on-error: true
         run: |
-          set -uo pipefail
-          echo "Probing $HOST ($PORTS) ..."
-          IFS=',' read -ra arr <<< "$PORTS"
-          for p in "${arr[@]}"; do
-            p="${p//[[:space:]]/}"
-            [ -n "$p" ] || continue
-            if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/$p" 2>/dev/null; then
-              echo "PORT $p: OPEN"
-            else
-              echo "PORT $p: CLOSED or FILTERED"
-            fi
-          done
+          if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/7000" 2>/dev/null; then
+            echo "PORT 7000 (frps control): OPEN"
+          else
+            echo "PORT 7000 (frps control): CLOSED or FILTERED"; exit 1
+          fi
 
-      - name: Ping
-        env:
-          HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
+      - name: "port-25565 minecraft proxy"
+        id: p25565
+        continue-on-error: true
         run: |
-          ping -c 3 -W 3 "$HOST" || echo "ICMP: no reply (some hosts block ping; not decisive)"
+          if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/25565" 2>/dev/null; then
+            echo "PORT 25565 (minecraft proxy): OPEN (a backend is connected!)"
+          else
+            echo "PORT 25565 (minecraft proxy): CLOSED or FILTERED (no frpc backend)"; exit 1
+          fi
 
-      - name: HTTP probe for web panel
-        env:
-          HOST: ${{ github.event.inputs.host || '140.238.218.210' }}
+      - name: "port-8081 web panel proxy"
+        id: p8081
+        continue-on-error: true
         run: |
+          if timeout 6 bash -c "exec 3<>/dev/tcp/$HOST/8081" 2>/dev/null; then
+            echo "PORT 8081 (web panel proxy): OPEN"
+          else
+            echo "PORT 8081 (web panel proxy): CLOSED or FILTERED (no frpc backend)"; exit 1
+          fi
           code=$(curl -sS -m 8 -o /dev/null -w "%{http_code}" "http://$HOST:8081/healthz" 2>/dev/null || echo "000")
           echo "GET http://$HOST:8081/healthz -> HTTP $code"
+
+      - name: "icmp ping"
+        id: ping
+        continue-on-error: true
+        run: |
+          ping -c 3 -W 3 "$HOST" || { echo "ICMP: no reply"; exit 1; }
+
+      - name: summary
+        if: always()
+        run: |
+          {
+            echo "### Rezultat probe $HOST"
+            echo "| Verificare | Rezultat |"
+            echo "|---|---|"
+            echo "| frps control (7000) | ${{ steps.p7000.conclusion }} |"
+            echo "| minecraft proxy (25565) | ${{ steps.p25565.conclusion }} |"
+            echo "| web panel (8081) | ${{ steps.p8081.conclusion }} |"
+            echo "| ping | ${{ steps.ping.conclusion }} |"
+          } >> "$GITHUB_STEP_SUMMARY"
