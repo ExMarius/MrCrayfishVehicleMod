@@ -1,0 +1,83 @@
+name: VM port probe (porturi deja deschise din lume?)
+
+on:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/workflows/vm-port-probe.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probez listeneri pe 15 porturi posibile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Secrets + SSH creds
+        env:
+          ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          ORACLE_VM_USER: ${{ secrets.ORACLE_VM_USER }}
+          ORACLE_VM_SSH_KEY: ${{ secrets.ORACLE_VM_SSH_KEY }}
+          ORACLE_VM_KNOWN_HOSTS: ${{ secrets.ORACLE_VM_KNOWN_HOSTS }}
+        run: |
+          [ -n "$ORACLE_VM_HOST$ORACLE_VM_USER$ORACLE_VM_SSH_KEY$ORACLE_VM_KNOWN_HOSTS" ] || { echo "::error::lipsesc secretele ORACLE_VM_*"; exit 1; }
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$ORACLE_VM_SSH_KEY" > ~/.ssh/deploy_key && chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$ORACLE_VM_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          echo "VM_USER=$ORACLE_VM_USER" >> "$GITHUB_ENV"
+          echo "VM_HOST=$ORACLE_VM_HOST" >> "$GITHUB_ENV"
+
+      - name: Pornesc listeneri temporari pe VM (ufw off 2 min)
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$VM_USER@$VM_HOST" '
+              sudo ufw --force disable >/dev/null 2>&1 || true
+              nohup timeout 130 python3 - <<PYEOF >/tmp/probe-listen.log 2>&1 &
+import socket, select, time
+ports = [80,443,3000,3478,7000,7777,8000,8080,8443,8888,9000,19132,27015]
+socks=[]
+for p in ports:
+    s=socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    try:
+        s.bind(("0.0.0.0",p)); s.listen(1); socks.append(s)
+    except OSError:
+        s.close()
+end=time.time()+130
+while time.time()<end and socks:
+    r,_,_=select.select(socks,[],[],1)
+    for s in r:
+        try:
+            c,_=s.accept(); c.close()
+        except OSError:
+            pass
+PYEOF
+              sleep 2; echo "listeners-up"'
+          echo "::notice title=PROBE::listeneri porniți pe VM (fereastră de 2 min)"
+
+      - name: Testez din exterior (de pe runner GitHub)
+        run: |
+          FOUND=0
+          for p in 22 80 443 3000 3478 7000 7777 8000 8080 8443 8888 9000 19132 25565 27015; do
+            if timeout 5 bash -c "echo > /dev/tcp/$VM_HOST/$p" 2>/dev/null; then
+              echo "::notice title=PROBE-PORT-${p}::DESCHIS din exterior"
+              FOUND=$((FOUND+1))
+            else
+              echo "  $p: închis"
+            fi
+          done
+          if [ "$FOUND" -le 1 ]; then
+            echo "::error title=PROBE-REZULTAT::doar SSH (22) deschis — nicio cale directă, trebuie regula OCI"
+          else
+            echo "::notice title=PROBE-REZULTAT::am găsit ${FOUND} porturi accesibile"
+          fi
+
+      - name: Restaurez ufw pe VM
+        if: always()
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+            "$VM_USER@$VM_HOST" 'sudo ufw --force enable >/dev/null 2>&1; sudo pkill -f probe-listen 2>/dev/null; echo ufw-back-on' || true
