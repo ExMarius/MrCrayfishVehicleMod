@@ -32,7 +32,7 @@ Pe `frps` trebuie libere porturile remote **25565** (joc) și **8081** (panou) �
 3. **Runtime → Run all**. Prima pornire: 4–6 minute.
 4. Celula de pornire afișează:
    - 🟢 **Minecraft**: `FRPS_ADDR:25565` → Direct Connect în joc
-   - 🟢 **Panou web**: `http://FRPS_ADDR:8081` + parola inițială (afișată o singură dată, la prima rulare; apoi rămâne cea salvată în Drive)
+   - 🟢 **Panou web**: `http://FRPS_ADDR:8081` — utilizator `admin`, parola din celula 🔑 (**implicit `12345`**, o schimbi după login din panou)
 5. Consola: din **panoul web** sau din celula 💬 a notebook-ului.
 6. În joc: `/vehicle spawn go_kart`, click dreapta, W/S/A/D, Space = frâna, Shift = coborâre.
 7. **La final, obligatoriu**: celula 12 (⏹️ oprire grațioasă + backup în Drive).
@@ -55,6 +55,6 @@ Release nou → celula 12 (oprire) → schimbi `RELEASE_TAG` în celula de confi
 
 ## Depanare + resetare parolă panou
 
-Tabelul de depanare e în ultima celulă a notebook-ului. Parolă panou pierdută → celula 13 (resetare), apoi celula 9 generează una nouă.
+Tabelul de depanare e în ultima celulă a notebook-ului. Parolă panou pierdută → re-rulează celula 🔑 (resetează la valoarea din câmp, implicit `12345`).
 
 > 🔐 Dacă tokenul FRP a fost vreodată partajat (ex. într-un link Colab public), **rotește-l pe `frps` și actualizează Secretul** — oricine îl are poate înregistra proxy-uri pe același server.
