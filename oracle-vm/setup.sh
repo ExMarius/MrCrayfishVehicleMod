@@ -86,6 +86,8 @@ sed -i "s/-Xms512M -Xmx2G/-Xms${JAVA_XMS:-256M} -Xmx${JAVA_XMX:-640M}/" "$ROOT/b
 install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/minecraft.service /etc/systemd/system/
 install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/mcvehicles-panel.service /etc/systemd/system/
 install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/mc-ports.service /etc/systemd/system/
+install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/mc-watchdog.service /etc/systemd/system/
+install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/etc/mc-watchdog.timer /etc/systemd/system/
 [ -f "$ROOT/mc/server.properties" ] || install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/config/server.properties "$ROOT/mc/server.properties"
 mkdir -p "$ROOT/mc/config"
 [ -f "$ROOT/mc/config/paper-world-defaults.yml" ] || install -m 644 "$TMPDIR_CLONE"/repo/oracle-vm/config/paper-world-defaults.yml "$ROOT/mc/config/paper-world-defaults.yml"
@@ -217,6 +219,7 @@ systemctl daemon-reload
 systemctl enable --now mc-ports.service
 systemctl enable --now mcvehicles-panel.service
 systemctl enable --now minecraft.service
+systemctl enable --now mc-watchdog.timer
 sleep 8
 
 PUBLIC_IP=$(curl -fsS -m 5 https://ifconfig.me 2>/dev/null || echo "<IP-public>")

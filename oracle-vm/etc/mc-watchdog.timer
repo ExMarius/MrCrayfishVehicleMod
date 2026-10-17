@@ -1,0 +1,10 @@
+[Unit]
+Description=Reporneste minecraft automat daca listenerul 25565 dispare
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=2min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -78,6 +78,22 @@ jobs:
           v="${U//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
           echo "::notice title=SFTP-ACL::${v}"
 
+      - name: Restart java daca listenerul 25565 a disparut (OOM-watch)
+        run: |
+          R=$(ssh -i ~/.ssh/deploy_key -o BatchMode=yes -o StrictHostKeyChecking=yes \
+              "$VM_USER@$VM_HOST" '
+                if ss -tlnH "sport = :25565" 2>/dev/null | grep -q .; then
+                  echo "listener-ok, fara restart"
+                else
+                  echo "LISTENER-LIPSA → restart minecraft…"
+                  sudo systemctl restart minecraft.service
+                  sleep 45
+                  ss -tlnH "sport = :25565" 2>/dev/null | grep -q . && echo "restart-ok, asculta din nou" || echo "inca nu asculta (poate inca booteaza)"
+                fi' 2>&1) || R="SSH-EȘUAT"
+          echo "$R"
+          v="${R//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+          echo "::notice title=RESTART-25565::${v}"
+
       - name: Porturi din exterior
         run: |
           for p in 22 25565 8081; do

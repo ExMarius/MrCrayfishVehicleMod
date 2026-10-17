@@ -1,0 +1,6 @@
+[Unit]
+Description=Verifica ca Minecraft chiar asculta (java poate muri in screen)
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c 'ss -tlnH "sport = :25565" 2>/dev/null | grep -q . || systemctl restart minecraft.service'
