@@ -1,0 +1,49 @@
+name: Paper API probe
+
+on:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - .github/workflows/paper-api-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probe PaperMC download APIs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: "v2 api.papermc.io"
+        continue-on-error: true
+        env:
+          CHECK: v2
+        run: |
+          emit() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=PROBE-RESULT::$CHECK: $v"
+          }
+          URL="https://api.papermc.io/v2/projects/paper/versions/1.21.4/builds"
+          code=$(curl -sS -m 10 -o /tmp/v2.json -w "%{http_code}" "$URL" || echo "000")
+          echo "GET $URL -> HTTP $code"
+          head -c 200 /tmp/v2.json 2>/dev/null || true; echo
+          emit "HTTP $code $(head -c 120 /tmp/v2.json 2>/dev/null | tr -d '\n')"
+          [ "$code" = "200" ]
+
+      - name: "v3 fill.papermc.io"
+        continue-on-error: true
+        env:
+          CHECK: v3
+        run: |
+          emit() {
+            local v="${1//'%'/'%25'}"; v="${v//$'\r'/'%0D'}"; v="${v//$'\n'/'%0A'}"
+            echo "::notice title=PROBE-RESULT::$CHECK: $v"
+          }
+          URL="https://fill.papermc.io/v3/projects/paper/versions/1.21.4/builds/latest"
+          code=$(curl -sS -m 10 -o /tmp/v3.json -w "%{http_code}" "$URL" || echo "000")
+          echo "GET $URL -> HTTP $code"
+          head -c 300 /tmp/v3.json 2>/dev/null || true; echo
+          emit "HTTP $code $(head -c 160 /tmp/v3.json 2>/dev/null | tr -d '\n')"
+          [ "$code" = "200" ]
