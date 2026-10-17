@@ -25,6 +25,8 @@ Pe `frps` trebuie libere porturile remote **25565** (joc) și **8081** (panou) �
 
 ## Pașii de fiecare dată
 
+> ⚠️ **17 oct. 2026:** PaperMC a retras definitiv API-ul v2 (HTTP 410). Dacă ai o copie a notebook-ului în Drive dinainte de această dată, șterge-o și reia versiunea curentă (descărcarea Paper folosește acum API-ul v3).
+
 1. Deschide notebook-ul în Colab (butonul de mai sus).
 2. Celula de configurare: `PLAYER_NAMES` (numele voastre de Minecraft — primesc OP + whitelist automat).
 3. **Runtime → Run all**. Prima pornire: 4–6 minute.
