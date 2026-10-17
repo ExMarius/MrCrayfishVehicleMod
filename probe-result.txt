@@ -1,7 +1,7 @@
 [notice] healthz OK
 [notice] login OK (sesiune+csrf)
-[notice] api/status: HTTP 200 | "server": "running" "pid": 22167 "maxPlayers": null 
-[notice] api/logs(conșola live): HTTP 200 | octeti=6094 ultima=[21:56:32] [Server thread/INFO]: Done (172.996s)! For help, type "help"
+[notice] api/status: HTTP 200 | "server": "running" "pid": 25952 "maxPlayers": null 
+[notice] api/logs(conșola live): HTTP 200 | octeti=9430 ultima=[22:23:27] [Server thread/WARN]: Can't keep up! Is the server overloaded? Running 15202ms or 304 ticks behind
 [notice] api/comanda(list): HTTP 200 | "ok": true, "message": "Comanda a fost trimisă." "error": null 
 [notice] api/control(restart): HTTP 202 | {"ok": true, "message": "Operația a fost acceptată.", "error": null}
 [notice] dupa restart: server=running → BUTOANE OK
