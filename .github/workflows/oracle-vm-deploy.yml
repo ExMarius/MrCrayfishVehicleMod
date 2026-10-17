@@ -33,7 +33,7 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v5
 
-      # Testele rulează oricum în workflow-ul "Paper plugin" la aceleași fișiere;
+      # Testele rulează oricum în workflow-ul "Paper plugin" pentru aceleași fișiere;
       # aici sărim peste ele pentru un deploy rapid (~1 min mai scurt).
       - name: Build plugin (skip tests, tested in parallel CI)
         run: ./paper-plugin/gradlew -p paper-plugin clean build -x test
