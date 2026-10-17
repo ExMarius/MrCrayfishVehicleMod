@@ -90,17 +90,22 @@ jobs:
             --query 'data."ingress-security-rules"[?protocol==`6`].{src:source,min:("tcpOptions"."destinationPortRange".min)}' --output table
           echo "::notice title=OCI-SL::reguli adaugate in security list"
 
-      - name: Verific final din exterior (daca regulile s-au propagat)
+      - name: Verific final din exterior (dupa propagare)
         if: steps.guard.outputs.enabled == 'true'
         env:
           ORACLE_VM_HOST: ${{ secrets.ORACLE_VM_HOST }}
+          SL: ${{ steps.ids.outputs.sl }}
         run: |
-          sleep 20
+          export OCI_CLI_SUPPRESS_FILE_PERMISSIONS_WARNING=true
+          PORTS=$(oci network security-list get --security-list-id "$SL" --query 'data."ingress-security-rules"' --raw-output \
+                | jq -r '[.[] | (.tcpOptions.destinationPortRange.min // "x")] | unique | join(",")')
+          echo "::notice title=SL-REGULI::porturi min in SL ${SL##*.}: $PORTS"
+          echo "Astept propagarea (90s)…"; sleep 90
           for p in 25565 8081; do
             if timeout 6 bash -c "echo > /dev/tcp/$ORACLE_VM_HOST/$p" 2>/dev/null; then
               echo "::notice title=PORT-$p::DESCHIS din exterior (propagarea a mers)"
             else
-              echo "::error title=PORT-$p::inca inchis (regulile pot intarzia 1-2 min — re-rulez verificarea)"
+              echo "::error title=PORT-$p::inca inchis"
             fi
           done
           exit 0
