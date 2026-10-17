@@ -5,6 +5,7 @@ SERVER="$ROOT/mc"
 LOGS="$ROOT/logs"
 SESSION=mcv-minecraft
 mkdir -p "$LOGS"
+rm -f "$LOGS/.manual-stop"
 screen -wipe >/dev/null 2>&1 || true
 if screen -list 2>/dev/null | grep -q "[.]$SESSION[[:space:]]"; then
   echo "Minecraft rulează deja în sesiunea $SESSION."

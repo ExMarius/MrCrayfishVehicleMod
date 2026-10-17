@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 SESSION=mcv-minecraft
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOGS="$ROOT/logs"
+mkdir -p "$LOGS"
+# Spunem watchdog-ului că oprirea e intenționată (nu ne reporni ciclul).
+: > "$LOGS/.manual-stop"
 sessions() {
   screen -list 2>/dev/null | awk '$1 ~ /^[0-9]+[.]mcv-minecraft$/ {print $1}'
 }

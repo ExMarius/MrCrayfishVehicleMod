@@ -1,6 +1,6 @@
 [Unit]
-Description=Verifica ca Minecraft chiar asculta (java poate muri in screen)
+Description=Verifica ca Minecraft chiar asculta (cu protectie la boot si la oprire intentionala)
 
 [Service]
 Type=oneshot
-ExecStart=/bin/sh -c 'ss -tlnH "sport = :25565" 2>/dev/null | grep -q . || systemctl restart minecraft.service'
+ExecStart=/opt/mcserver/bin/mc-watchdog.sh

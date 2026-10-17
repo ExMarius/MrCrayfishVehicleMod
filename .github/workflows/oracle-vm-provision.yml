@@ -9,6 +9,8 @@ on:
       - "oracle-vm/setup.sh"
       - "oracle-vm/etc/**"
       - "oracle-vm/config/**"
+      - "oracle-panel/scripts/**"
+      - "oracle-panel/panel.py"
   workflow_dispatch:
 
 permissions:
