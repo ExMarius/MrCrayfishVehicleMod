@@ -1,0 +1,47 @@
+name: HidenCloud RCON direct (comenzi instant in server)
+
+on:
+  workflow_dispatch:
+    inputs:
+      comanda:
+        description: "Comanda de consola (ex: list, plugins, tab reload, lp user X parent set admin)"
+        required: false
+        default: "list"
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/workflows/hc-rcon.yml"
+
+permissions:
+  contents: read
+
+env:
+  RCON_HOST: nile.hidencloud.com
+  RCON_PORT: "24637"
+
+jobs:
+  rcon:
+    name: Rulez comenzi direct pe server prin RCON
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Instalez clientul RCON
+        run: pip install --quiet mcrcon
+
+      - name: Trimit comanda pe server
+        env:
+          RPASS: ${{ secrets.HIDENCLOUD_RCON_PASS }}
+          COMANDA: ${{ inputs.comanda || 'list' }}
+        run: |
+          if [ -z "${RPASS:-}" ]; then
+            echo "::error title=HC-RCON::lipseste parola RCON"
+            exit 0
+          fi
+          if [ "$COMANDA" = "diag" ]; then
+            python3 scripts/rcon_exec.py list plugins "tab parse me %server_online%" version
+          else
+            python3 scripts/rcon_exec.py "$COMANDA"
+          fi
