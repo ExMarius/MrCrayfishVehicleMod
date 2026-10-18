@@ -7,6 +7,7 @@ on:
       - arena/2f9f7b9e-mrcrayfishvehiclemod
     paths:
       - "paper-plugin/**"
+      - "tools/**"
       - "hidencloud/**"
       - ".github/workflows/hidencloud-sftp.yml"
 
