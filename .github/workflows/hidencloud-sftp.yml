@@ -1,0 +1,177 @@
+name: HidenCloud deploy rapid SFTP (fara cheie API)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - "paper-plugin/**"
+      - "hidencloud/**"
+      - ".github/workflows/hidencloud-sftp.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hc-sftp
+  cancel-in-progress: false
+
+env:
+  PANEL: https://freepanel.hidencloud.com
+  SERVER_ID: a4e04808
+  SFTP_HOST: nile.hidencloud.com
+  SFTP_PORT: "2022"
+  MC_VERSION: "1.21.4"
+
+jobs:
+  deploy:
+    name: Upload pluginuri prin SFTP, fara cheie API
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Verific secretele SFTP
+        id: guard
+        env:
+          HIDENCLOUD_SFTP_PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
+          HIDENCLOUD_SFTP_USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
+        run: |
+          OK=true
+          [ -n "${HIDENCLOUD_SFTP_PASS:-}" ] || OK=false
+          [ -n "${HIDENCLOUD_SFTP_USER:-}" ] || OK=false
+          if [ "$OK" = false ]; then
+            echo "::error title=HC-SFTP::lipsesc secretele HIDENCLOUD_SFTP_USER si/sau HIDENCLOUD_SFTP_PASS (panoul > server > SFTP Details)"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+      - name: Pregatesc fisierele de upload
+        if: steps.guard.outputs.enabled == 'true'
+        run: |
+          mkdir -p stage/plugins/TAB stage/plugins/Essentials
+
+          # EssentialsX core + Chat + Spawn
+          EJ=$(curl -fsSL --retry 2 -m 30 "https://ci.ender.zone/job/EssentialsX/lastStableBuild/api/json" 2>/dev/null)
+          echo "$EJ" | jq -r '.artifacts[].relativePath' | grep -E '^jars/EssentialsX(Chat|Spawn)?-[0-9][^/]*\.jar$' | while read -r rel; do
+            curl -fsSL -m 90 -o "stage/plugins/$(basename "$rel")" "https://ci.ender.zone/job/EssentialsX/lastStableBuild/artifact/$rel" || true
+          done
+
+          # Vault
+          VJ=$(curl -fsSL --retry 2 -m 30 "https://api.github.com/repos/Milkbowl/Vault/releases/latest" \
+                | jq -r '[.assets[] | select(.name | startswith("Vault") and endswith(".jar"))] | .[0].browser_download_url // ""')
+          [ -n "$VJ" ] && curl -fsSL -m 60 -o stage/plugins/Vault.jar "$VJ" || true
+
+          # LuckPerms
+          LP=$(curl -fsSL --retry 2 -m 30 "https://api.modrinth.com/v2/project/luckperms/version?loaders=%5B%22paper%22%5D" \
+                | jq -r '.[0].files[] | select(.primary==true) | .url' | head -1)
+          [ -n "$LP" ] && curl -fsSL -m 120 -o stage/plugins/LuckPerms-Bukkit.jar "$LP" || true
+
+          # WorldEdit pin 7.3.x pentru 1.21.4 (7.4.x cere Java 25)
+          WE=$(curl -fsSL --retry 2 -m 30 "https://api.modrinth.com/v2/project/worldedit/version?loaders=%5B%22paper%22%5D&game_versions=%5B%22$MC_VERSION%22%5D" \
+                | jq -r '[.[] | select(.version_number | startswith("7.3"))] | .[0].files[] | select(.primary==true) | .url' | head -1)
+          [ -n "$WE" ] && curl -fsSL -m 120 -o stage/plugins/worldedit-bukkit-7.3.x.jar "$WE" || true
+
+          # TAB (GitHub releases)
+          TBJ=$(curl -fsSL --retry 2 -m 30 "https://api.github.com/repos/NEZNAMY/TAB/releases/latest" \
+                 | jq -r '[.assets[] | select(.name | test("^[Tt][Aa][Bb].*\\.jar$"))] | .[0].browser_download_url // ""')
+          [ -n "$TBJ" ] && curl -fsSL -m 120 -o stage/plugins/TAB.jar "$TBJ" || true
+
+          # configuri din repo
+          cp hidencloud/config/TAB/config.yml stage/plugins/TAB/config.yml
+          cp hidencloud/config/Essentials/motd.txt stage/plugins/Essentials/motd.txt
+
+          echo "fisiere pregatite:"
+          find stage -name '*.jar' -o -name '*.yml' -o -name '*.txt' | sort
+
+      - name: Instalez sshpass + testez conexiunea SFTP
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
+          USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+          export SSHPASS="$PASS"
+          printf 'ls plugins\n' > batch_test.txt
+          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_test.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST" > sftp_out.txt 2>&1 || true
+          if grep -q "MrCrayfish\|TAB\|Essentials" sftp_out.txt; then
+            echo "::notice title=HC-SFTP-OK::conectare SFTP reusita la $SFTP_HOST:$SFTP_PORT"
+          else
+            head -5 sftp_out.txt
+            echo "::error title=HC-SFTP::conectare esuata: $(head -2 sftp_out.txt | paste -sd' ' -)"
+            exit 1
+          fi
+
+      - name: Urc fisierele prin SFTP
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
+          USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
+        run: |
+          export SSHPASS="$PASS"
+          printf '%s\n' \
+            '-mkdir plugins' \
+            '-mkdir plugins/TAB' \
+            '-mkdir plugins/Essentials' \
+            > batch_up.txt
+          for f in stage/plugins/*.jar; do
+            N=$(basename "$f")
+            printf 'put %s plugins/%s\n' "$f" "$N" >> batch_up.txt
+          done
+          printf 'put stage/plugins/TAB/config.yml plugins/TAB/config.yml\n' >> batch_up.txt
+          printf 'put stage/plugins/Essentials/motd.txt plugins/Essentials/motd.txt\n' >> batch_up.txt
+          printf '%s\n' \
+            '-rm plugins/worldedit-bukkit.jar' \
+            '-rm plugins/worldedit-bukkit-7.txt' \
+            >> batch_up.txt
+          echo "batch:"
+          cat batch_up.txt
+          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_up.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST"
+          echo "::notice title=HC-SFTP-UPLOAD::jar-uri + configuri urcate prin SFTP (rapid, fara API)"
+
+      - name: Curat dublurile vechi prin SFTP
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
+          USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
+        run: |
+          export SSHPASS="$PASS"
+          printf 'ls plugins\n' > batch_ls.txt
+          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_ls.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST" > sftp_ls.txt 2>&1
+          printf '' > batch_rm.txt
+          grep -E 'worldedit-bukkit\.jar$' sftp_ls.txt >/dev/null && printf '%s\n' '-rm plugins/worldedit-bukkit.jar' >> batch_rm.txt || true
+          grep -E 'TAB v[^/]*\.jar$' sftp_ls.txt >/dev/null && sed -n 's|^\(plugins/\)*\(TAB v[^ ]*\.jar\).*|\1\2|p' sftp_ls.txt | while read -r n; do :; done || true
+          if [ -s batch_rm.txt ]; then
+            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_rm.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST" || true
+            echo "::notice title=HC-SFTP-CLEAN::curatat dubluri vechi"
+          else
+            echo "nici o dublura"
+          fi
+
+      - name: Restart server (daca cheia API e inca vie)
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+        run: |
+          if [ -n "${K3Y:-}" ]; then
+            CODE=$(curl -sS -m 15 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
+                    -d '{"signal":"restart"}' -o /dev/null -w '%{http_code}' \
+                    "$PANEL/api/client/servers/$SERVER_ID/power" || echo 000)
+            if [ "$CODE" = 204 ]; then
+              echo "restart trimis, astept online..."
+              ST="?"
+              for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
+                sleep 15
+                ST=$(curl -sS -m 10 -H "Authorization: Bearer $K3Y" "$PANEL/api/client/servers/$SERVER_ID/resources" | jq -r '.attributes.current_state // "?"' 2>/dev/null || echo '?')
+                [ "$ST" = "running" ] && break
+              done
+              if [ "$ST" = "running" ]; then
+                echo "::notice title=HC-DONE::server ONLINE dupa restart — deploy complet automat"
+              else
+                echo "::warning title=HC-DONE::fisierele sunt urcate; serverul inca porneste (verifica peste 2 min)"
+              fi
+              exit 0
+            fi
+          fi
+          echo "::notice title=HC-RESTART-MANUAL::fisierele sunt urcate. Apasa RESTART in freepanel (5 sec) si gata"
