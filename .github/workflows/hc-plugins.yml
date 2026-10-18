@@ -80,11 +80,11 @@ jobs:
           [ -n "$LP" ] && curl -fsSL -m 120 -o "stage/plugins/LuckPerms-Bukkit.jar" "$LP" || SKIPPED="$SKIPPED LuckPerms"
           [ -s stage/plugins/LuckPerms-Bukkit.jar ] || SKIPPED="$SKIPPED LuckPerms(dl)"
 
-          # WorldEdit (Modrinth, 1.21.4 / paper)
+          # WorldEdit (Modrinth, 1.21.4 / paper) — PIN la 7.3.x (7.4.x cere Java 25)
           WE=$(curl -fsS -m 30 "https://api.modrinth.com/v2/project/worldedit/version?loaders=%5B%22paper%22%5D&game_versions=%5B%22$MC_VERSION%22%5D" \
-                | jq -r '.[0].files[] | select(.primary==true) | .url' | head -1)
-          [ -n "$WE" ] && curl -fsSL -m 120 -o "stage/plugins/worldedit-bukkit.jar" "$WE" || SKIPPED="$SKIPPED WorldEdit"
-          [ -s stage/plugins/worldedit-bukkit.jar ] || SKIPPED="$SKIPPED WorldEdit(dl)"
+                | jq -r '[.[] | select(.version_number | startswith("7.3"))] | .[0].files[] | select(.primary==true) | .url' | head -1)
+          [ -n "$WE" ] && curl -fsSL -m 120 -o "stage/plugins/worldedit-bukkit-7.3.x.jar" "$WE" || SKIPPED="$SKIPPED WorldEdit"
+          [ -s stage/plugins/worldedit-bukkit-7.3.x.jar ] || SKIPPED="$SKIPPED WorldEdit(dl)"
 
           # TAB (GitHub releases NEZNAMY/TAB — asset .jar)
           TBJ=$(curl -fsSL --retry 3 -m 30 "https://api.github.com/repos/NEZNAMY/TAB/releases/latest" \
@@ -151,16 +151,16 @@ jobs:
           AUTH="Authorization: Bearer $K3Y"
           OLD=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' \
                 "$PANEL/api/client/servers/$SERVER_ID/files/list?directory=%2Fplugins" \
-                | jq -r '[.data[].attributes.name | select(startswith("TAB v") or (test("TAB.*jar$") and . != "TAB.jar"))]')
+                | jq -r '[.data[].attributes.name | select((startswith("TAB v") or (test("TAB.*jar$") and . != "TAB.jar")) or (startswith("worldedit-bukkit") and . != "worldedit-bukkit-7.3.x.jar"))]')
           N=$(echo "$OLD" | jq length)
           if [ "$N" -gt 0 ]; then
             R=$(curl -fsS -m 30 -X POST -H "$AUTH" -H 'Content-Type: application/json' \
                  -d "{\"root\": \"/plugins\", \"files\": $OLD}" -o /dev/null -w '%{http_code}' \
                  "$PANEL/api/client/servers/$SERVER_ID/files/delete")
-            echo "sterse $N fisiere TAB vechi → HTTP $R"
-            echo "::notice title=HC-DUPES::am șters dublurile TAB rămase ($N fișiere)"
+            echo "sterse $N dubluri → HTTP $R"
+            echo "::notice title=HC-DUPES::am șters dublurile ($N fișiere)"
           else
-            echo "nici o dublură TAB"
+            echo "nici o dublură"
           fi
 
       - name: Restart + aștept online
