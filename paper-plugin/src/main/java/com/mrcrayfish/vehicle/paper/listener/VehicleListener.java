@@ -362,7 +362,7 @@ public final class VehicleListener implements Listener {
             for (Player nearby : listeners) {
                 nearby.stopSound(net.kyori.adventure.sound.StopSound.named(HORN_SOUND));
             }
-        }, 12L);
+        }, 10L);
     }
 
 }
