@@ -21,7 +21,7 @@ env:
 
 jobs:
   errors:
-    name: Citesc starea + erorile serverului
+    name: Verificare finală: 0 erori?
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
