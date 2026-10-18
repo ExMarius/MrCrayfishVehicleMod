@@ -200,10 +200,11 @@ public final class GasPumpRig {
                     (float) nozzleLocation.getZ());
             // Floating nozzle: it teleports EVERY TICK to the exact same world point where the
             // shared chain ends (instant, no lerping), so pistol and hose are welded together
-            // by construction. Its rotation rides the holder's view yaw.
-            float holdYaw = holder != null ? holder.getEyeLocation().getYaw() : yaw;
+            // by construction. Rotation stays on the pump's own yaw + offset - the exact
+            // orientation the user validated (rotating it with the holder's view spun its
+            // face backwards).
             nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z));
-            nozzle.setRotation(holdYaw + NOZZLE_YAW_OFFSET, 0.0F);
+            nozzle.setRotation(yaw + NOZZLE_YAW_OFFSET, 0.0F);
             nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
                     new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
             endTangent = lookDirection == null ? new Vector3f(0.0F, 3.0F, 0.0F)
