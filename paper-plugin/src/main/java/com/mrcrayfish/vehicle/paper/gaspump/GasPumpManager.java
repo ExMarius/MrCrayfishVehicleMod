@@ -155,24 +155,13 @@ public final class GasPumpManager {
     }
 
     /**
-     * FINAL combo (user decision 2026-10-18): the nozzle rides as a REAL hand item, rendered
-     * natively by Minecraft exactly like the original mod (60fps, native arm animation). The
-     * shared chain terminates at the body's hand point so bystanders and F5 see it welded;
-     * the holder additionally has the near-face segments hidden so first person stays clean.
+     * Nozzle as a FLOATING display welded to the hose end (user decision 2026-10-18: no
+     * inventory item at all). The display and the shared chain terminate at the same world
+     * point, so the hose-nozzle junction can never split; the holder additionally has the
+     * near-face chain segments hidden so first person stays clean.
      */
     public void pickUpNozzle(Player player, GasPump pump) {
         pump.setHolderId(player.getUniqueId());
-        ItemStack nozzle = NozzleItem.create(pump.id().toString());
-        if (player.getInventory().getItemInMainHand().getType().isAir()) {
-            player.getInventory().setItemInMainHand(nozzle);
-        } else {
-            int slot = player.getInventory().firstEmpty();
-            if (slot >= 0) {
-                player.getInventory().setItem(slot, nozzle);
-            } else {
-                player.getInventory().addItem(nozzle); // worst case, nothing dropped
-            }
-        }
         Location location = pump.location();
         player.playSound(Sound.sound(Key.key("vehicle:block.gas_pump.nozzle_pick_up"),
                 Sound.Source.BLOCK, 1.0F, 1.0F), location.getX(), location.getY(), location.getZ());
@@ -251,9 +240,9 @@ public final class GasPumpManager {
                 continue;
             }
 
-            // The chain welds to the body's hand point (correct for F5 and bystanders);
-            // the holder's own first-person view stays clean via the hidden near-face parts.
-            pump.rig().update(pump.location(), bodyHandNozzleLocation(holder),
+            // Hose chain AND floating nozzle share the identical world point every tick:
+            // the welded look holds from every viewing angle, no matter how the holder moves.
+            pump.rig().update(pump.location(), handHeldNozzleLocation(holder),
                     holder.getEyeLocation().getDirection(), holder);
 
             fuel(pump, holder, fillSeconds);
@@ -284,23 +273,6 @@ public final class GasPumpManager {
             cooldown = GLUG_INTERVAL_TICKS;
         }
         pump.setGlugCooldown(cooldown);
-    }
-
-    /**
-     * Where the held nozzle ITEM actually renders its model origin on the body (bystanders/F5
-     * viewpoint): the right palm, plus the item display transform (rotZ180 + (-1px, +7px,
-     * -4.25px)) baked from the original mod values -> up 0.44, slightly right and slightly
-     * back from the raw palm. The shared chain terminates exactly there, so the hose welds
-     * into the visible item instead of dangling next to it.
-     */
-    private static Location bodyHandNozzleLocation(Player player) {
-        Location eye = player.getEyeLocation();
-        double rad = Math.toRadians(eye.getYaw());
-        double fx = -Math.sin(rad), fz = Math.cos(rad);
-        double rx = -Math.cos(rad), rz = -Math.sin(rad);
-        return eye.clone()
-                .add(fx * 0.01D + rx * 0.24D, -0.11D, fz * 0.01D + rz * 0.24D)
-                .add(player.getVelocity().multiply(2.0D));
     }
 
     /** Rough stand-in for the original's per-perspective arm/hip attachment math. */
