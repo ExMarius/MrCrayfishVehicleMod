@@ -1030,6 +1030,15 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "models/item/industrial_jerry_can.json",
             {"2": "vehicle:item/industrial_jerry_can", "particle": "vehicle:item/industrial_jerry_can"},
         )
+        # The mod authors pointed these models at parent "vehicle:block/workstation", which is
+        # NOT exported to the pack: vanilla fails to resolve the parent and falls back to the
+        # magenta/black missing-model cube. Geometry is fully inlined, so just drop the parent.
+        for _can_model in ("jerry_can", "industrial_jerry_can"):
+            _can_path = namespace / f"models/item/{_can_model}.json"
+            _can_json = json.loads(_can_path.read_text(encoding="utf-8"))
+            if _can_json.get("parent") == "vehicle:block/workstation":
+                del _can_json["parent"]
+                write_json(_can_path, _can_json)
         # The original renders the hose as a custom curved mesh built directly in
         # Java (GasPumpRenderer#drawHose); there is no separate model/texture for
         # it to reuse. A vanilla client cannot render that mesh either, so this is
