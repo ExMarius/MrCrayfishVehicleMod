@@ -978,6 +978,19 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "models/item/nozzle.json",
             {"2": "vehicle:item/nozzle", "particle": "vehicle:item/nozzle"},
         )
+        # The nozzle is also carried as a real hand item. The source Blockbench model
+        # ships no display block at all, so vanilla defaults made it oversized crooked
+        # in hand. Handheld transforms below only affect first/third person rendering;
+        # ItemDisplay entities (context NONE, e.g. the docked nozzle) are untouched.
+        _nozzle_path = namespace / "models/item/nozzle.json"
+        _nozzle = json.loads(_nozzle_path.read_text(encoding="utf-8"))
+        _nozzle["display"] = {
+            "firstperson_righthand": {"rotation": [0.0, 45.0, 0.0], "translation": [0.0, 2.5, 0.0], "scale": [0.85, 0.85, 0.85]},
+            "firstperson_lefthand": {"rotation": [0.0, 225.0, 0.0], "translation": [0.0, 2.5, 0.0], "scale": [0.85, 0.85, 0.85]},
+            "thirdperson_righthand": {"rotation": [0.0, 45.0, 0.0], "translation": [0.0, 3.0, 1.5], "scale": [0.85, 0.85, 0.85]},
+            "thirdperson_lefthand": {"rotation": [0.0, 225.0, 0.0], "translation": [0.0, 3.0, 1.5], "scale": [0.85, 0.85, 0.85]},
+        }
+        write_json(_nozzle_path, _nozzle)
         copy(
             ASSETS / "textures/model/gas_pump.png",
             namespace / "textures/item/gas_pump.png",
