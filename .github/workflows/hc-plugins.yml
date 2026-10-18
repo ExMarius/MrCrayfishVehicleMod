@@ -119,11 +119,11 @@ jobs:
           AUTH="Authorization: Bearer $K3Y"
           tar czf bundle.tgz -C stage plugins
           U=""
-          for attempt in 1 2 3 4 5 6 7 8; do
+          for attempt in $(seq 1 20); do
             U=$(curl -fsS -m 20 -X GET -H "$AUTH" -H 'Accept: application/json' \
                  "$PANEL/api/client/servers/$SERVER_ID/files/upload" | jq -r '.attributes.url // ""' 2>/dev/null) || true
             [ -n "$U" ] && break
-            sleep 5
+            sleep 20
           done
           [ -n "$U" ] || { echo "::error title=HC-UPLOAD::nu am primit URL de upload (panel flaky)"; exit 1; }
           CODE=$(curl -sS -m 300 -o /tmp/body.txt -w '%{http_code}' --request POST --form files=@bundle.tgz "$U")
