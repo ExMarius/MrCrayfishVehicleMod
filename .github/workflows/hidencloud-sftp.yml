@@ -1,4 +1,4 @@
-name: HidenCloud deploy rapid SFTP (cheie SSH, mereu conectat)
+name: HidenCloud deploy SFTP SSH (acces permanent)
 
 on:
   workflow_dispatch:
