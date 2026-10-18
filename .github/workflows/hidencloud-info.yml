@@ -27,11 +27,23 @@ jobs:
         run: |
           [ -n "${K3Y:-}" ] || { echo "::error::lipsește HIDENCLOUD_API_KEY"; exit 1; }
           AUTH="Authorization: Bearer $K3Y"
-          B=$(curl -sS -m 15 -o /tmp/b.txt -w "%{http_code}" -H "$AUTH" -H "Accept: application/json" "$PANEL/api/client/servers/$SERVER_ID"); echo "HTTP=$B"; head -c 300 /tmp/b.txt; S=$(cat /tmp/b.txt)
+          S=""
+          for i in 1 2 3 4 5 6; do
+            B=$(curl -sS -m 15 -o /tmp/b.txt -w "%{http_code}" -H "$AUTH" -H "Accept: application/json" "$PANEL/api/client/servers/$SERVER_ID") || B=000
+            [ "$B" = 200 ] && S=$(cat /tmp/b.txt) && break
+            echo "incercarea $i: HTTP $B ($(head -c 120 /tmp/b.txt | tr '\n' ' '))"
+            sleep 10
+          done
+          [ -n "$S" ] || { echo "::error::panoul nu raspunde acum (free tier flaky)"; exit 1; }
           NAME=$(echo "$S" | jq -r '.attributes.name // "?"')
           ADDR=$(echo "$S" | jq -r '.attributes.relationships.allocations.data[]? | select(.attributes.is_default==true) | "\(.attributes.ip_alias // .attributes.ip):\(.attributes.port)"' | head -1)
           [ -n "$ADDR" ] || ADDR=$(echo "$S" | jq -r '.attributes.relationships.allocations.data[0]? | "\(.attributes.ip_alias // .attributes.ip):\(.attributes.port)"')
-          R=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/servers/$SERVER_ID/resources")
-          ST=$(echo "$R" | jq -r '.attributes.current_state // "?"')
+          R=""
+          ST="?"
+          for i in 1 2 3 4 5 6; do
+            R=$(curl -fsS -m 15 -H "$AUTH" -H "Accept: application/json" "$PANEL/api/client/servers/$SERVER_ID/resources") && break || true
+            sleep 10
+          done
+          [ -n "$R" ] && ST=$(echo "$R" | jq -r '.attributes.current_state // "?"')
           echo "::notice title=HC-INFO::server $NAME | adresa jocului: $ADDR | stare: $ST"
           echo "name=$NAME addr=$ADDR state=$ST"
