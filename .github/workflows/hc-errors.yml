@@ -1,0 +1,66 @@
+name: HidenCloud erori (ultimul log)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/workflows/hc-errors.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: hc-errors
+  cancel-in-progress: true
+
+env:
+  PANEL: https://freepanel.hidencloud.com
+  SERVER_ID: a4e04808
+
+jobs:
+  errors:
+    name: Citesc latest.log, scot erorile pluginurilor
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Stare server + descarc logul
+        env:
+          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+        run: |
+          [ -n "${K3Y:-}" ] || { echo "::error::lipseste HIDENCLOUD_API_KEY"; exit 1; }
+          AUTH="Authorization: Bearer $K3Y"
+          # stare server
+          for i in 1 2 3 4 5 6; do
+            R=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/servers/$SERVER_ID/resources") && break || true
+            sleep 10
+          done
+          ST=$(echo "$R" | jq -r '.attributes.current_state // "?"')
+          CPU=$(echo "$R" | jq -r '.attributes.resources.cpu_absolute // 0')
+          MEM=$(echo "$R" | jq -r '.attributes.resources.memory_bytes // 0 | . / 1048576 | floor')
+          echo "::notice title=HC-STARE::server: $ST | CPU: ${CPU}% | RAM: ${MEM}MB"
+          # latest.log (poate fi mare; luam tot si taiem)
+          LOG=""
+          for i in 1 2 3 4 5 6; do
+            curl -sS -m 30 -o /tmp/latest.log -w '%{http_code}' -H "$AUTH" "$PANEL/api/client/servers/$SERVER_ID/files/contents?file=%2Flogs%2Flatest.log" | grep -q '^200$' && { LOG=ok; break; }
+            sleep 10
+          done
+          if [ -z "$LOG" ]; then
+            echo "::error title=HC-LOG::nu am putut citi /logs/latest.log (serverul pornit?)"
+            exit 0
+          fi
+          wc -l /tmp/latest.log
+          grep -aE ' ERROR |FATAL|Exception|Caused by' /tmp/latest.log | grep -av 'at java' | grep -av 'at net\.minecraft' | tail -30 > /tmp/err.txt || true
+          N=$(wc -l < /tmp/err.txt)
+          echo "== ultimele erori din log (max 30) =="
+          cat /tmp/err.txt
+          if [ "$N" -gt 0 ]; then
+            echo "::warning title=HC-ERORI::$N randuri cu erori in latest.log (vezi logul pasului)"
+          else
+            echo "::notice title=HC-ERORI::nici o eroare in latest.log — totul curat"
+          fi
+          echo "== pluginuri activate (din log) =="
+          grep -aE 'Enabling .+ v[0-9]' /tmp/latest.log | sed 's/.*\] //' | sort -u || true
+          echo "== ultimele 15 randuri de log =="
+          tail -15 /tmp/latest.log | cut -c1-200
