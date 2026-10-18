@@ -64,9 +64,14 @@ jobs:
           done
           ls stage/plugins/ | grep -q '^EssentialsX-' || SKIPPED="$SKIPPED EssentialsX(fail-ci)"
 
-          # Vault (spiget API — resursa oficială 34315, fișier direct)
-          curl -fsSL --retry 3 -m 60 -o stage/plugins/Vault.jar \
-               "https://api.spiget.org/v2/resources/34315/versions/latest/download" || SKIPPED="$SKIPPED Vault"
+          # Vault (GitHub releases Milkbowl/Vault — asset numit Vault*.jar)
+          for attempt in 1 2 3; do
+            VJ=$(curl -fsSL --retry 2 -m 30 "https://api.github.com/repos/Milkbowl/Vault/releases/latest" \
+                  | jq -r '[.assets[] | select(.name | startswith("Vault") and endswith(".jar"))] | .[0].browser_download_url // ""')
+            [ -n "$VJ" ] && break
+            sleep 4
+          done
+          [ -n "$VJ" ] && curl -fsSL --retry 2 -m 60 -o stage/plugins/Vault.jar "$VJ" || SKIPPED="$SKIPPED Vault"
           [ -s stage/plugins/Vault.jar ] || SKIPPED="$SKIPPED Vault(dl)"
 
           # LuckPerms (Modrinth, paper — ultima versiune; 6.x suportă 8.x–1.21.x)
