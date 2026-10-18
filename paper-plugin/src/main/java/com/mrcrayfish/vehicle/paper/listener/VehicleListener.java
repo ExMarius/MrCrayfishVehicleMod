@@ -312,7 +312,7 @@ public final class VehicleListener implements Listener {
             return; // empty hand only, exactly the mod's hand-feel
         }
         Entity ridden = player.getVehicle();
-        if (ridden == null || vehicles.byEntity(ridden).isEmpty()) {
+        if (ridden == null || !isRidingOurVehicle(ridden)) {
             return; // not driving one of our vehicles
         }
         honk(player, ridden);
@@ -324,11 +324,20 @@ public final class VehicleListener implements Listener {
     public void onHornKey(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
         Entity ridden = player.getVehicle();
-        if (ridden == null || vehicles.byEntity(ridden).isEmpty()) {
+        if (ridden == null || !isRidingOurVehicle(ridden)) {
             return;
         }
         event.setCancelled(true);
         honk(player, ridden);
+    }
+
+    /** Seats may be spawned outside the rig index depending on mount order, so accept the
+     *  direct match first and fall back to the nearest vehicle of our fleet. */
+    private boolean isRidingOurVehicle(Entity ridden) {
+        if (vehicles.byEntity(ridden).isPresent()) {
+            return true;
+        }
+        return vehicles.nearest(ridden.getLocation(), 6.0D).isPresent();
     }
 
     private void honk(Player player, Entity ridden) {
