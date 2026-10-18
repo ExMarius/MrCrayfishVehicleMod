@@ -19,6 +19,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
@@ -173,6 +174,17 @@ public final class GasPumpManager {
         Location location = pump.location();
         player.playSound(Sound.sound(Key.key("vehicle:block.gas_pump.nozzle_pick_up"),
                 Sound.Source.BLOCK, 1.0F, 1.0F), location.getX(), location.getY(), location.getZ());
+
+        // Per-viewer tail: the holder swaps the last shared-chain segments for their
+        // first-person tail copy (everyone else keeps seeing the plain chain).
+        GasPumpRig rig = pump.rig();
+        rig.setTailViewerId(player.getUniqueId());
+        for (ItemDisplay hidden : rig.holderCoveredTail()) {
+            player.hideEntity(plugin, hidden);
+        }
+        for (ItemDisplay tail : rig.holderTail()) {
+            player.showEntity(plugin, tail);
+        }
     }
 
     /** Puts the nozzle back on the pump and removes the hand item from the holder (anti-dupe). */
@@ -180,6 +192,15 @@ public final class GasPumpManager {
         Player holder = pump.holderId() == null ? null : Bukkit.getPlayer(pump.holderId());
         if (holder != null) {
             removeNozzleItems(holder);
+            // Undo the per-viewer tail swap.
+            GasPumpRig rig = pump.rig();
+            for (ItemDisplay shown : rig.holderCoveredTail()) {
+                holder.showEntity(plugin, shown);
+            }
+            for (ItemDisplay tail : rig.holderTail()) {
+                holder.hideEntity(plugin, tail);
+            }
+            rig.setTailViewerId(null);
         }
         pump.setHolderId(null);
         pump.rig().update(pump.location(), null, null);
@@ -230,8 +251,10 @@ public final class GasPumpManager {
                 continue;
             }
 
-            Location nozzleLocation = handHeldNozzleLocation(holder);
-            pump.rig().update(pump.location(), nozzleLocation, holder.getEyeLocation().getDirection());
+            // Main chain welds to the body-hand point (correct in F5 and for bystanders),
+            // while the holder alone sees the extra tail segments dive into the FP nozzle item.
+            pump.rig().update(pump.location(), bodyHandNozzleLocation(holder),
+                    holder.getEyeLocation().getDirection(), handHeldNozzleLocation(holder));
 
             fuel(pump, holder, fillSeconds);
         }
@@ -279,6 +302,20 @@ public final class GasPumpManager {
                 .add(right.multiply(0.3D))
                 // Movement prediction (~2 ticks): entity sync latency would otherwise pin the
                 // hose tail to where the head WAS, so sprinting left the hose trailing behind.
+                .add(player.getVelocity().multiply(2.0D));
+    }
+
+    /**
+     * Where the holder's hand really is on their BODY (what bystanders / F5 see): yaw-only
+     * basis so the shared hose chain ends welded to the visible arm, independent of view pitch.
+     */
+    private static Location bodyHandNozzleLocation(Player player) {
+        Location eye = player.getEyeLocation();
+        double rad = Math.toRadians(eye.getYaw());
+        double fx = -Math.sin(rad), fz = Math.cos(rad);
+        double rx = -Math.cos(rad), rz = -Math.sin(rad);
+        return eye.clone()
+                .add(fx * 0.28D + rx * 0.30D, -0.55D, fz * 0.28D + rz * 0.30D)
                 .add(player.getVelocity().multiply(2.0D));
     }
 

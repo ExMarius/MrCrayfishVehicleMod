@@ -70,14 +70,26 @@ public final class GasPumpRig {
     private final List<ItemDisplay> hose;
     private final List<Entity> entities;
 
+    /**
+     * Extra hose segments the HOLDER alone sees: the shared chain is anchored at the body's
+     * hand (what bystanders and F5 render), while these last two segments replace its very end
+     * on the holder's screen only and stick exactly into the nozzle item in first person.
+     */
+    static final int HOLDER_TAIL_SEGMENTS = 2;
+
+    private final List<ItemDisplay> holderTail;
+    private UUID tailViewerId;
+
     private GasPumpRig(UUID pumpId, Interaction interaction, ItemDisplay bottom, ItemDisplay top,
-                       ItemDisplay nozzle, List<ItemDisplay> hose, List<Entity> entities) {
+                       ItemDisplay nozzle, List<ItemDisplay> hose, List<ItemDisplay> holderTail,
+                       List<Entity> entities) {
         this.pumpId = pumpId;
         this.interaction = interaction;
         this.bottom = bottom;
         this.top = top;
         this.nozzle = nozzle;
         this.hose = hose;
+        this.holderTail = holderTail;
         this.entities = entities;
     }
 
@@ -117,8 +129,18 @@ public final class GasPumpRig {
             hose.add(segment);
         }
 
+        // Holder-only tail: born hidden from everybody, shown to whoever holds the nozzle.
+        List<ItemDisplay> holderTail = new ArrayList<>(HOLDER_TAIL_SEGMENTS);
+        for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
+            ItemDisplay segment = display(world, root, model("hose_segment"));
+            segment.setVisibleByDefault(false);
+            mark(segment, pumpId);
+            all.add(segment);
+            holderTail.add(segment);
+        }
+
         GasPumpRig rig = new GasPumpRig(pumpId, interaction, bottom, top, nozzle,
-                Collections.unmodifiableList(hose), all);
+                Collections.unmodifiableList(hose), Collections.unmodifiableList(holderTail), all);
         rig.update(root, null, null);
         return rig;
     }
@@ -133,6 +155,15 @@ public final class GasPumpRig {
      *                       (matches the original renderer); ignored when {@code nozzleLocation} is null.
      */
     public void update(Location root, Location nozzleLocation, Vector lookDirection) {
+        update(root, nozzleLocation, lookDirection, null);
+    }
+
+    /**
+     * @param holderAnchor first-person grip point of the holder (used to thread the holder-only
+     *                     tail exactly into the nozzle item on their screen); {@code null} when
+     *                     the nozzle is docked or no extra tail is wanted.
+     */
+    public void update(Location root, Location nozzleLocation, Vector lookDirection, Location holderAnchor) {
         if (!valid()) {
             return;
         }
@@ -188,6 +219,27 @@ public final class GasPumpRig {
             placeHoseSegment(hose.get(i), points[i], points[i + 1], world);
         }
 
+        if (holderAnchor != null) {
+            // Holder-only tail: from the N-2nd sample of the shared chain straight into the
+            // first-person grip point, so on the holder's screen the hose ends exactly inside
+            // the nozzle item they see on their hand.
+            Vector3f tailEnd = new Vector3f((float) holderAnchor.getX(), (float) holderAnchor.getY(),
+                    (float) holderAnchor.getZ());
+            Vector3f tailStartTangent = new Vector3f(points[HOSE_SEGMENTS - 2])
+                    .sub(points[HOSE_SEGMENTS - 3]).mul(4.0F);
+            Vector3f[] tailPoints = HermiteCurve.sample(points[HOSE_SEGMENTS - 2], tailStartTangent,
+                    tailEnd, endTangent, HOLDER_TAIL_SEGMENTS);
+            for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
+                placeHoseSegment(holderTail.get(i), tailPoints[i], tailPoints[i + 1], world);
+            }
+        } else {
+            // Nobody holding: park the hidden tail at the root (it stays invisible anyway).
+            Vector3f rootPoint = new Vector3f((float) root.getX(), (float) root.getY(), (float) root.getZ());
+            for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
+                placeHoseSegment(holderTail.get(i), rootPoint, rootPoint, world);
+            }
+        }
+
         updateBrightness(root);
     }
 
@@ -227,9 +279,6 @@ public final class GasPumpRig {
         return world.spawn(location, ItemDisplay.class, display -> {
             display.setItemStack(stack);
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
-            // Instant teleports: without this the client eases displays over the default
-            // interpolation window and the hose visibly lags behind the moving hand.
-            display.setTeleportDuration(0);
             configure(display);
         });
     }
@@ -237,7 +286,9 @@ public final class GasPumpRig {
     private static void configure(Display display) {
         display.setInterpolationDelay(0);
         display.setInterpolationDuration(1);
-        display.setTeleportDuration(VANILLA_ENTITY_LERP_TICKS);
+        // Instant teleports: the default lerping window made the hose visibly trail behind
+        // the moving hand (the earlier display()-level 0 was being overwritten back to 3 here).
+        display.setTeleportDuration(0);
         display.setInvulnerable(true);
         display.setPersistent(false);
         display.setShadowRadius(0.0F);
@@ -281,7 +332,26 @@ public final class GasPumpRig {
 
     public boolean valid() {
         return interaction.isValid() && bottom.isValid() && top.isValid() && nozzle.isValid()
-                && hose.stream().allMatch(Entity::isValid);
+                && hose.stream().allMatch(Entity::isValid)
+                && holderTail.stream().allMatch(Entity::isValid);
+    }
+
+    /** Last shared-chain segments, hidden from the holder while they hold the nozzle. */
+    public List<ItemDisplay> holderCoveredTail() {
+        return hose.subList(HOSE_SEGMENTS - HOLDER_TAIL_SEGMENTS, HOSE_SEGMENTS);
+    }
+
+    /** Holder-only tail segments (born strictly invisible, shown per-viewer by the manager). */
+    public List<ItemDisplay> holderTail() {
+        return holderTail;
+    }
+
+    public UUID tailViewerId() {
+        return tailViewerId;
+    }
+
+    public void setTailViewerId(UUID tailViewerId) {
+        this.tailViewerId = tailViewerId;
     }
 
     public void remove() {
