@@ -1187,6 +1187,9 @@ def build(output: Path) -> tuple[Path, str]:
             "entity.vehicle.helicopter_rotor": {
                 "sounds": [{"name": "vehicle:entity/vehicle/helicopter_rotor", "preload": True}]
             },
+            "entity.vehicle.horn": {
+                "sounds": [{"name": "vehicle:entity/vehicle/horn", "preload": True}]
+            },
             "entity.vehicle.door.open": {
                 "sounds": [{"name": "vehicle:entity/vehicle/door/open", "preload": True}]
             },
