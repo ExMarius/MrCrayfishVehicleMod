@@ -40,3 +40,13 @@ git commit -m "restore gas pump inghetat" && git push
 ```
 
 (Deploy automat ~5 min + restart confirmat.)
+
+## v3 — logistică validată (2026-10-18, commit `243672c`, tag `gaspump-final-v3`)
+
+Reguli aprobate de utilizator (peste V2):
+- Click pe vehicul **cu duza ținută** = doar alimentare, NU te mai urci în vehicul (pompa rămâne clicabilă pentru depunere)
+- **Maxim 1 duză per jucător** — ridicarea de la altă pompă e blocată cu mesaj
+- Două persoane pe aceeași pompă = blocat (era deja)
+
+Canistra (jerry can) — completă în același interval: model+textură din mod, umplere la pompă, turnare 500/click în vehicul, `/vehicle jerrycan [industrial]`.
+Notă tehnică esențială: deploy-ul sincronizează acum ÎNTOTDEAUNA `server.properties` (hash pack) și re-publică pack-ul în release.
