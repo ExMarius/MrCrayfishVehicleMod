@@ -4,6 +4,7 @@ import com.mrcrayfish.vehicle.paper.command.VehicleCommand;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.listener.GasPumpListener;
 import com.mrcrayfish.vehicle.paper.listener.VehicleListener;
+import com.mrcrayfish.vehicle.paper.restart.RestartWatcher;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -11,6 +12,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class VehiclePlugin extends JavaPlugin {
     private VehicleManager vehicleManager;
     private GasPumpManager gasPumpManager;
+    private RestartWatcher restartWatcher;
 
     @Override
     public void onEnable() {
@@ -31,11 +33,18 @@ public final class VehiclePlugin extends JavaPlugin {
 
         vehicleManager.start();
         gasPumpManager.start();
+
+        restartWatcher = new RestartWatcher(this);
+        restartWatcher.start();
+
         getLogger().info("Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.");
     }
 
     @Override
     public void onDisable() {
+        if (restartWatcher != null) {
+            restartWatcher.stop();
+        }
         if (gasPumpManager != null) {
             gasPumpManager.stop();
         }

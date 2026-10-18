@@ -96,6 +96,8 @@ jobs:
 
           cp hidencloud/config/TAB/config.yml stage/plugins/TAB/config.yml
           cp hidencloud/config/Essentials/motd.txt stage/plugins/Essentials/motd.txt
+          mkdir -p stage/trigger
+          date +%s > stage/trigger/.restart-request
           echo "fisiere pregatite:"
           find stage -type f | sort
 
@@ -135,6 +137,9 @@ jobs:
           printf 'put stage/plugins/TAB/config.yml plugins/TAB/config.yml\n' >> batch_up.txt
           printf 'put stage/plugins/Essentials/motd.txt plugins/Essentials/motd.txt\n' >> batch_up.txt
           printf '%s\n' \
+            '-mkdir plugins/MrCrayfishVehiclePlugin' \
+            '-rm plugins/MrCrayfishVehiclePlugin/.restart-request' \
+            'put stage/trigger/.restart-request plugins/MrCrayfishVehiclePlugin/.restart-request' \
             '-rm plugins/worldedit-bukkit.jar' \
             '-rm plugins/MrCrayfishVehiclePlugin-*-SNAPSHOT.jar' \
             >> batch_up.txt
@@ -161,25 +166,35 @@ jobs:
             echo "fara dubluri"
           fi
 
-      - name: Restart server (daca cheia API e proaspata)
+      - name: Restart automat (trigger plugin + API daca e vie) + verificare din log
         env:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
+          chmod 600 hidencloud/keys/arena_hc_ed25519
+          getlog() {
+            printf 'get logs/latest.log %s\n' "$1" > b_get.txt
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1
+          }
+          getlog /tmp/before.log
+          BEFORE=$(grep -a 'Done (' /tmp/before.log | tail -1 || echo '?')
+
+          # opţiunea 1: API dacă e cheie proaspătă
           if [ -n "${K3Y:-}" ]; then
-            CODE=$(curl -sS -m 12 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
-                    -d '{"signal":"restart"}' -o /dev/null -w '%{http_code}' \
-                    "$PANEL/api/client/servers/$SERVER_ID/power" || echo 000)
-            if [ "$CODE" = 204 ]; then
-              ST="?"
-              for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
-                sleep 15
-                ST=$(curl -sS -m 10 -H "Authorization: Bearer $K3Y" "$PANEL/api/client/servers/$SERVER_ID/resources" | jq -r '.attributes.current_state // "?"' 2>/dev/null || echo '?')
-                [ "$ST" = "running" ] && break
-              done
-              if [ "$ST" = "running" ]; then
-                echo "::notice title=HC-DONE::server ONLINE cu noul build — deploy 100% automat"
-                exit 0
-              fi
-            fi
+            curl -sS -m 12 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
+                 -d '{"signal":"restart"}' -o /dev/null \
+                 "$PANEL/api/client/servers/$SERVER_ID/power" >/dev/null 2>&1 || true
           fi
-          echo "::notice title=HC-RESTART::fisiere urcate OK. Cheia API e expirata — apasa RESTART in freepanel (5 sec) daca nu a dat singur"
+          # opțiunea 2 (permanentă): triggerul scris deja în /plugins — pluginul dă singur /restart
+
+          NEW=""
+          for i in 1 2 3 4 5 6 7 8; do
+            sleep 20
+            getlog /tmp/after.log || true
+            NEW=$(grep -a 'Done (' /tmp/after.log | tail -1 || echo '')
+            [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ] && break
+          done
+          if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then
+            echo "::notice title=HC-DONE::RESTART CONFIRMAT — server online cu noul build: $(echo $NEW | cut -c1-120)"
+          else
+            echo "::warning title=HC-RESTART::trigger scris OK — serverul se reporneste in secundele urmatoare (daca peste 2 min nu e online, apasa Start in freepanel)"
+          fi
