@@ -2,6 +2,8 @@ package com.mrcrayfish.vehicle.paper.listener;
 
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
@@ -26,6 +28,7 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
@@ -39,8 +42,12 @@ import java.util.regex.Pattern;
 public final class VehicleListener implements Listener {
     private static final Pattern GLOBAL_ENTITY_KILL = Pattern.compile(
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
+    private static final Key HORN_SOUND = Key.key("vehicle:entity/vehicle/horn");
+    private static final long HORN_COOLDOWN_MS = 1_500L;
+
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
+    private final java.util.Map<java.util.UUID, Long> hornCooldowns = new java.util.HashMap<>();
 
     public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -285,4 +292,42 @@ public final class VehicleListener implements Listener {
     public void onWorldLoad(WorldLoadEvent event) {
         vehicles.onWorldLoaded(event.getWorld());
     }
+    /**
+     * The horn (port of the original mod): no client keybinds exist on Paper, so it triggers
+     * like in the user's choice - RIGHT CLICK with an EMPTY main hand while riding a vehicle.
+     * Everyone within 48 blocks hears it; short cooldown against spam.
+     */
+    @EventHandler(ignoreCancelled = true)
+    public void onHorn(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        Action action = event.getAction();
+        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) {
+            return;
+        }
+        Player player = event.getPlayer();
+        ItemStack hand = player.getInventory().getItemInMainHand();
+        if (hand != null && !hand.getType().isAir()) {
+            return; // empty hand only, exactly the mod's hand-feel
+        }
+        Entity ridden = player.getVehicle();
+        if (ridden == null || vehicles.byEntity(ridden).isEmpty()) {
+            return; // not driving one of our vehicles
+        }
+        long now = System.currentTimeMillis();
+        Long last = hornCooldowns.get(player.getUniqueId());
+        if (last != null && now - last < HORN_COOLDOWN_MS) {
+            return;
+        }
+        hornCooldowns.put(player.getUniqueId(), now);
+        Location at = ridden.getLocation();
+        for (Player nearby : at.getWorld().getPlayers()) {
+            if (nearby.getLocation().distanceSquared(at) <= 48.0D * 48.0D) {
+                nearby.playSound(Sound.sound(HORN_SOUND, Sound.Source.VOICE, 1.0F, 1.0F),
+                        at.getX(), at.getY(), at.getZ());
+            }
+        }
+    }
+
 }
