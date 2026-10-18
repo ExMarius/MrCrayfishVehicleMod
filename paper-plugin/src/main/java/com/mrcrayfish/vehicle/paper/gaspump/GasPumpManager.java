@@ -276,7 +276,10 @@ public final class GasPumpManager {
         return eye.clone()
                 .subtract(0.0D, 0.4D, 0.0D)
                 .add(direction.clone().multiply(0.35D))
-                .add(right.multiply(0.3D));
+                .add(right.multiply(0.3D))
+                // Movement prediction (~2 ticks): entity sync latency would otherwise pin the
+                // hose tail to where the head WAS, so sprinting left the hose trailing behind.
+                .add(player.getVelocity().multiply(2.0D));
     }
 
     /** Snaps an arbitrary yaw to the nearest cardinal direction, package-visible for testing. */
