@@ -1,29 +1,42 @@
-# GAS PUMP — VERSIUNE INGHEȚATĂ (VALIDATĂ DE UTILIZATOR)
+# GAS PUMP — VERSIUNI INGHEȚATE (VALIDATE DE UTILIZATOR)
 
-**Data / commit:** 2026-10-18 / `f7366e7` (tag: `gaspump-perfect-v1`)
+## v2 — stare finală (2026-10-18, commit `e5b122f`, tag `gaspump-perfect-v2`) ✅ ACTIV
 
-Aspect, poziții pistol + furtun: **PERFECTE, confirmate vizual de utilizator**.
-NU se atinge NIMIC din pachetul `com.mrcrayfish.vehicle.paper.gaspump` fără acord explicit.
+Utilizatorul a aprobat: „perfect, doar că nu e unit cu pistolul" — limită ACCEPTATĂ.
 
-## Constantele validate (GasPumpRig.java)
+- **Pompă docată:** pistol + furtun perfecte — identic ca v1 (vezi constantele de mai jos)
+- **Pistol ținut = display plutitor** (fără item în inventar):
+  - rotație = yaw-ul privirii holderului (fără offset 180°)
+  - capătul lanțului + display-ul teleportează la **același punct** în fiecare tick
+  - furtunul intră **0.22 blocuri în corpul pistolului** (`NOZZLE_CONNECT_DEPTH`) — pe fața de vizualizare
+  - holderul NU vede ultimele **2** segmente (`HOLDER_HIDDEN_SEGMENTS=2`) → FP curat, unirea rămâne vizibilă
+  - `setTeleportDuration(0)` + predicție viteză ×2 → furtunul nu rămâne în spate la fugă
+- **Anti-dupe:** dacă există iteme-nozzle vechi în invenare, se șterg automat la punerea înapoi (`removeNozzleItems`)
+
+## v1 — pompă docată perfectă (2026-10-18, commit `f7366e7`, tag `gaspump-perfect-v1`)
+
+### Constantele validate (GasPumpRig.java)
 
 | Constantă | Valoare | Semnificație |
 |---|---|---|
-| `HOSE_OUTLET_LOCAL` | `(-0.575, 1.64, 0.1125)` | ieșire furtun din pompă — partea stângă |
-| `NOZZLE_REST_LOCAL` | `(0.5525, 1.5, 0.18)` | punctul de dock al pistolului |
-| `NOZZLE_YAW_OFFSET` | `180` | rotirea modelului pistolului |
+| `HOSE_OUTLET_LOCAL` | `(-0.575, 1.64, 0.1125)` | ieșire furtun din pompă — stânga |
+| `NOZZLE_REST_LOCAL` | `(0.5525, 1.5, 0.18)` | dock pistol |
+| `NOZZLE_YAW_OFFSET` | `180` | rotirea modelului pistol docat |
+| `NOZZLE_CONNECT_DEPTH` | `0.22` | adâncimea furtunului în pistol ținut |
+| `HOLDER_HIDDEN_SEGMENTS` | `2` | segmente ascunse holderului în FP |
 
-## Reguli de rotație validate
+### Reguli de rotație validate
 
-- **Corpul pompei** se rotește cu `setRotation(yaw)` → ancora furtunului se rotește cu **aceeași** rotație: `rotY(yaw) * HOSE_OUTLET_LOCAL` (fix f7366e7 — înainte era fixă în lume).
-- **Dock-ul pistolului** = `root + rotY(yaw + 180°) * NOZZLE_REST_LOCAL` (convenția Bukkit: `x' = x·cos − z·sin`, `z' = x·sin + z·cos`) — trebuie să folosească EXACT aceeași rotire ca `place(..., NOZZLE_YAW_OFFSET)`.
-- Pistolul ținut în mână: poziție după ochi (pitch inclus) — comportament **validat**, nudges activi: `-0.4 y, +0.35 în față, +0.3 în dreapta` (handHeldNozzleLocation original).
+- **Corpul pompei** rotește și ancora furtunului: `rotY(yaw) * HOSE_OUTLET_LOCAL`
+- **Dock pistol** = `root + rotY(yaw + 180°) * NOZZLE_REST_LOCAL` (convenție Bukkit: `x' = x·cos − z·sin`, `z' = x·sin + z·cos`)
+- **Pistol ținut** rotație = yaw privire holder, niciun offset
 
 ## Restaurare instant
 
 ```bash
-git checkout gaspump-perfect-v1 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/
+git checkout gaspump-perfect-v2 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/
+git checkout gaspump-perfect-v1 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/  # pentru dock-only
 git commit -m "restore gas pump inghetat" && git push
 ```
 
-(Se așteaptă ~5 min deploy automat + restart confirmat.)
+(Deploy automat ~5 min + restart confirmat.)

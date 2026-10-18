@@ -1,10 +1,12 @@
 package com.mrcrayfish.vehicle.paper.gaspump;
 
 // ============================================================================
-// [NU SCHIMBA - POZITII VALIDATE DE UTILIZATOR 2026-10-18, commit f7366e7]
-// Aspectul + pozitiile pompei/furtunului/pistolului sunt PERFECTE asa cum sunt.
-// Orice schimbare in acest pachet cere acordul EXPLICIT al utilizatorului.
-// Restaurare instant: git checkout gaspump-perfect-v1 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/
+// [NU SCHIMBA - VERSIUNE INGHETATA V2, VALIDATA DE UTILIZATOR 2026-10-18, commit e5b122f]
+// Pompa docata: PERFECTA (v1). Pistol flutant ținut: rotație pe privire, furtunul
+// intră 0.22 în corp, ultimele 2 segmente ascunse doar pentru holder (FP curat).
+// Limită cunoscută și ACCEPTATĂ: unirea furtun-pistol nu e pixel-perfect.
+// Orice schimbare în acest pachet cere acordul EXPLICIT al utilizatorului.
+// Restaurare instant: git checkout gaspump-perfect-v2 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/
 // Vezi paper-plugin/SNAPSHOT_GAS_PUMP_OK.md pentru constantele exacte.
 // ============================================================================
 
