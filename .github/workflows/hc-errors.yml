@@ -21,7 +21,7 @@ env:
 
 jobs:
   errors:
-    name: Citesc latest.log, scot erorile pluginurilor
+    name: Citesc latest.log + starea serverului
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
