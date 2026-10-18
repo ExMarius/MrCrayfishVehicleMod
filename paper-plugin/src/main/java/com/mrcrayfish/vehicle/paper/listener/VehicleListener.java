@@ -292,45 +292,6 @@ public final class VehicleListener implements Listener {
     public void onWorldLoad(WorldLoadEvent event) {
         vehicles.onWorldLoaded(event.getWorld());
     }
-    /**
-     * The horn (port of the original mod): no client keybinds exist on Paper, so it triggers
-     * like in the user's choice - RIGHT CLICK with an EMPTY main hand while riding a vehicle.
-     * Everyone within 48 blocks hears it; short cooldown against spam.
-     */
-    @EventHandler(ignoreCancelled = true)
-    public void onHorn(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND) {
-            return;
-        }
-        Action action = event.getAction();
-        if (action != Action.RIGHT_CLICK_AIR && action != Action.RIGHT_CLICK_BLOCK) {
-            return;
-        }
-        Player player = event.getPlayer();
-        ItemStack hand = player.getInventory().getItemInMainHand();
-        if (hand != null && !hand.getType().isAir()) {
-            return; // empty hand only, exactly the mod's hand-feel
-        }
-        Entity ridden = player.getVehicle();
-        if (ridden == null || !isRidingOurVehicle(ridden)) {
-            return; // not driving one of our vehicles
-        }
-        honk(player, ridden);
-    }
-
-    /** F (swap hand items) is the one real KEY Paper can read server-side: cancel the swap and
-     *  turn it into the horn key, exactly like the mod's H keybind. */
-    @EventHandler(ignoreCancelled = true)
-    public void onHornKey(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
-        Player player = event.getPlayer();
-        Entity ridden = player.getVehicle();
-        if (ridden == null || !isRidingOurVehicle(ridden)) {
-            return;
-        }
-        event.setCancelled(true);
-        honk(player, ridden);
-    }
-
     /** Seats may be spawned outside the rig index depending on mount order, so accept the
      *  direct match first and fall back to the nearest vehicle of our fleet. */
     private boolean isRidingOurVehicle(Entity ridden) {
