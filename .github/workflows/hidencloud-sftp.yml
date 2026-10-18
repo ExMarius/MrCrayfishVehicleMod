@@ -119,11 +119,19 @@ jobs:
           fi
           [ -n "$REAL_USER" ] && SFTP_ID="$REAL_USER.a4e04808" || SFTP_ID=""
           [ -n "$FRESH_KEY" ] && { echo "FRESH_API_KEY=$FRESH_KEY" >> "$GITHUB_ENV"; echo "::notice title=HC-KEY::cheie API proaspăta generata automat (restart/logs mereu)"; }
-          CAND_USERS="$SFTP_ID $UT marius7like7.a4e04808 mariusuke.a4e04808"
+          CAND_USERS="$SFTP_ID $UT marius7like7.a4e04808 mariusuke.a4e04808 marius7like.a4e04808 marius.a4e04808"
           for u in $CAND_USERS; do
+            printf 'ls plugins\n' > batch_try.txt
+            # intai CHEIA SSH (rapid, fara parola)
+            OUT=$(sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1) || true
+            if echo "$OUT" | grep -qiE "TAB|Essentials|MrCrayfish|plugins"; then
+              echo "$u" > /tmp/u_ok.txt
+              echo "SSHKEY" > /tmp/p_ok.txt
+              break
+            fi
+            # apoi parola (fallback)
             for p in "$PASS" "$PT"; do
               export SSHPASS="$p"
-              printf 'ls plugins\n' > batch_try.txt
               OUT=$(sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=1 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1) || true
               if echo "$OUT" | grep -qiE "TAB|Essentials|MrCrayfish|plugins"; then
                 echo "$u" > /tmp/u_ok.txt
@@ -143,7 +151,12 @@ jobs:
       - name: Urc fisierele prin SFTP
         if: steps.guard.outputs.enabled == 'true'
         run: |
-          export SSHPASS="$SFTP_PASS"
+          if [ "$SFTP_PASS" = SSHKEY ]; then
+            sftp_go() { sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 "$@"; }
+          else
+            export SSHPASS="$SFTP_PASS"
+            sftp_go() { sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$@"; }
+          fi
           printf '%s\n' \
             '-mkdir plugins' \
             '-mkdir plugins/TAB' \
@@ -161,20 +174,25 @@ jobs:
             >> batch_up.txt
           echo "batch:"
           cat batch_up.txt
-          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_up.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
+          sftp_go -b batch_up.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
           echo "::notice title=HC-SFTP-UPLOAD::jar-uri + configuri urcate prin SFTP (rapid, fara API)"
 
       - name: Curat dublurile vechi prin SFTP
         if: steps.guard.outputs.enabled == 'true'
         run: |
-          export SSHPASS="$SFTP_PASS"
+          if [ "$SFTP_PASS" = SSHKEY ]; then
+            sftp_go() { sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 "$@"; }
+          else
+            export SSHPASS="$SFTP_PASS"
+            sftp_go() { sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$@"; }
+          fi
           printf 'ls plugins\n' > batch_ls.txt
-          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp_ls.txt 2>&1
+          sftp_go -b batch_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp_ls.txt 2>&1
           printf '' > batch_rm.txt
           grep -E 'worldedit-bukkit\.jar$' sftp_ls.txt >/dev/null && printf '%s\n' '-rm plugins/worldedit-bukkit.jar' >> batch_rm.txt || true
           grep -E 'TAB v[^/]*\.jar$' sftp_ls.txt >/dev/null && sed -n 's|^\(plugins/\)*\(TAB v[^ ]*\.jar\).*|\1\2|p' sftp_ls.txt | while read -r n; do :; done || true
           if [ -s batch_rm.txt ]; then
-            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_rm.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" || true
+            sftp_go -b batch_rm.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" || true
             echo "::notice title=HC-SFTP-CLEAN::curatat dubluri vechi"
           else
             echo "nici o dublura"
