@@ -23,6 +23,7 @@ env:
   SFTP_HOST: nile.hidencloud.com
   SFTP_PORT: "2022"
   SFTP_PASS_FALLBACK: Parolaion12@
+  HC_API_KEY_INLINE: ptlc_KWfP1TQgd8fhKrzq06YHQmkGWAecXjeMpj0uihcqY84
   MC_VERSION: "1.21.4"
 
 jobs:
@@ -86,39 +87,28 @@ jobs:
         env:
           SECRET_PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
           SECRET_USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
+          SECRET_API: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
           PASS="${SECRET_PASS:-$SFTP_PASS_FALLBACK}"
           UT=$(echo "${SECRET_USER:-}" | tr -d '[:space:]')
           PT=$(echo "$PASS" | sed 's/^ *//;s/ *$//')
 
-          # Login în panou cu email+parolă → userul real + cheie API proaspătă (rezolvă ştergerea la 30 min)
-          REAL_USER=""; FRESH_KEY=""
-          CJ=/tmp/cj.txt
-          LC0=$(curl -sS -m 20 -c $CJ -o /tmp/login.html -w '%{http_code}' "$PANEL/auth/login" || echo 000)
-          TOK=$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' /tmp/login.html | head -1)
-          [ -n "$TOK" ] || echo "::warning title=HC-LOGIN-DIAG0::pagina login HTTP $LC0, fara token ($(head -c 80 /tmp/login.html | tr '\n' ' '))"
-          if [ -n "$TOK" ]; then
-            echo "::notice title=HC-LOGIN-DIAG::am pagina de login (token gasit), incerc email+parola..."
-            LC=$(curl -sS -m 20 -b $CJ -c $CJ -X POST "$PANEL/auth/login" \
-                  -H 'Content-Type: application/x-www-form-urlencoded' \
-                  --data-urlencode "user=marius7like7@gmail.com" \
-                  --data-urlencode "password=$PASS" \
-                  --data-urlencode "_token=$TOK" -o /dev/null -w '%{http_code}' || echo 000)
-            echo "::notice title=HC-LOGIN-DIAG2::POST login raspuns HTTP $LC"
-            if [ "$LC" = "200" ] || [ "$LC" = "302" ]; then
-              ACCT=$(curl -sS -m 15 -b $CJ -H 'Accept: application/json' "$PANEL/api/client/account" || echo '{}')
-              REAL_USER=$(echo "$ACCT" | jq -r '.attributes.username // ""' 2>/dev/null)
-              [ -n "$REAL_USER" ] && echo "::notice title=HC-LOGIN::login OK — user real gasit automat"
-              KJ=$(curl -sS -m 15 -b $CJ -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' \
-                    -d '{"description":"arena-auto","allowed_ips":[]}' "$PANEL/api/client/api-keys" || echo '{}')
-              FRESH_KEY=$(echo "$KJ" | jq -r '.attributes.secret_token // ""' 2>/dev/null)
+          # Citesc userul REAL al contului prin cheia API proaspătă (sau secretă)
+          K2="${SECRET_API:-$HC_API_KEY_INLINE}"
+          REAL_USER=""; FRESH_KEY="$K2"
+          if [ -n "$K2" ]; then
+            ACCT=$(curl -sS -m 15 -H "Authorization: Bearer $K2" -H 'Accept: application/json' "$PANEL/api/client/account" || echo '{}')
+            REAL_USER=$(echo "$ACCT" | jq -r '.attributes.username // ""' 2>/dev/null)
+            if [ -n "$REAL_USER" ]; then
+              echo "::notice title=HC-LOGIN::am USERNAME-ul real al contului (din API): $REAL_USER.a4e04808"
+              echo "SFTP_USER_HINT=$REAL_USER" >> "$GITHUB_ENV"
             else
-              echo "::warning title=HC-LOGIN::login panou esuat (HTTP $LC) — merg doar pe credentiale SFTP"
+              echo "::warning title=HC-LOGIN::cheia nu a dat userul: $(echo $ACCT | head -c 120 | tr '\n' ' ')"
             fi
           fi
+          [ -n "$FRESH_KEY" ] && echo "FRESH_API_KEY=$FRESH_KEY" >> "$GITHUB_ENV"
           [ -n "$REAL_USER" ] && SFTP_ID="$REAL_USER.a4e04808" || SFTP_ID=""
-          [ -n "$FRESH_KEY" ] && { echo "FRESH_API_KEY=$FRESH_KEY" >> "$GITHUB_ENV"; echo "::notice title=HC-KEY::cheie API proaspăta generata automat (restart/logs mereu)"; }
           CAND_USERS="$SFTP_ID $UT marius7like7.a4e04808 mariusuke.a4e04808 marius7like.a4e04808 marius.a4e04808"
           for u in $CAND_USERS; do
             printf 'ls plugins\n' > batch_try.txt
