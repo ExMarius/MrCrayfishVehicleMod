@@ -26,7 +26,7 @@ env:
 
 jobs:
   deploy:
-    name: Upload pluginuri prin SFTP, fara cheie API
+    name: "Upload pluginuri prin SFTP (fara cheie API)"
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
