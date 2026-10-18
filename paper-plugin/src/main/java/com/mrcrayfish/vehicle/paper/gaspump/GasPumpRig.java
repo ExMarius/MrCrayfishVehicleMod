@@ -137,7 +137,8 @@ public final class GasPumpRig {
         place(bottom, root, new Vector3f(0.0F, 0.5F, 0.0F));
         place(top, root, new Vector3f(0.0F, 1.5F, 0.0F));
 
-        Vector3f outlet = worldPoint(root, HOSE_OUTLET_LOCAL);
+        Vector3f outlet = new Vector3f((float) root.getX() + HOSE_OUTLET_LOCAL.x,
+                (float) root.getY() + HOSE_OUTLET_LOCAL.y, (float) root.getZ() + HOSE_OUTLET_LOCAL.z);
         Vector3f nozzlePoint;
         Vector3f endTangent;
         if (nozzleLocation != null) {
@@ -151,8 +152,17 @@ public final class GasPumpRig {
                     : new Vector3f((float) lookDirection.getX(), (float) lookDirection.getY(),
                             (float) lookDirection.getZ()).mul(3.0F);
         } else {
-            nozzlePoint = worldPoint(root, NOZZLE_REST_LOCAL);
-            place(nozzle, root, NOZZLE_REST_LOCAL, NOZZLE_YAW_OFFSET);
+            // Absolute placement, exactly like the held-nozzle path: teleport the nozzle to the
+            // validated dock point and give it an identity transformation. The hose tail targets
+            // this same absolute world point, so outlet curve and nozzle can never disagree again
+            // (rotating the tail separately used to drag the hose through the pump).
+            nozzlePoint = new Vector3f((float) root.getX() + NOZZLE_REST_LOCAL.x,
+                    (float) root.getY() + NOZZLE_REST_LOCAL.y, (float) root.getZ() + NOZZLE_REST_LOCAL.z);
+            nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z),
+                    TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            nozzle.setRotation(yaw + NOZZLE_YAW_OFFSET, 0.0F);
+            nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
+                    new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
             endTangent = new Vector3f(0.0F, 3.0F, 0.0F);
         }
 
@@ -163,17 +173,6 @@ public final class GasPumpRig {
         }
 
         updateBrightness(root);
-    }
-
-    /** World-space rotation of a local offset by the rig's own facing, for hose/curve math only. */
-    private static Vector3f worldPoint(Location root, Vector3f local) {
-        double radians = Math.toRadians(root.getYaw());
-        float cos = (float) Math.cos(radians);
-        float sin = (float) Math.sin(radians);
-        float worldX = local.x * cos - local.z * sin;
-        float worldZ = local.x * sin + local.z * cos;
-        return new Vector3f((float) root.getX() + worldX, (float) root.getY() + local.y,
-                (float) root.getZ() + worldZ);
     }
 
     private static void place(ItemDisplay display, Location root, Vector3f center) {
