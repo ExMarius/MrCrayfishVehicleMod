@@ -980,15 +980,18 @@ def build(output: Path) -> tuple[Path, str]:
         )
         # The nozzle is also carried as a real hand item. The source Blockbench model
         # ships no display block at all, so vanilla defaults made it oversized crooked
-        # in hand. Handheld transforms below only affect first/third person rendering;
-        # ItemDisplay entities (context NONE, e.g. the docked nozzle) are untouched.
+        # in hand; transforms below mirror the original mod's FuelingHandler exactly
+        # (FP: translate(±0.65, -0.27, -0.72) + rotX(45); TP: rotZ(180) + translate
+        # (±1px, -7px, -4.25px) after translateToHand). They affect ONLY held-item
+        # rendering; ItemDisplay entities (context NONE, e.g. the docked nozzle) and
+        # the pump's own rig stay untouched.
         _nozzle_path = namespace / "models/item/nozzle.json"
         _nozzle = json.loads(_nozzle_path.read_text(encoding="utf-8"))
         _nozzle["display"] = {
-            "firstperson_righthand": {"rotation": [0.0, 45.0, 0.0], "translation": [0.0, 2.5, 0.0], "scale": [0.85, 0.85, 0.85]},
-            "firstperson_lefthand": {"rotation": [0.0, 225.0, 0.0], "translation": [0.0, 2.5, 0.0], "scale": [0.85, 0.85, 0.85]},
-            "thirdperson_righthand": {"rotation": [0.0, 45.0, 0.0], "translation": [0.0, 3.0, 1.5], "scale": [0.85, 0.85, 0.85]},
-            "thirdperson_lefthand": {"rotation": [0.0, 225.0, 0.0], "translation": [0.0, 3.0, 1.5], "scale": [0.85, 0.85, 0.85]},
+            "firstperson_righthand": {"rotation": [45.0, 0.0, 0.0], "translation": [10.4, -11.2, -5.09], "scale": [1.0, 1.0, 1.0]},
+            "firstperson_lefthand": {"rotation": [45.0, 0.0, 0.0], "translation": [-10.4, -11.2, -5.09], "scale": [1.0, 1.0, 1.0]},
+            "thirdperson_righthand": {"rotation": [0.0, 0.0, 180.0], "translation": [1.0, -7.0, -4.25], "scale": [1.0, 1.0, 1.0]},
+            "thirdperson_lefthand": {"rotation": [0.0, 0.0, 180.0], "translation": [-1.0, -7.0, -4.25], "scale": [1.0, 1.0, 1.0]},
         }
         write_json(_nozzle_path, _nozzle)
         copy(
