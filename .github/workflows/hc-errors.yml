@@ -58,6 +58,8 @@ jobs:
           if [ "$N" -gt 0 ]; then
             MSGS=$(head -8 /tmp/err.txt | cut -c1-150 | sed 's/"/'"'"'/g' | paste -sd' ¦ ' - | cut -c1-1400)
             echo "::warning title=HC-ERORI-TOP::$MSGS"
+            CTX=$(grep -aB4 -m2 'major version\|Could not load\|Error occurred' /tmp/latest.log | cut -c1-150 | sed 's/"/'"'"'/g' | paste -sd' ¦ ' - | cut -c1-1500)
+            echo "::warning title=HC-ERORI-CONTEXT::$CTX"
           else
             echo "::notice title=HC-ERORI::nici o eroare in latest.log — totul curat"
           fi
