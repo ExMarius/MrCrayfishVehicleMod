@@ -1,4 +1,4 @@
-name: HidenCloud deploy rapid SFTP (fara cheie API)
+name: HidenCloud deploy rapid SFTP (mereu conectat)
 
 on:
   workflow_dispatch:
