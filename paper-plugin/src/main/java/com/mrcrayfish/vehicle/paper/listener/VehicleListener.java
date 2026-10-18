@@ -315,6 +315,23 @@ public final class VehicleListener implements Listener {
         if (ridden == null || vehicles.byEntity(ridden).isEmpty()) {
             return; // not driving one of our vehicles
         }
+        honk(player, ridden);
+    }
+
+    /** F (swap hand items) is the one real KEY Paper can read server-side: cancel the swap and
+     *  turn it into the horn key, exactly like the mod's H keybind. */
+    @EventHandler(ignoreCancelled = true)
+    public void onHornKey(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        Entity ridden = player.getVehicle();
+        if (ridden == null || vehicles.byEntity(ridden).isEmpty()) {
+            return;
+        }
+        event.setCancelled(true);
+        honk(player, ridden);
+    }
+
+    private void honk(Player player, Entity ridden) {
         long now = System.currentTimeMillis();
         Long last = hornCooldowns.get(player.getUniqueId());
         if (last != null && now - last < HORN_COOLDOWN_MS) {
