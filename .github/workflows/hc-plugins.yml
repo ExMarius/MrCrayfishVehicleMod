@@ -1,6 +1,7 @@
 name: HidenCloud plugins (stack de baza + TAB/scoreboard UKEMC)
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - arena/2f9f7b9e-mrcrayfishvehiclemod
@@ -24,7 +25,8 @@ env:
 jobs:
   plugins:
     name: Descarc pluginurile, le încarc pe server, restart
-    runs-on: ubuntu-24.04
+    runs-on:
+  workflow_dispatch: ubuntu-24.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v5
@@ -44,7 +46,8 @@ jobs:
         env:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
-          L=$(curl -fsS -m 15 -H "Authorization: Bearer $K3Y" -H 'Accept: application/json' \
+          L=$(curl -fsS -m 15 -H "Authorization:
+  workflow_dispatch: Bearer $K3Y" -H 'Accept: application/json' \
                "$PANEL/api/client/servers/$SERVER_ID/files/list?directory=%2Fplugins") || L='{"data":[]}'
           NAMES=$(echo "$L" | jq -r '[.data[].attributes.name] | join(", ")')
           echo "plugins actuale: $NAMES"
@@ -116,7 +119,8 @@ jobs:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
           set -e
-          AUTH="Authorization: Bearer $K3Y"
+          AUTH="Authorization:
+  workflow_dispatch: Bearer $K3Y"
           tar czf bundle.tgz -C stage plugins
           U=""
           for attempt in 1 2 3 4 5 6 7 8; do
@@ -148,7 +152,8 @@ jobs:
         env:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
-          AUTH="Authorization: Bearer $K3Y"
+          AUTH="Authorization:
+  workflow_dispatch: Bearer $K3Y"
           OLD=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' \
                 "$PANEL/api/client/servers/$SERVER_ID/files/list?directory=%2Fplugins" \
                 | jq -r '[.data[].attributes.name | select(startswith("TAB v") or (test("TAB.*jar$") and . != "TAB.jar"))]')
@@ -168,7 +173,8 @@ jobs:
         env:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
-          AUTH="Authorization: Bearer $K3Y"
+          AUTH="Authorization:
+  workflow_dispatch: Bearer $K3Y"
           curl -fsS -m 30 -X POST -H "$AUTH" -H 'Content-Type: application/json' \
                -d '{"signal":"restart"}' -o /dev/null "$PANEL/api/client/servers/$SERVER_ID/power" || true
           for i in $(seq 1 24); do
