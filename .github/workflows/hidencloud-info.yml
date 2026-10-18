@@ -1,4 +1,4 @@
-name: HidenCloud info (stadiu panou)
+name: HidenCloud info (stadiu panou + adresa)
 
 on:
   push:
