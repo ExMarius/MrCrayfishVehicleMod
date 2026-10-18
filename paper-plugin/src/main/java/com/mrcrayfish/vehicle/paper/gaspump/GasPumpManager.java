@@ -287,8 +287,11 @@ public final class GasPumpManager {
     }
 
     /**
-     * Where the holder's hand really is on their BODY (what bystanders / F5 render): yaw-only
-     * basis so the shared chain ends welded to the visible arm, independent of view pitch.
+     * Where the held nozzle ITEM actually renders its model origin on the body (bystanders/F5
+     * viewpoint): the right palm, plus the item display transform (rotZ180 + (-1px, +7px,
+     * -4.25px)) baked from the original mod values -> up 0.44, slightly right and slightly
+     * back from the raw palm. The shared chain terminates exactly there, so the hose welds
+     * into the visible item instead of dangling next to it.
      */
     private static Location bodyHandNozzleLocation(Player player) {
         Location eye = player.getEyeLocation();
@@ -296,7 +299,7 @@ public final class GasPumpManager {
         double fx = -Math.sin(rad), fz = Math.cos(rad);
         double rx = -Math.cos(rad), rz = -Math.sin(rad);
         return eye.clone()
-                .add(fx * 0.28D + rx * 0.30D, -0.55D, fz * 0.28D + rz * 0.30D)
+                .add(fx * 0.01D + rx * 0.24D, -0.11D, fz * 0.01D + rz * 0.24D)
                 .add(player.getVelocity().multiply(2.0D));
     }
 
