@@ -137,8 +137,14 @@ public final class GasPumpRig {
         place(bottom, root, new Vector3f(0.0F, 0.5F, 0.0F));
         place(top, root, new Vector3f(0.0F, 1.5F, 0.0F));
 
-        Vector3f outlet = new Vector3f((float) root.getX() + HOSE_OUTLET_LOCAL.x,
-                (float) root.getY() + HOSE_OUTLET_LOCAL.y, (float) root.getZ() + HOSE_OUTLET_LOCAL.z);
+        // Hose outlet anchor must rotate WITH the pump body (Bukkit yaw rotation), otherwise
+        // re-placing the pump at a different yaw leaves the hose pouring out of the wrong side.
+        float bodyRad = (float) Math.toRadians(yaw);
+        double bodyCos = Math.cos(bodyRad), bodySin = Math.sin(bodyRad);
+        Vector3f outlet = new Vector3f(
+                (float) (root.getX() + HOSE_OUTLET_LOCAL.x * bodyCos - HOSE_OUTLET_LOCAL.z * bodySin),
+                (float) root.getY() + HOSE_OUTLET_LOCAL.y,
+                (float) (root.getZ() + HOSE_OUTLET_LOCAL.x * bodySin + HOSE_OUTLET_LOCAL.z * bodyCos));
         Vector3f nozzlePoint;
         Vector3f endTangent;
         if (nozzleLocation != null) {
