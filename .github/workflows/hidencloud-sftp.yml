@@ -92,36 +92,34 @@ jobs:
           USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
-          UL=$(echo -n "$USER" | wc -c)
-          UA=fara-arond; echo "$USER" | grep -q '@' && UA=ARE-AROND-gresit
-          UP=fara-punct; echo "$USER" | grep -q '\.' && UA2=are-punct-bine || UA2=fara-punct
-          PL=$(echo -n "$PASS" | wc -c)
-          SP=fara-spatii; case "$PASS" in *" "*) SP=ARE-SPATII;; esac
-          echo "::notice title=HC-SFTP-METRICE::user len=$UL $UA $UA2 | parola len=$PL $SP | hint user corect: ceva.a4e04808"
-          export SSHPASS="$PASS"
-          printf 'ls plugins\n' > batch_test.txt
-          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_test.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST" > sftp_out.txt 2>&1 || true
-          if grep -q "MrCrayfish\|TAB\|Essentials" sftp_out.txt; then
-            echo "::notice title=HC-SFTP-OK::conectare SFTP reusita la $SFTP_HOST:$SFTP_PORT"
-          else
-            U="$USER"
-            UHL="len=$(echo -n "$U" | wc -c)"
-            echo "$U" | grep -q '@' && UHL="$UHL are-ARONDAIL=DA" || UHL="$UHL fara-arond"
-            PNW="len=$(echo -n "$PASS" | wc -c)"
-            case "$PASS" in *" "*) PNW="$PNW are-spatii";; esac
-            FULL=$(grep -v '^Warning' sftp_out.txt | cut -c1-200 | grep -v '^$' | paste -sd' | ' - | cut -c1-500)
-            cat sftp_out.txt
-            echo "::error title=HC-SFTP-FAIL::${FULL:-(nimic)} [user: $UHL | parola: $PNW | port $SFTP_PORT]"
+          # Candidați user: secretul (tuns de spații) + variante deduse după formatul Pterodactyl
+          UT=$(echo "$USER" | tr -d '[:space:]')
+          PT=$(echo "$PASS" | sed 's/^ *//;s/ *$//')
+          CAND_USERS="$UT marius7like7.a4e04808 mariusuke.a4e04808"
+          for u in $CAND_USERS; do
+            for p in "$PASS" "$PT"; do
+              export SSHPASS="$p"
+              printf 'ls plugins\n' > batch_try.txt
+              OUT=$(sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=1 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1)
+              if echo "$OUT" | grep -qiE "TAB|Essentials|MrCrayfish|plugins"; then
+                echo "$u" > /tmp/u_ok.txt
+                echo "$p" > /tmp/p_ok.txt
+                break 2
+              fi
+            done
+          done
+          if [ ! -f /tmp/u_ok.txt ]; then
+            echo "::error title=HC-SFTP-FAIL::am încercat toate variantele de user — contul tău de panou probabil NU are parolă setată. Rezolvare: freepanel → numele tău (sus dreapta) → Account Settings → Update Password → setează o parolă → pune aceeași parolă în secretul HIDENCLOUD_SFTP_PASS"
             exit 1
           fi
+          echo "SFTP_USER=$(cat /tmp/u_ok.txt)" >> "$GITHUB_ENV"
+          echo "SFTP_PASS=$(cat /tmp/p_ok.txt)" >> "$GITHUB_ENV"
+          echo "::notice title=HC-SFTP-OK::CONECTARE REUȘITĂ! user găsit automat: $(echo $(cat /tmp/u_ok.txt) | cut -c1-6)***.a4e04808"
 
       - name: Urc fisierele prin SFTP
         if: steps.guard.outputs.enabled == 'true'
-        env:
-          PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
-          USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
         run: |
-          export SSHPASS="$PASS"
+          export SSHPASS="$SFTP_PASS"
           printf '%s\n' \
             '-mkdir plugins' \
             '-mkdir plugins/TAB' \
@@ -139,23 +137,20 @@ jobs:
             >> batch_up.txt
           echo "batch:"
           cat batch_up.txt
-          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_up.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST"
+          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_up.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
           echo "::notice title=HC-SFTP-UPLOAD::jar-uri + configuri urcate prin SFTP (rapid, fara API)"
 
       - name: Curat dublurile vechi prin SFTP
         if: steps.guard.outputs.enabled == 'true'
-        env:
-          PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
-          USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
         run: |
-          export SSHPASS="$PASS"
+          export SSHPASS="$SFTP_PASS"
           printf 'ls plugins\n' > batch_ls.txt
-          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_ls.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST" > sftp_ls.txt 2>&1
+          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp_ls.txt 2>&1
           printf '' > batch_rm.txt
           grep -E 'worldedit-bukkit\.jar$' sftp_ls.txt >/dev/null && printf '%s\n' '-rm plugins/worldedit-bukkit.jar' >> batch_rm.txt || true
           grep -E 'TAB v[^/]*\.jar$' sftp_ls.txt >/dev/null && sed -n 's|^\(plugins/\)*\(TAB v[^ ]*\.jar\).*|\1\2|p' sftp_ls.txt | while read -r n; do :; done || true
           if [ -s batch_rm.txt ]; then
-            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_rm.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST" || true
+            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_rm.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" || true
             echo "::notice title=HC-SFTP-CLEAN::curatat dubluri vechi"
           else
             echo "nici o dublura"
