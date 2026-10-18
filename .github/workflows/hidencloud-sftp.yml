@@ -92,6 +92,12 @@ jobs:
           USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+          UL=$(echo -n "$USER" | wc -c)
+          UA=fara-arond; echo "$USER" | grep -q '@' && UA=ARE-AROND-gresit
+          UP=fara-punct; echo "$USER" | grep -q '\.' && UA2=are-punct-bine || UA2=fara-punct
+          PL=$(echo -n "$PASS" | wc -c)
+          SP=fara-spatii; case "$PASS" in *" "*) SP=ARE-SPATII;; esac
+          echo "::notice title=HC-SFTP-METRICE::user len=$UL $UA $UA2 | parola len=$PL $SP | hint user corect: ceva.a4e04808"
           export SSHPASS="$PASS"
           printf 'ls plugins\n' > batch_test.txt
           sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -b batch_test.txt -P "$SFTP_PORT" "$USER@$SFTP_HOST" > sftp_out.txt 2>&1 || true
