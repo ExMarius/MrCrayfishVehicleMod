@@ -22,6 +22,7 @@ env:
   SERVER_ID: a4e04808
   SFTP_HOST: nile.hidencloud.com
   SFTP_PORT: "2022"
+  SFTP_PASS_FALLBACK: Parolaion12@
   MC_VERSION: "1.21.4"
 
 jobs:
@@ -38,12 +39,8 @@ jobs:
           HIDENCLOUD_SFTP_PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
           HIDENCLOUD_SFTP_USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
         run: |
-          OK=true
-          [ -n "${HIDENCLOUD_SFTP_PASS:-}" ] || OK=false
-          [ -n "${HIDENCLOUD_SFTP_USER:-}" ] || OK=false
-          if [ "$OK" = false ]; then
-            echo "::error title=HC-SFTP::lipsesc secretele HIDENCLOUD_SFTP_USER si/sau HIDENCLOUD_SFTP_PASS (panoul > server > SFTP Details)"
-            exit 0
+          if [ -z "${HIDENCLOUD_SFTP_PASS:-}" ]; then
+            echo "::notice title=HC-SFTP::fara secret — folosesc credentialele din workflow"
           fi
           echo "enabled=true" >> "$GITHUB_OUTPUT"
 
@@ -86,14 +83,13 @@ jobs:
           find stage -name '*.jar' -o -name '*.yml' -o -name '*.txt' | sort
 
       - name: Instalez sshpass + testez conexiunea SFTP
-        if: steps.guard.outputs.enabled == 'true'
         env:
-          PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
-          USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
+          SECRET_PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
+          SECRET_USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
-          # Candidați user: secretul (tuns de spații) + variante deduse după formatul Pterodactyl
-          UT=$(echo "$USER" | tr -d '[:space:]')
+          PASS="${SECRET_PASS:-$SFTP_PASS_FALLBACK}"
+          UT=$(echo "${SECRET_USER:-}" | tr -d '[:space:]')
           PT=$(echo "$PASS" | sed 's/^ *//;s/ *$//')
           CAND_USERS="$UT marius7like7.a4e04808 mariusuke.a4e04808"
           for u in $CAND_USERS; do
