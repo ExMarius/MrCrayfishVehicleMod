@@ -64,10 +64,9 @@ jobs:
           done
           ls stage/plugins/ | grep -q '^EssentialsX-' || SKIPPED="$SKIPPED EssentialsX(fail-ci)"
 
-          # Vault (Modrinth, bukkit — clasic, nu are tag paper)
-          VJ=$(curl -fsSL --retry 3 -m 30 "https://api.modrinth.com/v2/project/vault/version?loaders=%5B%22bukkit%22%5D" \
-                | jq -r '.[0].files[0].url // ""' 2>/dev/null)
-          [ -n "$VJ" ] && curl -fsSL --retry 3 -m 60 -o stage/plugins/Vault.jar "$VJ" || SKIPPED="$SKIPPED Vault"
+          # Vault (spiget API — resursa oficială 34315, fișier direct)
+          curl -fsSL --retry 3 -m 60 -o stage/plugins/Vault.jar \
+               "https://api.spiget.org/v2/resources/34315/versions/latest/download" || SKIPPED="$SKIPPED Vault"
           [ -s stage/plugins/Vault.jar ] || SKIPPED="$SKIPPED Vault(dl)"
 
           # LuckPerms (Modrinth, paper — ultima versiune; 6.x suportă 8.x–1.21.x)
@@ -82,9 +81,9 @@ jobs:
           [ -n "$WE" ] && curl -fsSL -m 120 -o "stage/plugins/worldedit-bukkit.jar" "$WE" || SKIPPED="$SKIPPED WorldEdit"
           [ -s stage/plugins/worldedit-bukkit.jar ] || SKIPPED="$SKIPPED WorldEdit(dl)"
 
-          # TAB (Modrinth, paper — ultima versiune; suportă și 1.21.x)
-          TBJ=$(curl -fsSL --retry 3 -m 30 "https://api.modrinth.com/v2/project/tab/version?loaders=%5B%22paper%22%5D" \
-                 | jq -r '(.[0].files[] | select(.primary==true) | .url) // (.[0].files[0].url) // ""' 2>/dev/null | head -1)
+          # TAB (GitHub releases NEZNAMY/TAB — asset .jar)
+          TBJ=$(curl -fsSL --retry 3 -m 30 "https://api.github.com/repos/NEZNAMY/TAB/releases/latest" \
+                 | jq -r '[.assets[] | select(.name | test("^[Tt][Aa][Bb].*\\.jar$"))] | .[0].browser_download_url // ""')
           [ -n "$TBJ" ] && curl -fsSL --retry 3 -m 120 -o "stage/plugins/TAB.jar" "$TBJ" || SKIPPED="$SKIPPED TAB"
           [ -s stage/plugins/TAB.jar ] || SKIPPED="$SKIPPED TAB(dl)"
 
