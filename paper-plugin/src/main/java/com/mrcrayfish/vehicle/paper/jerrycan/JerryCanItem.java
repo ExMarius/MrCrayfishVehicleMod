@@ -26,9 +26,9 @@ public final class JerryCanItem {
         NORMAL("jerry_can", "Canistră de benzină", 3_000.0F),
         INDUSTRIAL("industrial_jerry_can", "Canistră industrială", 9_000.0F);
 
-        final String model;
-        final String label;
-        final float capacity;
+        public final String model;
+        public final String label;
+        public final float capacity;
 
         Type(String model, String label, float capacity) {
             this.model = model;
@@ -51,8 +51,9 @@ public final class JerryCanItem {
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", type.model));
         meta.getPersistentDataContainer().set(TYPE_KEY, PersistentDataType.STRING, type.name());
-        setFuel(meta, item, 0.0F);
         item.setItemMeta(meta);
+        // Name/lore refresh must run AFTER the meta landed on the stack (typeOf reads it).
+        setFuel(item, 0.0F);
         return item;
     }
 
