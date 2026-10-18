@@ -56,7 +56,8 @@ jobs:
           echo "== ultimele erori din log (max 30) =="
           cat /tmp/err.txt
           if [ "$N" -gt 0 ]; then
-            echo "::warning title=HC-ERORI::$N randuri cu erori in latest.log (vezi logul pasului)"
+            MSGS=$(head -8 /tmp/err.txt | cut -c1-150 | sed 's/"/'"'"'/g' | paste -sd' ¦ ' - | cut -c1-1400)
+            echo "::warning title=HC-ERORI-TOP::$MSGS"
           else
             echo "::notice title=HC-ERORI::nici o eroare in latest.log — totul curat"
           fi
