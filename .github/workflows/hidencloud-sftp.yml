@@ -12,7 +12,7 @@ on:
       - ".github/workflows/hidencloud-sftp.yml"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: hc-sftp
@@ -44,6 +44,17 @@ jobs:
 
       - name: Gradle build
         run: ./paper-plugin/gradlew -p paper-plugin clean build -x test
+
+      # The pack URL in config.yml points at this fixed release asset; players can only
+      # ever see model/pack changes if the asset itself is re-uploaded on every deploy.
+      - name: Publica resource pack-ul in release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./paper-plugin/gradlew -p paper-plugin resourcePack
+          gh release upload vehicle-plugin-prototype-v0.1.0 \
+            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip \
+            --clobber
 
       - uses: actions/upload-artifact@v5
         with:
