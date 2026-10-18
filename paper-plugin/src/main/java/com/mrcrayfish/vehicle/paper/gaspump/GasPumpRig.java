@@ -125,6 +125,15 @@ public final class GasPumpRig {
      *                       (matches the original renderer); ignored when {@code nozzleLocation} is null.
      */
     public void update(Location root, Location nozzleLocation, Vector lookDirection) {
+        update(root, nozzleLocation, lookDirection, 0.0F);
+    }
+
+    /**
+     * @param holderYaw yaw of the player holding the nozzle (only used when
+     *                  {@code nozzleLocation} is non-null) so the nozzle rotates with the
+     *                  player's body instead of the pump's facing.
+     */
+    public void update(Location root, Location nozzleLocation, Vector lookDirection, float holderYaw) {
         if (!valid()) {
             return;
         }
@@ -145,7 +154,7 @@ public final class GasPumpRig {
             nozzlePoint = new Vector3f((float) nozzleLocation.getX(), (float) nozzleLocation.getY(),
                     (float) nozzleLocation.getZ());
             nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z));
-            nozzle.setRotation(yaw + NOZZLE_YAW_OFFSET, 0.0F);
+            nozzle.setRotation(holderYaw + NOZZLE_YAW_OFFSET, 0.0F);
             nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
                     new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
             endTangent = lookDirection == null ? new Vector3f(0.0F, 3.0F, 0.0F)

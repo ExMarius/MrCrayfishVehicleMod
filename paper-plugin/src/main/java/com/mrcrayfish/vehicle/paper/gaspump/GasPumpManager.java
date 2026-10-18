@@ -183,7 +183,8 @@ public final class GasPumpManager {
             }
 
             Location nozzleLocation = handHeldNozzleLocation(holder);
-            pump.rig().update(pump.location(), nozzleLocation, holder.getEyeLocation().getDirection());
+            pump.rig().update(pump.location(), nozzleLocation, holder.getEyeLocation().getDirection(),
+                    holder.getEyeLocation().getYaw());
 
             fuel(pump, holder, fillSeconds);
         }
@@ -215,20 +216,19 @@ public final class GasPumpManager {
         pump.setGlugCooldown(cooldown);
     }
 
-    /** Rough stand-in for the original's per-perspective arm/hip attachment math. */
+    /**
+     * Hand-held nozzle anchor, yaw-only so the nozzle stays at hand height instead of
+     * following the view pitch (that used to make it fly up when looking at the sky).
+     * Right hand, slightly below the eyes and a bit forward, like a real held item.
+     */
     private static Location handHeldNozzleLocation(Player player) {
         Location eye = player.getEyeLocation();
-        Vector direction = eye.getDirection();
-        Vector right = direction.clone().crossProduct(new Vector(0.0D, 1.0D, 0.0D));
-        if (right.lengthSquared() < 1.0E-6D) {
-            right = new Vector(1.0D, 0.0D, 0.0D);
-        } else {
-            right.normalize();
-        }
-        return eye.clone()
-                .subtract(0.0D, 0.4D, 0.0D)
-                .add(direction.clone().multiply(0.35D))
-                .add(right.multiply(0.3D));
+        double rad = Math.toRadians(eye.getYaw());
+        double forward = 0.32D;
+        double side = 0.28D;
+        double fx = -Math.sin(rad), fz = Math.cos(rad);
+        double rx = -Math.cos(rad), rz = -Math.sin(rad);
+        return eye.clone().add(fx * forward + rx * side, -0.55D, fz * forward + rz * side);
     }
 
     /** Snaps an arbitrary yaw to the nearest cardinal direction, package-visible for testing. */
