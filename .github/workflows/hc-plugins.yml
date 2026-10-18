@@ -23,7 +23,7 @@ env:
 
 jobs:
   plugins:
-    name: Descarc pluginurile, le încarc pe server + restart
+    name: Descarc pluginurile, le încarc pe server, restart final
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
