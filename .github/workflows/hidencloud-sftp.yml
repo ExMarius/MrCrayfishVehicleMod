@@ -100,7 +100,7 @@ jobs:
             for p in "$PASS" "$PT"; do
               export SSHPASS="$p"
               printf 'ls plugins\n' > batch_try.txt
-              OUT=$(sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=1 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1)
+              OUT=$(sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=1 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1) || true
               if echo "$OUT" | grep -qiE "TAB|Essentials|MrCrayfish|plugins"; then
                 echo "$u" > /tmp/u_ok.txt
                 echo "$p" > /tmp/p_ok.txt
