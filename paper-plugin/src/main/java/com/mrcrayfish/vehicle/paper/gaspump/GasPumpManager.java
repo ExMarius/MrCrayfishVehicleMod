@@ -5,6 +5,8 @@ package com.mrcrayfish.vehicle.paper.gaspump;
 // Pompa docata: PERFECTA (v1). Pistol flutant ținut: rotație pe privire, furtunul
 // intră 0.22 în corp, ultimele 2 segmente ascunse doar pentru holder (FP curat).
 // Limită cunoscută și ACCEPTATĂ: unirea furtun-pistol nu e pixel-perfect.
+// + LOGISTICĂ (acord explicit 2026-10-18, după înghețarea V2): click pe vehicul cu
+//   duza ținută NU mai urcă în vehicul (doar alimentează); maxim 1 duză per jucător.
 // Orice schimbare în acest pachet cere acordul EXPLICIT al utilizatorului.
 // Restaurare instant: git checkout gaspump-perfect-v2 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/
 // Vezi paper-plugin/SNAPSHOT_GAS_PUMP_OK.md pentru constantele exacte.
@@ -222,6 +224,16 @@ public final class GasPumpManager {
                 putDownNozzle(pump);
             }
         }
+    }
+
+    /** True when this player already holds ANY pump's nozzle (one nozzle per player rule). */
+    public boolean isHoldingNozzle(java.util.UUID playerId) {
+        for (GasPump pump : pumps.values()) {
+            if (playerId.equals(pump.holderId())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void tick() {

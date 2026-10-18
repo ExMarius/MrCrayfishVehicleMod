@@ -30,7 +30,7 @@ public final class VehiclePlugin extends JavaPlugin {
         command.setExecutor(vehicleCommand);
         command.setTabCompleter(vehicleCommand);
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
-        getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager), this);
+        getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
 
         vehicleManager.start();
