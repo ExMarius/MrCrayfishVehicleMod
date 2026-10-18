@@ -1076,6 +1076,10 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/item/jerry_can/liquid_glug.ogg",
             namespace / "sounds/item/jerry_can/liquid_glug.ogg",
         )
+        copy(
+            ASSETS / "sounds/entity/vehicle/horn.ogg",
+            namespace / "sounds/entity/vehicle/horn.ogg",
+        )
 
         copy(
             ASSETS / "sounds/entity/go_kart/engine.ogg",

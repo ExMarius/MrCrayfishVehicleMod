@@ -42,7 +42,7 @@ import java.util.regex.Pattern;
 public final class VehicleListener implements Listener {
     private static final Pattern GLOBAL_ENTITY_KILL = Pattern.compile(
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
-    private static final Key HORN_SOUND = Key.key("vehicle:entity/vehicle/horn");
+    private static final Key HORN_SOUND = Key.key("vehicle:entity.vehicle.horn");
     private static final long HORN_COOLDOWN_MS = 1_500L;
 
     private final VehiclePlugin plugin;
