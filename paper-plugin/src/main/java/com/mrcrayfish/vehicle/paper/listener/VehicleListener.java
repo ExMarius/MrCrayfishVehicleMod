@@ -358,9 +358,9 @@ public final class VehicleListener implements Listener {
         }
         // The mod's horn.ogg is a long-press honk; the user wants a short "țit": cut it
         // server-side after ~0.6s without re-cutting the audio asset itself.
-        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
             for (Player nearby : listeners) {
-                nearby.stopSound(net.kyori.adventure.sound.StopSound.named(HORN_SOUND));
+                nearby.stopSound(HORN_SOUND.asString(), org.bukkit.SoundCategory.VOICE);
             }
         }, 10L);
     }
