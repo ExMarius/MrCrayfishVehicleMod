@@ -98,10 +98,14 @@ jobs:
           if grep -q "MrCrayfish\|TAB\|Essentials" sftp_out.txt; then
             echo "::notice title=HC-SFTP-OK::conectare SFTP reusita la $SFTP_HOST:$SFTP_PORT"
           else
+            U="$USER"
+            UHL="len=$(echo -n "$U" | wc -c)"
+            echo "$U" | grep -q '@' && UHL="$UHL are-ARONDAIL=DA" || UHL="$UHL fara-arond"
+            PNW="len=$(echo -n "$PASS" | wc -c)"
+            case "$PASS" in *" "*) PNW="$PNW are-spatii";; esac
             FULL=$(grep -v '^Warning' sftp_out.txt | cut -c1-200 | grep -v '^$' | paste -sd' | ' - | cut -c1-500)
-            echo "output: "
             cat sftp_out.txt
-            echo "::error title=HC-SFTP-FAIL::${FULL:-(nimic in output — sftp a murit silent)}"
+            echo "::error title=HC-SFTP-FAIL::${FULL:-(nimic)} [user: $UHL | parola: $PNW | port $SFTP_PORT]"
             exit 1
           fi
 
