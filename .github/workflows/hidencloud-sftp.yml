@@ -91,7 +91,33 @@ jobs:
           PASS="${SECRET_PASS:-$SFTP_PASS_FALLBACK}"
           UT=$(echo "${SECRET_USER:-}" | tr -d '[:space:]')
           PT=$(echo "$PASS" | sed 's/^ *//;s/ *$//')
-          CAND_USERS="$UT marius7like7.a4e04808 mariusuke.a4e04808"
+
+          # Login în panou cu email+parolă → userul real + cheie API proaspătă (rezolvă ştergerea la 30 min)
+          REAL_USER=""; FRESH_KEY=""
+          CJ=/tmp/cj.txt
+          curl -sS -m 20 -c $CJ "$PANEL/auth/login" -o /tmp/login.html || true
+          TOK=$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' /tmp/login.html | head -1)
+          if [ -n "$TOK" ]; then
+            LC=$(curl -sS -m 20 -b $CJ -c $CJ -X POST "$PANEL/auth/login" \
+                  -H 'Content-Type: application/x-www-form-urlencoded' \
+                  --data-urlencode "user=marius7like7@gmail.com" \
+                  --data-urlencode "password=$PASS" \
+                  --data-urlencode "_token=$TOK" -o /dev/null -w '%{http_code}' || echo 000)
+            echo "login panel: HTTP $LC"
+            if [ "$LC" = "200" ] || [ "$LC" = "302" ]; then
+              ACCT=$(curl -sS -m 15 -b $CJ -H 'Accept: application/json' "$PANEL/api/client/account" || echo '{}')
+              REAL_USER=$(echo "$ACCT" | jq -r '.attributes.username // ""' 2>/dev/null)
+              [ -n "$REAL_USER" ] && echo "::notice title=HC-LOGIN::login OK — user real gasit automat"
+              KJ=$(curl -sS -m 15 -b $CJ -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' \
+                    -d '{"description":"arena-auto","allowed_ips":[]}' "$PANEL/api/client/api-keys" || echo '{}')
+              FRESH_KEY=$(echo "$KJ" | jq -r '.attributes.secret_token // ""' 2>/dev/null)
+            else
+              echo "::warning title=HC-LOGIN::login panou esuat (HTTP $LC) — merg doar pe credentiale SFTP"
+            fi
+          fi
+          [ -n "$REAL_USER" ] && SFTP_ID="$REAL_USER.a4e04808" || SFTP_ID=""
+          [ -n "$FRESH_KEY" ] && { echo "FRESH_API_KEY=$FRESH_KEY" >> "$GITHUB_ENV"; echo "::notice title=HC-KEY::cheie API proaspăta generata automat (restart/logs mereu)"; }
+          CAND_USERS="$SFTP_ID $UT marius7like7.a4e04808 mariusuke.a4e04808"
           for u in $CAND_USERS; do
             for p in "$PASS" "$PT"; do
               export SSHPASS="$p"
@@ -152,11 +178,12 @@ jobs:
             echo "nici o dublura"
           fi
 
-      - name: Restart server (daca cheia API e inca vie)
+      - name: Restart server (cheie API proaspata sau secreta)
         if: steps.guard.outputs.enabled == 'true'
         env:
-          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+          OLDKEY: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
+          K3Y="${FRESH_API_KEY:-$OLDKEY}"
           if [ -n "${K3Y:-}" ]; then
             CODE=$(curl -sS -m 15 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
                     -d '{"signal":"restart"}' -o /dev/null -w '%{http_code}' \
