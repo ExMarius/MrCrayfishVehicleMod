@@ -69,9 +69,10 @@ jobs:
           [ -n "$VJ" ] && curl -fsSL -m 60 -o stage/plugins/Vault.jar "$VJ" || SKIPPED="$SKIPPED Vault"
           [ -s stage/plugins/Vault.jar ] || SKIPPED="$SKIPPED Vault(dl)"
 
-          # LuckPerms (meta API oficial)
-          LPV=$(curl -fsS -m 30 "https://metaapi.luckperms.net/v1/projects/luckperms" | jq -r '"\(.build)/bukkit/LuckPerms-Bukkit-\(.version).jar"')
-          [ -n "$LPV" ] && [ "$LPV" != "/bukkit/LuckPerms-Bukkit-.jar" ] && curl -fsSL -m 90 -o "stage/plugins/LuckPerms-Bukkit.jar" "https://download.luckperms.net/$LPV" || SKIPPED="$SKIPPED LuckPerms"
+          # LuckPerms (Modrinth, paper — ultima versiune; 6.x suportă 8.x–1.21.x)
+          LP=$(curl -fsS -m 30 "https://api.modrinth.com/v2/project/luckperms/version?loaders=%5B%22paper%22%5D" \
+                | jq -r '.[0].files[] | select(.primary==true) | .url' | head -1)
+          [ -n "$LP" ] && curl -fsSL -m 120 -o "stage/plugins/LuckPerms-Bukkit.jar" "$LP" || SKIPPED="$SKIPPED LuckPerms"
           [ -s stage/plugins/LuckPerms-Bukkit.jar ] || SKIPPED="$SKIPPED LuckPerms(dl)"
 
           # WorldEdit (Modrinth, 1.21.4 / paper)
@@ -80,8 +81,8 @@ jobs:
           [ -n "$WE" ] && curl -fsSL -m 120 -o "stage/plugins/worldedit-bukkit.jar" "$WE" || SKIPPED="$SKIPPED WorldEdit"
           [ -s stage/plugins/worldedit-bukkit.jar ] || SKIPPED="$SKIPPED WorldEdit(dl)"
 
-          # TAB (Modrinth, 1.21.4 / paper)
-          TBJ=$(curl -fsS -m 30 "https://api.modrinth.com/v2/project/tab/version?loaders=%5B%22paper%22%5D&game_versions=%5B%22$MC_VERSION%22%5D" \
+          # TAB (Modrinth, paper — ultima versiune; suportă și 1.21.x)
+          TBJ=$(curl -fsS -m 30 "https://api.modrinth.com/v2/project/tab/version?loaders=%5B%22paper%22%5D" \
                  | jq -r '.[0].files[] | select(.primary==true) | .url' | head -1)
           [ -n "$TBJ" ] && curl -fsSL -m 120 -o "stage/plugins/TAB.jar" "$TBJ" || SKIPPED="$SKIPPED TAB"
           [ -s stage/plugins/TAB.jar ] || SKIPPED="$SKIPPED TAB(dl)"
@@ -125,6 +126,26 @@ jobs:
                -d '{"root": "/", "files": ["bundle.tgz"]}' -o /dev/null \
                "$PANEL/api/client/servers/$SERVER_ID/files/delete" || true
           echo "::notice title=HC-PLUGINS::jar-uri + configuri aterizate întotdeauna în /plugins"
+
+      - name: Curăț dublurile TAB (jar-ul vechi cu spații)
+        if: steps.guard.outputs.enabled == 'true'
+        env:
+          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+        run: |
+          AUTH="Authorization: Bearer $K3Y"
+          OLD=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' \
+                "$PANEL/api/client/servers/$SERVER_ID/files/list?directory=%2Fplugins" \
+                | jq -r '[.data[].attributes.name | select(startswith("TAB v") or (test("TAB.*jar$") and . != "TAB.jar"))]')
+          N=$(echo "$OLD" | jq length)
+          if [ "$N" -gt 0 ]; then
+            R=$(curl -fsS -m 30 -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+                 -d "{\"root\": \"/plugins\", \"files\": $OLD}" -o /dev/null -w '%{http_code}' \
+                 "$PANEL/api/client/servers/$SERVER_ID/files/delete")
+            echo "sterse $N fisiere TAB vechi → HTTP $R"
+            echo "::notice title=HC-DUPES::am șters dublurile TAB rămase ($N fișiere)"
+          else
+            echo "nici o dublură TAB"
+          fi
 
       - name: Restart + aștept online
         if: steps.guard.outputs.enabled == 'true'
