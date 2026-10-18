@@ -3,6 +3,7 @@ package com.mrcrayfish.vehicle.paper;
 import com.mrcrayfish.vehicle.paper.command.VehicleCommand;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.listener.GasPumpListener;
+import com.mrcrayfish.vehicle.paper.listener.JerryCanListener;
 import com.mrcrayfish.vehicle.paper.listener.VehicleListener;
 import com.mrcrayfish.vehicle.paper.restart.RestartWatcher;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
@@ -30,6 +31,7 @@ public final class VehiclePlugin extends JavaPlugin {
         command.setTabCompleter(vehicleCommand);
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager), this);
+        getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
 
         vehicleManager.start();
         gasPumpManager.start();

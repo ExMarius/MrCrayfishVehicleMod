@@ -239,6 +239,8 @@ def build(output: Path) -> tuple[Path, str]:
             "gas_pump_top": ("vehicle:item/gas_pump_top", 16383998),
             "nozzle": ("vehicle:item/nozzle", 16383998),
             "hose_segment": ("vehicle:item/hose_segment", 16383998),
+            "jerry_can": ("vehicle:item/jerry_can", 16383998),
+            "industrial_jerry_can": ("vehicle:item/industrial_jerry_can", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -1009,6 +1011,24 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ASSETS / "textures/model/nozzle.png",
             namespace / "textures/item/nozzle.png",
+        )
+        copy(
+            ASSETS / "textures/model/jerry_can.png",
+            namespace / "textures/item/jerry_can.png",
+        )
+        copy(
+            ASSETS / "textures/model/industrial_jerry_can.png",
+            namespace / "textures/item/industrial_jerry_can.png",
+        )
+        convert_model(
+            ASSETS / "models/item/jerry_can.json",
+            namespace / "models/item/jerry_can.json",
+            {"1": "vehicle:item/jerry_can", "particle": "vehicle:item/jerry_can"},
+        )
+        convert_model(
+            ASSETS / "models/item/industrial_jerry_can.json",
+            namespace / "models/item/industrial_jerry_can.json",
+            {"2": "vehicle:item/industrial_jerry_can", "particle": "vehicle:item/industrial_jerry_can"},
         )
         # The original renders the hose as a custom curved mesh built directly in
         # Java (GasPumpRenderer#drawHose); there is no separate model/texture for

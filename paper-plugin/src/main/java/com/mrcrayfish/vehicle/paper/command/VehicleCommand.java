@@ -3,6 +3,7 @@ package com.mrcrayfish.vehicle.paper.command;
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpItem;
+import com.mrcrayfish.vehicle.paper.jerrycan.JerryCanItem;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
@@ -45,6 +46,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "remove" -> remove(sender);
             case "refuel" -> refuel(sender);
             case "gaspump" -> gaspump(sender);
+            case "jerrycan" -> jerrycan(sender, args);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
                     + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
@@ -146,6 +148,21 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 + "<gray>Plaseaz-o cu click dreapta, ca pe un bloc normal.</gray>");
     }
 
+    /** Jerry cans are fuel containers any player may get, exactly like the gas pump item. */
+    private void jerrycan(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        JerryCanItem.Type type = args.length > 1 && args[1].equalsIgnoreCase("industrial")
+                ? JerryCanItem.Type.INDUSTRIAL : JerryCanItem.Type.NORMAL;
+        ItemStack item = JerryCanItem.create(type);
+        player.getInventory().addItem(item).values().forEach(leftover ->
+                player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+        player.sendRichMessage("<green>Ai primit o " + type.label.toLowerCase(Locale.ROOT) + ".</green> "
+                + "<gray>Umple-o la o pompă (click dreapta), apoi toarnă în vehicul (click dreapta).</gray>");
+    }
+
     private void pack(CommandSender sender) {
         if (sender instanceof Player player) {
             if (ResourcePackSender.send(plugin, player)) {
@@ -173,7 +190,10 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "list", "save", "pack"), args[0]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
+            return filter(List.of("normal", "industrial"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
             List<String> types = new ArrayList<>(LandVehicleSpec.ids());
