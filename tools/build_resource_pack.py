@@ -988,10 +988,10 @@ def build(output: Path) -> tuple[Path, str]:
         _nozzle_path = namespace / "models/item/nozzle.json"
         _nozzle = json.loads(_nozzle_path.read_text(encoding="utf-8"))
         _nozzle["display"] = {
-            "firstperson_righthand": {"rotation": [45.0, 0.0, 0.0], "translation": [10.4, -11.2, -5.09], "scale": [1.0, 1.0, 1.0]},
-            "firstperson_lefthand": {"rotation": [45.0, 0.0, 0.0], "translation": [-10.4, -11.2, -5.09], "scale": [1.0, 1.0, 1.0]},
-            "thirdperson_righthand": {"rotation": [0.0, 0.0, 180.0], "translation": [1.0, -7.0, -4.25], "scale": [1.0, 1.0, 1.0]},
-            "thirdperson_lefthand": {"rotation": [0.0, 0.0, 180.0], "translation": [-1.0, -7.0, -4.25], "scale": [1.0, 1.0, 1.0]},
+            "firstperson_righthand": {"rotation": [45.0, 0.0, 0.0], "translation": [10.4, -4.32, -11.52], "scale": [1.0, 1.0, 1.0]},
+            "firstperson_lefthand": {"rotation": [45.0, 0.0, 0.0], "translation": [-10.4, -4.32, -11.52], "scale": [1.0, 1.0, 1.0]},
+            "thirdperson_righthand": {"rotation": [0.0, 0.0, 180.0], "translation": [-1.0, 7.0, -4.25], "scale": [1.0, 1.0, 1.0]},
+            "thirdperson_lefthand": {"rotation": [0.0, 0.0, 180.0], "translation": [1.0, 7.0, -4.25], "scale": [1.0, 1.0, 1.0]},
         }
         write_json(_nozzle_path, _nozzle)
         copy(

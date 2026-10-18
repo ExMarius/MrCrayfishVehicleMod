@@ -227,6 +227,9 @@ public final class GasPumpRig {
         return world.spawn(location, ItemDisplay.class, display -> {
             display.setItemStack(stack);
             display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
+            // Instant teleports: without this the client eases displays over the default
+            // interpolation window and the hose visibly lags behind the moving hand.
+            display.setTeleportDuration(0);
             configure(display);
         });
     }
