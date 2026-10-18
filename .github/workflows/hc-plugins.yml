@@ -119,7 +119,7 @@ jobs:
           AUTH="Authorization: Bearer $K3Y"
           tar czf bundle.tgz -C stage plugins
           U=""
-          for attempt in 1 2 3 4; do
+          for attempt in 1 2 3 4 5 6 7 8; do
             U=$(curl -fsS -m 20 -X GET -H "$AUTH" -H 'Accept: application/json' \
                  "$PANEL/api/client/servers/$SERVER_ID/files/upload" | jq -r '.attributes.url // ""' 2>/dev/null) || true
             [ -n "$U" ] && break
