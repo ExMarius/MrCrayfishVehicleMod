@@ -143,7 +143,7 @@ jobs:
                "$PANEL/api/client/servers/$SERVER_ID/files/delete" || true
           echo "::notice title=HC-PLUGINS::jar-uri + configuri aterizate în /plugins (upload $CODE, extract $D)"
 
-      - name: Curăț dublurile TAB (jar-ul vechi cu spații)
+      - name: Curăț dublurile (TAB vechi, WorldEdit vechi)
         if: steps.guard.outputs.enabled == 'true'
         env:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
