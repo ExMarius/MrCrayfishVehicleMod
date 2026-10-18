@@ -340,6 +340,20 @@ public final class VehicleListener implements Listener {
         return vehicles.nearest(ridden.getLocation(), 6.0D).isPresent();
     }
 
+    /** The mod's horn key is H, but a vanilla client never sends H to the server at all.
+     *  Q (drop item) IS sent: while riding one of our vehicles, cancel the drop and honk -
+     *  the dedicated horn key, closest possible to the mod without client mods. */
+    @EventHandler(ignoreCancelled = true)
+    public void onHornDropKey(org.bukkit.event.player.PlayerDropItemEvent event) {
+        Player player = event.getPlayer();
+        Entity ridden = player.getVehicle();
+        if (ridden == null || !isRidingOurVehicle(ridden)) {
+            return;
+        }
+        event.setCancelled(true);
+        honk(player, ridden);
+    }
+
     private void honk(Player player, Entity ridden) {
         long now = System.currentTimeMillis();
         Long last = hornCooldowns.get(player.getUniqueId());
