@@ -95,15 +95,17 @@ jobs:
           # Login în panou cu email+parolă → userul real + cheie API proaspătă (rezolvă ştergerea la 30 min)
           REAL_USER=""; FRESH_KEY=""
           CJ=/tmp/cj.txt
-          curl -sS -m 20 -c $CJ "$PANEL/auth/login" -o /tmp/login.html || true
+          LC0=$(curl -sS -m 20 -c $CJ -o /tmp/login.html -w '%{http_code}' "$PANEL/auth/login" || echo 000)
           TOK=$(sed -n 's/.*name="_token" value="\([^"]*\)".*/\1/p' /tmp/login.html | head -1)
+          [ -n "$TOK" ] || echo "::warning title=HC-LOGIN-DIAG0::pagina login HTTP $LC0, fara token ($(head -c 80 /tmp/login.html | tr '\n' ' '))"
           if [ -n "$TOK" ]; then
+            echo "::notice title=HC-LOGIN-DIAG::am pagina de login (token gasit), incerc email+parola..."
             LC=$(curl -sS -m 20 -b $CJ -c $CJ -X POST "$PANEL/auth/login" \
                   -H 'Content-Type: application/x-www-form-urlencoded' \
                   --data-urlencode "user=marius7like7@gmail.com" \
                   --data-urlencode "password=$PASS" \
                   --data-urlencode "_token=$TOK" -o /dev/null -w '%{http_code}' || echo 000)
-            echo "login panel: HTTP $LC"
+            echo "::notice title=HC-LOGIN-DIAG2::POST login raspuns HTTP $LC"
             if [ "$LC" = "200" ] || [ "$LC" = "302" ]; then
               ACCT=$(curl -sS -m 15 -b $CJ -H 'Accept: application/json' "$PANEL/api/client/account" || echo '{}')
               REAL_USER=$(echo "$ACCT" | jq -r '.attributes.username // ""' 2>/dev/null)
