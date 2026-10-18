@@ -27,7 +27,7 @@ jobs:
         run: |
           [ -n "${K3Y:-}" ] || { echo "::error::lipsește HIDENCLOUD_API_KEY"; exit 1; }
           AUTH="Authorization: Bearer $K3Y"
-          S=$(curl -fsS -m 15 -H "$AUTH" -H 'Accept: application/json' "$PANEL/api/client/servers/$SERVER_ID")
+          B=$(curl -sS -m 15 -o /tmp/b.txt -w "%{http_code}" -H "$AUTH" -H "Accept: application/json" "$PANEL/api/client/servers/$SERVER_ID"); echo "HTTP=$B"; head -c 300 /tmp/b.txt; S=$(cat /tmp/b.txt)
           NAME=$(echo "$S" | jq -r '.attributes.name // "?"')
           ADDR=$(echo "$S" | jq -r '.attributes.relationships.allocations.data[]? | select(.attributes.is_default==true) | "\(.attributes.ip_alias // .attributes.ip):\(.attributes.port)"' | head -1)
           [ -n "$ADDR" ] || ADDR=$(echo "$S" | jq -r '.attributes.relationships.allocations.data[0]? | "\(.attributes.ip_alias // .attributes.ip):\(.attributes.port)"')
