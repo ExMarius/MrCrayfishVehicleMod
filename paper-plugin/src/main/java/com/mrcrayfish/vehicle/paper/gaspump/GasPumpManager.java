@@ -155,28 +155,20 @@ public final class GasPumpManager {
     }
 
     /**
-     * Hands the nozzle to the player as a REAL item (native first/third person rendering) and
-     * hides the docked nozzle display. Main hand if empty, otherwise the first free slot.
+     * Nozzle as a FLOATING display welded to the hose end (user decision 2026-10-18: no
+     * inventory item at all). The display and the shared chain terminate at the same world
+     * point, so the hose-nozzle junction can never split; the holder additionally has the
+     * near-face chain segments hidden so first person stays clean.
      */
     public void pickUpNozzle(Player player, GasPump pump) {
         pump.setHolderId(player.getUniqueId());
-        ItemStack nozzle = NozzleItem.create(pump.id().toString());
-        if (player.getInventory().getItemInMainHand().getType().isAir()) {
-            player.getInventory().setItemInMainHand(nozzle);
-        } else {
-            int slot = player.getInventory().firstEmpty();
-            if (slot >= 0) {
-                player.getInventory().setItem(slot, nozzle);
-            } else {
-                player.getInventory().addItem(nozzle); // worst case, nothing dropped
-            }
-        }
         Location location = pump.location();
         player.playSound(Sound.sound(Key.key("vehicle:block.gas_pump.nozzle_pick_up"),
                 Sound.Source.BLOCK, 1.0F, 1.0F), location.getX(), location.getY(), location.getZ());
 
         // Per-viewer hiding: the holder does NOT see the hose segments parked right in front
-        // of their face (they must see the nozzle item clearly); everyone else sees the chain.
+        // of their face (first person shows just the floating nozzle); everyone else sees
+        // the full chain welded into it.
         GasPumpRig rig = pump.rig();
         rig.setTailViewerId(player.getUniqueId());
         for (ItemDisplay hidden : rig.holderCoveredTail()) {
@@ -248,10 +240,10 @@ public final class GasPumpManager {
                 continue;
             }
 
-            // Main chain welds to the body-hand point (correct in F5 and for bystanders);
-            // the holder's own near-face segments are hidden per-viewer in pickUpNozzle.
-            pump.rig().update(pump.location(), bodyHandNozzleLocation(holder),
-                    holder.getEyeLocation().getDirection(), null);
+            // Hose chain AND floating nozzle share the identical world point every tick:
+            // the welded look holds from every viewing angle, no matter how the holder moves.
+            pump.rig().update(pump.location(), handHeldNozzleLocation(holder),
+                    holder.getEyeLocation().getDirection(), holder);
 
             fuel(pump, holder, fillSeconds);
         }
@@ -299,20 +291,6 @@ public final class GasPumpManager {
                 .add(right.multiply(0.3D))
                 // Movement prediction (~2 ticks): entity sync latency would otherwise pin the
                 // hose tail to where the head WAS, so sprinting left the hose trailing behind.
-                .add(player.getVelocity().multiply(2.0D));
-    }
-
-    /**
-     * Where the holder's hand really is on their BODY (what bystanders / F5 see): yaw-only
-     * basis so the shared hose chain ends welded to the visible arm, independent of view pitch.
-     */
-    private static Location bodyHandNozzleLocation(Player player) {
-        Location eye = player.getEyeLocation();
-        double rad = Math.toRadians(eye.getYaw());
-        double fx = -Math.sin(rad), fz = Math.cos(rad);
-        double rx = -Math.cos(rad), rz = -Math.sin(rad);
-        return eye.clone()
-                .add(fx * 0.28D + rx * 0.30D, -0.55D, fz * 0.28D + rz * 0.30D)
                 .add(player.getVelocity().multiply(2.0D));
     }
 

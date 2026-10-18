@@ -14,6 +14,7 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
@@ -168,11 +169,10 @@ public final class GasPumpRig {
     }
 
     /**
-     * @param holderAnchor first-person grip point of the holder (used to thread the holder-only
-     *                     tail exactly into the nozzle item on their screen); {@code null} when
-     *                     the nozzle is docked or no extra tail is wanted.
+     * @param holder the player holding the nozzle (their view yaw drives the floating nozzle),
+     *               or {@code null} when it is docked / nobody is holding it.
      */
-    public void update(Location root, Location nozzleLocation, Vector lookDirection, Location holderAnchor) {
+    public void update(Location root, Location nozzleLocation, Vector lookDirection, Player holder) {
         if (!valid()) {
             return;
         }
@@ -198,11 +198,14 @@ public final class GasPumpRig {
         if (nozzleLocation != null) {
             nozzlePoint = new Vector3f((float) nozzleLocation.getX(), (float) nozzleLocation.getY(),
                     (float) nozzleLocation.getZ());
-            // Nozzle held in hand: the player carries a real nozzle ITEM (native FP/TP render),
-            // so the nozzle display is hidden (zero scale) while only the hose follows the hand.
+            // Floating nozzle: it teleports EVERY TICK to the exact same world point where the
+            // shared chain ends (instant, no lerping), so pistol and hose are welded together
+            // by construction. Its rotation rides the holder's view yaw.
+            float holdYaw = holder != null ? holder.getEyeLocation().getYaw() : yaw;
             nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z));
+            nozzle.setRotation(holdYaw + NOZZLE_YAW_OFFSET, 0.0F);
             nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
-                    new Vector3f(0.0F, 0.0F, 0.0F), new Quaternionf()));
+                    new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
             endTangent = lookDirection == null ? new Vector3f(0.0F, 3.0F, 0.0F)
                     : new Vector3f((float) lookDirection.getX(), (float) lookDirection.getY(),
                             (float) lookDirection.getZ()).mul(3.0F);
@@ -228,25 +231,10 @@ public final class GasPumpRig {
             placeHoseSegment(hose.get(i), points[i], points[i + 1], world);
         }
 
-        if (holderAnchor != null) {
-            // Holder-only tail: from the N-2nd sample of the shared chain straight into the
-            // first-person grip point, so on the holder's screen the hose ends exactly inside
-            // the nozzle item they see on their hand.
-            Vector3f tailEnd = new Vector3f((float) holderAnchor.getX(), (float) holderAnchor.getY(),
-                    (float) holderAnchor.getZ());
-            Vector3f tailStartTangent = new Vector3f(points[HOSE_SEGMENTS - 2])
-                    .sub(points[HOSE_SEGMENTS - 3]).mul(4.0F);
-            Vector3f[] tailPoints = HermiteCurve.sample(points[HOSE_SEGMENTS - 2], tailStartTangent,
-                    tailEnd, endTangent, HOLDER_TAIL_SEGMENTS);
-            for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
-                placeHoseSegment(holderTail.get(i), tailPoints[i], tailPoints[i + 1], world);
-            }
-        } else {
-            // Nobody holding: park the hidden tail at the root (it stays invisible anyway).
-            Vector3f rootPoint = new Vector3f((float) root.getX(), (float) root.getY(), (float) root.getZ());
-            for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
-                placeHoseSegment(holderTail.get(i), rootPoint, rootPoint, world);
-            }
+        // Unused spare tail segments stay parked at the root and strictly hidden from everyone.
+        Vector3f rootPoint = new Vector3f((float) root.getX(), (float) root.getY(), (float) root.getZ());
+        for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
+            placeHoseSegment(holderTail.get(i), rootPoint, rootPoint, world);
         }
 
         updateBrightness(root);
