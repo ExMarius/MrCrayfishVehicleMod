@@ -41,15 +41,15 @@ public final class GasPumpRig {
     private static final float HOSE_THICKNESS = 0.0625F;
 
     /** Local offset of the hose's pump-side anchor, relative to the bottom block's floor.
-     *  Shifted 1 block toward the pump's own left (west when the pump faces north) from the
-     *  original mod's anchor, nudged 2 pixels (2/16 block) further north, 2 more pixels
-     *  toward the east, then 1 more pixel (1/16 block) further north. */
-    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.575F, 1.64F, 0.1125F);
+     *  Faithful to {@code GasPumpRenderer}: hoseStart corner (0.620625..1.05) → centre
+     *  (0.835, 0.6425, 0.835) in top-block space ⇒ positive-X/positive-Z side of the pump.
+     *  (The previous rig had this flipped to the negative side, which put the nozzle dock on
+     *  the wrong side of the pump as reported in-game.) */
+    private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(0.34F, 1.64F, 0.34F);
     /** Local offset where the nozzle rests when nobody is holding it.
-     *  Net 0.5 block toward the pump's own left (west when the pump faces north): 2 blocks
-     *  west, then corrected 1.5 blocks back east after it overshot. A further 1-block-west
-     *  attempt put it on the wrong side of the pump entirely, so that move is reverted. */
-    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-0.5F, 1.5F, 0.26F);
+     *  Faithful to {@code GasPumpRenderer}: nozzle corner (0.29..1.06) → centre
+     *  (~0.675, 0.5, ~0.675) in top-block space ⇒ same positive side as the hose anchor. */
+    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(0.18F, 1.5F, 0.18F);
     /** The nozzle model's own spout faces back toward the pump instead of outward (confirmed
      *  still backward even with zero extra rotation), so it needs a half-turn on top of the
      *  pump's own yaw whenever its rotation is set. */
