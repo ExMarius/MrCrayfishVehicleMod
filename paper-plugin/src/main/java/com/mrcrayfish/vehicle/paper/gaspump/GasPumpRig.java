@@ -152,17 +152,18 @@ public final class GasPumpRig {
                     : new Vector3f((float) lookDirection.getX(), (float) lookDirection.getY(),
                             (float) lookDirection.getZ()).mul(3.0F);
         } else {
-            // Absolute placement, exactly like the held-nozzle path: teleport the nozzle to the
-            // validated dock point and give it an identity transformation. The hose tail targets
-            // this same absolute world point, so outlet curve and nozzle can never disagree again
-            // (rotating the tail separately used to drag the hose through the pump).
-            nozzlePoint = new Vector3f((float) root.getX() + NOZZLE_REST_LOCAL.x,
-                    (float) root.getY() + NOZZLE_REST_LOCAL.y, (float) root.getZ() + NOZZLE_REST_LOCAL.z);
-            nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z),
-                    TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            nozzle.setRotation(yaw + NOZZLE_YAW_OFFSET, 0.0F);
-            nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
-                    new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
+            // Paper rotates the ItemDisplay transformation translation by the entity yaw
+            // (setRotation). place() uses yaw + NOZZLE_YAW_OFFSET, so the visual dock point is
+            // root + rotY(yaw + NOZZLE_YAW_OFFSET) * NOZZLE_REST_LOCAL (Bukkit yaw convention:
+            // x' = x cos - z sin, z' = x sin + z cos). The hose tail must target exactly that
+            // same point or it cuts through the pump.
+            place(nozzle, root, NOZZLE_REST_LOCAL, NOZZLE_YAW_OFFSET);
+            float dockYaw = (float) Math.toRadians(yaw + NOZZLE_YAW_OFFSET);
+            double cos = Math.cos(dockYaw), sin = Math.sin(dockYaw);
+            nozzlePoint = new Vector3f(
+                    (float) (root.getX() + NOZZLE_REST_LOCAL.x * cos - NOZZLE_REST_LOCAL.z * sin),
+                    (float) root.getY() + NOZZLE_REST_LOCAL.y,
+                    (float) (root.getZ() + NOZZLE_REST_LOCAL.x * sin + NOZZLE_REST_LOCAL.z * cos));
             endTangent = new Vector3f(0.0F, 3.0F, 0.0F);
         }
 
