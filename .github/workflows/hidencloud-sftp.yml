@@ -121,6 +121,7 @@ jobs:
               echo "SSHKEY" > /tmp/p_ok.txt
               break
             fi
+            [ -z "$FIRST_OUT" ] && FIRST_OUT=$(echo "$OUT" | tail -3 | cut -c1-180 | paste -sd'|' -) || true
             # apoi parolele cunoscute
             for p in $CAND_PASSWORDS; do
               export SSHPASS="$p"
@@ -130,10 +131,13 @@ jobs:
                 echo "$p" > /tmp/p_ok.txt
                 break 2
               fi
+              FIRST2_OUT=$(echo "$OUT" | tail -2 | cut -c1-180 | paste -sd'|' -) || true
             done
           done
           if [ ! -f /tmp/u_ok.txt ]; then
-            echo "::error title=HC-SFTP-FAIL::am încercat toate variantele de user — contul tău de panou probabil NU are parolă setată. Rezolvare: freepanel → numele tău (sus dreapta) → Account Settings → Update Password → setează o parolă → pune aceeași parolă în secretul HIDENCLOUD_SFTP_PASS"
+            # test verbose direct, o singura oara, sa vedem motivul
+            VOUT=$(sftp -v -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o BatchMode=yes -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=0 -b batch_try.txt -P "$SFTP_PORT" "$SFTP_USER_DIRECT@$SFTP_HOST" 2>&1 | grep -iE "Authenticat|denied|method|password|closed" | head -6 | cut -c1-150 | paste -sd'|' -) || true
+            echo "::error title=HC-SFTP-FAIL2::cheie: ${FIRST_OUT:-?} &#012;parole-fallback: ${FIRST2_OUT:-?} &#012;verbose-direct: ${VOUT:-?}"
             exit 1
           fi
           echo "SFTP_USER=$(cat /tmp/u_ok.txt)" >> "$GITHUB_ENV"
