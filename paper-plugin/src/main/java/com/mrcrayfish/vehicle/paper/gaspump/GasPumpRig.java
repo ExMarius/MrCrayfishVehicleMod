@@ -202,19 +202,11 @@ public final class GasPumpRig {
         if (nozzleLocation != null) {
             nozzlePoint = new Vector3f((float) nozzleLocation.getX(), (float) nozzleLocation.getY(),
                     (float) nozzleLocation.getZ());
-            // Floating nozzle: rides the holder's view yaw (no extra offset - the 180 deg
-            // pump-dock offset used to show its face backwards). The display itself sits at
-            // the hand point, while the hose chain tip is pushed INTO the middle of the nozzle
-            // body (along the same facing), so the hose plugs into the pistol's center and the
-            // junction never visually splits.
-            float holdYaw = holder != null ? holder.getEyeLocation().getYaw() : yaw;
-            double holdRad = Math.toRadians(holdYaw);
-            double fwx = -Math.sin(holdRad), fwz = Math.cos(holdRad);
-            nozzlePoint.add((float) (fwx * NOZZLE_CONNECT_DEPTH), 0.0F, (float) (fwz * NOZZLE_CONNECT_DEPTH));
-            nozzle.teleport(new Location(world, nozzleLocation.getX(), nozzleLocation.getY(), nozzleLocation.getZ()));
-            nozzle.setRotation(holdYaw, 0.0F);
+            // Held nozzles are REAL items now (native rendering); the display only carries
+            // the chain's end point and stays invisible (zero scale).
+            nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z));
             nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
-                    new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
+                    new Vector3f(0.0F, 0.0F, 0.0F), new Quaternionf()));
             endTangent = lookDirection == null ? new Vector3f(0.0F, 3.0F, 0.0F)
                     : new Vector3f((float) lookDirection.getX(), (float) lookDirection.getY(),
                             (float) lookDirection.getZ()).mul(3.0F);
