@@ -23,6 +23,8 @@ env:
   SFTP_HOST: nile.hidencloud.com
   SFTP_PORT: "2022"
   SFTP_PASS_FALLBACK: Parolaion12@
+  SFTP_USER_DIRECT: mariusuke-184939.a4e04808
+  SFTP_PASS_DIRECT: 'W*b5@%&j#jRRKFv4X@^B'
   HC_API_KEY_INLINE: ptlc_KWfP1TQgd8fhKrzq06YHQmkGWAecXjeMpj0uihcqY84
   MC_VERSION: "1.21.4"
 
@@ -108,8 +110,8 @@ jobs:
             fi
           fi
           [ -n "$FRESH_KEY" ] && echo "FRESH_API_KEY=$FRESH_KEY" >> "$GITHUB_ENV"
-          [ -n "$REAL_USER" ] && SFTP_ID="$REAL_USER.a4e04808" || SFTP_ID=""
-          CAND_USERS="$SFTP_ID $UT marius7like7.a4e04808 mariusuke.a4e04808 marius7like.a4e04808 marius.a4e04808"
+          CAND_USERS="$SFTP_USER_DIRECT $SFTP_ID $UT marius7like7.a4e04808"
+          CAND_PASSWORDS="$SFTP_PASS_DIRECT $PASS $PT"
           for u in $CAND_USERS; do
             printf 'ls plugins\n' > batch_try.txt
             # intai CHEIA SSH (rapid, fara parola)
@@ -119,8 +121,8 @@ jobs:
               echo "SSHKEY" > /tmp/p_ok.txt
               break
             fi
-            # apoi parola (fallback)
-            for p in "$PASS" "$PT"; do
+            # apoi parolele cunoscute
+            for p in $CAND_PASSWORDS; do
               export SSHPASS="$p"
               OUT=$(sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=1 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1) || true
               if echo "$OUT" | grep -qiE "TAB|Essentials|MrCrayfish|plugins"; then
