@@ -118,19 +118,30 @@ jobs:
           set -e
           AUTH="Authorization: Bearer $K3Y"
           tar czf bundle.tgz -C stage plugins
-          U=$(curl -fsS -m 15 -X GET -H "$AUTH" -H 'Accept: application/json' \
-               "$PANEL/api/client/servers/$SERVER_ID/files/upload" | jq -r '.attributes.url')
-          CODE=$(curl -fsS -m 300 -o /dev/null -w '%{http_code}' --request POST --form files=@bundle.tgz "$U")
+          U=""
+          for attempt in 1 2 3 4; do
+            U=$(curl -fsS -m 20 -X GET -H "$AUTH" -H 'Accept: application/json' \
+                 "$PANEL/api/client/servers/$SERVER_ID/files/upload" | jq -r '.attributes.url // ""' 2>/dev/null) || true
+            [ -n "$U" ] && break
+            sleep 5
+          done
+          [ -n "$U" ] || { echo "::error title=HC-UPLOAD::nu am primit URL de upload (panel flaky)"; exit 1; }
+          CODE=$(curl -sS -m 300 -o /tmp/body.txt -w '%{http_code}' --request POST --form files=@bundle.tgz "$U")
           echo "upload: $CODE"
-          [ "$CODE" = 204 -o "$CODE" = 200 -o "$CODE" = 201 ] || { echo "::error title=HC-UPLOAD::upload esuat ($CODE)"; exit 1; }
-          D=$(curl -fsS -m 300 -X POST -H "$AUTH" -H 'Content-Type: application/json' \
-               -d '{"root": "/", "file": "bundle.tgz"}' -o /dev/null -w '%{http_code}' \
-               "$PANEL/api/client/servers/$SERVER_ID/files/decompress")
+          [ "$CODE" = 204 -o "$CODE" = 200 -o "$CODE" = 201 ] || { echo "::error title=HC-UPLOAD::upload esuat ($CODE) $(head -c 200 /tmp/body.txt | tr '\n' ' ')"; exit 1; }
+          D=000
+          for attempt in 1 2 3; do
+            D=$(curl -sS -m 300 -X POST -H "$AUTH" -H 'Content-Type: application/json' \
+                 -d '{"root": "/", "file": "bundle.tgz"}' -o /dev/null -w '%{http_code}' \
+                 "$PANEL/api/client/servers/$SERVER_ID/files/decompress") || true
+            [ "$D" = 204 ] && break
+            sleep 5
+          done
           [ "$D" = 204 ] || { echo "::error title=HC-DECOMPRESS::HTTP $D"; exit 1; }
           curl -fsS -m 30 -X POST -H "$AUTH" -H 'Content-Type: application/json' \
                -d '{"root": "/", "files": ["bundle.tgz"]}' -o /dev/null \
                "$PANEL/api/client/servers/$SERVER_ID/files/delete" || true
-          echo "::notice title=HC-PLUGINS::jar-uri + configuri aterizate întotdeauna în /plugins"
+          echo "::notice title=HC-PLUGINS::jar-uri + configuri aterizate în /plugins (upload $CODE, extract $D)"
 
       - name: Curăț dublurile TAB (jar-ul vechi cu spații)
         if: steps.guard.outputs.enabled == 'true'
