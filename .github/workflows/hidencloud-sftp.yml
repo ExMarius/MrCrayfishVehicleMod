@@ -1,4 +1,4 @@
-name: HidenCloud deploy SFTP SSH (acces permanent)
+name: HidenCloud deploy (build plugin + upload SSH)
 
 on:
   workflow_dispatch:
@@ -22,35 +22,51 @@ env:
   SERVER_ID: a4e04808
   SFTP_HOST: nile.hidencloud.com
   SFTP_PORT: "2022"
-  SFTP_PASS_FALLBACK: Parolaion12@
-  SFTP_USER_DIRECT: mariusuke-184939.a4e04808
-  SFTP_PASS_DIRECT: 'W*b5@%&j#jRRKFv4X@^B'
-  HC_API_KEY_INLINE: ptlc_KWfP1TQgd8fhKrzq06YHQmkGWAecXjeMpj0uihcqY84
+  SFTP_USER: mariusuke-184939.a4e04808
+  SFTP_PASS_BACKUP: 'W*b5@%&j#jRRKFv4X@^B'
   MC_VERSION: "1.21.4"
 
 jobs:
-  deploy:
-    name: "Upload pluginuri prin SFTP (fara cheie API)"
+  build:
+    name: Compilez pluginul de masini
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
 
-      - name: Verific secretele SFTP
-        id: guard
-        env:
-          HIDENCLOUD_SFTP_PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
-          HIDENCLOUD_SFTP_USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
-        run: |
-          if [ -z "${HIDENCLOUD_SFTP_PASS:-}" ]; then
-            echo "::notice title=HC-SFTP::fara secret — folosesc credentialele din workflow"
-          fi
-          echo "enabled=true" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
 
-      - name: Pregatesc fisierele de upload
-        if: steps.guard.outputs.enabled == 'true'
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Gradle build
+        run: ./paper-plugin/gradlew -p paper-plugin clean build -x test
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: plugin-jar
+          path: paper-plugin/build/libs/MrCrayfishVehiclePlugin-*.jar
+          retention-days: 2
+
+  deploy:
+    name: Upload pe server prin SSH key
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: plugin-jar
+          path: dl
+
+      - name: Pregatesc fisierele de upload (pluginul + stackul + configuri)
         run: |
           mkdir -p stage/plugins/TAB stage/plugins/Essentials
+          cp dl/MrCrayfishVehiclePlugin-*.jar stage/plugins/MrCrayfishVehiclePlugin.jar
 
           # EssentialsX core + Chat + Spawn
           EJ=$(curl -fsSL --retry 2 -m 30 "https://ci.ender.zone/job/EssentialsX/lastStableBuild/api/json" 2>/dev/null)
@@ -78,82 +94,35 @@ jobs:
                  | jq -r '[.assets[] | select(.name | test("^[Tt][Aa][Bb].*\\.jar$"))] | .[0].browser_download_url // ""')
           [ -n "$TBJ" ] && curl -fsSL -m 120 -o stage/plugins/TAB.jar "$TBJ" || true
 
-          # configuri din repo
           cp hidencloud/config/TAB/config.yml stage/plugins/TAB/config.yml
           cp hidencloud/config/Essentials/motd.txt stage/plugins/Essentials/motd.txt
-
           echo "fisiere pregatite:"
-          find stage -name '*.jar' -o -name '*.yml' -o -name '*.txt' | sort
+          find stage -type f | sort
 
-      - name: Instalez sshpass + testez conexiunea SFTP
-        env:
-          SECRET_PASS: ${{ secrets.HIDENCLOUD_SFTP_PASS }}
-          SECRET_USER: ${{ secrets.HIDENCLOUD_SFTP_USER }}
-          SECRET_API: ${{ secrets.HIDENCLOUD_API_KEY }}
+      - name: Urc totul prin SFTP (cheie SSH, fara expirare)
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
           chmod 600 hidencloud/keys/arena_hc_ed25519
-          PASS="${SECRET_PASS:-$SFTP_PASS_FALLBACK}"
-          UT=$(echo "${SECRET_USER:-}" | tr -d '[:space:]')
-          PT=$(echo "$PASS" | sed 's/^ *//;s/ *$//')
-
-          # Citesc userul REAL al contului prin cheia API proaspătă (sau secretă)
-          K2="${SECRET_API:-$HC_API_KEY_INLINE}"
-          REAL_USER=""; FRESH_KEY="$K2"
-          if [ -n "$K2" ]; then
-            ACCT=$(curl -sS -m 15 -H "Authorization: Bearer $K2" -H 'Accept: application/json' "$PANEL/api/client/account" || echo '{}')
-            REAL_USER=$(echo "$ACCT" | jq -r '.attributes.username // ""' 2>/dev/null)
-            if [ -n "$REAL_USER" ]; then
-              echo "::notice title=HC-LOGIN::am USERNAME-ul real al contului (din API): $REAL_USER.a4e04808"
-              echo "SFTP_USER_HINT=$REAL_USER" >> "$GITHUB_ENV"
+          try_sftp() {
+            if [ "$1" = key ]; then
+              sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$2" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
             else
-              echo "::warning title=HC-LOGIN::cheia nu a dat userul: $(echo $ACCT | head -c 120 | tr '\n' ' ')"
+              export SSHPASS="$SFTP_PASS_BACKUP"
+              sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b "$2" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
             fi
+          }
+          printf 'ls plugins\n' > b_test.txt
+          MODE=""
+          if try_sftp key b_test.txt | grep -qi "TAB\|Essentials\|plugins"; then MODE=key; fi
+          if [ -z "$MODE" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+            try_sftp pass b_test.txt | grep -qi "TAB\|Essentials\|plugins" && MODE=pass || true
           fi
-          [ -n "$FRESH_KEY" ] && echo "FRESH_API_KEY=$FRESH_KEY" >> "$GITHUB_ENV"
-          CAND_USERS="$SFTP_USER_DIRECT $SFTP_ID $UT marius7like7.a4e04808"
-          CAND_PASSWORDS="$SFTP_PASS_DIRECT $PASS $PT"
-          for u in $CAND_USERS; do
-            printf 'ls plugins\n' > batch_try.txt
-            # intai CHEIA SSH (rapid, fara parola)
-            OUT=$(sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1) || true
-            if echo "$OUT" | grep -qiE "TAB|Essentials|MrCrayfish|plugins"; then
-              echo "$u" > /tmp/u_ok.txt
-              echo "SSHKEY" > /tmp/p_ok.txt
-              break
-            fi
-            [ -z "$FIRST_OUT" ] && FIRST_OUT=$(echo "$OUT" | tail -3 | cut -c1-180 | paste -sd'|' -) || true
-            # apoi parolele cunoscute
-            for p in $CAND_PASSWORDS; do
-              export SSHPASS="$p"
-              OUT=$(sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o NumberOfPasswordPrompts=1 -b batch_try.txt -P "$SFTP_PORT" "$u@$SFTP_HOST" 2>&1) || true
-              if echo "$OUT" | grep -qiE "TAB|Essentials|MrCrayfish|plugins"; then
-                echo "$u" > /tmp/u_ok.txt
-                echo "$p" > /tmp/p_ok.txt
-                break 2
-              fi
-              FIRST2_OUT=$(echo "$OUT" | tail -2 | cut -c1-180 | paste -sd'|' -) || true
-            done
-          done
-          if [ ! -f /tmp/u_ok.txt ]; then
-            # test verbose direct, o singura oara, sa vedem motivul
-            VOUT=$(sftp -v -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=12 -o BatchMode=yes -o PreferredAuthentications=password -o PubkeyAuthentication=no -o NumberOfPasswordPrompts=0 -b batch_try.txt -P "$SFTP_PORT" "$SFTP_USER_DIRECT@$SFTP_HOST" 2>&1 | grep -iE "Authenticat|denied|method|password|closed" | head -6 | cut -c1-150 | paste -sd'|' -) || true
-            echo "::error title=HC-SFTP-FAIL2::cheie: ${FIRST_OUT:-?} &#012;parole-fallback: ${FIRST2_OUT:-?} &#012;verbose-direct: ${VOUT:-?}"
+          if [ -z "$MODE" ]; then
+            echo "::error title=HC-SFTP::nici cheia SSH nici parola nu au mers"
             exit 1
           fi
-          echo "SFTP_USER=$(cat /tmp/u_ok.txt)" >> "$GITHUB_ENV"
-          echo "SFTP_PASS=$(cat /tmp/p_ok.txt)" >> "$GITHUB_ENV"
-          echo "::notice title=HC-SFTP-OK::CONECTARE REUȘITĂ! user găsit automat: $(echo $(cat /tmp/u_ok.txt) | cut -c1-6)***.a4e04808"
-
-      - name: Urc fisierele prin SFTP
-        if: steps.guard.outputs.enabled == 'true'
-        run: |
-          if [ "$SFTP_PASS" = SSHKEY ]; then
-            sftp_go() { sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 "$@"; }
-          else
-            export SSHPASS="$SFTP_PASS"
-            sftp_go() { sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$@"; }
-          fi
+          echo "mod conectare: $MODE"
+          printf '%s\n' '' > batch_up.txt
           printf '%s\n' \
             '-mkdir plugins' \
             '-mkdir plugins/TAB' \
@@ -167,46 +136,40 @@ jobs:
           printf 'put stage/plugins/Essentials/motd.txt plugins/Essentials/motd.txt\n' >> batch_up.txt
           printf '%s\n' \
             '-rm plugins/worldedit-bukkit.jar' \
-            '-rm plugins/worldedit-bukkit-7.txt' \
+            '-rm plugins/MrCrayfishVehiclePlugin-*-SNAPSHOT.jar' \
             >> batch_up.txt
-          echo "batch:"
-          cat batch_up.txt
-          sftp_go -b batch_up.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
-          echo "::notice title=HC-SFTP-UPLOAD::jar-uri + configuri urcate prin SFTP (rapid, fara API)"
+          try_sftp $MODE batch_up.txt
+          echo "::notice title=HC-UPLOAD::plugin masini + stack + configuri urcate prin SSH ($MODE)"
 
-      - name: Curat dublurile vechi prin SFTP
-        if: steps.guard.outputs.enabled == 'true'
+      - name: Curat dublurile vechi
         run: |
-          if [ "$SFTP_PASS" = SSHKEY ]; then
-            sftp_go() { sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 "$@"; }
-          else
-            export SSHPASS="$SFTP_PASS"
-            sftp_go() { sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 "$@"; }
-          fi
-          printf 'ls plugins\n' > batch_ls.txt
-          sftp_go -b batch_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp_ls.txt 2>&1
+          chmod 600 hidencloud/keys/arena_hc_ed25519
+          printf 'ls plugins\n' > b_ls.txt
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp_ls.txt 2>&1 || true
+          grep -oE '(^|/)(TAB v|worldedit-bukkit\.jar|MrCrayfishVehiclePlugin-[^ ]*SNAPSHOT[^ ]*)[^ ]*\.jar' sftp_ls.txt | sed 's|^/||' | sort -u > dupes.txt || true
           printf '' > batch_rm.txt
-          grep -E 'worldedit-bukkit\.jar$' sftp_ls.txt >/dev/null && printf '%s\n' '-rm plugins/worldedit-bukkit.jar' >> batch_rm.txt || true
-          grep -E 'TAB v[^/]*\.jar$' sftp_ls.txt >/dev/null && sed -n 's|^\(plugins/\)*\(TAB v[^ ]*\.jar\).*|\1\2|p' sftp_ls.txt | while read -r n; do :; done || true
+          while read -r d; do
+            case "$d" in
+              "plugins/MrCrayfishVehiclePlugin.jar") continue;;
+              plugins/*) printf -- '-rm %s\n' "$d" >> batch_rm.txt;;
+            esac
+          done < dupes.txt
           if [ -s batch_rm.txt ]; then
-            sftp_go -b batch_rm.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" || true
-            echo "::notice title=HC-SFTP-CLEAN::curatat dubluri vechi"
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b batch_rm.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" || true
+            echo "::notice title=HC-CLEAN::sters $(( $(wc -l < batch_rm.txt) )) dubluri vechi"
           else
-            echo "nici o dublura"
+            echo "fara dubluri"
           fi
 
-      - name: Restart server (cheie API proaspata sau secreta)
-        if: steps.guard.outputs.enabled == 'true'
+      - name: Restart server (daca cheia API e proaspata)
         env:
-          OLDKEY: ${{ secrets.HIDENCLOUD_API_KEY }}
+          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
-          K3Y="${FRESH_API_KEY:-$OLDKEY}"
           if [ -n "${K3Y:-}" ]; then
-            CODE=$(curl -sS -m 15 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
+            CODE=$(curl -sS -m 12 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
                     -d '{"signal":"restart"}' -o /dev/null -w '%{http_code}' \
                     "$PANEL/api/client/servers/$SERVER_ID/power" || echo 000)
             if [ "$CODE" = 204 ]; then
-              echo "restart trimis, astept online..."
               ST="?"
               for i in 1 2 3 4 5 6 7 8 9 10 11 12; do
                 sleep 15
@@ -214,11 +177,9 @@ jobs:
                 [ "$ST" = "running" ] && break
               done
               if [ "$ST" = "running" ]; then
-                echo "::notice title=HC-DONE::server ONLINE dupa restart — deploy complet automat"
-              else
-                echo "::warning title=HC-DONE::fisierele sunt urcate; serverul inca porneste (verifica peste 2 min)"
+                echo "::notice title=HC-DONE::server ONLINE cu noul build — deploy 100% automat"
+                exit 0
               fi
-              exit 0
             fi
           fi
-          echo "::notice title=HC-RESTART-MANUAL::fisierele sunt urcate. Apasa RESTART in freepanel (5 sec) si gata"
+          echo "::notice title=HC-RESTART::fisiere urcate OK. Cheia API e expirata — apasa RESTART in freepanel (5 sec) daca nu a dat singur"
