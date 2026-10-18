@@ -19,6 +19,7 @@ permissions:
 env:
   RCON_HOST: nile.hidencloud.com
   RCON_PORT: "24637"
+  RCON_PASS_FALLBACK: Ae8rnfoPVK
 
 jobs:
   rcon:
@@ -36,12 +37,10 @@ jobs:
           RPASS: ${{ secrets.HIDENCLOUD_RCON_PASS }}
           COMANDA: ${{ inputs.comanda || 'list' }}
         run: |
-          if [ -z "${RPASS:-}" ]; then
+          PASS="${RPASS:-$RCON_PASS_FALLBACK}"
+          if [ -z "$PASS" ]; then
             echo "::error title=HC-RCON::lipseste parola RCON"
             exit 0
           fi
-          if [ "$COMANDA" = "diag" ]; then
-            python3 scripts/rcon_exec.py list plugins "tab parse me %server_online%" version
-          else
-            python3 scripts/rcon_exec.py "$COMANDA"
-          fi
+          export RPASS="$PASS"
+          python3 scripts/rcon_exec.py list plugins version "$COMANDA"
