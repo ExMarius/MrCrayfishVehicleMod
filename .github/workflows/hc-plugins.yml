@@ -59,7 +59,7 @@ jobs:
 
           # EssentialsX (core + Chat + Spawn), ultimul build stabil CI oficial
           EJ=$(curl -fsS -m 30 "https://ci.ender.zone/job/EssentialsX/lastStableBuild/api/json" 2>/dev/null)
-          echo "$EJ" | jq -r '.artifacts[].relativePath' | grep -E '^jars/EssentialsX(-Chat|-Spawn)?-[0-9][^/]*\.jar$' | while read -r rel; do
+          echo "$EJ" | jq -r '.artifacts[].relativePath' | grep -E '^jars/EssentialsX(Chat|Spawn)?-[0-9][^/]*\.jar$' | while read -r rel; do
             curl -fsSL -m 90 -o "stage/plugins/$(basename "$rel")" "https://ci.ender.zone/job/EssentialsX/lastStableBuild/artifact/$rel" || true
           done
           ls stage/plugins/ | grep -q '^EssentialsX-' || SKIPPED="$SKIPPED EssentialsX(fail-ci)"
