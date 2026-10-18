@@ -75,6 +75,15 @@ public final class GasPumpRig {
      * hand (what bystanders and F5 render), while these last two segments replace its very end
      * on the holder's screen only and stick exactly into the nozzle item in first person.
      */
+    /**
+     * How many shared-chain segments (counted from the hand end) are hidden from the HOLDER.
+     * First person should show the nozzle item cleanly in view; hose segments parked right in
+     * front of the player's own face only clutter the screen (holder feedback 2026-10-18:
+     * "in FP want to see the pistol, not the hose"). Bystanders keep seeing the full chain.
+     */
+    static final int HOLDER_HIDDEN_SEGMENTS = 3;
+
+    /** Unused spare displays, spawned hidden and parked at the pump root forever. */
     static final int HOLDER_TAIL_SEGMENTS = 2;
 
     private final List<ItemDisplay> holderTail;
@@ -336,12 +345,12 @@ public final class GasPumpRig {
                 && holderTail.stream().allMatch(Entity::isValid);
     }
 
-    /** Last shared-chain segments, hidden from the holder while they hold the nozzle. */
+    /** Hand-end shared-chain segments, hidden from the holder while they hold the nozzle. */
     public List<ItemDisplay> holderCoveredTail() {
-        return hose.subList(HOSE_SEGMENTS - HOLDER_TAIL_SEGMENTS, HOSE_SEGMENTS);
+        return hose.subList(HOSE_SEGMENTS - HOLDER_HIDDEN_SEGMENTS, HOSE_SEGMENTS);
     }
 
-    /** Holder-only tail segments (born strictly invisible, shown per-viewer by the manager). */
+    /** Spare segments kept parked and strictly invisible (legacy of the FP tail experiment). */
     public List<ItemDisplay> holderTail() {
         return holderTail;
     }

@@ -175,15 +175,12 @@ public final class GasPumpManager {
         player.playSound(Sound.sound(Key.key("vehicle:block.gas_pump.nozzle_pick_up"),
                 Sound.Source.BLOCK, 1.0F, 1.0F), location.getX(), location.getY(), location.getZ());
 
-        // Per-viewer tail: the holder swaps the last shared-chain segments for their
-        // first-person tail copy (everyone else keeps seeing the plain chain).
+        // Per-viewer hiding: the holder does NOT see the hose segments parked right in front
+        // of their face (they must see the nozzle item clearly); everyone else sees the chain.
         GasPumpRig rig = pump.rig();
         rig.setTailViewerId(player.getUniqueId());
         for (ItemDisplay hidden : rig.holderCoveredTail()) {
             player.hideEntity(plugin, hidden);
-        }
-        for (ItemDisplay tail : rig.holderTail()) {
-            player.showEntity(plugin, tail);
         }
     }
 
@@ -251,10 +248,10 @@ public final class GasPumpManager {
                 continue;
             }
 
-            // Main chain welds to the body-hand point (correct in F5 and for bystanders),
-            // while the holder alone sees the extra tail segments dive into the FP nozzle item.
+            // Main chain welds to the body-hand point (correct in F5 and for bystanders);
+            // the holder's own near-face segments are hidden per-viewer in pickUpNozzle.
             pump.rig().update(pump.location(), bodyHandNozzleLocation(holder),
-                    holder.getEyeLocation().getDirection(), handHeldNozzleLocation(holder));
+                    holder.getEyeLocation().getDirection(), null);
 
             fuel(pump, holder, fillSeconds);
         }
