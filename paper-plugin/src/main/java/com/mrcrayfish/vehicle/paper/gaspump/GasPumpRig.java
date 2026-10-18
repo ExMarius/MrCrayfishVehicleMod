@@ -48,7 +48,7 @@ public final class GasPumpRig {
      *  Source puts it on the pump's positive side (flipped correctly from the old -0.5);
      *  nudged +5 model pixels (5/16 = 0.3125) further out toward the pump's own left so the
      *  dock sits on the body edge instead of clipping inside the pump (user-reported). */
-    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(0.49F, 1.5F, 0.18F);
+    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(0.5525F, 1.5F, 0.18F);
     /** The nozzle model's own spout faces back toward the pump instead of outward (confirmed
      *  still backward even with zero extra rotation), so it needs a half-turn on top of the
      *  pump's own yaw whenever its rotation is set. */
