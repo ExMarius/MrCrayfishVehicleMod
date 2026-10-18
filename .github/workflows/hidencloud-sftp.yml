@@ -136,6 +136,24 @@ jobs:
             exit 1
           fi
           echo "mod conectare: $MODE"
+
+          # server.properties MUST carry the fresh pack hash on every deploy: clients cache
+          # by URL+hash, so a stale hash means they silently keep the OLD pack (new items
+          # like the jerry can then render as the magenta/black missing-model cube).
+          printf 'get server.properties stage/server.properties\n' > batch_get.txt
+          try_sftp $MODE batch_get.txt || true
+          if [ -s stage/server.properties ]; then
+            python3 tools/configure_server_resource_pack.py \
+              --server-properties stage/server.properties \
+              --plugin-config paper-plugin/src/main/resources/config.yml \
+              --output stage/server.properties.patched
+            printf 'put stage/server.properties.patched server.properties\n' > batch_props.txt
+            try_sftp $MODE batch_props.txt
+            echo "::notice title=HC-PROPS::server.properties sincronizat cu noul hash al pack-ului"
+          else
+            echo "::warning title=HC-PROPS::nu am putut citi server.properties; sar peste sync hash"
+          fi
+
           printf '%s\n' '' > batch_up.txt
           printf '%s\n' \
             '-mkdir plugins' \
