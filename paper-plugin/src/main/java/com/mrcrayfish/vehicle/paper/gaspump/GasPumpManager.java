@@ -20,6 +20,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -152,14 +153,34 @@ public final class GasPumpManager {
         return Collections.unmodifiableCollection(pumps.values());
     }
 
+    /**
+     * Hands the nozzle to the player as a REAL item (native first/third person rendering) and
+     * hides the docked nozzle display. Main hand if empty, otherwise the first free slot.
+     */
     public void pickUpNozzle(Player player, GasPump pump) {
         pump.setHolderId(player.getUniqueId());
+        ItemStack nozzle = NozzleItem.create(pump.id().toString());
+        if (player.getInventory().getItemInMainHand().getType().isAir()) {
+            player.getInventory().setItemInMainHand(nozzle);
+        } else {
+            int slot = player.getInventory().firstEmpty();
+            if (slot >= 0) {
+                player.getInventory().setItem(slot, nozzle);
+            } else {
+                player.getInventory().addItem(nozzle); // worst case, nothing dropped
+            }
+        }
         Location location = pump.location();
         player.playSound(Sound.sound(Key.key("vehicle:block.gas_pump.nozzle_pick_up"),
                 Sound.Source.BLOCK, 1.0F, 1.0F), location.getX(), location.getY(), location.getZ());
     }
 
+    /** Puts the nozzle back on the pump and removes the hand item from the holder (anti-dupe). */
     public void putDownNozzle(GasPump pump) {
+        Player holder = pump.holderId() == null ? null : Bukkit.getPlayer(pump.holderId());
+        if (holder != null) {
+            removeNozzleItems(holder);
+        }
         pump.setHolderId(null);
         pump.rig().update(pump.location(), null, null);
         Location soundLocation = pump.location();
@@ -168,6 +189,25 @@ public final class GasPumpManager {
                 nearby.playSound(Sound.sound(Key.key("vehicle:block.gas_pump.nozzle_put_down"),
                         Sound.Source.BLOCK, 1.0F, 1.0F),
                         soundLocation.getX(), soundLocation.getY(), soundLocation.getZ());
+            }
+        }
+    }
+
+    /** Removes every nozzle item from the player's inventory incl. hands/armor slots (anti-dupe). */
+    public static void removeNozzleItems(Player player) {
+        for (ItemStack stack : player.getInventory().getContents()) {
+            if (NozzleItem.isNozzle(stack)) {
+                stack.setAmount(0);
+            }
+        }
+    }
+
+    /** Player quit: pump gets its nozzle back even though the holder is offline now. */
+    public void handleQuit(Player player) {
+        removeNozzleItems(player);
+        for (GasPump pump : new ArrayList<>(pumps.values())) {
+            if (player.getUniqueId().equals(pump.holderId())) {
+                putDownNozzle(pump);
             }
         }
     }

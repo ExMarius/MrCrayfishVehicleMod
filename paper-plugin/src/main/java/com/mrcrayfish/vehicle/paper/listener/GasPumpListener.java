@@ -4,6 +4,7 @@ import com.mrcrayfish.vehicle.paper.gaspump.GasPump;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpItem;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpRig;
+import com.mrcrayfish.vehicle.paper.gaspump.NozzleItem;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
@@ -19,8 +20,13 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
@@ -110,10 +116,63 @@ public final class GasPumpListener implements Listener {
             return;
         }
         gasPumps.byEntity(entity).ifPresent(pump -> {
+            if (pump.hasHolder()) {
+                // Snatch the nozzle back from whoever holds it before the pump disappears.
+                gasPumps.putDownNozzle(pump);
+            }
             World world = pump.location().getWorld();
             world.dropItemNaturally(pump.location(), GasPumpItem.create());
             world.playSound(pump.location(), Sound.BLOCK_METAL_BREAK, 1.0F, 0.8F);
             gasPumps.remove(pump);
         });
+    }
+
+    // ---------------- Nozzle item protections (anti-dupe / anti-loss) ----------------
+
+    /** The nozzle is pump property: it can never be thrown away. */
+    @EventHandler(ignoreCancelled = true)
+    public void onNozzleDrop(PlayerDropItemEvent event) {
+        if (NozzleItem.isNozzle(event.getItemDrop().getItemStack())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Nozzle can never be moved into another inventory (chest, hopper, armor stand, ...). */
+    @EventHandler(ignoreCancelled = true)
+    public void onNozzleInventoryMove(InventoryClickEvent event) {
+        if (event.getView().getTopInventory() != null
+                && event.getClickedInventory() == event.getView().getTopInventory()
+                && (NozzleItem.isNozzle(event.getCurrentItem()) || NozzleItem.isNozzle(event.getCursor()))) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onNozzleInventoryDrag(InventoryDragEvent event) {
+        if (event.getOldCursor() != null && NozzleItem.isNozzle(event.getOldCursor())) {
+            // Only allow drags fully inside the player's own inventory.
+            if (event.getView().getTopInventory() == null) {
+                return;
+            }
+            for (int raw : event.getRawSlots()) {
+                if (raw < event.getView().getTopInventory().getSize()) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
+    }
+
+    /** On quit the nozzle teleports back onto its pump, then the item is scrubbed. */
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        gasPumps.handleQuit(event.getPlayer());
+    }
+
+    /** On death: nozzle goes back to the pump instead of dropping on the ground. */
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        event.getDrops().removeIf(NozzleItem::isNozzle);
+        gasPumps.handleQuit(event.getEntity());
     }
 }

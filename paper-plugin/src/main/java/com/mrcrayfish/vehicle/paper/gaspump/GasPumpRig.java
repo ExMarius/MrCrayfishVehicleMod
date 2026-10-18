@@ -158,10 +158,11 @@ public final class GasPumpRig {
         if (nozzleLocation != null) {
             nozzlePoint = new Vector3f((float) nozzleLocation.getX(), (float) nozzleLocation.getY(),
                     (float) nozzleLocation.getZ());
+            // Nozzle held in hand: the player carries a real nozzle ITEM (native FP/TP render),
+            // so the nozzle display is hidden (zero scale) while only the hose follows the hand.
             nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z));
-            nozzle.setRotation(yaw + NOZZLE_YAW_OFFSET, 0.0F);
             nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
-                    new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
+                    new Vector3f(0.0F, 0.0F, 0.0F), new Quaternionf()));
             endTangent = lookDirection == null ? new Vector3f(0.0F, 3.0F, 0.0F)
                     : new Vector3f((float) lookDirection.getX(), (float) lookDirection.getY(),
                             (float) lookDirection.getZ()).mul(3.0F);
