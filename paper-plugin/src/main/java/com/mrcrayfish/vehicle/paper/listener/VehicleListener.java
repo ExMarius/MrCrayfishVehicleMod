@@ -348,12 +348,21 @@ public final class VehicleListener implements Listener {
         }
         hornCooldowns.put(player.getUniqueId(), now);
         Location at = ridden.getLocation();
+        final java.util.List<Player> listeners = new java.util.ArrayList<>();
         for (Player nearby : at.getWorld().getPlayers()) {
             if (nearby.getLocation().distanceSquared(at) <= 48.0D * 48.0D) {
+                listeners.add(nearby);
                 nearby.playSound(Sound.sound(HORN_SOUND, Sound.Source.VOICE, 1.0F, 1.0F),
                         at.getX(), at.getY(), at.getZ());
             }
         }
+        // The mod's horn.ogg is a long-press honk; the user wants a short "țit": cut it
+        // server-side after ~0.6s without re-cutting the audio asset itself.
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            for (Player nearby : listeners) {
+                nearby.stopSound(net.kyori.adventure.sound.StopSound.named(HORN_SOUND));
+            }
+        }, 12L);
     }
 
 }
