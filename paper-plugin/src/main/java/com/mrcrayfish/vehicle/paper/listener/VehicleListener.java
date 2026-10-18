@@ -347,6 +347,8 @@ public final class VehicleListener implements Listener {
             return;
         }
         hornCooldowns.put(player.getUniqueId(), now);
+        // TEMP diagnosis: visible proof that the trigger fired (tell me what you see / hear!)
+        player.sendActionBar(Component.text("🎺 CLAXON! (declanșat)", net.kyori.adventure.text.format.NamedTextColor.GREEN));
         Location at = ridden.getLocation();
         for (Player nearby : at.getWorld().getPlayers()) {
             if (nearby.getLocation().distanceSquared(at) <= 48.0D * 48.0D) {
