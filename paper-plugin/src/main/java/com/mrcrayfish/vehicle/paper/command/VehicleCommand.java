@@ -3,6 +3,7 @@ package com.mrcrayfish.vehicle.paper.command;
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpItem;
+import com.mrcrayfish.vehicle.paper.garage.GarageGui;
 import com.mrcrayfish.vehicle.paper.jerrycan.JerryCanItem;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
@@ -47,6 +48,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "refuel" -> refuel(sender);
             case "gaspump" -> gaspump(sender);
             case "jerrycan" -> jerrycan(sender, args);
+            case "garage", "garaj" -> garage(sender);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
                     + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
@@ -84,6 +86,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (vehicleSpec != null) {
             LandVehicle vehicle = vehicles.spawn(vehicleSpec, player.getLocation());
+            vehicle.setOwner(player.getUniqueId());
             vehicles.save();
             player.sendRichMessage("<green>" + vehicleSpec.displayName() + " creat.</green> <gray>ID: "
                     + vehicle.id() + "</gray>");
@@ -163,6 +166,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 + "<gray>Umple-o la o pompă (click dreapta), apoi toarnă în vehicul (click dreapta).</gray>");
     }
 
+    /** FiveM garages: any player can open their own garage window (no permission gate). */
+    private void garage(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        new GarageGui(vehicles).open(player);
+    }
+
     private void pack(CommandSender sender) {
         if (sender instanceof Player player) {
             if (ResourcePackSender.send(plugin, player)) {
@@ -190,7 +202,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);

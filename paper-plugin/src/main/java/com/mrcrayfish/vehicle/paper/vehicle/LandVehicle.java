@@ -71,6 +71,7 @@ public final class LandVehicle {
     private float rearWheelRotationSpeed;
     private float rearWheelRotation;
     private float fuel;
+    private java.util.UUID ownerId;
     private float speedMultiplier;
     private float boostStrength;
     private float chargingAmount;
@@ -1452,6 +1453,15 @@ public final class LandVehicle {
 
     public LandVehicleSpec spec() {
         return spec;
+    }
+
+    /** FiveM-foundation: every vehicle has (or can claim) an owner; null = public/unowned. */
+    public java.util.Optional<java.util.UUID> owner() {
+        return java.util.Optional.ofNullable(ownerId);
+    }
+
+    public void setOwner(java.util.UUID ownerId) {
+        this.ownerId = ownerId;
     }
 
     public float fuel() {

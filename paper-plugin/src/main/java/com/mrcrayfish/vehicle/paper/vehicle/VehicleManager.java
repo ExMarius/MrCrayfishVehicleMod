@@ -36,6 +36,7 @@ public final class VehicleManager {
     private final Map<UUID, LandVehicle> vehicles = new HashMap<>();
     private final Map<UUID, LandVehicle> entities = new HashMap<>();
     private final Map<UUID, StoredVehicle> pendingWorlds = new HashMap<>();
+    private final Map<UUID, StoredVehicle> garage = new HashMap<>();
     private final Map<UUID, VehicleChunk> chunkTickets = new HashMap<>();
     private final File storageFile;
     private final TrailerManager trailers;
@@ -95,6 +96,104 @@ public final class VehicleManager {
         index(vehicle);
         updateChunkTicket(vehicle);
         return vehicle;
+    }
+
+    /**
+     * FiveM garages: vehicles stored away per-owner. A garaged vehicle is NOT in the world
+     * (no entities, no chunk ticket) and re-enters the world at the player's feet on demand.
+     * Parking an UNOWNED vehicle claims it (first-park rule, so legacy vehicles become owned).
+     */
+    public enum ParkResult { PARKED, CLAIMED_AND_PARKED, OCCUPIED, NOT_OWNER }
+
+    public ParkResult park(LandVehicle vehicle, Player player) {
+        if (vehicle.occupied()) {
+            return ParkResult.OCCUPIED;
+        }
+        java.util.Optional<UUID> owner = vehicle.owner();
+        boolean claiming = owner.isEmpty();
+        if (!claiming && !owner.get().equals(player.getUniqueId())) {
+            return ParkResult.NOT_OWNER;
+        }
+        if (!vehicles.containsKey(vehicle.id())) {
+            return ParkResult.NOT_OWNER;
+        }
+        if (claiming) {
+            vehicle.setOwner(player.getUniqueId());
+        }
+        StoredVehicle stored = StoredVehicle.from(vehicle);
+        unindex(vehicle);
+        releaseChunkTicket(vehicle);
+        trailers.onVehicleRemoved(vehicle.id());
+        vehicles.remove(vehicle.id());
+        pendingWorlds.remove(vehicle.id());
+        vehicle.remove();
+        garage.put(stored.id(), stored);
+        save();
+        return claiming ? ParkResult.CLAIMED_AND_PARKED : ParkResult.PARKED;
+    }
+
+    /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
+    public boolean retrieve(Player player, UUID vehicleId) {
+        StoredVehicle stored = garage.get(vehicleId);
+        if (stored == null) {
+            return false;
+        }
+        if (stored.owner() != null && !UUID.fromString(stored.owner()).equals(player.getUniqueId())) {
+            return false;
+        }
+        LandVehicleSpec spec = LandVehicleSpec.byId(stored.type());
+        if (spec == null) {
+            return false;
+        }
+        Location base = player.getLocation();
+        Location spot = base.clone().add(base.getDirection().multiply(2.5));
+        spot.setY(base.getY());
+        LandVehicle vehicle = spawn(stored.id(), spec, spot);
+        vehicle.refreshGroundState();
+        vehicle.setFuel(stored.fuel());
+        vehicle.restoreStorage(stored.chestAttached(), stored.storageContents());
+        vehicle.restoreOpenPartStates(stored.openPartStates());
+        vehicle.restorePlaneState(0.0F, stored.planeRoll(), stored.propellerSpeed(),
+                stored.flapAngle(), stored.elevatorAngle());
+        if (stored.owner() != null) {
+            vehicle.setOwner(UUID.fromString(stored.owner()));
+        }
+        garage.remove(vehicleId);
+        save();
+        return true;
+    }
+
+    /** One garaged vehicle, exposed to the GUI: id + type + saved fuel level. */
+    public record GarageEntry(UUID id, String type, float fuel) {
+    }
+
+    /** All vehicles this player currently has stored in the garage. */
+    public List<GarageEntry> garagedOf(Player player) {
+        List<GarageEntry> own = new ArrayList<>();
+        for (StoredVehicle stored : garage.values()) {
+            if (stored.owner() != null && stored.owner().equals(player.getUniqueId().toString())) {
+                own.add(new GarageEntry(stored.id(), stored.type(), stored.fuel()));
+            }
+        }
+        return own;
+    }
+
+    /** Vehicles the player can park from HERE: owned by them, or still unowned (claimable). */
+    public List<LandVehicle> parkableNearby(Player player, double radius) {
+        List<LandVehicle> result = new ArrayList<>();
+        for (LandVehicle vehicle : vehicles.values()) {
+            java.util.Optional<UUID> owner = vehicle.owner();
+            if (owner.isPresent() && !owner.get().equals(player.getUniqueId())) {
+                continue;
+            }
+            if (vehicle.location().getWorld() != player.getWorld()) {
+                continue;
+            }
+            if (vehicle.location().distance(player.getLocation()) <= radius) {
+                result.add(vehicle);
+            }
+        }
+        return result;
     }
 
     public CarriedVehicle pickUp(LandVehicle vehicle) {
@@ -281,6 +380,9 @@ public final class VehicleManager {
         for (LandVehicle vehicle : vehicles.values()) {
             write(data, StoredVehicle.from(vehicle));
         }
+        for (StoredVehicle stored : garage.values()) {
+            write(data, "garage." + stored.id(), stored);
+        }
 
         File temporary = null;
         try {
@@ -305,7 +407,10 @@ public final class VehicleManager {
     }
 
     private static void write(YamlConfiguration data, StoredVehicle stored) {
-        String path = "vehicles." + stored.id();
+        write(data, "vehicles." + stored.id(), stored);
+    }
+
+    private static void write(YamlConfiguration data, String path, StoredVehicle stored) {
         data.set(path + ".type", stored.type());
         data.set(path + ".world", stored.worldId());
         data.set(path + ".world-name", stored.worldName());
@@ -333,6 +438,9 @@ public final class VehicleManager {
         for (Map.Entry<String, Boolean> entry : stored.openPartStates().entrySet()) {
             data.set(path + ".cosmetics.open." + entry.getKey(), entry.getValue());
         }
+        if (stored.owner() != null) {
+            data.set(path + ".owner", stored.owner());
+        }
     }
 
     private void load() {
@@ -356,9 +464,20 @@ public final class VehicleManager {
                     }
                 }
             }
+            ConfigurationSection garagedSection = data.getConfigurationSection("garage");
+            if (garagedSection != null) {
+                for (String key : garagedSection.getKeys(false)) {
+                    try {
+                        garage.put(UUID.fromString(key),
+                                StoredVehicle.read(data, "garage." + key, key));
+                    } catch (RuntimeException exception) {
+                        plugin.getLogger().log(Level.WARNING, "Could not load garage entry " + key, exception);
+                    }
+                }
+            }
         }
         plugin.getLogger().info("Loaded " + vehicles.size() + " vehicle(s); "
-                + pendingWorlds.size() + " deferred for unavailable worlds/types.");
+                + pendingWorlds.size() + " deferred, " + garage.size() + " stored in garages.");
     }
 
     public void onWorldLoaded(World loadedWorld) {
@@ -377,6 +496,9 @@ public final class VehicleManager {
         vehicle.restoreOpenPartStates(stored.openPartStates());
         vehicle.restorePlaneState(stored.pitch(), stored.planeRoll(), stored.propellerSpeed(),
                 stored.flapAngle(), stored.elevatorAngle());
+        if (stored.owner() != null) {
+            vehicle.setOwner(UUID.fromString(stored.owner()));
+        }
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {
@@ -611,7 +733,7 @@ public final class VehicleManager {
                                  float planeRoll, float propellerSpeed,
                                  float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
-                                 Map<String, Boolean> openPartStates) {
+                                 Map<String, Boolean> openPartStates, String owner) {
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
             World world = location.getWorld();
@@ -624,11 +746,15 @@ public final class VehicleManager {
                     vehicle.fuel(), velocity.getX(), velocity.getY(), velocity.getZ(), vehicle.traction(),
                     vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
                     vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
-                    vehicle.storageContents(), vehicle.openPartStates());
+                    vehicle.storageContents(), vehicle.openPartStates(),
+                    vehicle.owner().map(UUID::toString).orElse(null));
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
-            String path = "vehicles." + key;
+            return read(data, "vehicles." + key, key);
+        }
+
+        private static StoredVehicle read(YamlConfiguration data, String path, String key) {
             UUID id = UUID.fromString(key);
             String type = data.getString(path + ".type", "go_kart");
             String worldId = data.getString(path + ".world");
@@ -649,7 +775,8 @@ public final class VehicleManager {
                     (float) data.getDouble(path + ".plane.flap-angle"),
                     (float) data.getDouble(path + ".plane.elevator-angle"),
                     data.getBoolean(path + ".storage.chest-attached", false),
-                    readStorage(data, path), readOpenPartStates(data, path));
+                    readStorage(data, path), readOpenPartStates(data, path),
+                    data.getString(path + ".owner"));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {
