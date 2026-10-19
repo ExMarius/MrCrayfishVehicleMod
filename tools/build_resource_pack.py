@@ -553,18 +553,18 @@ def build(output: Path) -> tuple[Path, str]:
             {
                 "seat": "minecraft:block/black_wool",
                 "axel": "minecraft:block/light_gray_concrete",
-                "body": "minecraft:block/red_concrete",
-                "particle": "minecraft:block/red_concrete",
+                "body": "minecraft:block/white_concrete",
+                "particle": "minecraft:block/white_concrete",
             },
         )
         convert_model(
             ROOT / "tools/source_assets/vehicle_mini_bike_handles.json",
             namespace / "models/item/mini_bike_handles.json",
             {
-                "handles": "minecraft:block/red_concrete",
+                "handles": "minecraft:block/white_concrete",
                 "axel": "minecraft:block/light_gray_concrete",
                 "body": "minecraft:block/gray_concrete",
-                "particle": "minecraft:block/red_concrete",
+                "particle": "minecraft:block/white_concrete",
             },
         )
         convert_model(
@@ -581,8 +581,8 @@ def build(output: Path) -> tuple[Path, str]:
                 "windshield": "minecraft:block/light_blue_stained_glass",
                 "grill": "minecraft:block/gray_concrete",
                 "frame": "minecraft:block/black_concrete",
-                "base": "minecraft:block/cyan_concrete",
-                "particle": "minecraft:block/cyan_concrete",
+                "base": "minecraft:block/white_concrete",
+                "particle": "minecraft:block/white_concrete",
             },
         )
         convert_model(

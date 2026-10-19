@@ -423,14 +423,14 @@ class ResourcePackBuildTest(unittest.TestCase):
 
         mini_bike_body = self.read_json("assets/vehicle/models/item/mini_bike_body.json")
         self.assertEqual(33, len(mini_bike_body["elements"]))
-        self.assertEqual("minecraft:block/red_concrete", mini_bike_body["textures"]["body"])
+        self.assertEqual("minecraft:block/white_concrete", mini_bike_body["textures"]["body"])  # user rule: white
         mini_bike_handles = self.read_json("assets/vehicle/models/item/mini_bike_handles.json")
         self.assertEqual(16, len(mini_bike_handles["elements"]))
-        self.assertEqual("minecraft:block/red_concrete", mini_bike_handles["textures"]["handles"])
+        self.assertEqual("minecraft:block/white_concrete", mini_bike_handles["textures"]["handles"])  # user rule: white
 
         smart_car_body = self.read_json("assets/vehicle/models/item/smart_car_body.json")
         self.assertEqual(109, len(smart_car_body["elements"]))
-        self.assertEqual("minecraft:block/cyan_concrete", smart_car_body["textures"]["base"])
+        self.assertEqual("minecraft:block/white_concrete", smart_car_body["textures"]["base"])  # user rule: white
 
         speed_boat_body = self.read_json("assets/vehicle/models/item/speed_boat_body.json")
         self.assertEqual(67, len(speed_boat_body["elements"]))

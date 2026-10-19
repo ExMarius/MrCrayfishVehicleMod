@@ -716,7 +716,7 @@ public record LandVehicleSpec(
             true, new Point(0.0F, 0.55F, 0.0F),
             itemPart("iron_small_engine", 0.0F, 1.0F, 2.5F,
                     0.7F, 0.0F, 180.0F, 0.0F, 1.05F, -1.7F, 4.12F),
-            itemPart("mini_bike_handles", 0.0F, 8.65F, 17.9F,
+            itemPart("mini_bike_handles", 0.0F, 0.0F, 0.0F,
                     1.0F, 0.0F, 0.0F, 0.0F, 1.05F, -1.7F, 4.12F),
             null, null,
             List.of(),
