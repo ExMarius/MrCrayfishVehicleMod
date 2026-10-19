@@ -19,3 +19,6 @@ permissions:
   vehicle.admin:
     description: Allows spawning and removing vehicles.
     default: op
+  vehicle.garage:
+    description: Allows players to create their own private garage station (/vehicle garaj personal).
+    default: false

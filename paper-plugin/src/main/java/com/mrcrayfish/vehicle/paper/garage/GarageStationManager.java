@@ -45,7 +45,11 @@ public final class GarageStationManager {
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
 
-    private final Map<UUID, Location> stations = new HashMap<>();
+    /** One placed terminal: where it stands, whether everyone may use it, who owns it. */
+    private record Station(Location location, boolean publicStation, UUID owner) {
+    }
+
+    private final Map<UUID, Station> stations = new HashMap<>();
     private BukkitTask tickTask;
     private File storageFile;
 
@@ -67,14 +71,16 @@ public final class GarageStationManager {
         }
     }
 
-    /** Places a station at the given foot position, keeps the player's facing for the menu. */
-    public void place(Player player, Location foot) {
+    /** Places a station at the given foot position, keeps the player's facing for the menu.
+     *  Public stations (GTA, admin-placed) serve everyone; private ones serve only their owner. */
+    public void place(Player player, Location foot, boolean publicStation) {
         UUID id = UUID.randomUUID();
         Location location = foot.clone().add(0.5D, 0.0D, 0.5D);
         location.setYaw(player.getLocation().getYaw());
         location.setPitch(0.0F);
-        stations.put(id, location);
-        spawnRig(id, location);
+        stations.put(id, new Station(location, publicStation,
+                publicStation ? null : player.getUniqueId()));
+        spawnRig(id, location, publicStation);
         save();
     }
 
@@ -84,14 +90,15 @@ public final class GarageStationManager {
         if (id == null) {
             return false;
         }
-        Location location = stations.remove(id);
-        if (location != null) {
+        Station station = stations.remove(id);
+        if (station != null) {
+            Location location = station.location();
             despawnRig(location, id);
             location.getWorld().dropItemNaturally(location.clone().add(0.0D, 0.5D, 0.0D),
                     GarageStationItem.create());
             save();
         }
-        return location != null;
+        return station != null;
     }
 
     /** Identifies a station interaction/display entity (null when it belongs to no station). */
@@ -109,12 +116,25 @@ public final class GarageStationManager {
     }
 
     public Optional<Location> location(UUID id) {
-        return Optional.ofNullable(stations.get(id));
+        Station station = stations.get(id);
+        return Optional.ofNullable(station == null ? null : station.location());
+    }
+
+    /** Whether all players may use this station (GTA public) or only its owner. */
+    public boolean isPublic(UUID id) {
+        Station station = stations.get(id);
+        return station == null || station.publicStation();
+    }
+
+    public Optional<UUID> owner(UUID id) {
+        Station station = stations.get(id);
+        return Optional.ofNullable(station == null ? null : station.owner());
     }
 
     private void tick() {
-        for (Map.Entry<UUID, Location> entry : stations.entrySet()) {
-            Location location = entry.getValue();
+        for (Map.Entry<UUID, Station> entry : stations.entrySet()) {
+            Station station = entry.getValue();
+            Location location = station.location();
             World world = location.getWorld();
             if (world == null || !world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) {
                 continue;
@@ -122,6 +142,10 @@ public final class GarageStationManager {
             for (LandVehicle vehicle : vehicles.vehiclesWithin(location, YARD_RADIUS)) {
                 Player driver = vehicle.driver().orElse(null);
                 if (driver == null) {
+                    continue;
+                }
+                // Private garage: only the owner's cars may park here (GTA public = anyone).
+                if (!station.publicStation() && !driver.getUniqueId().equals(station.owner())) {
                     continue;
                 }
                 VehicleManager.ParkResult result = vehicles.park(vehicle, driver);
@@ -158,7 +182,7 @@ public final class GarageStationManager {
         }
     }
 
-    private void spawnRig(UUID id, Location location) {
+    private void spawnRig(UUID id, Location location, boolean publicStation) {
         World world = location.getWorld();
         if (world == null) {
             return;
@@ -183,8 +207,10 @@ public final class GarageStationManager {
         box.setGravity(true);
         // GTA sell: a hanging "🚗 GARAJ" hologram floats above the terminal - unmissable.
         world.spawn(location.clone().add(0.0D, 1.9D, 0.0D), org.bukkit.entity.TextDisplay.class, sign -> {
-            sign.text(net.kyori.adventure.text.Component.text("🚗  G A R A J  🚗",
-                    net.kyori.adventure.text.format.NamedTextColor.GOLD)
+            sign.text(net.kyori.adventure.text.Component.text(
+                    publicStation ? "🚗  G A R A J  🚗" : "🔒  GARAJ PRIVAT  🔒",
+                    publicStation ? net.kyori.adventure.text.format.NamedTextColor.GOLD
+                            : net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE)
                     .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
                     .append(net.kyori.adventure.text.Component.newline())
                     .append(net.kyori.adventure.text.Component.text("condu aici = parchezi singură",
@@ -211,14 +237,17 @@ public final class GarageStationManager {
 
     private void save() {
         YamlConfiguration data = new YamlConfiguration();
-        for (Map.Entry<UUID, Location> entry : stations.entrySet()) {
-            Location location = entry.getValue();
+        for (Map.Entry<UUID, Station> entry : stations.entrySet()) {
+            Station station = entry.getValue();
+            Location location = station.location();
             String path = "stations." + entry.getKey();
             data.set(path + ".world", location.getWorld() == null ? null : location.getWorld().getName());
             data.set(path + ".x", location.getX());
             data.set(path + ".y", location.getY());
             data.set(path + ".z", location.getZ());
             data.set(path + ".yaw", (double) location.getYaw());
+            data.set(path + ".public", station.publicStation());
+            data.set(path + ".owner", station.owner() == null ? null : station.owner().toString());
         }
         try {
             if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {
@@ -251,8 +280,11 @@ public final class GarageStationManager {
                 Location location = new Location(world, data.getDouble(path + ".x"),
                         data.getDouble(path + ".y"), data.getDouble(path + ".z"),
                         (float) data.getDouble(path + ".yaw"), 0.0F);
-                stations.put(id, location);
-                spawnRig(id, location);
+                boolean publicStation = data.getBoolean(path + ".public", true);
+                String ownerRaw = data.getString(path + ".owner");
+                UUID owner = ownerRaw == null ? null : UUID.fromString(ownerRaw);
+                stations.put(id, new Station(location, publicStation, owner));
+                spawnRig(id, location, publicStation);
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.WARNING, "Could not load garage station " + key, exception);
             }

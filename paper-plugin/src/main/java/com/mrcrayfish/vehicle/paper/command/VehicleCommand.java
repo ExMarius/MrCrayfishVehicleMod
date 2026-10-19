@@ -174,11 +174,30 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length > 1 && args[1].equalsIgnoreCase("station")) {
-            ItemStack item = GarageStationItem.create();
+            // Public GTA station: ADMIN ONLY, serves every player on the server.
+            if (!sender.hasPermission("vehicle.admin")) {
+                sender.sendRichMessage("<red>Stația PUBLICĂ este doar pentru admini (OP).</red>");
+                return;
+            }
+            ItemStack item = GarageStationItem.create(true);
             player.getInventory().addItem(item).values().forEach(leftover ->
                     player.getWorld().dropItemNaturally(player.getLocation(), leftover));
-            player.sendRichMessage("<green>Ai primit STAȚIA de garaj GTA.</green> "
-                    + "<gray>Plaseaz-o cu click dreapta pe o suprafață.</gray>");
+            player.sendRichMessage("<green>Ai primit STAȚIA PUBLICĂ (GTA).</green> "
+                    + "<gray>O poate folosi ORICE jucător - plaseaz-o cu click dreapta.</gray>");
+            return;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("personal")) {
+            // Personal garage: players with the vehicle.garage permission build their own,
+            // private station - only they can use it.
+            if (!sender.hasPermission("vehicle.garage")) {
+                sender.sendRichMessage("<red>Nu ai permisiunea vehicle.garage (cere adminului).</red>");
+                return;
+            }
+            ItemStack item = GarageStationItem.create(false);
+            player.getInventory().addItem(item).values().forEach(leftover ->
+                    player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+            player.sendRichMessage("<light_purple>Ai primit GARAJUL TĂU PERSONAL (privat).</light_purple> "
+                    + "<gray>Doar TU îl folosești - plasează-l cu click dreapta.</gray>");
             return;
         }
         new GarageGui(vehicles).open(player);
@@ -214,7 +233,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("garage") || args.length == 2 && args[0].equalsIgnoreCase("garaj")) {
-            return filter(List.of("station"), args[1]);
+            return filter(List.of("station", "personal"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);

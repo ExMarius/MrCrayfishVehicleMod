@@ -69,7 +69,7 @@ public final class GarageStationListener implements Listener {
             player.sendRichMessage("<red>Plasează stația pe o suprafață (susul unui bloc).</red>");
             return;
         }
-        stations.place(player, foot);
+        stations.place(player, foot, GarageStationItem.isPublic(item));
         player.sendRichMessage("<green>Garaj STAȚIE plasat!</green> "
                 + "<gray>Condu o mașină în curtea (~5 blocuri) și se parchează singură. "
                 + "Click dreapta pe stație = meniul tău de garaj.</gray>");
@@ -83,6 +83,13 @@ public final class GarageStationListener implements Listener {
         }
         event.setCancelled(true);
         Player player = event.getPlayer();
+        // Private stations (personal garages) serve ONLY their owner; public = GTA for all.
+        if (!stations.isPublic(stationId) && stations.owner(stationId)
+                .map(owner -> !owner.equals(player.getUniqueId())).orElse(false)) {
+            player.sendRichMessage("<red>Acesta este un GARAJ PRIVAT — nu al tău.</red> "
+                    + "<gray>Creează-ți unul: /vehicle garaj personal (cu permisiune).</gray>");
+            return;
+        }
         stations.location(stationId).ifPresent(loc -> WINDOW_ANCHOR.put(player.getUniqueId(), loc));
         new GarageGui(vehicles).open(player);
     }
