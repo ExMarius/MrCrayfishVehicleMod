@@ -165,6 +165,7 @@ public final class VehicleManager {
         if (stored.owner() != null) {
             vehicle.setOwner(UUID.fromString(stored.owner()));
         }
+        vehicle.setLocked(stored.locked());
         garage.remove(vehicleId);
         save();
         return true;
@@ -197,6 +198,20 @@ public final class VehicleManager {
                 continue;
             }
             if (vehicle.location().distance(player.getLocation()) <= radius) {
+                result.add(vehicle);
+            }
+        }
+        return result;
+    }
+
+    /** This player's OWN vehicles within the radius (E-key lock toggle targets). */
+    public List<LandVehicle> ownedWithin(Player player, double radius) {
+        List<LandVehicle> result = new ArrayList<>();
+        UUID uid = player.getUniqueId();
+        for (LandVehicle vehicle : vehicles.values()) {
+            if (vehicle.location().getWorld() == player.getWorld()
+                    && vehicle.location().distance(player.getLocation()) <= radius
+                    && vehicle.owner().map(uid::equals).orElse(false)) {
                 result.add(vehicle);
             }
         }
@@ -464,6 +479,7 @@ public final class VehicleManager {
         if (stored.owner() != null) {
             data.set(path + ".owner", stored.owner());
         }
+        data.set(path + ".locked", stored.locked());
     }
 
     private void load() {
@@ -522,6 +538,7 @@ public final class VehicleManager {
         if (stored.owner() != null) {
             vehicle.setOwner(UUID.fromString(stored.owner()));
         }
+        vehicle.setLocked(stored.locked());
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {
@@ -756,7 +773,7 @@ public final class VehicleManager {
                                  float planeRoll, float propellerSpeed,
                                  float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
-                                 Map<String, Boolean> openPartStates, String owner) {
+                                 Map<String, Boolean> openPartStates, String owner, boolean locked) {
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
             World world = location.getWorld();
@@ -770,7 +787,7 @@ public final class VehicleManager {
                     vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
                     vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
                     vehicle.storageContents(), vehicle.openPartStates(),
-                    vehicle.owner().map(UUID::toString).orElse(null));
+                    vehicle.owner().map(UUID::toString).orElse(null), vehicle.locked());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -799,7 +816,7 @@ public final class VehicleManager {
                     (float) data.getDouble(path + ".plane.elevator-angle"),
                     data.getBoolean(path + ".storage.chest-attached", false),
                     readStorage(data, path), readOpenPartStates(data, path),
-                    data.getString(path + ".owner"));
+                    data.getString(path + ".owner"), data.getBoolean(path + ".locked", true));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

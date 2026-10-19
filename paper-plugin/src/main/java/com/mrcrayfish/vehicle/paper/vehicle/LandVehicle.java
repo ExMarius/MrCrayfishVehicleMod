@@ -72,6 +72,7 @@ public final class LandVehicle {
     private float rearWheelRotation;
     private float fuel;
     private java.util.UUID ownerId;
+    private boolean locked = true;
     private float speedMultiplier;
     private float boostStrength;
     private float chargingAmount;
@@ -1462,6 +1463,20 @@ public final class LandVehicle {
 
     public void setOwner(java.util.UUID ownerId) {
         this.ownerId = ownerId;
+    }
+
+    /** FiveM lock: a locked vehicle admits nobody but its owner (default locked, like owning a car). */
+    public boolean locked() {
+        return locked;
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+    }
+
+    public boolean toggleLock() {
+        locked = !locked;
+        return locked;
     }
 
     public float fuel() {
