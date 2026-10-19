@@ -13,6 +13,7 @@ import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -224,7 +225,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         plugin.shopGui().open(player);
     }
 
-    /** /vehicle magazin podium - admins get the placeable showroom podium item. */
+    /** /vehicle magazin podium - admin PRIVIND locul construieste showroomul DIRECT acolo. */
     private void dealerPodium(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Comanda trebuie executata de un jucator.</red>");
@@ -234,9 +235,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Doar administratorii pot construi un showroom.</red>");
             return;
         }
-        player.getInventory().addItem(com.mrcrayfish.vehicle.paper.shop.DealerPodiumItem.create());
-        player.sendRichMessage("<gold>Ai primit Podiumul SHOWROOM!</gold> <gray>Așază-l pe o "
-                + "suprafață: mașina se învârte pe el, jucătorii dau click dreapta și cumpără.</gray>");
+        org.bukkit.block.Block target = player.getTargetBlockExact(6,
+                org.bukkit.FluidCollisionMode.NEVER);
+        if (target == null || target.getType().isAir()) {
+            sender.sendRichMessage("<yellow>Uita-te la pamant in locul unde vrei showroomul "
+                    + "(maxim 6 blocuri) si reia comanda.</yellow>");
+            return;
+        }
+        Location foot = target.getRelative(org.bukkit.block.BlockFace.UP).getLocation();
+        plugin.dealerStations().place(player, foot);
     }
 
     /** The vehicle at hand for TRUST commands: the nearest one you OWN within 6 blocks. */

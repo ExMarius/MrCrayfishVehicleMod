@@ -97,9 +97,17 @@ public final class DealerStationManager {
         stations.clear();
     }
 
-    /** Places a new showroom: quartz platform + spinning showcase + price hologram. */
-    public void place(Player player, Location foot) {
+    /** Places a new showroom: quartz platform + spinning showcase + price hologram.
+     *  Returns false when another showroom is closer than 8 blocks (never two in one spot). */
+    public boolean place(Player player, Location foot) {
         Location anchor = foot.getBlock().getLocation();
+        for (Station station : stations) {
+            Location other = station.anchor();
+            if (other.getWorld() == anchor.getWorld() && other.distanceSquared(anchor) < 64.0D) {
+                player.sendRichMessage("<red>Aici e deja un showroom (minim 8 blocuri distanta).</red>");
+                return false;
+            }
+        }
         buildPlatform(anchor);
         Station station = new Station(anchor, -1, null, null);
         stations.add(station);
@@ -107,6 +115,7 @@ public final class DealerStationManager {
         save();
         player.sendRichMessage("<green>Showroom construit!</green> <gray>Mașina de pe podium se "
                 + "învârte și se schimbă singură la ~40s. Orice jucător dă click dreapta pe ea și o cumpără.</gray>");
+        return true;
     }
 
     /** Admin pickup: sneak + punch the featured car -> station removed, podium item back. */
@@ -286,8 +295,18 @@ public final class DealerStationManager {
                 continue;
             }
             try {
-                stations.add(new Station(new Location(world, Integer.parseInt(parts[1].trim()),
-                        Integer.parseInt(parts[2].trim()), Integer.parseInt(parts[3].trim())), 0, null, null));
+                Location anchor = new Location(world, Integer.parseInt(parts[1].trim()),
+                        Integer.parseInt(parts[2].trim()), Integer.parseInt(parts[3].trim()));
+                boolean duplicate = false;
+                for (Station existing : stations) {
+                    if (existing.anchor().distanceSquared(anchor) < 2.25D) {
+                        duplicate = true; // collapse stacked same-spot podiums from the double-place bug
+                        break;
+                    }
+                }
+                if (!duplicate) {
+                    stations.add(new Station(anchor, 0, null, null));
+                }
             } catch (NumberFormatException ignored) {
                 // Corrupt line: skip it, keep loading the rest.
             }

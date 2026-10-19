@@ -22,6 +22,7 @@ import org.bukkit.inventory.ItemStack;
 public final class DealerPodiumListener implements Listener {
     private final DealerStationManager stations;
     private final VehicleManager vehicles;
+    private final java.util.Map<String, Long> lastPlacements = new java.util.HashMap<>();
 
     public DealerPodiumListener(DealerStationManager stations, VehicleManager vehicles) {
         this.stations = stations;
@@ -49,6 +50,14 @@ public final class DealerPodiumListener implements Listener {
             return;
         }
         Location foot = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
+        // Some right-click paths fire the event twice in the same tick: throttle per player+block.
+        String key = player.getUniqueId() + "@" + foot.getWorld().getName() + ","
+                + foot.getBlockX() + "," + foot.getBlockY() + "," + foot.getBlockZ();
+        long now = System.currentTimeMillis();
+        if (now - lastPlacements.getOrDefault(key, 0L) < 700L) {
+            return;
+        }
+        lastPlacements.put(key, now);
         stations.place(player, foot);
         if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
             item.setAmount(item.getAmount() - 1);
