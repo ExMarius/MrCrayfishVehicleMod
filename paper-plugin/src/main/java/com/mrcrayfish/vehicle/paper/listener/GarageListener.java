@@ -62,7 +62,8 @@ public final class GarageListener implements Listener {
                 }
             }
         } else if (com.mrcrayfish.vehicle.paper.garage.GarageGui.ACTION_RETRIEVE.equals(action)) {
-            if (!vehicles.retrieve(player, vehicleId)) {
+            // GTA 1:1 - the car exits at the STATION this window was opened from, if any.
+            if (!vehicles.retrieve(player, vehicleId, GarageStationListener.anchorOf(player))) {
                 player.sendRichMessage("<red>Nu am putut scoate vehiculul din garaj.</red>");
             } else {
                 player.sendRichMessage("<green>Vehicul scos din garaj - e lângă tine.</green>");
@@ -71,6 +72,13 @@ public final class GarageListener implements Listener {
 
         // Refresh the window so the lists mirror the new state immediately.
         new com.mrcrayfish.vehicle.paper.garage.GarageGui(vehicles).open(player);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onGarageClose(org.bukkit.event.inventory.InventoryCloseEvent event) {
+        if (isGarage(event.getInventory()) && event.getPlayer() instanceof Player player) {
+            GarageStationListener.clearAnchor(player);
+        }
     }
 
     @EventHandler(priority = EventPriority.HIGH)

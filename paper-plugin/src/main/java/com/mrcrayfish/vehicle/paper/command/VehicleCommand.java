@@ -4,6 +4,7 @@ import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpItem;
 import com.mrcrayfish.vehicle.paper.garage.GarageGui;
+import com.mrcrayfish.vehicle.paper.garage.GarageStationItem;
 import com.mrcrayfish.vehicle.paper.jerrycan.JerryCanItem;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.runtime.PaperTrailer;
@@ -48,7 +49,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "refuel" -> refuel(sender);
             case "gaspump" -> gaspump(sender);
             case "jerrycan" -> jerrycan(sender, args);
-            case "garage", "garaj" -> garage(sender);
+            case "garage", "garaj" -> garage(sender, args);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
                     + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
@@ -166,10 +167,18 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 + "<gray>Umple-o la o pompă (click dreapta), apoi toarnă în vehicul (click dreapta).</gray>");
     }
 
-    /** FiveM garages: any player can open their own garage window (no permission gate). */
-    private void garage(CommandSender sender) {
+    /** FiveM garages: opens the window; /vehicle garage station gives the physical terminal. */
+    private void garage(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (args.length > 1 && args[1].equalsIgnoreCase("station")) {
+            ItemStack item = GarageStationItem.create();
+            player.getInventory().addItem(item).values().forEach(leftover ->
+                    player.getWorld().dropItemNaturally(player.getLocation(), leftover));
+            player.sendRichMessage("<green>Ai primit STAȚIA de garaj GTA.</green> "
+                    + "<gray>Plaseaz-o cu click dreapta pe o suprafață.</gray>");
             return;
         }
         new GarageGui(vehicles).open(player);
@@ -203,6 +212,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
             return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "list", "save", "pack"), args[0]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("garage") || args.length == 2 && args[0].equalsIgnoreCase("garaj")) {
+            return filter(List.of("station"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);

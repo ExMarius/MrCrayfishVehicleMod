@@ -241,6 +241,7 @@ def build(output: Path) -> tuple[Path, str]:
             "hose_segment": ("vehicle:item/hose_segment", 16383998),
             "jerry_can": ("vehicle:item/jerry_can", 16383998),
             "industrial_jerry_can": ("vehicle:item/industrial_jerry_can", 16383998),
+            "garage_terminal": ("vehicle:item/garage_terminal", 16383998),
         }.items():
             write_json(namespace / f"items/{item}.json", item_definition(model, tint))
 
@@ -1029,6 +1030,16 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/item/industrial_jerry_can.json",
             namespace / "models/item/industrial_jerry_can.json",
             {"2": "vehicle:item/industrial_jerry_can", "particle": "vehicle:item/industrial_jerry_can"},
+        )
+        # Physical GTA-style garage terminal: the mod's workbench block as an item model.
+        copy(
+            ASSETS / "textures/model/workstation.png",
+            namespace / "textures/item/workstation.png",
+        )
+        convert_model(
+            ASSETS / "models/block/workstation.json",
+            namespace / "models/item/garage_terminal.json",
+            {"workstation": "vehicle:item/workstation", "particle": "vehicle:item/workstation"},
         )
         # The mod authors pointed these models at parent "vehicle:block/workstation", which is
         # NOT exported to the pack: vanilla fails to resolve the parent and falls back to the

@@ -134,6 +134,11 @@ public final class VehicleManager {
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
     public boolean retrieve(Player player, UUID vehicleId) {
+        return retrieve(player, vehicleId, null);
+    }
+
+    /** Same, but the vehicle exits at the physical STATION anchor when one is known (GTA 1:1). */
+    public boolean retrieve(Player player, UUID vehicleId, Location anchor) {
         StoredVehicle stored = garage.get(vehicleId);
         if (stored == null) {
             return false;
@@ -145,9 +150,11 @@ public final class VehicleManager {
         if (spec == null) {
             return false;
         }
-        Location base = player.getLocation();
+        Location base = anchor != null ? anchor.clone() : player.getLocation();
+        base.setPitch(0.0F);
         Location spot = base.clone().add(base.getDirection().multiply(2.5));
         spot.setY(base.getY());
+        spot.setYaw(base.getYaw());
         LandVehicle vehicle = spawn(stored.id(), spec, spot);
         vehicle.refreshGroundState();
         vehicle.setFuel(stored.fuel());
@@ -190,6 +197,22 @@ public final class VehicleManager {
                 continue;
             }
             if (vehicle.location().distance(player.getLocation()) <= radius) {
+                result.add(vehicle);
+            }
+        }
+        return result;
+    }
+
+    /** All of our live vehicles within the radius (station auto-park yard sweep). */
+    public List<LandVehicle> vehiclesWithin(Location centre, double radius) {
+        List<LandVehicle> result = new ArrayList<>();
+        World world = centre.getWorld();
+        for (LandVehicle vehicle : vehicles.values()) {
+            Location location = vehicle.location();
+            if (world != null && world != location.getWorld()) {
+                continue;
+            }
+            if (location.distance(centre) <= radius) {
                 result.add(vehicle);
             }
         }

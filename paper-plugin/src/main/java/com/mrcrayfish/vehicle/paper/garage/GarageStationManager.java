@@ -1,0 +1,224 @@
+package com.mrcrayfish.vehicle.paper.garage;
+
+import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
+import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
+import org.bukkit.World;
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.ItemDisplay;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.scheduler.BukkitTask;
+import org.bukkit.util.Transformation;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+import java.util.logging.Level;
+
+/**
+ * Physical garage stations (GTA 1:1): persistent workbench terminals in the world.
+ * <ul>
+ *   <li><b>Brotherhood with the world:</b> each station is a small Interaction + ItemDisplay
+ *       rig tagged with its station id, saved to garages.yml and re-spawned on load.</li>
+ *   <li><b>Auto-park:</b> once per second, the station scans ~5 blocks: a vehicle someone is
+ *       driving in its yard gets parked for the DRIVER (claims it if unowned) - drive into
+ *       the garage and it stores itself, exactly like pulling into a GTA garage.</li>
+ *   <li><b>Menu:</b> right-clicking the station opens YOUR garage window and pulled vehicles
+ *       spawn at the station (not your pocket) - see {@link GarageStationListener}.</li>
+ * </ul>
+ */
+public final class GarageStationManager {
+    private static final double YARD_RADIUS = 5.0D;
+
+    private final VehiclePlugin plugin;
+    private final VehicleManager vehicles;
+
+    private final Map<UUID, Location> stations = new HashMap<>();
+    private BukkitTask tickTask;
+    private File storageFile;
+
+    public GarageStationManager(VehiclePlugin plugin, VehicleManager vehicles) {
+        this.plugin = plugin;
+        this.vehicles = vehicles;
+    }
+
+    public void start() {
+        storageFile = new File(plugin.getDataFolder(), "garages.yml");
+        load();
+        tickTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 20L, 20L);
+    }
+
+    public void stop() {
+        if (tickTask != null) {
+            tickTask.cancel();
+            tickTask = null;
+        }
+    }
+
+    /** Places a station at the given foot position, keeps the player's facing for the menu. */
+    public void place(Player player, Location foot) {
+        UUID id = UUID.randomUUID();
+        Location location = foot.clone().add(0.5D, 0.0D, 0.5D);
+        location.setYaw(player.getLocation().getYaw());
+        location.setPitch(0.0F);
+        stations.put(id, location);
+        spawnRig(id, location);
+        save();
+    }
+
+    /** Breaks a station (returns the placeable item); the garage STORAGE itself never dies. */
+    public boolean remove(Entity entity) {
+        UUID id = stationId(entity).orElse(null);
+        if (id == null) {
+            return false;
+        }
+        Location location = stations.remove(id);
+        if (location != null) {
+            despawnRig(location, id);
+            location.getWorld().dropItemNaturally(location.clone().add(0.0D, 0.5D, 0.0D),
+                    GarageStationItem.create());
+            save();
+        }
+        return location != null;
+    }
+
+    /** Identifies a station interaction/display entity (null when it belongs to no station). */
+    public Optional<UUID> stationId(Entity entity) {
+        for (String tag : entity.getScoreboardTags()) {
+            if (tag.startsWith("mcv_garage_station_")) {
+                try {
+                    return Optional.of(UUID.fromString(tag.substring("mcv_garage_station_".length())));
+                } catch (IllegalArgumentException ignored) {
+                    return Optional.empty();
+                }
+            }
+        }
+        return Optional.empty();
+    }
+
+    public Optional<Location> location(UUID id) {
+        return Optional.ofNullable(stations.get(id));
+    }
+
+    private void tick() {
+        for (Map.Entry<UUID, Location> entry : stations.entrySet()) {
+            Location location = entry.getValue();
+            World world = location.getWorld();
+            if (world == null || !world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4)) {
+                continue;
+            }
+            for (LandVehicle vehicle : vehicles.vehiclesWithin(location, YARD_RADIUS)) {
+                Player driver = vehicle.driver().orElse(null);
+                if (driver == null) {
+                    continue;
+                }
+                VehicleManager.ParkResult result = vehicles.park(vehicle, driver);
+                switch (result) {
+                    case PARKED -> driver.sendRichMessage("<green>🏁 " + vehicle.spec().displayName()
+                            + " s-a parcat SINGUR în garaj (ca în GTA).</green>");
+                    case CLAIMED_AND_PARKED -> driver.sendRichMessage("<gold>🏁 " + vehicle.spec().displayName()
+                            + " e acum AL TĂU și parcat în garaj.</gold>");
+                    case NOT_OWNER -> driver.sendRichMessage("<red>Mașina aceasta nu e a ta - nu o poți garaj-a aici.</red>");
+                    default -> { }
+                }
+            }
+        }
+    }
+
+    private void spawnRig(UUID id, Location location) {
+        World world = location.getWorld();
+        if (world == null) {
+            return;
+        }
+        Interaction box = world.spawn(location, Interaction.class, entity -> {
+            entity.setInteractionWidth(0.95F);
+            entity.setInteractionHeight(0.95F);
+            entity.addScoreboardTag("mcv_garage_station_" + id);
+            entity.setPersistent(true);
+        });
+        world.spawn(location.clone().add(0.0D, 0.5D, 0.0D), ItemDisplay.class, display -> {
+            ItemStack terminal = new ItemStack(Material.PAPER);
+            terminal.editMeta(meta -> meta.setItemModel(new NamespacedKey("vehicle", "garage_terminal")));
+            display.setItemStack(terminal);
+            display.setTransformation(new Transformation(new Vector3f(0F, 0F, 0F),
+                    new AxisAngle4f(), new Vector3f(1.0F, 1.0F, 1.0F), new AxisAngle4f(
+                            (float) Math.toRadians(location.getYaw()), 0F, 1F, 0F)));
+            display.setTeleportDuration(0);
+            display.addScoreboardTag("mcv_garage_station_" + id);
+            display.setPersistent(true);
+        });
+        box.setGravity(true);
+    }
+
+    private void despawnRig(Location location, UUID id) {
+        String tag = "mcv_garage_station_" + id;
+        for (Entity entity : location.getWorld().getNearbyEntities(location, 2.0D, 3.0D, 2.0D)) {
+            if (entity.getScoreboardTags().contains(tag)) {
+                entity.remove();
+            }
+        }
+    }
+
+    private void save() {
+        YamlConfiguration data = new YamlConfiguration();
+        for (Map.Entry<UUID, Location> entry : stations.entrySet()) {
+            Location location = entry.getValue();
+            String path = "stations." + entry.getKey();
+            data.set(path + ".world", location.getWorld() == null ? null : location.getWorld().getName());
+            data.set(path + ".x", location.getX());
+            data.set(path + ".y", location.getY());
+            data.set(path + ".z", location.getZ());
+            data.set(path + ".yaw", (double) location.getYaw());
+        }
+        try {
+            if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {
+                throw new IOException("Could not create plugin data folder");
+            }
+            data.save(storageFile);
+        } catch (IOException exception) {
+            plugin.getLogger().log(Level.SEVERE, "Could not save garages.yml", exception);
+        }
+    }
+
+    private void load() {
+        if (!storageFile.isFile()) {
+            return;
+        }
+        YamlConfiguration data = YamlConfiguration.loadConfiguration(storageFile);
+        org.bukkit.configuration.ConfigurationSection section = data.getConfigurationSection("stations");
+        if (section == null) {
+            return;
+        }
+        for (String key : section.getKeys(false)) {
+            try {
+                UUID id = UUID.fromString(key);
+                String path = "stations." + key;
+                World world = Bukkit.getWorld(data.getString(path + ".world", "world"));
+                if (world == null) {
+                    plugin.getLogger().warning("Garage station " + key + " skipped: world not loaded");
+                    continue;
+                }
+                Location location = new Location(world, data.getDouble(path + ".x"),
+                        data.getDouble(path + ".y"), data.getDouble(path + ".z"),
+                        (float) data.getDouble(path + ".yaw"), 0.0F);
+                stations.put(id, location);
+                spawnRig(id, location);
+            } catch (RuntimeException exception) {
+                plugin.getLogger().log(Level.WARNING, "Could not load garage station " + key, exception);
+            }
+        }
+        plugin.getLogger().info("Loaded " + stations.size() + " garage station(s).");
+    }
+}

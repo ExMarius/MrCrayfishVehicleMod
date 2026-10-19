@@ -13,6 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class VehiclePlugin extends JavaPlugin {
     private VehicleManager vehicleManager;
     private GasPumpManager gasPumpManager;
+    private com.mrcrayfish.vehicle.paper.garage.GarageStationManager garageStationManager;
     private RestartWatcher restartWatcher;
 
     @Override
@@ -21,6 +22,7 @@ public final class VehiclePlugin extends JavaPlugin {
 
         vehicleManager = new VehicleManager(this);
         gasPumpManager = new GasPumpManager(this, vehicleManager);
+        garageStationManager = new com.mrcrayfish.vehicle.paper.garage.GarageStationManager(this, vehicleManager);
 
         VehicleCommand vehicleCommand = new VehicleCommand(this, vehicleManager, gasPumpManager);
         PluginCommand command = getCommand("vehicle");
@@ -33,9 +35,11 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageListener(this, vehicleManager), this);
+        getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageStationListener(garageStationManager, vehicleManager), this);
 
         vehicleManager.start();
         gasPumpManager.start();
+        garageStationManager.start();
 
         restartWatcher = new RestartWatcher(this);
         restartWatcher.start();
@@ -47,6 +51,9 @@ public final class VehiclePlugin extends JavaPlugin {
     public void onDisable() {
         if (restartWatcher != null) {
             restartWatcher.stop();
+        }
+        if (garageStationManager != null) {
+            garageStationManager.stop();
         }
         if (gasPumpManager != null) {
             gasPumpManager.stop();
