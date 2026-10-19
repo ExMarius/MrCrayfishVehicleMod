@@ -145,15 +145,14 @@ public final class GarageStationManager {
                 }
             }
             if (nearest != null) {
-                org.bukkit.Particle.DustOptions dust = new org.bukkit.Particle.DustOptions(
-                        org.bukkit.Color.fromRGB(255, 196, 64), 0.9F);
+                // Yellow electric sparks = a GTA-style zone marker ring on the yard.
                 for (int point = 0; point < 24; point++) {
                     double angle = Math.PI * 2.0D * point / 24.0D;
-                    world.spawnParticle(org.bukkit.Particle.REDSTONE,
+                    world.spawnParticle(org.bukkit.Particle.ELECTRIC_SPARK,
                             location.getX() + Math.cos(angle) * YARD_RADIUS,
                             location.getY() + 0.15D,
                             location.getZ() + Math.sin(angle) * YARD_RADIUS,
-                            1, 0.0D, 0.0D, 0.0D, 1.0D, dust);
+                            1, 0.0D, 0.0D, 0.0D, 0.0D);
                 }
             }
         }
@@ -186,10 +185,10 @@ public final class GarageStationManager {
         world.spawn(location.clone().add(0.0D, 1.9D, 0.0D), org.bukkit.entity.TextDisplay.class, sign -> {
             sign.text(net.kyori.adventure.text.Component.text("🚗  G A R A J  🚗",
                     net.kyori.adventure.text.format.NamedTextColor.GOLD)
-                    .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD));
-            sign.append(net.kyori.adventure.text.Component.newline());
-            sign.append(net.kyori.adventure.text.Component.text("condu aici = parchezi singură",
-                    net.kyori.adventure.text.format.NamedTextColor.GRAY));
+                    .decorate(net.kyori.adventure.text.format.TextDecoration.BOLD)
+                    .append(net.kyori.adventure.text.Component.newline())
+                    .append(net.kyori.adventure.text.Component.text("condu aici = parchezi singură",
+                            net.kyori.adventure.text.format.NamedTextColor.GRAY)));
             sign.setBillboard(org.bukkit.entity.Display.Billboard.CENTER);
             try {
                 sign.setBackgroundColor(org.bukkit.Color.fromARGB(0x60000000));
