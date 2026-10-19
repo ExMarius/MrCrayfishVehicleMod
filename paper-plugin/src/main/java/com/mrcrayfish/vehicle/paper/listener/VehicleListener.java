@@ -314,6 +314,18 @@ public final class VehicleListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
+        // TEMP diagnostic (truth first): every E-air press reports itself for OPs,
+        // so we learn instantly whether the event reaches the server and what it sees.
+        if (player.isOp()) {
+            int ownedCount = vehicles.ownedWithin(player, 4.5D).size();
+            int unownedCount = 0;
+            for (com.mrcrayfish.vehicle.paper.vehicle.LandVehicle v : vehicles.vehiclesWithin(player.getLocation(), 4.5D)) {
+                if (v.owner().isEmpty()) unownedCount++;
+            }
+            player.sendActionBar(Component.text("E-debug: riding=" + (player.getVehicle() != null)
+                    + " owned=" + ownedCount + " fara-stapan=" + unownedCount,
+                    net.kyori.adventure.text.format.NamedTextColor.AQUA));
+        }
         if (player.getVehicle() != null) {
             return; // no lock dance while riding
         }
