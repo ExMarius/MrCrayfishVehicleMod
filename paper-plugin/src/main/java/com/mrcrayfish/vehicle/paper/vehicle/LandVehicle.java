@@ -84,6 +84,10 @@ public final class LandVehicle {
     private int wheelieCount;
     private int age;
     private boolean transported;
+    /** Showroom podium car: display-only - never saved, never parkable, never driven.
+     *  Clicking it runs the purchase flow instead of mounting. */
+    private boolean showcase;
+
     private boolean chestAttached;
     /* ShoppingCartEntity#tick replaces normal driving with position-following
      * whenever a player is pushing it from behind; null means nobody is pushing. */
@@ -1375,6 +1379,14 @@ public final class LandVehicle {
     }
 
     private record WaterStatus(WaterVehiclePhysics.State state, double waterLevel) {
+    }
+
+    public boolean showcase() {
+        return showcase;
+    }
+
+    public void setShowcase(boolean showcase) {
+        this.showcase = showcase;
     }
 
     public boolean mount(Player player) {

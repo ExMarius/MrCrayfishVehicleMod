@@ -174,6 +174,17 @@ public final class VehicleListener implements Listener {
             event.setCancelled(true);
         } else if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
+            com.mrcrayfish.vehicle.paper.vehicle.LandVehicle clickedVehicle =
+                    vehicles.byEntity(event.getRightClicked()).get();
+            if (clickedVehicle.showcase()) {
+                // FiveM podium: clicking the spinning car = buying it, never mounting.
+                com.mrcrayfish.vehicle.paper.shop.VehicleShop shopBooth =
+                        plugin.vehicleShop();
+                if (shopBooth != null) {
+                    shopBooth.buy(event.getPlayer(), clickedVehicle.spec().id());
+                }
+                return;
+            }
             vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);

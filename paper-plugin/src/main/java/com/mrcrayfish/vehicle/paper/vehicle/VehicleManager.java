@@ -190,6 +190,9 @@ public final class VehicleManager {
     public List<LandVehicle> parkableNearby(Player player, double radius) {
         List<LandVehicle> result = new ArrayList<>();
         for (LandVehicle vehicle : vehicles.values()) {
+            if (vehicle.showcase()) {
+                continue;
+            }
             java.util.Optional<UUID> owner = vehicle.owner();
             if (owner.isPresent() && !owner.get().equals(player.getUniqueId())) {
                 continue;
@@ -223,6 +226,9 @@ public final class VehicleManager {
         List<LandVehicle> result = new ArrayList<>();
         World world = centre.getWorld();
         for (LandVehicle vehicle : vehicles.values()) {
+            if (vehicle.showcase()) {
+                continue;
+            }
             Location location = vehicle.location();
             if (world != null && world != location.getWorld()) {
                 continue;
@@ -416,6 +422,9 @@ public final class VehicleManager {
             write(data, stored);
         }
         for (LandVehicle vehicle : vehicles.values()) {
+            if (vehicle.showcase()) {
+                continue; // showroom podium cars are display-only, never persisted
+            }
             write(data, StoredVehicle.from(vehicle));
         }
         for (StoredVehicle stored : garage.values()) {

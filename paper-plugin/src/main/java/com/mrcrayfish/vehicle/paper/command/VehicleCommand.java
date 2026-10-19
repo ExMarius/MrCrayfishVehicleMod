@@ -55,7 +55,13 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "trust" -> trust(sender, args);
             case "untrust" -> untrust(sender, args);
             case "trusted" -> trusted(sender);
-            case "magazin", "shop", "dealer" -> dealer(sender);
+            case "magazin", "shop", "dealer" -> {
+                if (args.length >= 2 && "podium".equalsIgnoreCase(args[1])) {
+                    dealerPodium(sender);
+                } else {
+                    dealer(sender);
+                }
+            }
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
                     + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
@@ -209,13 +215,28 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         new GarageGui(vehicles).open(player);
     }
 
-    /** /vehicle magazin - the FiveM dealer catalog (buy with Vault money). */
+    /** /vehicle magazin - the FiveM dealer (podium / catalog). */
     private void dealer(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Comanda trebuie executata de un jucator.</red>");
             return;
         }
         plugin.shopGui().open(player);
+    }
+
+    /** /vehicle magazin podium - admins get the placeable showroom podium item. */
+    private void dealerPodium(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executata de un jucator.</red>");
+            return;
+        }
+        if (!sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Doar administratorii pot construi un showroom.</red>");
+            return;
+        }
+        player.getInventory().addItem(com.mrcrayfish.vehicle.paper.shop.DealerPodiumItem.create());
+        player.sendRichMessage("<gold>Ai primit Podiumul SHOWROOM!</gold> <gray>Așază-l pe o "
+                + "suprafață: mașina se învârte pe el, jucătorii dau click dreapta și cumpără.</gray>");
     }
 
     /** The vehicle at hand for TRUST commands: the nearest one you OWN within 6 blocks. */
@@ -376,6 +397,10 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
             return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "trust", "untrust", "trusted", "magazin", "list", "save", "pack"), args[0]);
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("magazin") || args[0].equalsIgnoreCase("shop")
+                || args[0].equalsIgnoreCase("dealer"))) {
+            return filter(java.util.List.of("podium"), args[1]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

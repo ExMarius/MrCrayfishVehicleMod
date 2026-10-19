@@ -57,6 +57,13 @@ public final class VehicleShop {
         this.config = config;
     }
 
+    /** The whole catalog, cheapest first (podium cycles in this order too). */
+    public java.util.List<String> catalogIds() {
+        java.util.List<String> ids = new java.util.ArrayList<>(LandVehicleSpec.ids());
+        ids.sort(java.util.Comparator.comparingDouble(this::priceOf));
+        return ids;
+    }
+
     public double priceOf(String specId) {
         double fallback = DEFAULT_PRICES.getOrDefault(specId, 10000.0D);
         return config.getDouble("dealership.prices." + specId, fallback);

@@ -13,6 +13,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class VehiclePlugin extends JavaPlugin {
     private com.mrcrayfish.vehicle.paper.shop.VehicleShop shop;
     private com.mrcrayfish.vehicle.paper.shop.ShopGui shopGui;
+    private com.mrcrayfish.vehicle.paper.shop.DealerStationManager dealerStations;
     private VehicleManager vehicleManager;
     private GasPumpManager gasPumpManager;
     private com.mrcrayfish.vehicle.paper.garage.GarageStationManager garageStationManager;
@@ -41,6 +42,7 @@ public final class VehiclePlugin extends JavaPlugin {
         }
         this.shop = new com.mrcrayfish.vehicle.paper.shop.VehicleShop(vehicleManager, getConfig());
         this.shopGui = new com.mrcrayfish.vehicle.paper.shop.ShopGui(this.shop);
+        this.dealerStations = new com.mrcrayfish.vehicle.paper.shop.DealerStationManager(this, vehicleManager, this.shop);
 
         VehicleCommand vehicleCommand = new VehicleCommand(this, vehicleManager, gasPumpManager);
         PluginCommand command = getCommand("vehicle");
@@ -55,10 +57,12 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageListener(this, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageStationListener(garageStationManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.ShopListener(shop), this);
+        getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.DealerPodiumListener(dealerStations, vehicleManager), this);
 
         vehicleManager.start();
         gasPumpManager.start();
         garageStationManager.start();
+        dealerStations.start();
 
         restartWatcher = new RestartWatcher(this);
         restartWatcher.start();
@@ -70,8 +74,20 @@ public final class VehiclePlugin extends JavaPlugin {
         return shopGui;
     }
 
+    public com.mrcrayfish.vehicle.paper.shop.VehicleShop vehicleShop() {
+        return shop;
+    }
+
+    public com.mrcrayfish.vehicle.paper.shop.DealerStationManager dealerStations() {
+        return dealerStations;
+    }
+
     @Override
     public void onDisable() {
+        if (dealerStations != null) {
+            dealerStations.stop();
+        }
+
         if (restartWatcher != null) {
             restartWatcher.stop();
         }
