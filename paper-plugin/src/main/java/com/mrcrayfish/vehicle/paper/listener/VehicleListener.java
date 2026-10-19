@@ -302,10 +302,10 @@ public final class VehicleListener implements Listener {
     }
 
     /** The mod's horn key is H, but a vanilla client never sends H to the server at all.
-     *  Q (drop item) IS sent: while riding one of our vehicles, cancel the drop and honk -
-     *  the dedicated horn key, closest possible to the mod without client mods. */
+     *  F (swap hand items) IS sent: while riding one of our vehicles, cancel the swap (no
+     *  visual side-effect at all) and honk - the ONE dedicated horn key, user-approved. */
     @EventHandler(ignoreCancelled = true)
-    public void onHornDropKey(org.bukkit.event.player.PlayerDropItemEvent event) {
+    public void onHornKey(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
         Entity ridden = player.getVehicle();
         if (ridden == null || !isRidingOurVehicle(ridden)) {
