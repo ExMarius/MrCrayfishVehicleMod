@@ -55,25 +55,6 @@ public final class VehicleListener implements Listener {
         this.vehicles = vehicles;
     }
 
-    /** QUIT AUTO-GARAGE: leaving the server parks all of your vehicles instantly -
-     *  zero rigs ticking offline. Coming back reminds you about /vehicle garaj. */
-    @EventHandler
-    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
-        int parked = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
-        if (parked > 0) {
-            plugin.getLogger().info("[Garaj] " + event.getPlayer().getName() + " a iesit - "
-                    + parked + " vehicule au intrat automat in garaj (zero consum).");
-        }
-    }
-
-    @EventHandler
-    public void onJoin(org.bukkit.event.player.PlayerJoinEvent event) {
-        if (!vehicles.garagedOf(event.getPlayer()).isEmpty()) {
-            event.getPlayer().sendRichMessage("<gray>🚗 Mai ai vehicule in garaj: "
-                    + "<gold>/vehicle garaj</gold>. La iesire de pe server intra singure inapoi.</gray>");
-        }
-    }
-
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onPlayerCommand(PlayerCommandPreprocessEvent event) {
         String protectedCommand = protectEntityKill(event.getMessage());
@@ -268,6 +249,10 @@ public final class VehicleListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         vehicles.trailers().hideWaterPlacementTargetsFrom(event.getPlayer());
+        if (!vehicles.garagedOf(event.getPlayer()).isEmpty()) {
+            event.getPlayer().sendRichMessage("<gray>🚗 Mai ai vehicule in garaj: "
+                    + "<gold>/vehicle garaj</gold>. La iesire de pe server intra singure inapoi.</gray>");
+        }
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (event.getPlayer().isOnline() && !ResourcePackSender.suppliedByServer(plugin)) {
                 ResourcePackSender.send(plugin, event.getPlayer());
@@ -297,6 +282,13 @@ public final class VehicleListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
+        // QUIT AUTO-GARAGE: the leaving owner's vehicles park themselves instantly -
+        // zero rigs ticking while they're offline.
+        int parked = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
+        if (parked > 0) {
+            plugin.getLogger().info("[Garaj] " + event.getPlayer().getName() + " a iesit - "
+                    + parked + " vehicule au intrat automat in garaj (zero consum).");
+        }
     }
 
     @EventHandler
