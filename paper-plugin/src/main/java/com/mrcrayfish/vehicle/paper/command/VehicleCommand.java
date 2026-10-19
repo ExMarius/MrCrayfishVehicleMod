@@ -12,6 +12,7 @@ import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicleSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.TrailerSpec;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
+import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -189,7 +190,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         if (args.length > 1 && args[1].equalsIgnoreCase("personal")) {
             // Personal garage: players with the vehicle.garage permission build their own,
             // private station - only they can use it.
-            if (!sender.hasPermission("vehicle.garage")) {
+            if (!hasGaragePermission((Player) sender)) {
                 sender.sendRichMessage("<red>Nu ai permisiunea vehicle.garage (cere adminului).</red>");
                 return;
             }
@@ -201,6 +202,14 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         new GarageGui(vehicles).open(player);
+    }
+
+    /** USER RULE: without LuckPerms on the server, OP = full power (no permission drama). */
+    private static boolean hasGaragePermission(Player player) {
+        if (player.hasPermission("vehicle.garage")) {
+            return true;
+        }
+        return Bukkit.getPluginManager().getPlugin("LuckPerms") == null && player.isOp();
     }
 
     private void pack(CommandSender sender) {
