@@ -329,7 +329,7 @@ public final class VehicleListener implements Listener {
         at.add(vel.getX() * 2.0D, vel.getY() * 2.0D, vel.getZ() * 2.0D);
         final java.util.List<Player> listeners = new java.util.ArrayList<>();
         for (Player nearby : at.getWorld().getPlayers()) {
-            if (nearby.getLocation().distanceSquared(at) <= 48.0D * 48.0D) {
+            if (nearby.getLocation().distanceSquared(at) <= 20.0D * 20.0D) {
                 listeners.add(nearby);
                 nearby.playSound(Sound.sound(HORN_SOUND, Sound.Source.VOICE, 1.0F, 1.0F),
                         at.getX(), at.getY(), at.getZ());
