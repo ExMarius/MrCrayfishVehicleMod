@@ -60,7 +60,7 @@ public final class DealerStationManager {
         for (Station station : new ArrayList<>(stations)) {
             buildRig(station, true);
         }
-        spinner = Bukkit.getScheduler().runTaskTimer(plugin, 5L, 2L, () -> {
+        spinner = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Station station : stations) {
                 LandVehicle showcase = vehicles.byId(station.vehicleId()).orElse(null);
                 if (showcase != null) {
@@ -68,8 +68,8 @@ public final class DealerStationManager {
                     showcase.location().setYaw(yaw);
                 }
             }
-        });
-        cycler = Bukkit.getScheduler().runTaskTimer(plugin, CYCLE_TICKS, CYCLE_TICKS, () -> {
+        }, 5L, 2L);
+        cycler = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             List<String> catalog = shop.catalogIds();
             if (catalog.isEmpty()) {
                 return;
@@ -78,7 +78,7 @@ public final class DealerStationManager {
                 int next = (station.catalogIndex() + 1) % catalog.size();
                 replaceShowcase(station, catalog, next);
             }
-        });
+        }, CYCLE_TICKS, CYCLE_TICKS);
     }
 
     public void stop() {
