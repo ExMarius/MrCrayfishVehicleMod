@@ -72,7 +72,6 @@ public final class LandVehicle {
     private float rearWheelRotation;
     private float fuel;
     private java.util.UUID ownerId;
-    private boolean locked = true;
     private float speedMultiplier;
     private float boostStrength;
     private float chargingAmount;
@@ -1379,7 +1378,24 @@ public final class LandVehicle {
     }
 
     public boolean mount(Player player) {
-        return !transported && rig.mount(player);
+        if (transported) {
+            return false;
+        }
+        boolean result = rig.mount(player);
+        // DRIVER seat privilege (user design): post-mount gate - if the player ended up at
+        // the wheel without the owner's permission, eject them politely. Passenger seats
+        // untouched, exactly like FiveM.
+        if (result && !canDrive(player)) {
+            List<Entity> wheel = rig.driverSeat().getPassengers();
+            if (wheel.contains(player)) {
+                player.leaveVehicle();
+                player.sendActionBar(net.kyori.adventure.text.Component.text(
+                        "🚗 La volan doar cu permisiunea proprietarului! Pasagerul e liber oricui.",
+                        net.kyori.adventure.text.format.NamedTextColor.RED));
+                return false;
+            }
+        }
+        return result;
     }
 
     public Optional<Player> driver() {
@@ -1465,18 +1481,32 @@ public final class LandVehicle {
         this.ownerId = ownerId;
     }
 
-    /** FiveM lock: a locked vehicle admits nobody but its owner (default locked, like owning a car). */
-    public boolean locked() {
-        return locked;
+    /** Command-system (user design): the WHEEL belongs to the owner + the players he
+     *  explicitly trusts via /vehicle trust. Ownerless vehicles = public taxis for anyone.
+     *  Passengers always ride free, no matter what. */
+    private final java.util.Set<java.util.UUID> trustedDrivers = new java.util.HashSet<>();
+
+    public boolean canDrive(Player player) {
+        java.util.Optional<java.util.UUID> owner = owner();
+        return owner.isEmpty() || owner.get().equals(player.getUniqueId())
+                || trustedDrivers.contains(player.getUniqueId());
     }
 
-    public void setLocked(boolean locked) {
-        this.locked = locked;
+    public boolean trust(java.util.UUID playerId) {
+        return trustedDrivers.add(playerId);
     }
 
-    public boolean toggleLock() {
-        locked = !locked;
-        return locked;
+    public boolean untrust(java.util.UUID playerId) {
+        return trustedDrivers.remove(playerId);
+    }
+
+    public java.util.Set<java.util.UUID> trustedDrivers() {
+        return java.util.Collections.unmodifiableSet(trustedDrivers);
+    }
+
+    public void restoreTrustedDrivers(java.util.Collection<java.util.UUID> drivers) {
+        trustedDrivers.clear();
+        trustedDrivers.addAll(drivers);
     }
 
     public float fuel() {

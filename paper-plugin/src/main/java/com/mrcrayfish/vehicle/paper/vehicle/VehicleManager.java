@@ -165,7 +165,7 @@ public final class VehicleManager {
         if (stored.owner() != null) {
             vehicle.setOwner(UUID.fromString(stored.owner()));
         }
-        vehicle.setLocked(stored.locked());
+        vehicle.restoreTrustedDrivers(parseTrusted(stored.trusted()));
         garage.remove(vehicleId);
         save();
         return true;
@@ -479,7 +479,9 @@ public final class VehicleManager {
         if (stored.owner() != null) {
             data.set(path + ".owner", stored.owner());
         }
-        data.set(path + ".locked", stored.locked());
+        if (stored.trusted() != null && !stored.trusted().isEmpty()) {
+            data.set(path + ".trusted", stored.trusted());
+        }
     }
 
     private void load() {
@@ -538,7 +540,7 @@ public final class VehicleManager {
         if (stored.owner() != null) {
             vehicle.setOwner(UUID.fromString(stored.owner()));
         }
-        vehicle.setLocked(stored.locked());
+        vehicle.restoreTrustedDrivers(parseTrusted(stored.trusted()));
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {
@@ -773,7 +775,7 @@ public final class VehicleManager {
                                  float planeRoll, float propellerSpeed,
                                  float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
-                                 Map<String, Boolean> openPartStates, String owner, boolean locked) {
+                                 Map<String, Boolean> openPartStates, String owner, String trusted) {
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
             World world = location.getWorld();
@@ -787,7 +789,7 @@ public final class VehicleManager {
                     vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
                     vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
                     vehicle.storageContents(), vehicle.openPartStates(),
-                    vehicle.owner().map(UUID::toString).orElse(null), vehicle.locked());
+                    vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle));
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -816,7 +818,26 @@ public final class VehicleManager {
                     (float) data.getDouble(path + ".plane.elevator-angle"),
                     data.getBoolean(path + ".storage.chest-attached", false),
                     readStorage(data, path), readOpenPartStates(data, path),
-                    data.getString(path + ".owner"), data.getBoolean(path + ".locked", true));
+                    data.getString(path + ".owner"), data.getString(path + ".trusted"));
+        }
+
+        private static String trustedCsv(LandVehicle vehicle) {
+            return vehicle.trustedDrivers().stream().map(UUID::toString)
+                    .collect(java.util.stream.Collectors.joining(","));
+        }
+
+        private static java.util.Set<UUID> parseTrusted(String csv) {
+            java.util.Set<UUID> result = new java.util.HashSet<>();
+            if (csv != null && !csv.isBlank()) {
+                for (String part : csv.split(",")) {
+                    try {
+                        result.add(UUID.fromString(part.trim()));
+                    } catch (IllegalArgumentException ignored) {
+                        // Bad uuid fragment: skip it, keep loading the rest.
+                    }
+                }
+            }
+            return result;
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

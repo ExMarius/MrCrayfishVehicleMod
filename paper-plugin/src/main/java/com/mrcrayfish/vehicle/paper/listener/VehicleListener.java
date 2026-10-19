@@ -43,14 +43,12 @@ public final class VehicleListener implements Listener {
     private static final Pattern GLOBAL_ENTITY_KILL = Pattern.compile(
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
     private static final Key HORN_SOUND = Key.key("vehicle:entity.vehicle.horn");
-    private static final Key LOCK_SOUND = Key.key("vehicle:entity.vehicle.door.close");
-    private static final Key UNLOCK_SOUND = Key.key("vehicle:entity.vehicle.door.open");
+
     private static final long HORN_COOLDOWN_MS = 800L;
 
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
     private final java.util.Map<java.util.UUID, Long> hornCooldowns = new java.util.HashMap<>();
-    private final java.util.Map<java.util.UUID, Long> lockCooldowns = new java.util.HashMap<>();
 
     public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -176,15 +174,6 @@ public final class VehicleListener implements Listener {
             event.setCancelled(true);
         } else if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
-            com.mrcrayfish.vehicle.paper.vehicle.LandVehicle vehicle =
-                    vehicles.byEntity(event.getRightClicked()).get();
-            if (vehicle.locked() && vehicle.owner()
-                    .map(owner -> !owner.equals(event.getPlayer().getUniqueId())).orElse(false)) {
-                event.getPlayer().sendActionBar(Component.text(
-                        "🔒 Vehicul închis de proprietar (el: E pe aer lângă el pentru a-l deschide).",
-                        net.kyori.adventure.text.format.NamedTextColor.RED));
-                return;
-            }
             vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
@@ -306,81 +295,6 @@ public final class VehicleListener implements Listener {
     }
     /** Seats may be spawned outside the rig index depending on mount order, so accept the
      *  direct match first and fall back to the nearest vehicle of our fleet. */
-    /** FiveM E key: the only server-visible "use" key on vanilla is RIGHT CLICK AIR, so that
-     *  is our E. Within ~4.5 blocks of YOUR OWN vehicle: toggles its lock with a door blip. */
-    @EventHandler(ignoreCancelled = true)
-    public void onEKeyToggleLock(PlayerInteractEvent event) {
-        if (event.getHand() != EquipmentSlot.HAND || event.getAction() != Action.RIGHT_CLICK_AIR) {
-            return;
-        }
-        Player player = event.getPlayer();
-        // TEMP diagnostic (truth first): every E-air press reports itself for OPs,
-        // so we learn instantly whether the event reaches the server and what it sees.
-        if (player.isOp()) {
-            int ownedCount = vehicles.ownedWithin(player, 4.5D).size();
-            int unownedCount = 0;
-            for (com.mrcrayfish.vehicle.paper.vehicle.LandVehicle v : vehicles.vehiclesWithin(player.getLocation(), 4.5D)) {
-                if (v.owner().isEmpty()) unownedCount++;
-            }
-            player.sendActionBar(Component.text("E-debug: riding=" + (player.getVehicle() != null)
-                    + " owned=" + ownedCount + " fara-stapan=" + unownedCount,
-                    net.kyori.adventure.text.format.NamedTextColor.AQUA));
-        }
-        if (player.getVehicle() != null) {
-            return; // no lock dance while riding
-        }
-        java.util.List<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> owned =
-                vehicles.ownedWithin(player, 4.5D);
-        if (owned.isEmpty()) {
-            // Backwards compatibility: legacy / public cars have no owner, so plain E does
-            // nothing on them. The first press of E on an OWNERLESS vehicle claims it as
-            // yours (FiveM-style "this is my car now").
-            for (com.mrcrayfish.vehicle.paper.vehicle.LandVehicle vehicle
-                    : vehicles.vehiclesWithin(player.getLocation(), 4.5D)) {
-                if (vehicle.owner().isEmpty()) {
-                    vehicle.setOwner(player.getUniqueId());
-                    vehicles.save();
-                    player.sendRichMessage("<gold>" + vehicle.spec().displayName()
-                            + " este acum AL TĂU (nu avea stăpân). Apasă E din nou pentru încuietorile.</gold>");
-                    return;
-                }
-            }
-            return;
-        }
-        long now = System.currentTimeMillis();
-        Long last = lockCooldowns.get(player.getUniqueId());
-        if (last != null && now - last < 700L) {
-            return;
-        }
-        lockCooldowns.put(player.getUniqueId(), now);
-
-        com.mrcrayfish.vehicle.paper.vehicle.LandVehicle target = owned.getFirst();
-        double best = target.location().distanceSquared(player.getLocation());
-        for (com.mrcrayfish.vehicle.paper.vehicle.LandVehicle vehicle : owned) {
-            double distance = vehicle.location().distanceSquared(player.getLocation());
-            if (distance < best) {
-                best = distance;
-                target = vehicle;
-            }
-        }
-
-        boolean locked = target.toggleLock();
-        vehicles.save();
-        Location at = target.location();
-        net.kyori.adventure.sound.Sound chirp = net.kyori.adventure.sound.Sound.sound(
-                locked ? LOCK_SOUND : UNLOCK_SOUND, Sound.Source.BLOCK, 1.0F, 1.0F);
-        for (Player nearby : at.getWorld().getPlayers()) {
-            if (nearby.getLocation().distanceSquared(at) <= 20.0D * 20.0D) {
-                nearby.playSound(chirp, at.getX(), at.getY(), at.getZ());
-            }
-        }
-        player.sendActionBar(Component.text(
-                locked ? "🔒 " + target.spec().displayName() + " încuiat" :
-                        "🔓 " + target.spec().displayName() + " descuiat",
-                locked ? net.kyori.adventure.text.format.NamedTextColor.RED
-                        : net.kyori.adventure.text.format.NamedTextColor.GREEN));
-    }
-
     private java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> mountedVehicle(Entity ridden) {
         java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> direct = vehicles.byEntity(ridden);
         if (direct.isPresent()) {

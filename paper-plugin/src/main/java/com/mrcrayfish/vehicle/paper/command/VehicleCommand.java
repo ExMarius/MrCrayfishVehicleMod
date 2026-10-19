@@ -23,6 +23,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Optional;
 import java.util.List;
 import java.util.Locale;
 
@@ -51,6 +52,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "gaspump" -> gaspump(sender);
             case "jerrycan" -> jerrycan(sender, args);
             case "garage", "garaj" -> garage(sender, args);
+            case "trust" -> trust(sender, args);
+            case "untrust" -> untrust(sender, args);
+            case "trusted" -> trusted(sender);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
                     + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
@@ -204,6 +208,128 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         new GarageGui(vehicles).open(player);
     }
 
+    /** The vehicle at hand for TRUST commands: the nearest one you OWN within 6 blocks. */
+    private static LandVehicle targetOwnedVehicle(VehicleManager vehicles, Player player) {
+        List<LandVehicle> owned = vehicles.ownedWithin(player, 6.0D);
+        LandVehicle best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (LandVehicle vehicle : owned) {
+            double distance = vehicle.location().distanceSquared(player.getLocation());
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = vehicle;
+            }
+        }
+        return best;
+    }
+
+    /** /vehicle trust <name> - hands the wheel of your nearest owned vehicle to that player. */
+    private void trust(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle trust <nume-jucător></yellow>");
+            return;
+        }
+        LandVehicle vehicle = targetOwnedVehicle(vehicles, player);
+        if (vehicle == null) {
+            sender.sendRichMessage("<red>Niciuna dintre mașinile tale nu e aproape (6 blocuri).</red>");
+            return;
+        }
+        java.util.UUID targetUuid = resolvePlayer(args[1]);
+        if (targetUuid == null) {
+            sender.sendRichMessage("<red>Jucătorul nu există (trebuie să fi intrat măcar o dată).</red>");
+            return;
+        }
+        if (targetUuid.equals(player.getUniqueId())) {
+            sender.sendRichMessage("<yellow>Tu ești deja proprietarul!</yellow>");
+            return;
+        }
+        vehicle.trust(targetUuid);
+        vehicles.save();
+        sender.sendRichMessage("<green>" + args[1] + " poate acum conduce mașina ta: "
+                + vehicle.spec().displayName() + ".</green>");
+        Player targetOnline = Bukkit.getPlayer(targetUuid);
+        if (targetOnline != null) {
+            targetOnline.sendRichMessage("<gold>" + player.getName() + " ți-a dat voie să conduci: "
+                    + vehicle.spec().displayName() + ". Te poți urca la volan!</gold>");
+        }
+    }
+
+    /** /vehicle untrust <name> - takes the wheel back. */
+    private void untrust(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle untrust <nume-jucător></yellow>");
+            return;
+        }
+        LandVehicle vehicle = targetOwnedVehicle(vehicles, player);
+        if (vehicle == null) {
+            sender.sendRichMessage("<red>Niciuna dintre mașinile tale nu e aproape (6 blocuri).</red>");
+            return;
+        }
+        java.util.UUID targetUuid = resolvePlayer(args[1]);
+        if (targetUuid == null) {
+            sender.sendRichMessage("<red>Jucătorul nu există (trebuie să fi intrat măcar o dată).</red>");
+            return;
+        }
+        if (!vehicle.untrust(targetUuid)) {
+            sender.sendRichMessage("<yellow>" + args[1] + " nu avea permisiune la această mașină.</yellow>");
+            return;
+        }
+        vehicles.save();
+        sender.sendRichMessage("<red>Am luat cheia înapoi: " + args[1]
+                + " nu mai poate conduce mașina ta.</red>");
+    }
+
+    /** /vehicle trusted - who can drive your nearest owned vehicle right now. */
+    private void trusted(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        LandVehicle vehicle = targetOwnedVehicle(vehicles, player);
+        if (vehicle == null) {
+            sender.sendRichMessage("<red>Niciuna dintre mașinile tale nu e aproape (6 blocuri).</red>");
+            return;
+        }
+        if (vehicle.trustedDrivers().isEmpty()) {
+            sender.sendRichMessage("<gray>Doar TU poți conduce: " + vehicle.spec().displayName()
+                    + ". Adaugă cineva: /vehicle trust <nume>.</gray>");
+            return;
+        }
+        String names = vehicle.trustedDrivers().stream()
+                .map(id -> Optional.ofNullable(Bukkit.getOfflinePlayer(id).getName())
+                        .orElse(id.toString().substring(0, 8)))
+                .collect(java.util.stream.Collectors.joining(", "));
+        sender.sendRichMessage("<gold>La volan poate: TU + " + names + "</gold>");
+    }
+
+    /** Resolves a user-provided NAME to the offline player uuid (they must have joined once). */
+    private static java.util.UUID resolvePlayer(String name) {
+        Player online = Bukkit.getPlayerExact(name);
+        if (online != null) {
+            return online.getUniqueId();
+        }
+        for (org.bukkit.OfflinePlayer offline : Bukkit.getOfflinePlayers()) {
+            if (offline.getName() != null && offline.getName().equalsIgnoreCase(name)) {
+                return offline.getUniqueId();
+            }
+        }
+        return null;
+    }
+
+    private static List<String> onTabPlayers() {
+        List<String> names = new ArrayList<>();
+        Bukkit.getOnlinePlayers().forEach(p -> names.add(p.getName()));
+        return names;
+    }
+
     /** USER RULE: without LuckPerms on the server, OP = full power (no permission drama). */
     private static boolean hasGaragePermission(Player player) {
         if (player.hasPermission("vehicle.garage")) {
@@ -239,7 +365,10 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "trust", "untrust", "trusted", "list", "save", "pack"), args[0]);
+        }
+        if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
+            return filter(onTabPlayers(), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("garage") || args.length == 2 && args[0].equalsIgnoreCase("garaj")) {
             return filter(List.of("station", "personal"), args[1]);
