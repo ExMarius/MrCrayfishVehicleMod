@@ -322,15 +322,17 @@ public final class VehicleListener implements Listener {
             return;
         }
         hornCooldowns.put(player.getUniqueId(), now);
+        // Predict ~2 ticks ahead (like the fuel chain tip) so a fast vehicle hears the horn
+        // centered on itself instead of trailing behind where the key was pressed.
         Location at = ridden.getLocation();
+        org.bukkit.util.Vector vel = ridden.getVelocity();
+        at.add(vel.getX() * 2.0D, vel.getY() * 2.0D, vel.getZ() * 2.0D);
         final java.util.List<Player> listeners = new java.util.ArrayList<>();
-        Sound honk = Sound.sound(HORN_SOUND, Sound.Source.VOICE, 1.0F, 1.0F);
         for (Player nearby : at.getWorld().getPlayers()) {
             if (nearby.getLocation().distanceSquared(at) <= 48.0D * 48.0D) {
                 listeners.add(nearby);
-                // Emitter on the RIDDEN entity: the client tracks it every frame, so the
-                // horn travels WITH the moving vehicle instead of trailing behind it.
-                nearby.playSound(honk, Sound.Emitter.entity(ridden));
+                nearby.playSound(Sound.sound(HORN_SOUND, Sound.Source.VOICE, 1.0F, 1.0F),
+                        at.getX(), at.getY(), at.getZ());
             }
         }
         // Keep it a short honk: the mod's horn.ogg is a long-press sample.
