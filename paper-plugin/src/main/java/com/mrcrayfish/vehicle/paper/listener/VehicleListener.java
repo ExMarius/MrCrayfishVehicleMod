@@ -320,6 +320,19 @@ public final class VehicleListener implements Listener {
         java.util.List<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> owned =
                 vehicles.ownedWithin(player, 4.5D);
         if (owned.isEmpty()) {
+            // Backwards compatibility: legacy / public cars have no owner, so plain E does
+            // nothing on them. The first press of E on an OWNERLESS vehicle claims it as
+            // yours (FiveM-style "this is my car now").
+            for (com.mrcrayfish.vehicle.paper.vehicle.LandVehicle vehicle
+                    : vehicles.vehiclesWithin(player.getLocation(), 4.5D)) {
+                if (vehicle.owner().isEmpty()) {
+                    vehicle.setOwner(player.getUniqueId());
+                    vehicles.save();
+                    player.sendRichMessage("<gold>" + vehicle.spec().displayName()
+                            + " este acum AL TĂU (nu avea stăpân). Apasă E din nou pentru încuietorile.</gold>");
+                    return;
+                }
+            }
             return;
         }
         long now = System.currentTimeMillis();
