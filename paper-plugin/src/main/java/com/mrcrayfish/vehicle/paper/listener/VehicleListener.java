@@ -331,6 +331,12 @@ public final class VehicleListener implements Listener {
                         at.getX(), at.getY(), at.getZ());
             }
         }
+        // Keep it a short honk: the mod's horn.ogg is a long-press sample.
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (Player nearby : listeners) {
+                nearby.stopSound(HORN_SOUND.asString(), org.bukkit.SoundCategory.VOICE);
+            }
+        }, 10L);
     }
 
 }
