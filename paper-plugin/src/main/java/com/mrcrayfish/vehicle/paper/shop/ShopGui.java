@@ -77,7 +77,8 @@ public final class ShopGui {
         ItemStack stack = new ItemStack(Material.PAPER);
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.setItemModel(new NamespacedKey("vehicle", spec.bodyModel()));
+            // GUI icon: the dedicated scale-to-slot model (visuals backed by vehicle_icon/<id>).
+            meta.setItemModel(new NamespacedKey("vehicle", "vehicle_icon/" + spec.id()));
             meta.displayName(Component.text(spec.displayName(), NamedTextColor.WHITE,
                     TextDecoration.BOLD));
             List<Component> lore = new ArrayList<>();

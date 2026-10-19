@@ -1224,6 +1224,8 @@ def build(output: Path) -> tuple[Path, str]:
             },
         })
 
+        emit_vehicle_icons(namespace)
+
         if output.exists():
             output.unlink()
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
@@ -1237,6 +1239,51 @@ def build(output: Path) -> tuple[Path, str]:
 
     sha1 = hashlib.sha1(output.read_bytes()).hexdigest()
     return output, sha1
+
+
+
+def emit_vehicle_icons(namespace: Path) -> None:
+    """GUI icons: copies of each vehicle BODY model with a proper `display.gui`
+    transform (center + scale-to-slot + 3/4 view), so garage/shop inventory entries
+    look like the actual car instead of an untamed world-scale model."""
+    items_dir = namespace / "models/item"
+    for body_path in sorted(items_dir.glob("*_body.json")):
+        name = body_path.stem
+        icon_id = name.removesuffix("_body")
+        try:
+            source = json.loads(body_path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        elements = source.get("elements", [])
+        if elements:
+            xs, ys, zs = [], [], []
+            for element in elements:
+                for corner in ("from", "to"):
+                    xs.append(float(element[corner][0]))
+                    ys.append(float(element[corner][1]))
+                    zs.append(float(element[corner][2]))
+            lo = (min(xs), min(ys), min(zs))
+            hi = (max(xs), max(ys), max(zs))
+        else:
+            lo, hi = (0.0, 0.0, 0.0), (16.0, 16.0, 16.0)
+        center = [-(a + b) / 2.0 for a, b in zip(lo, hi)]
+        size = max(b - a for a, b in zip(lo, hi))
+        scale = 14.0 / size if size > 0 else 0.8
+        icon_model = {
+            "parent": f"vehicle:item/{name}",
+            "display": {
+                "gui": {
+                    "rotation": [30, -135, 0],
+                    "translation": [round(v, 3) for v in center],
+                    "scale": [round(scale, 4)] * 3,
+                }
+            },
+        }
+        write_json(namespace / f"models/item/vehicle_icon/{icon_id}.json", icon_model)
+        write_json(
+            namespace / f"items/vehicle_icon/{icon_id}.json",
+            item_definition(f"vehicle:item/vehicle_icon/{icon_id}", 16383998),
+        )
 
 
 def main() -> None:

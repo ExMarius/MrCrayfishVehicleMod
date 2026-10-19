@@ -126,7 +126,8 @@ public final class GarageGui {
                            Component name, Component lore) {
         ItemStack stack = new ItemStack(Material.PAPER);
         ItemMeta meta = stack.getItemMeta();
-        meta.setItemModel(new NamespacedKey("vehicle", spec.bodyModel()));
+        // GUI icon: the dedicated scale-to-slot model (visuals backed by vehicle_icon/<id>).
+            meta.setItemModel(new NamespacedKey("vehicle", "vehicle_icon/" + spec.id()));
         meta.displayName(name);
         List<Component> lines = new ArrayList<>();
         lines.add(lore.decoration(TextDecoration.ITALIC, false));
