@@ -204,7 +204,7 @@ public record LandVehicleSpec(
                             1.875F, 2.8F, 2.8F, 1.0F, -3.0F, 5.7F)
             ),
             List.of(seat(true, 0.0F, 9.0F, -14.0F, 1.0F, -3.0F, 5.7F)),
-            true, "tow_bar", new Point(0.0F, 0.0F, -16.0F), new Point(0.0F, 0.0F, 0.0F),
+            true, "tow_bar", new Point(0.0F, 0.0F, -14.0F), new Point(0.0F, 0.0F, 0.0F),
             null, null, List.of(), false
     );
 
