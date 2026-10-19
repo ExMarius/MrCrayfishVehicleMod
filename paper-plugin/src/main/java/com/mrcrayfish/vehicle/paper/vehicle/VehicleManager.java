@@ -768,6 +768,25 @@ public final class VehicleManager {
     private record VehicleChunk(World world, int x, int z) {
     }
 
+    private static String trustedCsv(LandVehicle vehicle) {
+        return vehicle.trustedDrivers().stream().map(UUID::toString)
+                .collect(java.util.stream.Collectors.joining(","));
+    }
+
+    private static java.util.Set<UUID> parseTrusted(String csv) {
+        java.util.Set<UUID> result = new java.util.HashSet<>();
+        if (csv != null && !csv.isBlank()) {
+            for (String part : csv.split(",")) {
+                try {
+                    result.add(UUID.fromString(part.trim()));
+                } catch (IllegalArgumentException ignored) {
+                    // Bad uuid fragment: skip it, keep loading the rest.
+                }
+            }
+        }
+        return result;
+    }
+
     private record StoredVehicle(UUID id, String type, String worldId, String worldName,
                                  double x, double y, double z, float yaw, float pitch, float fuel,
                                  double velocityX, double velocityY, double velocityZ,
@@ -819,25 +838,6 @@ public final class VehicleManager {
                     data.getBoolean(path + ".storage.chest-attached", false),
                     readStorage(data, path), readOpenPartStates(data, path),
                     data.getString(path + ".owner"), data.getString(path + ".trusted"));
-        }
-
-        private static String trustedCsv(LandVehicle vehicle) {
-            return vehicle.trustedDrivers().stream().map(UUID::toString)
-                    .collect(java.util.stream.Collectors.joining(","));
-        }
-
-        private static java.util.Set<UUID> parseTrusted(String csv) {
-            java.util.Set<UUID> result = new java.util.HashSet<>();
-            if (csv != null && !csv.isBlank()) {
-                for (String part : csv.split(",")) {
-                    try {
-                        result.add(UUID.fromString(part.trim()));
-                    } catch (IllegalArgumentException ignored) {
-                        // Bad uuid fragment: skip it, keep loading the rest.
-                    }
-                }
-            }
-            return result;
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {
