@@ -43,7 +43,7 @@ public final class VehicleListener implements Listener {
     private static final Pattern GLOBAL_ENTITY_KILL = Pattern.compile(
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
     private static final Key HORN_SOUND = Key.key("vehicle:entity.vehicle.horn");
-    private static final long HORN_COOLDOWN_MS = 1_500L;
+    private static final long HORN_COOLDOWN_MS = 800L;
 
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
@@ -331,13 +331,6 @@ public final class VehicleListener implements Listener {
                         at.getX(), at.getY(), at.getZ());
             }
         }
-        // The mod's horn.ogg is a long-press honk; the user wants a short "țit": cut it
-        // server-side after ~0.6s without re-cutting the audio asset itself.
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            for (Player nearby : listeners) {
-                nearby.stopSound(HORN_SOUND.asString(), org.bukkit.SoundCategory.VOICE);
-            }
-        }, 10L);
     }
 
 }

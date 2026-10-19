@@ -1076,8 +1076,10 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "sounds/item/jerry_can/liquid_glug.ogg",
             namespace / "sounds/item/jerry_can/liquid_glug.ogg",
         )
+        # Synthetic dual-tone car horn (the user found the mod's honk too weak/long):
+        # G4+B4 plus harmonics, 0.45s with a gentle release. Same pack path/event id.
         copy(
-            ASSETS / "sounds/entity/vehicle/horn.ogg",
+            ROOT / "tools/horn.ogg",
             namespace / "sounds/entity/vehicle/horn.ogg",
         )
 
