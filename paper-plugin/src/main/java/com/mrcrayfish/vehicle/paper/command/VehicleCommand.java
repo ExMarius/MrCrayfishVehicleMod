@@ -55,6 +55,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "trust" -> trust(sender, args);
             case "untrust" -> untrust(sender, args);
             case "trusted" -> trusted(sender);
+            case "magazin", "shop", "dealer" -> dealer(sender);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
                     + vehicles.vehicles().size() + " active</white><gray>, "
                     + vehicles.pendingVehicleCount() + " inactive/în așteptare, "
@@ -206,6 +207,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         new GarageGui(vehicles).open(player);
+    }
+
+    /** /vehicle magazin - the FiveM dealer catalog (buy with Vault money). */
+    private void dealer(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executata de un jucator.</red>");
+            return;
+        }
+        plugin.shopGui().open(player);
     }
 
     /** The vehicle at hand for TRUST commands: the nearest one you OWN within 6 blocks. */
@@ -365,7 +375,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "trust", "untrust", "trusted", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "garage", "trust", "untrust", "trusted", "magazin", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

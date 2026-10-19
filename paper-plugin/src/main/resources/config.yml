@@ -23,3 +23,28 @@ gas-pump:
 
 persistence:
   autosave-seconds: 300
+# Dealer auto (FiveM): preturi pe tip de vehicul. Banii vin din Vault + economie
+# (EssentialsX). Editeaza si ruleaza /vehicle save + restart ca sa se aplice.
+dealership:
+  prices:
+    shopping_cart: 100
+    go_kart: 2000
+    lawn_mower: 2000
+    bumper_car: 2000
+    mini_bike: 2000
+    moped: 5000
+    dirt_bike: 5000
+    golf_cart: 5000
+    atv: 5000
+    quad_bike: 8000
+    jet_ski: 8000
+    dune_buggy: 12000
+    aluminum_boat: 10000
+    tractor: 15000
+    smart_car: 18000
+    speed_boat: 20000
+    off_roader: 25000
+    mini_bus: 40000
+    sports_car: 60000
+    compact_helicopter: 250000
+    sports_plane: 500000

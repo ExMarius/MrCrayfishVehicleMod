@@ -22,3 +22,4 @@ permissions:
   vehicle.garage:
     description: Allows players to create their own private garage station (/vehicle garaj personal).
     default: false
+softdepend: [Vault]

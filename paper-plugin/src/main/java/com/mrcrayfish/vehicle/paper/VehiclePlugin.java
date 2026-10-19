@@ -11,6 +11,8 @@ import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class VehiclePlugin extends JavaPlugin {
+    private com.mrcrayfish.vehicle.paper.shop.VehicleShop shop;
+    private com.mrcrayfish.vehicle.paper.shop.ShopGui shopGui;
     private VehicleManager vehicleManager;
     private GasPumpManager gasPumpManager;
     private com.mrcrayfish.vehicle.paper.garage.GarageStationManager garageStationManager;
@@ -24,6 +26,22 @@ public final class VehiclePlugin extends JavaPlugin {
         gasPumpManager = new GasPumpManager(this, vehicleManager);
         garageStationManager = new com.mrcrayfish.vehicle.paper.garage.GarageStationManager(this, vehicleManager);
 
+        // #1 FiveM: dealer shop. Vault probe FIRST - Vault classes load only when present.
+        if (getServer().getPluginManager().getPlugin("Vault") != null) {
+            try {
+                com.mrcrayfish.vehicle.paper.shop.ShopEconomy.init(this);
+                com.mrcrayfish.vehicle.paper.shop.VehicleShop.setEconomyReady(
+                        com.mrcrayfish.vehicle.paper.shop.ShopEconomy.ready());
+            } catch (Throwable vaultFailure) {
+                getLogger().warning("[Magazin] Pornirea puntii Vault a esuat: " + vaultFailure);
+            }
+        } else {
+            getLogger().warning("[Magazin] Vault NU este instalat - cumpararile sunt adormite "
+                    + "pana instalezi Vault + un plugin de economie (EssentialsX).");
+        }
+        this.shop = new com.mrcrayfish.vehicle.paper.shop.VehicleShop(vehicleManager, getConfig());
+        this.shopGui = new com.mrcrayfish.vehicle.paper.shop.ShopGui(this.shop);
+
         VehicleCommand vehicleCommand = new VehicleCommand(this, vehicleManager, gasPumpManager);
         PluginCommand command = getCommand("vehicle");
         if (command == null) {
@@ -36,6 +54,7 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageListener(this, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageStationListener(garageStationManager, vehicleManager), this);
+        getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.ShopListener(shop), this);
 
         vehicleManager.start();
         gasPumpManager.start();
@@ -45,6 +64,10 @@ public final class VehiclePlugin extends JavaPlugin {
         restartWatcher.start();
 
         getLogger().info("Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.");
+    }
+
+    public com.mrcrayfish.vehicle.paper.shop.ShopGui shopGui() {
+        return shopGui;
     }
 
     @Override
