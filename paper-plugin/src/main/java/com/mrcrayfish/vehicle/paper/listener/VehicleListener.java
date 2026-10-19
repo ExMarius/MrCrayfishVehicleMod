@@ -294,11 +294,12 @@ public final class VehicleListener implements Listener {
     }
     /** Seats may be spawned outside the rig index depending on mount order, so accept the
      *  direct match first and fall back to the nearest vehicle of our fleet. */
-    private boolean isRidingOurVehicle(Entity ridden) {
-        if (vehicles.byEntity(ridden).isPresent()) {
-            return true;
+    private java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> mountedVehicle(Entity ridden) {
+        java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> direct = vehicles.byEntity(ridden);
+        if (direct.isPresent()) {
+            return direct;
         }
-        return vehicles.nearest(ridden.getLocation(), 6.0D).isPresent();
+        return vehicles.nearest(ridden.getLocation(), 6.0D);
     }
 
     /** The mod's horn key is H, but a vanilla client never sends H to the server at all.
@@ -308,10 +309,21 @@ public final class VehicleListener implements Listener {
     public void onHornKey(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
         Player player = event.getPlayer();
         Entity ridden = player.getVehicle();
-        if (ridden == null || !isRidingOurVehicle(ridden)) {
+        if (ridden == null) {
+            return;
+        }
+        java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> maybeVehicle = mountedVehicle(ridden);
+        if (maybeVehicle.isEmpty()) {
             return;
         }
         event.setCancelled(true);
+        // USER RULE: only the DRIVER honks - passengers pressing F get a nudge instead.
+        java.util.Optional<Player> driver = maybeVehicle.get().driver();
+        if (driver.isEmpty() || !driver.get().getUniqueId().equals(player.getUniqueId())) {
+            player.sendActionBar(Component.text("Doar șoferul claxonează!",
+                    net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            return;
+        }
         honk(player, ridden);
     }
 
