@@ -332,6 +332,13 @@ public final class GasPumpRig {
         return pumpId;
     }
 
+    /** The display+interaction entities die whenever their chunk unloads (persistent=false);
+     *  false means the manager must respawn the rig before the pump looks like a bare block. */
+    public boolean alive() {
+        Interaction interaction = interaction();
+        return interaction != null && interaction.isValid();
+    }
+
     public Interaction interaction() {
         return interaction;
     }

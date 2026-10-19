@@ -356,6 +356,9 @@ public final class VehicleManager {
             player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
             return;
         }
+        if (vehicle.showcase()) {
+            return; // podium cars: never pushed, carried, attached or driven (buy = right-click)
+        }
         if (vehicle.handleSpecialInteraction(player, clicked)) {
             save();
             return;

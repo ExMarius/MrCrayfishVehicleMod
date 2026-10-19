@@ -237,6 +237,25 @@ public final class GasPumpManager {
     }
 
     private void tick() {
+        // Auto-heal: a pump whose rig vanished (chunk unload / relog / restart) comes back the
+        // moment its chunk is loaded again - never leaves a naked block behind.
+        for (GasPump pump : new ArrayList<>(pumps.values())) {
+            if (pump.rig().alive() || !pump.location().isChunkLoaded()) {
+                continue;
+            }
+            UUID oldInteraction = null;
+            try {
+                oldInteraction = pump.rig().interaction().getUniqueId();
+            } catch (Throwable ignored) {
+            }
+            if (oldInteraction != null) {
+                byInteraction.remove(oldInteraction);
+            }
+            pump.rig().remove();
+            GasPumpRig freshRig = GasPumpRig.spawn(pump.id(), pump.location());
+            pumps.put(pump.id(), new GasPump(pump.id(), pump.location(), freshRig));
+            byInteraction.put(freshRig.interaction().getUniqueId(), pumps.get(pump.id()));
+        }
         double maxHoseDistance = plugin.getConfig().getDouble("gas-pump.max-hose-distance", DEFAULT_MAX_HOSE_DISTANCE);
         double fillSeconds = Math.max(1.0D, plugin.getConfig().getDouble("gas-pump.fill-seconds", DEFAULT_FILL_SECONDS));
         for (GasPump pump : new ArrayList<>(pumps.values())) {

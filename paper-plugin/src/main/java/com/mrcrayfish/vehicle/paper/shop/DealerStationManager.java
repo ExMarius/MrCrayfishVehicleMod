@@ -164,6 +164,7 @@ public final class DealerStationManager {
     }
 
     private Station spawnShowcase(Station station, List<String> catalog, int index) {
+        sweepLeftovers(station.anchor(), station.vehicleId());
         LandVehicleSpec spec = LandVehicleSpec.byId(catalog.get(Math.floorMod(index, catalog.size())));
         Location anchor = station.anchor();
         Location spot = anchor.clone().add(0.5D, 1.05D, 0.5D);
@@ -207,6 +208,28 @@ public final class DealerStationManager {
                 .append(Component.text(VehicleShop.priceText(price), NamedTextColor.YELLOW))
                 .append(Component.newline())
                 .append(Component.text("click drept pe mașină = CUMPERI", NamedTextColor.GRAY));
+    }
+
+    /** Anti-stacking guarantee: removes ANY leftovers within the podium yard - both
+     *  manager-mapped showcase cars that shouldn't be here and orphaned world entities
+     *  (item displays/interactions) from older crashed rigs the manager no longer tracks. */
+    private void sweepLeftovers(Location anchor, UUID keepVehicleId) {
+        Location centre = anchor.clone().add(0.5D, 1.0D, 0.5D);
+        for (LandVehicle vehicle : vehicles.vehiclesWithin(centre, 4.5D)) {
+            if (vehicle.showcase() && (keepVehicleId == null || !vehicle.id().equals(keepVehicleId))) {
+                vehicles.remove(vehicle);
+            }
+        }
+        if (centre.getWorld() == null) {
+            return;
+        }
+        for (Entity entity : centre.getWorld().getNearbyEntities(centre, 3.0D, 3.0D, 3.0D)) {
+            if ((entity instanceof org.bukkit.entity.ItemDisplay
+                    || entity instanceof org.bukkit.entity.Interaction)
+                    && vehicles.byEntity(entity).isEmpty()) {
+                entity.remove();
+            }
+        }
     }
 
     private void killHologram(Station station) {
