@@ -159,7 +159,8 @@ public final class DealerStationManager {
             killStaleTextDisplays(station.anchor());
         }
         int index = station.catalogIndex() < 0 ? 0 : station.catalogIndex();
-        spawnShowcase(station, catalog, index);
+        Station updated = spawnShowcase(station, catalog, index);
+        stations.set(stations.indexOf(station), updated);
     }
 
     private Station spawnShowcase(Station station, List<String> catalog, int index) {

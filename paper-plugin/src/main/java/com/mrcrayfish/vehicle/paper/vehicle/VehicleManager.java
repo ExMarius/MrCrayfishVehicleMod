@@ -132,6 +132,32 @@ public final class VehicleManager {
         return claiming ? ParkResult.CLAIMED_AND_PARKED : ParkResult.PARKED;
     }
 
+    /** QUIT AUTO-GARAGE (server economy): when the owner leaves, every vehicle of theirs is
+     *  stored in the garage immediately - nothing of theirs stays in the world consuming
+     *  tick/bandwidth while they're offline. Forced (ignores occupancy: the quitting player
+     *  may still be seated during the event). */
+    public int parkAllOwnedBy(java.util.UUID playerId) {
+        int count = 0;
+        for (LandVehicle vehicle : new java.util.ArrayList<>(vehicles.values())) {
+            if (vehicle.showcase() || vehicle.owner().map(playerId::equals).orElse(false) == false) {
+                continue;
+            }
+            StoredVehicle stored = StoredVehicle.from(vehicle);
+            unindex(vehicle);
+            releaseChunkTicket(vehicle);
+            trailers.onVehicleRemoved(vehicle.id());
+            vehicles.remove(vehicle.id());
+            pendingWorlds.remove(vehicle.id());
+            vehicle.remove();
+            garage.put(stored.id(), stored);
+            count++;
+        }
+        if (count > 0) {
+            save();
+        }
+        return count;
+    }
+
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
     public boolean retrieve(Player player, UUID vehicleId) {
         return retrieve(player, vehicleId, null);
