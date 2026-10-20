@@ -35,6 +35,14 @@ fail() {
     echo "----- server log -----" >&2
     tail -n 300 "$SERVER_LOG" >&2
     echo "----------------------" >&2
+    # Surface the failure + log tail as check-run annotations so the reason is
+    # visible via the GitHub API (run logs are not reachable from everywhere).
+    printf '::error title=FRESH-PAPER FAIL::%s\n' "$*" >&2
+    { tail -n 80 "$SERVER_LOG" \
+      | sed -e 's/%/%25/g' -e 's/\x5b/&#91;/g' -e 's/\r$//' \
+      | awk 'BEGIN{ORS="%0A"} {print}' \
+      | cut -c1-6000 \
+      | sed '1s/^/::notice title=server-log-tail::/' ; } >&2
   fi
   exit 1
 }
