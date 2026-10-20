@@ -154,7 +154,8 @@ run_server_cycle 2
 
 [ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -eq 2 ] \
   || fail "plugin did not enable exactly once per startup"
-[ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred for unavailable worlds/types.' "$SERVER_LOG")" -eq 2 ] \
+# Message gained garage counts when the garage feature shipped; fresh boot logs exactly this.
+[ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred, 0 stored in garages.' "$SERVER_LOG")" -eq 2 ] \
   || fail "empty vehicle persistence did not load on both starts"
 [ "$(grep -Fc 'Loaded 0 trailer(s).' "$SERVER_LOG")" -eq 2 ] \
   || fail "empty trailer persistence did not load on both starts"
