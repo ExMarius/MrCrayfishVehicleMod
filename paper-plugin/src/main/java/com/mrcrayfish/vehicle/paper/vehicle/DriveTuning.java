@@ -10,7 +10,7 @@ package com.mrcrayfish.vehicle.paper.vehicle;
  * fuelAccelWeight    - weight of the throttle (acceleration demand) term.
  * fuelFullBurnSpeed  - horizontal speed in blocks/s at which the speed term saturates
  *                      to 1.0. At full throttle AND this speed the load is exactly 1.0.
- * steeringAngleMultiplier - scales every spec's maxSteeringAngle (e.g. 1.2 = 20% more
+ * steeringAngleMultiplier - scales every spec maxSteeringAngle (e.g. 1.2 = 20 percent more
  *                      steering lock) without touching LandVehicleSpec. */
 public record DriveTuning(
         double globalSpeedLimit,
