@@ -645,7 +645,7 @@ public final class VehicleManager {
         if (++activationTick % 10 == 0) {
             activateNearbyVehicles(null);
         }
-        org.bukkit.configuration.FileConfiguration config = plugin.getConfig();
+        org.bukkit.configuration.file.FileConfiguration config = plugin.getConfig();
         driveTuning = new com.mrcrayfish.vehicle.paper.vehicle.DriveTuning(
                 config.getDouble("physics.global-speed-limit", 100.0D),
                 config.getDouble("physics.fuel-consumption-factor", 1.0D),
