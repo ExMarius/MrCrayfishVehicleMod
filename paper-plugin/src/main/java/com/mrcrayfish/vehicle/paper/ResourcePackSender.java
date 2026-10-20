@@ -83,7 +83,7 @@ public final class ResourcePackSender {
         String prompt = plugin.getConfig().getString("resource-pack.prompt",
                 "Acest resource pack este necesar pentru vehicule.");
         player.setResourcePack(serverPackId(url), url, hash.isEmpty() ? null : hash,
-                required, Component.text(prompt));
+                Component.text(prompt), required);
         return true;
     }
 }
