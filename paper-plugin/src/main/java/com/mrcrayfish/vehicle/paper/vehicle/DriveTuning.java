@@ -1,3 +1,4 @@
+// Built once per tick in VehicleManager.tick from config.yml values.
 package com.mrcrayfish.vehicle.paper.vehicle;
 
 /** Per-tick, config-backed driving/fuel tuning. VehicleManager builds ONE instance per
