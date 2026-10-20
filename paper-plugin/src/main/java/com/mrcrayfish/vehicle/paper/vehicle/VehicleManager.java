@@ -189,50 +189,25 @@ public final class VehicleManager {
      *  stored in the garage immediately - nothing of theirs stays in the world consuming
      *  tick/bandwidth while they're offline. Forced (ignores occupancy: the quitting player
      *  may still be seated during the event). */
-    /** Probe-ul "acasa": injectat din GarageStationManager la pornire (el detine
-     *  statiile). Default conservator: nimic nu e "acasa" => orice quit = sechestru. */
-    private java.util.function.BiPredicate<java.util.UUID, Location> homeStationProbe =
-            (owner, location) -> false;
-
-    public void setHomeStationProbe(java.util.function.BiPredicate<java.util.UUID, Location> probe) {
-        homeStationProbe = probe == null ? (owner, location) -> false : probe;
-    }
-
+    /** Pull-out fee charged ONLY when a vehicle is taken out at a PUBLIC parking spot.
+     *  At the personal spot the SAME global list leaves for free (location-based pricing). */
     public double impoundFee() {
         return Math.max(0.0D, plugin.getConfig().getDouble("economy.public-garage-retrieval-fee", 500.0D));
     }
 
-    public boolean isImpounded(UUID vehicleId) {
-        StoredVehicle stored = garage.get(vehicleId);
-        return stored != null && stored.impounded();
-    }
-
-    /** Dupa plata taxei: ridica flag-ul si salveaza (altfel ar ramane sechestrata la reload). */
-    public void clearImpounded(UUID vehicleId) {
-        StoredVehicle stored = garage.get(vehicleId);
-        if (stored != null && stored.impounded()) {
-            garage.put(vehicleId, stored.withImpounded(false));
-            save();
-        }
-    }
-
     /**
-     * Physical-parking quit flow (FiveM): a vehicle of the leaving owner that stands
-     * inside a LEGAL circle (public spot or his personal one) stays parked on the asphalt,
-     * for free, and rests at zero cost. A vehicle abandoned anywhere else is despawned
-     * instantly and stored with the SECHESTRU flag - recovery costs the config fee and
-     * is only possible from a public parking spot ({@code /vehicle impound}).
+     * Quit flow of the ONE global garage: every vehicle of the leaving owner is stored
+     * under garage.<uuid>.* immediately - no flags, no differentiation, nothing of his
+     * stays in the world ticking while he is offline. Where he pulls it OUT decides the
+     * price: personal circle = free, public circle = the config fee.
      */
     public int parkAllOwnedBy(java.util.UUID playerId) {
-        int seized = 0;
+        int storedCount = 0;
         for (LandVehicle vehicle : new java.util.ArrayList<>(vehicles.values())) {
             if (vehicle.showcase() || vehicle.owner().map(playerId::equals).orElse(false) == false) {
                 continue;
             }
-            if (homeStationProbe.test(playerId, vehicle.location())) {
-                continue; // parcata legal: ramane vizibila pe asfalt, gratuit, intra singura in resting
-            }
-            StoredVehicle stored = StoredVehicle.from(vehicle).withImpounded(true);
+            StoredVehicle stored = StoredVehicle.from(vehicle);
             unindex(vehicle);
             releaseChunkTicket(vehicle);
             trailers.onVehicleRemoved(vehicle.id());
@@ -240,26 +215,15 @@ public final class VehicleManager {
             pendingWorlds.remove(vehicle.id());
             vehicle.remove();
             garage.put(stored.id(), stored);
-            seized++;
+            storedCount++;
         }
-        if (seized > 0) {
+        if (storedCount > 0) {
             save();
-            plugin.getLogger().info("[Sechestru] Quit: " + seized
-                    + " vehicule abandonate confiscate (taxa " + impoundFee() + ").");
+            plugin.getLogger().info("[Garaj] Quit: " + storedCount
+                    + " vehicule au intrat in garajul global (acasa = gratuit, public = "
+                    + impoundFee() + "$).");
         }
-        return seized;
-    }
-
-    /** The player's impounded vehicles (the /vehicle impound chat list). */
-    public java.util.List<GarageEntry> impoundedOf(java.util.UUID playerId) {
-        java.util.List<GarageEntry> own = new java.util.ArrayList<>();
-        for (StoredVehicle stored : garage.values()) {
-            if (stored.impounded() && stored.owner() != null
-                    && stored.owner().equals(playerId.toString())) {
-                own.add(new GarageEntry(stored.id(), stored.type(), stored.fuel(), true));
-            }
-        }
-        return own;
+        return storedCount;
     }
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
@@ -302,7 +266,7 @@ public final class VehicleManager {
     }
 
     /** One garaged vehicle, exposed to the GUI: id + type + saved fuel level. */
-    public record GarageEntry(UUID id, String type, float fuel, boolean impounded) {
+    public record GarageEntry(UUID id, String type, float fuel) {
     }
 
     /** All vehicles this player currently has stored in the garage. */
@@ -310,7 +274,7 @@ public final class VehicleManager {
         List<GarageEntry> own = new ArrayList<>();
         for (StoredVehicle stored : garage.values()) {
             if (stored.owner() != null && stored.owner().equals(player.getUniqueId().toString())) {
-                own.add(new GarageEntry(stored.id(), stored.type(), stored.fuel(), stored.impounded()));
+                own.add(new GarageEntry(stored.id(), stored.type(), stored.fuel()));
             }
         }
         return own;
@@ -591,9 +555,6 @@ public final class VehicleManager {
     }
 
     private static void write(YamlConfiguration data, String path, StoredVehicle stored) {
-        if (stored.impounded()) {
-            data.set(path + ".impounded", true);
-        }
         data.set(path + ".type", stored.type());
         data.set(path + ".world", stored.worldId());
         data.set(path + ".world-name", stored.worldName());
@@ -991,13 +952,7 @@ public final class VehicleManager {
                                  float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
                                  Map<String, Boolean> openPartStates, String owner, String trusted,
-                                 boolean impounded) {
-        private StoredVehicle withImpounded(boolean impounded) {
-            return new StoredVehicle(id, type, worldId, worldName, x, y, z, yaw, pitch, fuel,
-                    velocityX, velocityY, velocityZ, traction, verticalVelocity,
-                    planeRoll, propellerSpeed, flapAngle, elevatorAngle, chestAttached,
-                    storageContents, openPartStates, owner, trusted, impounded);
-        }
+                                ) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
@@ -1012,7 +967,7 @@ public final class VehicleManager {
                     vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
                     vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
                     vehicle.storageContents(), vehicle.openPartStates(),
-                    vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle), false);
+                    vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle));
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -1041,8 +996,7 @@ public final class VehicleManager {
                     (float) data.getDouble(path + ".plane.elevator-angle"),
                     data.getBoolean(path + ".storage.chest-attached", false),
                     readStorage(data, path), readOpenPartStates(data, path),
-                    data.getString(path + ".owner"), data.getString(path + ".trusted"),
-                    data.getBoolean(path + ".impounded", false));
+                    data.getString(path + ".owner"), data.getString(path + ".trusted"));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

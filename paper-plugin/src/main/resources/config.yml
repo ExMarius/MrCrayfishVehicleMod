@@ -59,10 +59,10 @@ dealership:
     compact_helicopter: 250000
     sports_plane: 500000
 
-# Impound ("sechestru") economy
+# Global garage economy (ONE list under garage.<uuid>.*, price decided by location)
 economy:
-  # Fee charged when taking an SECHESTRATED vehicle out at a PUBLIC garage station.
-  # 0 = impound becomes visual-only (never charged, still blocked at private stations).
+  # Fee charged when taking ANY vehicle out of the global garage at a PUBLIC spot.
+  # At the personal spot the same list always leaves for FREE (0$).
   public-garage-retrieval-fee: 500.0
-  # Parking spots are PHYSICAL circles of exactly 2 blocks (the spark ring);
-  # a quit vehicle inside a legal circle stays parked for free, outside = impound.
+  # Parking spots are PHYSICAL circles of exactly 2 blocks (the spark ring).
+  # On quit every owned vehicle is stored, no flags, no differentiation.

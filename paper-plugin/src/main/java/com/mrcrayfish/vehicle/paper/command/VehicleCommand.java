@@ -50,7 +50,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "refuel" -> refuel(sender);
             case "gaspump" -> gaspump(sender);
             case "jerrycan" -> jerrycan(sender, args);
-            case "parking", "parcare" -> parking(sender, args);
             case "trust" -> trust(sender, args);
             case "untrust" -> untrust(sender, args);
             case "trusted" -> trusted(sender);
@@ -184,35 +183,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             return;
         }
-        sender.sendRichMessage("<gray>Garajul personal s-a mutat pe <gold>/garaj</gold> "
-                + "(set, remove, listă gratuită acasă). Sechestru: intră într-un cerc PUBLIC și scrie "
-                + "<gold>/garaj</gold>. Cercul de scântei marchează fiecare parcare.</gray>");
-    }
-
-    /** /vehicle parking set <public|private> - admin marks the block under his feet. */
-    private void parking(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
-            return;
-        }
-        if (!sender.hasPermission("vehicle.admin")) {
-            sender.sendRichMessage("<red>Locurile de parcare se creează doar de admini (OP).</red>");
-            return;
-        }
-        if (args.length < 3 || !args[1].equalsIgnoreCase("set")
-                || !(args[2].equalsIgnoreCase("public") || args[2].equalsIgnoreCase("private"))) {
-            sender.sendRichMessage("<red>Folosire: /vehicle parking set <public|private></red>");
-            return;
-        }
-        boolean publicSpot = args[2].equalsIgnoreCase("public");
-        plugin.garageStations().place(player, publicSpot);
-        if (publicSpot) {
-            player.sendRichMessage("<green>Parcare PUBLICĂ creată aici.</green> "
-                    + "<gray>Cercul de scântei (r=5) o marchează: oricine poate parca legal.</gray>");
-        } else {
-            player.sendRichMessage("<light_purple>Parcare PRIVATĂ creată aici (proprietar: tu).</light_purple> "
-                    + "<gray>Doar mașinile tale parchează legal în acest cerc.</gray>");
-        }
+        sender.sendRichMessage("<gray>Totul despre garaj s-a mutat pe <gold>/garaj</gold>: "
+                + "same list everywhere - acasă scoți GRATUIT, dintr-un cerc PUBLIC plătești "
+                + "taxa din config. Adminii creează parcări publice cu <gold>/garaj set public</gold>.</gray>");
     }
 
     /** /vehicle magazin - the FiveM dealer (podium / catalog). */
@@ -394,15 +367,14 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " gaspump</yellow> <gray>- primești o pompă de benzină plasabilă</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " parking set <public|private></yellow> <gray>- parcare fizică aici (admin)</gray>");
-        sender.sendRichMessage("<yellow>/garaj</yellow> <gray>- garajul personal + sechestru (set/remove, liste în chat)</gray>");
+        sender.sendRichMessage("<yellow>/garaj</yellow> <gray>- garajul global (set/remove, liste în chat; acasă gratuit, public cu taxă)</gray>");
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "parking", "trust", "untrust", "trusted", "magazin", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("magazin") || args[0].equalsIgnoreCase("shop")
                 || args[0].equalsIgnoreCase("dealer"))) {
@@ -414,13 +386,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
-        }
-        if (args.length == 2 && (args[0].equalsIgnoreCase("parking") || args[0].equalsIgnoreCase("parcare"))) {
-            return filter(List.of("set"), args[1]);
-        }
-        if (args.length == 3 && (args[0].equalsIgnoreCase("parking") || args[0].equalsIgnoreCase("parcare"))
-                && "set".equalsIgnoreCase(args[1])) {
-            return filter(List.of("public", "private"), args[2]);
         }
         if (false) {
             return filter(List.of("station", "personal"), args[1]);

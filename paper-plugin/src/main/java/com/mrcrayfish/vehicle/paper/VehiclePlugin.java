@@ -75,9 +75,6 @@ public final class VehiclePlugin extends JavaPlugin {
         vehicleManager = new VehicleManager(this);
         gasPumpManager = new GasPumpManager(this, vehicleManager);
         garageStationManager = new com.mrcrayfish.vehicle.paper.garage.GarageStationManager(this, vehicleManager);
-        // Parking probe: quit + dismount ask whether a vehicle stands inside a LEGAL
-        // circle (any public spot, or the owner's personal one) - else it is impounded.
-        vehicleManager.setHomeStationProbe(garageStationManager::isLegallyParked);
 
         // #1 FiveM: dealer shop. Vault probe FIRST - Vault classes load only when present.
         if (getServer().getPluginManager().getPlugin("Vault") != null) {

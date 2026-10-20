@@ -282,13 +282,12 @@ public final class VehicleListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
-        // QUIT: inside a legal circle the car stays parked on the asphalt for free;
-        // abandoned on the street it is despawned into SECHESTRU (recoverable at a
-        // public spot for the config fee, via /vehicle impound).
-        int seized = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
-        if (seized > 0) {
-            plugin.getLogger().info("[Sechestru] " + event.getPlayer().getName() + " a iesit - "
-                    + seized + " vehicule abandonate au fost confiscate.");
+        // QUIT: the ONE global garage - everything of his is stored on the spot.
+        // Price depends only on WHERE he pulls it out (/garaj): home = free, public = fee.
+        int stored = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
+        if (stored > 0) {
+            plugin.getLogger().info("[Garaj] " + event.getPlayer().getName() + " a iesit - "
+                    + stored + " vehicule au intrat in garajul global (zero consum).");
         }
     }
 

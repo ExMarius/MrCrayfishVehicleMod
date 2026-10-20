@@ -112,7 +112,7 @@ public final class GarageStationManager {
         return false;
     }
 
-    /** The PUBLIC spot covering this position (impound retrieval must happen inside one). */
+    /** The PUBLIC spot covering this position (paid pull-outs only happen inside one). */
     public Optional<UUID> publicSpotAt(Location anchor) {
         for (Map.Entry<UUID, Station> entry : stations.entrySet()) {
             Station station = entry.getValue();
