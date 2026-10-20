@@ -951,8 +951,7 @@ public final class VehicleManager {
                                  float planeRoll, float propellerSpeed,
                                  float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
-                                 Map<String, Boolean> openPartStates, String owner, String trusted,
-                                ) {
+                                 Map<String, Boolean> openPartStates, String owner, String trusted) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
