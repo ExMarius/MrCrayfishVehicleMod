@@ -145,7 +145,9 @@ test -f "$DATA_DIR/vehicles.yml" || fail "vehicles.yml was not created on shutdo
 test -f "$DATA_DIR/trailers.yml" || fail "trailers.yml was not created on shutdown"
 grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip' "$DATA_DIR/config.yml" \
   || fail "generated config does not select resource pack r38"
-grep -Fq 'e93439ee85ea8b0e19b0fa78ea1dd540df6a27f4' "$DATA_DIR/config.yml" \
+# Pin tracks the currently verified r38 pack (deterministic rebuild; matches the live
+# server + players). MUST be refreshed whenever pack contents change on purpose.
+grep -Fq 'ca9fb9a2c7ca0a2a4817c6ec45480c9285ff8bd6' "$DATA_DIR/config.yml" \
   || fail "generated config does not contain the verified r38 SHA-1"
 
 run_server_cycle 2
