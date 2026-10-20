@@ -38,11 +38,17 @@ final class LandVehicleFuelTest {
     }
 
     @Test
-    void nonFiniteInputsFallBackToPureIdleBurn() {
+    void nonFiniteInputsAreSanitizedPerInputNeverPoisoningTheTank() {
         // NaN/Infinity leaking from corrupted motion or third-party plugins must never
         // reach the tank: Math.min/max propagate NaN, which would brick refueling.
-        assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.NaN, 1.0D), EPSILON);
-        assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, 9.0D, Double.NaN), EPSILON);
+        // Each input is sanitized independently; the other (still valid) term applies.
+        // NaN speed + full throttle = idle + (1-idle)*0.4 = 0.46
+        assertEquals(0.46D, LandVehicle.fuelLoad(TUNING, Double.NaN, 1.0D), EPSILON);
+        // NaN speed + no throttle = pure idle
+        assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.NaN, 0.0D), EPSILON);
+        // real speed at 50% + NaN throttle = idle + (1-idle)*0.6*0.5 = 0.37
+        assertEquals(0.37D, LandVehicle.fuelLoad(TUNING, 9.0D, Double.NaN), EPSILON);
+        // +Inf speed saturates the speed term at 1
         assertEquals(1.0D, LandVehicle.fuelLoad(TUNING, Double.POSITIVE_INFINITY, 1.0D), EPSILON);
         assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.NEGATIVE_INFINITY, 0.0D), EPSILON);
     }
