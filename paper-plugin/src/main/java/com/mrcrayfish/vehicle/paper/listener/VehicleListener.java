@@ -181,7 +181,9 @@ public final class VehicleListener implements Listener {
                 com.mrcrayfish.vehicle.paper.shop.VehicleShop shopBooth =
                         plugin.vehicleShop();
                 if (shopBooth != null) {
-                    shopBooth.buy(event.getPlayer(), clickedVehicle.spec().id());
+                    // Pretul propriu al podiumului castiga in fata celui global din config.
+                    shopBooth.buy(event.getPlayer(), clickedVehicle.spec().id(),
+                            plugin.dealerStations().priceForVehicle(clickedVehicle.id()));
                 }
                 return;
             }

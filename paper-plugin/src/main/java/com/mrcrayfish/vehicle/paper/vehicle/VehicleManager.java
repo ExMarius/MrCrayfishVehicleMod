@@ -110,7 +110,7 @@ public final class VehicleManager {
             saveTask.cancel();
         }
         trailers.returnCarriedVehicles();
-        save();
+        saveNow(); // onDisable: flush SINCRON - un task async ar putea fi pierdut la oprire
         trailers.stop();
         for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
             releaseChunkTicket(vehicle);
@@ -189,6 +189,21 @@ public final class VehicleManager {
      *  stored in the garage immediately - nothing of theirs stays in the world consuming
      *  tick/bandwidth while they're offline. Forced (ignores occupancy: the quitting player
      *  may still be seated during the event). */
+    /** Magazin auto: masina cumparata intra DIRECT in garajul global (nu mai apare pe strada).
+     *  Rezervor plin, stare imaculata, proprietar = cumparatorul. */
+    public UUID storeNewVehicle(org.bukkit.entity.Player player, LandVehicleSpec spec) {
+        StoredVehicle stored = new StoredVehicle(UUID.randomUUID(), spec.id(),
+                player.getWorld().getUID().toString(), player.getWorld().getName(),
+                player.getLocation().getX(), player.getLocation().getY(), player.getLocation().getZ(),
+                player.getLocation().getYaw(), 0.0F, spec.energyCapacity(),
+                0.0D, 0.0D, 0.0D, LandVehicleSpec.STANDARD_TRACTION, 0.0D,
+                0.0F, 0.0F, 0.0F, 0.0F, false, java.util.Map.of(), java.util.Map.of(),
+                player.getUniqueId().toString(), "");
+        garage.put(stored.id(), stored);
+        save();
+        return stored.id();
+    }
+
     /** Pull-out fee charged ONLY when a vehicle is taken out at a PUBLIC parking spot.
      *  At the personal spot the SAME global list leaves for free (location-based pricing). */
     public double impoundFee() {
@@ -511,8 +526,8 @@ public final class VehicleManager {
         }
     }
 
-    /** Save to a same-directory temporary file and atomically replace the last good snapshot. */
-    public void save() {
+    /** The sync COLLECTION half of save(): entity state is read on the main thread here. */
+    private YamlConfiguration collectYaml() {
         trailers.save();
         YamlConfiguration data = new YamlConfiguration();
         for (StoredVehicle stored : pendingWorlds.values()) {
@@ -527,7 +542,49 @@ public final class VehicleManager {
         for (StoredVehicle stored : garage.values()) {
             write(data, "garage." + stored.id(), stored);
         }
+        return data;
+    }
 
+    /** Anti-lag async write: consecutive saves COALESCE - only the newest snapshot is queued. */
+    private final Object asyncSaveLock = new Object();
+    private YamlConfiguration pendingAsyncYaml;
+    private boolean asyncSaveQueued;
+
+    /** Save to a same-directory temporary file and atomically replace the last good snapshot.
+     *  Collection stays synchronous; the disk I/O itself runs on an async worker (0 TPS cost). */
+    public void save() {
+        YamlConfiguration data = collectYaml();
+        synchronized (asyncSaveLock) {
+            pendingAsyncYaml = data;
+            if (asyncSaveQueued) {
+                return;
+            }
+            asyncSaveQueued = true;
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            for (;;) {
+                YamlConfiguration snapshot;
+                synchronized (asyncSaveLock) {
+                    snapshot = pendingAsyncYaml;
+                }
+                writeYamlAtomically(snapshot);
+                synchronized (asyncSaveLock) {
+                    if (pendingAsyncYaml == snapshot) {
+                        asyncSaveQueued = false;
+                        return;
+                    }
+                }
+            }
+        });
+    }
+
+    /** Synchronous flush - used ONLY in stop()/onDisable, where async work would be lost. */
+    public void saveNow() {
+        writeYamlAtomically(collectYaml());
+    }
+
+    /** Save a ready snapshot to a same-directory temporary file and atomically move it in place. */
+    private void writeYamlAtomically(YamlConfiguration data) {
         File temporary = null;
         try {
             if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {

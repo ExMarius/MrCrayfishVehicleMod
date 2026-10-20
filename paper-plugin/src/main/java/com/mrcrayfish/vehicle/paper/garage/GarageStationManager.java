@@ -145,6 +145,24 @@ public final class GarageStationManager {
         return false;
     }
 
+    /** /garaj remove public: dissolve the PUBLIC spot the admin is standing inside. */
+    public boolean removePublicAt(Location anchor) {
+        java.util.UUID target = null;
+        for (Map.Entry<UUID, Station> entry : stations.entrySet()) {
+            Station station = entry.getValue();
+            if (station.publicStation() && within(station.location(), anchor, YARD_RADIUS)) {
+                target = entry.getKey();
+                break;
+            }
+        }
+        if (target == null) {
+            return false;
+        }
+        stations.remove(target); // cercul de scantei dispare odata cu intrarea din harta
+        save();
+        return true;
+    }
+
     /** Whether all players may use this spot (GTA public) or only its owner. */
     public boolean isPublic(UUID id) {
         Station station = stations.get(id);
@@ -199,6 +217,12 @@ public final class GarageStationManager {
         }
     }
 
+    /** Anti-lag async write: collection happens on the caller (main) thread, the disk I/O
+     *  runs on an async worker and consecutive saves coalesce (newest snapshot wins). */
+    private final Object asyncSaveLock = new Object();
+    private YamlConfiguration pendingAsyncYaml;
+    private boolean asyncSaveQueued;
+
     private void save() {
         YamlConfiguration data = new YamlConfiguration();
         for (Map.Entry<UUID, Station> entry : stations.entrySet()) {
@@ -213,6 +237,31 @@ public final class GarageStationManager {
             data.set(path + ".public", station.publicStation());
             data.set(path + ".owner", station.owner() == null ? null : station.owner().toString());
         }
+        synchronized (asyncSaveLock) {
+            pendingAsyncYaml = data;
+            if (asyncSaveQueued) {
+                return;
+            }
+            asyncSaveQueued = true;
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            for (;;) {
+                YamlConfiguration snapshot;
+                synchronized (asyncSaveLock) {
+                    snapshot = pendingAsyncYaml;
+                }
+                writeYaml(snapshot);
+                synchronized (asyncSaveLock) {
+                    if (pendingAsyncYaml == snapshot) {
+                        asyncSaveQueued = false;
+                        return;
+                    }
+                }
+            }
+        });
+    }
+
+    private void writeYaml(YamlConfiguration data) {
         try {
             if (!plugin.getDataFolder().exists() && !plugin.getDataFolder().mkdirs()) {
                 throw new IOException("Could not create plugin data folder");

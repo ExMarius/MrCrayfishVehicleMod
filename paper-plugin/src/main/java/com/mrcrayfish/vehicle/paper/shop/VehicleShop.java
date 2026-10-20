@@ -80,6 +80,11 @@ public final class VehicleShop {
 
     /** One click in the catalog = instant purchase, FiveM-fast. */
     public void buy(Player player, String specId) {
+        buy(player, specId, null);
+    }
+
+    /** Same, but a podium can force its OWN price (null = global config price). */
+    public void buy(Player player, String specId, Double customPrice) {
         LandVehicleSpec spec = LandVehicleSpec.byId(specId);
         if (spec == null) {
             return;
@@ -89,7 +94,7 @@ public final class VehicleShop {
                     + "EssentialsX pe server, restart, si revii.</red>");
             return;
         }
-        double price = priceOf(specId);
+        double price = customPrice != null ? customPrice : priceOf(specId);
         double balance = ShopEconomy.balance(player);
         if (balance < price) {
             player.sendRichMessage("<red>Nu-ti ajung banii: ai " + priceText(balance)
@@ -100,11 +105,21 @@ public final class VehicleShop {
             player.sendRichMessage("<red>Plata a esuat (banca a refuzat). Incearca din nou.</red>");
             return;
         }
-        LandVehicle vehicle = vehicles.spawn(spec, player.getLocation());
-        vehicle.setOwner(player.getUniqueId());
-        vehicles.save();
-        player.sendRichMessage("<green>Ai cumparat <gold>" + spec.displayName() + "</gold> pentru "
-                + priceText(price) + "!</green> <gray>Permite cuiva la volan: /vehicle trust <nume>.</gray>");
+        // LIVRAREA: nu mai apare pe strada - intra DIRECT in garajul global al jucatorului
+        // (garage.<uuid>.*), de unde il ridica GRATUIT de acasa sau cu taxa de la public (/garaj).
+        vehicles.storeNewVehicle(player, spec);
+        player.sendMessage(net.kyori.adventure.text.Component
+                .text("[Magazin Auto] ", net.kyori.adventure.text.format.NamedTextColor.GOLD)
+                .append(net.kyori.adventure.text.Component.text("Vehiculul a fost achizi\u021bionat! ",
+                        net.kyori.adventure.text.format.NamedTextColor.GREEN))
+                .append(net.kyori.adventure.text.Component.text("A fost livrat \u00een garajul t\u0103u global. "
+                        + "\u00cel po\u021bi ridica gratuit de acas\u0103 folosind ",
+                        net.kyori.adventure.text.format.NamedTextColor.YELLOW))
+                .append(net.kyori.adventure.text.Component.text("/garaj ",
+                        net.kyori.adventure.text.format.NamedTextColor.GREEN))
+                .append(net.kyori.adventure.text.Component.text("sau de la o parcare public\u0103 "
+                        + "pl\u0103tind taxa de transport.",
+                        net.kyori.adventure.text.format.NamedTextColor.YELLOW)));
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8F, 1.2F);
     }
 }

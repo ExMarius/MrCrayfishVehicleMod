@@ -26,13 +26,14 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * STATIC Showroom podium (user design: minimum consumption): /vehicle magazin podium <vehicul>
+ * STATIC Showroom podium (user design: minimum consumption): /vehicle podium set <vehicul> <pret>
  * places a quartz platform with EXACTLY that vehicle on top, standing still - no spin task,
  * no cycling, nothing ticking (the showcase car also skips its physics tick). It's a pure
  * day-use display: right-click the car = buy it, sneak+punch as admin = pick the podium up.
  */
 public final class DealerStationManager {
-    private record Station(Location anchor, String specId, UUID vehicleId, UUID hologramId) {
+    private record Station(Location anchor, String specId, UUID vehicleId, UUID hologramId,
+                           double price) {
     }
 
     private final VehiclePlugin plugin;
@@ -68,7 +69,7 @@ public final class DealerStationManager {
     }
 
     /** Places a new static showroom; returns false when another is closer than 8 blocks. */
-    public boolean place(Player player, Location foot, String specId) {
+    public boolean place(Player player, Location foot, String specId, double price) {
         LandVehicleSpec spec = LandVehicleSpec.byId(specId);
         if (spec == null) {
             player.sendRichMessage("<red>Tip necunoscut: " + specId + ".</red> <gray>Scrie <tab> pentru lista.</gray>");
@@ -83,7 +84,7 @@ public final class DealerStationManager {
             }
         }
         buildPlatform(anchor);
-        Station station = new Station(anchor, specId, null, null);
+        Station station = new Station(anchor, specId, null, null, price);
         stations.add(station);
         rebuild(station);
         save();
@@ -114,6 +115,44 @@ public final class DealerStationManager {
         return true;
     }
 
+    /** /vehicle podium remove: the station under/near the admin (max 6 blocks) dissolves. */
+    public boolean removeAt(Player player) {
+        Station found = null;
+        double best = 6.0D * 6.0D;
+        for (Station station : stations) {
+            Location anchor = station.anchor();
+            if (anchor.getWorld() != player.getWorld()) {
+                continue;
+            }
+            double distance = anchor.distanceSquared(player.getLocation());
+            if (distance <= best) {
+                best = distance;
+                found = station;
+            }
+        }
+        if (found == null) {
+            return false;
+        }
+        killHologram(found);
+        if (found.vehicleId() != null) {
+            vehicles.byId(found.vehicleId()).ifPresent(vehicles::remove);
+        }
+        clearPlatform(found.anchor());
+        stations.remove(found);
+        save();
+        return true;
+    }
+
+    /** Per-podium price (null = fallback to the global shop price). */
+    public Double priceForVehicle(UUID vehicleId) {
+        for (Station station : stations) {
+            if (vehicleId.equals(station.vehicleId())) {
+                return station.price();
+            }
+        }
+        return null;
+    }
+
     private void rebuild(Station station) {
         sweepLeftovers(station.anchor());
         LandVehicleSpec spec = LandVehicleSpec.byId(station.specId());
@@ -124,11 +163,13 @@ public final class DealerStationManager {
         Location spot = anchor.clone().add(0.5D, 1.05D, 0.5D);
         spot.setYaw(0.0F);
         LandVehicle showcase = vehicles.spawn(spec, spot);
+        // ANTI-FURT: showcase refortat LA FIECARE rebuild (inclusiv la boot dupa restart).
         showcase.setShowcase(true);
         UUID hologramId = spawnHologram(anchor.clone().add(0.5D, 2.6D, 0.5D), spec,
-                shop.priceOf(spec.id()));
+                station.price());
         int index = stations.indexOf(station);
-        stations.set(index, new Station(anchor, station.specId(), showcase.id(), hologramId));
+        stations.set(index, new Station(anchor, station.specId(), showcase.id(), hologramId,
+                station.price()));
     }
 
     private UUID spawnHologram(Location location, LandVehicleSpec spec, double price) {
@@ -232,7 +273,7 @@ public final class DealerStationManager {
         for (Station station : stations) {
             Location a = station.anchor();
             list.add(a.getWorld().getName() + "," + a.getBlockX() + "," + a.getBlockY() + ","
-                    + a.getBlockZ() + "," + station.specId());
+                    + a.getBlockZ() + "," + station.specId() + "," + station.price());
         }
         data.set("stations", list);
         try {
@@ -269,7 +310,9 @@ public final class DealerStationManager {
                     }
                 }
                 if (!duplicate) {
-                    stations.add(new Station(anchor, specId, null, null));
+                    double price = parts.length >= 6 ? Double.parseDouble(parts[5].trim())
+                            : shop.priceOf(specId);
+                    stations.add(new Station(anchor, specId, null, null, price));
                 }
             } catch (NumberFormatException ignored) {
                 // Corrupt line: skip it, keep loading the rest.

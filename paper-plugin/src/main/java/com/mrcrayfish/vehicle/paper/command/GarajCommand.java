@@ -63,7 +63,7 @@ public final class GarajCommand implements CommandExecutor, TabCompleter {
         }
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "set" -> set(player, args);
-            case "remove", "sterge" -> remove(player);
+            case "remove", "sterge" -> remove(player, args);
             case "scoate" -> takeOut(player, args);
             case "recupereaza" -> recover(player, args);
             default -> player.sendRichMessage("<red>Folosire: /" + label + " [set|remove]</red>");
@@ -163,8 +163,25 @@ public final class GarajCommand implements CommandExecutor, TabCompleter {
         }
     }
 
-    /** /garaj remove - delete the ONE personal spot (moving house is free). */
-    private void remove(Player player) {
+    /** /garaj remove | /garaj remove public - personal spot; public spots are admin-only. */
+    private void remove(Player player, String[] args) {
+        if (args.length >= 2 && args[1].equalsIgnoreCase("public")) {
+            // ADMIN ONLY (OP sau vehicle.admin) - exact ca la /garaj set public.
+            if (!isAdmin(player)) {
+                player.sendRichMessage("<red>Parc\u0103rile PUBLICE se \u0219terg doar de admini (OP).</red>");
+                return;
+            }
+            if (plugin.garageStations().removePublicAt(player.getLocation())) {
+                player.sendMessage(Component.text("[Garaj] ", NamedTextColor.GOLD)
+                        .append(Component.text("Parcarea PUBLIC\u0102 de aici a fost \u0219tears\u0103 "
+                                + "\u0219i cercul ei de sc\u00e2ntei a disp\u0103rut.", NamedTextColor.YELLOW)));
+            } else {
+                player.sendMessage(Component.text(
+                        "Nu stai \u00eentr-o parcare PUBLIC\u0102 (stai \u00een cercul de sc\u00e2ntei \u0219i reia).",
+                        NamedTextColor.RED));
+            }
+            return;
+        }
         if (!hasGaragePermission(player)) {
             player.sendRichMessage("<red>Nu ai permisiunea vehicle.garage (cere adminului).</red>");
             return;
@@ -265,8 +282,8 @@ public final class GarajCommand implements CommandExecutor, TabCompleter {
             return List.of("set", "remove").stream().filter(word -> word.startsWith(prefix)).toList();
         }
         // "public" appears ONLY for OP / vehicle.admin - regular players never see it.
-        if (args.length == 2 && args[0].equalsIgnoreCase("set") && sender instanceof Player player
-                && isAdmin(player)) {
+        if (args.length == 2 && (args[0].equalsIgnoreCase("set") || args[0].equalsIgnoreCase("remove"))
+                && sender instanceof Player player && isAdmin(player)) {
             String prefix = args[1].toLowerCase(Locale.ROOT);
             return List.of("public").stream().filter(word -> word.startsWith(prefix)).toList();
         }
