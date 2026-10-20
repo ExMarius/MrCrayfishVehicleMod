@@ -21,11 +21,6 @@ import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
-
 import java.util.ArrayList;
 import java.util.Optional;
 import java.util.List;
@@ -56,9 +51,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "gaspump" -> gaspump(sender);
             case "jerrycan" -> jerrycan(sender, args);
             case "parking", "parcare" -> parking(sender, args);
-            case "mygarage" -> mygarage(sender, args);
-            case "impound", "sechestru" -> impound(sender);
-            case "unimpound", "recupereaza" -> unimpound(sender, args);
             case "trust" -> trust(sender, args);
             case "untrust" -> untrust(sender, args);
             case "trusted" -> trusted(sender);
@@ -186,17 +178,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 + "<gray>Umple-o la o pompă (click dreapta), apoi toarnă în vehicul (click dreapta).</gray>");
     }
 
-    /** FiveM garages: opens the window; /vehicle garage station gives the physical terminal. */
+    /** /vehicle garage: legacy alias - everything moved to the hybrid /garaj command. */
     private void garage(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             return;
         }
-        sender.sendRichMessage("<gold>Parcări fizice (fără meniuri):</gold>");
-        sender.sendRichMessage("<yellow>/" + "vehicle parking set public</yellow> <gray>- parcare PUBLICĂ aici (admin)</gray>");
-        sender.sendRichMessage("<yellow>/" + "vehicle mygarage set</yellow> <gray>- parcarea TA personală aici</gray>");
-        sender.sendRichMessage("<yellow>/" + "vehicle impound</yellow> <gray>- sechestru, dintr-un cerc PUBLIC</gray>");
-        sender.sendRichMessage("<gray>Condu în cercul cu scântei și coboară = mașina rămâne parcată pe loc.</gray>");
+        sender.sendRichMessage("<gray>Garajul personal s-a mutat pe <gold>/garaj</gold> "
+                + "(set, remove, listă gratuită acasă). Sechestru: intră într-un cerc PUBLIC și scrie "
+                + "<gold>/garaj</gold>. Cercul de scântei marchează fiecare parcare.</gray>");
     }
 
     /** /vehicle parking set <public|private> - admin marks the block under his feet. */
@@ -223,111 +213,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             player.sendRichMessage("<light_purple>Parcare PRIVATĂ creată aici (proprietar: tu).</light_purple> "
                     + "<gray>Doar mașinile tale parchează legal în acest cerc.</gray>");
         }
-    }
-
-    /** /vehicle mygarage set - the player's ONE personal spot; re-setting moves it. */
-    private void mygarage(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
-            return;
-        }
-        if (!hasGaragePermission(player)) {
-            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.garage (cere adminului).</red>");
-            return;
-        }
-        if (args.length < 2 || !args[1].equalsIgnoreCase("set")) {
-            sender.sendRichMessage("<red>Folosire: /vehicle mygarage set</red>");
-            return;
-        }
-        int removed = plugin.garageStations().removeOwnedBy(player.getUniqueId());
-        plugin.garageStations().place(player, false);
-        player.sendRichMessage("<light_purple>Ai marcat PARCAREA TA PERSONALĂ aici.</light_purple> "
-                + "<gray>Cercul de scântei o arată; mașina lăsată în el rămâne pe loc, gratuit.</gray>");
-        if (removed > 0) {
-            player.sendRichMessage("<gray>(Vechiul tău loc de parcare a fost șters automat.)</gray>");
-        }
-    }
-
-    /** /vehicle impound - ONLY from inside a PUBLIC circle: chat list with a clickable button. */
-    private void impound(CommandSender sender) {
-        if (!(sender instanceof Player player)) {
-            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
-            return;
-        }
-        if (plugin.garageStations().publicSpotAt(player.getLocation()).isEmpty()) {
-            player.sendRichMessage("<red>Trebuie să stai într-o parcare PUBLICĂ "
-                    + "(cercul de scântei) ca să recuperezi din sechestru.</red>");
-            return;
-        }
-        List<VehicleManager.GarageEntry> seized = vehicles.impoundedOf(player.getUniqueId());
-        if (seized.isEmpty()) {
-            player.sendRichMessage("<green>Nu ai nicio mașină în sechestru.</green>");
-            return;
-        }
-        double fee = vehicles.impoundFee();
-        player.sendMessage(Component.text("┌── MAȘINILE TALE SECHESTRATE ──", NamedTextColor.GOLD));
-        for (VehicleManager.GarageEntry entry : seized) {
-            LandVehicleSpec spec = LandVehicleSpec.byId(entry.type());
-            if (spec == null) {
-                continue;
-            }
-            player.sendMessage(Component.text("[Sechestru] ", NamedTextColor.GOLD)
-                    .append(Component.text("Mașină: " + spec.displayName() + " - ",
-                            NamedTextColor.YELLOW))
-                    .append(Component.text("Taxă: " + fee + "$ ", NamedTextColor.RED))
-                    .append(Component.text("[RECUPEREAZĂ]", NamedTextColor.GREEN)
-                            .clickEvent(ClickEvent.runCommand("/vehicle unimpound " + entry.id()))
-                            .hoverEvent(HoverEvent.showText(Component.text(
-                                    "Click = plătești " + fee + "$ și mașina apare AICI")))));
-        }
-    }
-
-    /** /vehicle unimpound <uuid> - the [RECUPEREAZĂ] click target: Vault check, charge, spawn. */
-    private void unimpound(CommandSender sender, String[] args) {
-        if (!(sender instanceof Player player)) {
-            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
-            return;
-        }
-        if (args.length < 2) {
-            player.sendRichMessage("<red>Folosire: /vehicle unimpound <id></red>");
-            return;
-        }
-        java.util.UUID spotId = plugin.garageStations().publicSpotAt(player.getLocation()).orElse(null);
-        if (spotId == null) {
-            player.sendRichMessage("<red>Poți recupera DOAR stând într-o parcare PUBLICĂ "
-                    + "(cercul de scântei).</red>");
-            return;
-        }
-        java.util.UUID vehicleId;
-        try {
-            vehicleId = java.util.UUID.fromString(args[1]);
-        } catch (IllegalArgumentException badId) {
-            player.sendRichMessage("<red>ID de vehicul invalid.</red>");
-            return;
-        }
-        if (!vehicles.isImpounded(vehicleId)) {
-            player.sendRichMessage("<red>Mașina aceasta nu e în sechestru (sau nu e a ta).</red>");
-            return;
-        }
-        if (!com.mrcrayfish.vehicle.paper.shop.ShopEconomy.ready()) {
-            player.sendRichMessage("<red>Economia nu este activă acum - contactează un admin.</red>");
-            return;
-        }
-        double fee = vehicles.impoundFee();
-        if (com.mrcrayfish.vehicle.paper.shop.ShopEconomy.balance(player) < fee) {
-            player.sendRichMessage("<red>Nu ai suficienți bani pentru a plăti taxa de sechestru! ("
-                    + fee + "$)</red>");
-            return;
-        }
-        Location spot = plugin.garageStations().location(spotId).orElse(player.getLocation());
-        if (!vehicles.retrieve(player, vehicleId, spot)) {
-            player.sendRichMessage("<red>Nu am putut scoate mașina din sechestru.</red>");
-            return;
-        }
-        com.mrcrayfish.vehicle.paper.shop.ShopEconomy.withdraw(player, fee);
-        vehicles.clearImpounded(vehicleId);
-        player.sendRichMessage("<green>Ai recuperat mașina din SECHESTRU pentru <gold>"
-                + fee + "$</gold> - e aici, în parcare.</green>");
     }
 
     /** /vehicle magazin - the FiveM dealer (podium / catalog). */
@@ -488,13 +373,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     }
 
     /** USER RULE: without LuckPerms on the server, OP = full power (no permission drama). */
-    private static boolean hasGaragePermission(Player player) {
-        if (player.hasPermission("vehicle.garage")) {
-            return true;
-        }
-        return Bukkit.getPluginManager().getPlugin("LuckPerms") == null && player.isOp();
-    }
-
     private void pack(CommandSender sender) {
         if (sender instanceof Player player) {
             if (ResourcePackSender.send(plugin, player)) {
@@ -517,15 +395,14 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
         sender.sendRichMessage("<yellow>/" + label + " parking set <public|private></yellow> <gray>- parcare fizică aici (admin)</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " mygarage set</yellow> <gray>- parcarea ta personală aici</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " impound</yellow> <gray>- sechestru: listă + recuperare, dintr-un cerc public</gray>");
+        sender.sendRichMessage("<yellow>/garaj</yellow> <gray>- garajul personal + sechestru (set/remove, liste în chat)</gray>");
     }
 
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "parking", "mygarage", "impound", "trust", "untrust", "trusted", "magazin", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "parking", "trust", "untrust", "trusted", "magazin", "list", "save", "pack"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("magazin") || args[0].equalsIgnoreCase("shop")
                 || args[0].equalsIgnoreCase("dealer"))) {
@@ -544,9 +421,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         if (args.length == 3 && (args[0].equalsIgnoreCase("parking") || args[0].equalsIgnoreCase("parcare"))
                 && "set".equalsIgnoreCase(args[1])) {
             return filter(List.of("public", "private"), args[2]);
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("mygarage")) {
-            return filter(List.of("set"), args[1]);
         }
         if (false) {
             return filter(List.of("station", "personal"), args[1]);

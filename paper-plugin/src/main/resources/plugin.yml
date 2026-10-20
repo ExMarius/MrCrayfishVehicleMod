@@ -7,6 +7,11 @@ author: MrCrayfish
 contributors: [ExMarius]
 website: https://github.com/ExMarius/MrCrayfishVehicleMod
 commands:
+  garaj:
+    description: Garajul personal + sechestru (hibrid, depinde de locul unde stai).
+    usage: /garaj [set|remove]
+    permission: vehicle.use
+    aliases: [garage, parcare]
   vehicle:
     description: Manage server-side vehicles.
     usage: /vehicle <spawn|remove|refuel|list|save|pack>
@@ -20,6 +25,6 @@ permissions:
     description: Allows spawning and removing vehicles.
     default: op
   vehicle.garage:
-    description: Allows players to create their own private garage station (/vehicle garaj personal).
+    description: Allows players to set/remove their personal parking spot (/garaj set|remove). OP bypasses it.
     default: false
 softdepend: [Vault]

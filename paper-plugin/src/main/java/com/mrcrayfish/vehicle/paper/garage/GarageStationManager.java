@@ -26,7 +26,7 @@ import java.util.logging.Level;
  *       to garages.yml under {@code stations.<uuid>}. The only world-side marker is the
  *       ELECTRIC_SPARK ring ticked while someone watches.</li>
  *   <li><b>Public spots</b> (admin, {@code /vehicle parking set public}) are legal parking
- *       for everyone; <b>personal spots</b> ({@code /vehicle mygarage set}, one per owner)
+ *       for everyone; <b>personal spots</b> ({@code /garaj set}, one per owner)
  *       are legal only for their owner.</li>
  *   <li><b>Parking:</b> drive in, step out - the car stays on the asphalt and slips into
  *       resting mode on its own (0 CPU). Anti-theft stays the trust system on the vehicle
@@ -34,8 +34,9 @@ import java.util.logging.Level;
  * </ul>
  */
 public final class GarageStationManager {
-    /** Physical radius of one parking circle, in blocks (the spark ring matches it). */
-    private static final double YARD_RADIUS = 5.0D;
+    /** Physical radius of one parking circle, in blocks (the spark ring matches it) -
+     *  2 blocks = a tight 4x4 footprint, exactly one real parking spot on the asphalt. */
+    private static final double YARD_RADIUS = 2.0D;
 
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
@@ -120,6 +121,28 @@ public final class GarageStationManager {
             }
         }
         return Optional.empty();
+    }
+
+    /** The player's personal (private, owned) spot, if he ever set one. */
+    public Optional<UUID> personalSpotOf(UUID playerId) {
+        for (Map.Entry<UUID, Station> entry : stations.entrySet()) {
+            Station station = entry.getValue();
+            if (!station.publicStation() && playerId.equals(station.owner())) {
+                return Optional.of(entry.getKey());
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Whether the player stands INSIDE his own personal circle right now. */
+    public boolean insidePersonalSpot(UUID playerId, Location anchor) {
+        for (Station station : stations.values()) {
+            if (!station.publicStation() && playerId.equals(station.owner())
+                    && within(station.location(), anchor, YARD_RADIUS)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Whether all players may use this spot (GTA public) or only its owner. */

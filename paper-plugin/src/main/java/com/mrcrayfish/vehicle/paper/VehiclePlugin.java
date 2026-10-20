@@ -103,6 +103,14 @@ public final class VehiclePlugin extends JavaPlugin {
         }
         command.setExecutor(vehicleCommand);
         command.setTabCompleter(vehicleCommand);
+        // /garaj - the one player-facing garage command (hybrid, location-aware).
+        PluginCommand garajCommand = getCommand("garaj");
+        if (garajCommand != null) {
+            com.mrcrayfish.vehicle.paper.command.GarajCommand garaj =
+                    new com.mrcrayfish.vehicle.paper.command.GarajCommand(this, vehicleManager);
+            garajCommand.setExecutor(garaj);
+            garajCommand.setTabCompleter(garaj);
+        }
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
