@@ -36,31 +36,40 @@ public final class VehiclePlugin extends JavaPlugin {
             getLogger().severe("[Wipe] Markerul nu s-a sters; ANULEZ wipe-ul ca sa nu ruleze la fiecare boot!");
             return false;
         }
-        java.io.File[] entries = dir.listFiles();
+        // Doar cele 3 fisiere de date cerute - config.yml (preturi/setari live) RAMANE INTACT.
+        String[] dataFiles = {"vehicles.yml", "garages.yml", "dealer.yml"};
         int count = 0;
-        if (entries != null) {
-            for (java.io.File entry : entries) {
-                count += deleteRecursively(entry);
+        for (String name : dataFiles) {
+            java.io.File target = new java.io.File(dir, name);
+            if (target.isFile() && target.delete()) {
+                count++;
+                getLogger().warning("[Wipe] sters: " + name);
             }
         }
-        getLogger().warning("[Wipe] " + count + " fisiere/foldere sterse din " + dir.getName() + ".");
-        return true;
-    }
+        getLogger().warning("[Wipe] config.yml P\u0102STRAT (preturi si setari neatinse).");
 
-    private int deleteRecursively(java.io.File file) {
-        int removed = 0;
-        if (file.isDirectory()) {
-            java.io.File[] children = file.listFiles();
-            if (children != null) {
-                for (java.io.File child : children) {
-                    removed += deleteRecursively(child);
+        // Curatenie entitati: ORICE ramasita cu tag mcv_* din lumile incarcate dispare -
+        // riguri de vehicule orfane, vechile terminale de garaj/fise, holograme de podium,
+        // ItemDisplay-uri si hitbox-uri Interaction blocate in chunk-uri din rundele trecute.
+        int entities = 0;
+        try {
+            for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+                for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                    for (String tag : entity.getScoreboardTags()) {
+                        if (tag.startsWith("mcv_")) {
+                            entity.remove();
+                            entities++;
+                            break;
+                        }
+                    }
                 }
             }
+        } catch (Throwable sweepFailure) {
+            getLogger().severe("[Wipe] Sweep-ul de entitati a dat eroare: " + sweepFailure);
         }
-        if (file.delete()) {
-            removed++;
-        }
-        return removed;
+        getLogger().warning("[Wipe] " + count + " fisiere de date sterse + " + entities
+                + " entitati mcv_* eliminate din lumile incarcate. Server curat, de la 0.");
+        return true;
     }
 
     public boolean wasDataWipedThisBoot() {
