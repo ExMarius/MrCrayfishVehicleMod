@@ -35,7 +35,7 @@ import java.util.UUID;
  */
 public final class DealerStationManager {
     private static final long CYCLE_TICKS = 20L * 40;
-    private static final float SPIN_STEP = 1.4F;
+    private static final float SPIN_STEP = 2.8F;
 
     private record Station(Location anchor, int catalogIndex, UUID vehicleId, UUID hologramId) {
     }
@@ -63,12 +63,21 @@ public final class DealerStationManager {
         spinner = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             for (Station station : stations) {
                 LandVehicle showcase = vehicles.byId(station.vehicleId()).orElse(null);
-                if (showcase != null) {
-                    float yaw = (showcase.location().getYaw() + SPIN_STEP) % 360.0F;
-                    showcase.location().setYaw(yaw);
+                if (showcase == null) {
+                    continue;
                 }
+                // Performanta (host mic): nu toarcem / nu trimitem pachete daca nu e nimeni prin preajma.
+                Location spot = showcase.location();
+                boolean anyoneWatching = spot.getWorld() != null
+                        && spot.getWorld().getPlayers().stream()
+                        .anyMatch(p -> p.getLocation().distanceSquared(spot) < 48.0D * 48.0D);
+                if (!anyoneWatching) {
+                    continue;
+                }
+                float yaw = (showcase.location().getYaw() + SPIN_STEP) % 360.0F;
+                showcase.location().setYaw(yaw);
             }
-        }, 5L, 2L);
+        }, 5L, 4L);
         cycler = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             List<String> catalog = shop.catalogIds();
             if (catalog.isEmpty()) {

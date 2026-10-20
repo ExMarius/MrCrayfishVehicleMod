@@ -62,6 +62,8 @@ public final class GasPumpManager {
     private final Map<UUID, GasPump> byInteraction = new HashMap<>();
     private BukkitTask tickTask;
     private BukkitTask saveTask;
+    private int healCounter;
+    private static final int HEAL_EVERY = 40; // 2 secunde - pompa nu trebuie verificata la fiecare tick
 
     public GasPumpManager(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -239,6 +241,10 @@ public final class GasPumpManager {
     private void tick() {
         // Auto-heal: a pump whose rig vanished (chunk unload / relog / restart) comes back the
         // moment its chunk is loaded again - never leaves a naked block behind.
+        // Perf: runs every HEAL_EVERY ticks (called every tick by the timer).
+        if (++healCounter % HEAL_EVERY != 0) {
+            return;
+        }
         for (GasPump pump : new ArrayList<>(pumps.values())) {
             if (pump.rig().alive() || !pump.location().isChunkLoaded()) {
                 continue;
