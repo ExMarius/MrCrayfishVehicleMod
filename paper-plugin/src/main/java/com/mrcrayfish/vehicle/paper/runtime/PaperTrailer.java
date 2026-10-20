@@ -337,14 +337,31 @@ public final class PaperTrailer {
         this.pullerType = type;
         this.pullerId = pullerId;
         this.verticalVelocity = 0.0D;
+        if (type == PullerType.VEHICLE) {
+            manager.onHitchChanged(pullerId);
+        }
     }
 
     public void detach(boolean sound) {
+        PullerType previousType = pullerType;
+        UUID previousPuller = pullerId;
         if (sound && location.getWorld() != null) {
             location.getWorld().playSound(location, Sound.ENTITY_ITEM_BREAK, SoundCategory.PLAYERS, 1.0F, 1.0F);
         }
         this.pullerType = PullerType.NONE;
         this.pullerId = null;
+        if (previousType == PullerType.VEHICLE && previousPuller != null) {
+            manager.onHitchChanged(previousPuller);
+        }
+    }
+
+    /** True while the trailer's root chunk is still loaded. Parked trailers sitting in
+     * unloaded chunks are skipped by TrailerManager.tick - they cannot move anyway, so
+     * they must cost exactly zero CPU. */
+    public boolean isInLoadedChunk() {
+        org.bukkit.World world = location.getWorld();
+        return world != null
+                && world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4);
     }
 
     public Location towBarLocation() {

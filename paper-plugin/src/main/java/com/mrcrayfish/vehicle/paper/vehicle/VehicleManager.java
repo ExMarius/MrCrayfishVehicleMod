@@ -639,21 +639,30 @@ public final class VehicleManager {
         return name == null ? null : Bukkit.getWorld(name);
     }
 
+    private volatile com.mrcrayfish.vehicle.paper.vehicle.DriveTuning driveTuning;
+
     private void tick() {
         if (++activationTick % 10 == 0) {
             activateNearbyVehicles(null);
         }
-        double globalSpeedLimit = plugin.getConfig().getDouble("physics.global-speed-limit", 100.0D);
-        double fuelFactor = plugin.getConfig().getDouble("physics.fuel-consumption-factor", 1.0D);
+        org.bukkit.configuration.FileConfiguration config = plugin.getConfig();
+        driveTuning = new com.mrcrayfish.vehicle.paper.vehicle.DriveTuning(
+                config.getDouble("physics.global-speed-limit", 100.0D),
+                config.getDouble("physics.fuel-consumption-factor", 1.0D),
+                Math.min(1.0D, Math.max(0.0D, config.getDouble("physics.fuel-idle-ratio", 0.1D))),
+                config.getDouble("physics.fuel-speed-weight", 0.6D),
+                config.getDouble("physics.fuel-accel-weight", 0.4D),
+                Math.max(1.0D, config.getDouble("physics.fuel-full-burn-speed", 18.0D)),
+                Math.max(0.1D, config.getDouble("physics.steering-angle-multiplier", 1.0D)));
         double activationDistance = Math.max(16.0D,
-                plugin.getConfig().getDouble("performance.activation-distance", 64.0D));
+                config.getDouble("performance.activation-distance", 64.0D));
         for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
             try {
                 if (!vehicle.rig().valid()) {
                     hibernate(vehicle);
                     continue;
                 }
-                vehicle.tick(globalSpeedLimit, fuelFactor);
+                vehicle.tick(driveTuning);
                 if (vehicle.resting()) {
                     releaseChunkTicket(vehicle);
                     if (!trailers.referencesVehicle(vehicle.id())
@@ -770,6 +779,26 @@ public final class VehicleManager {
             }
         }
         return false;
+    }
+
+    /** ChunkUnloadEvent hook: every vehicle rooted in the unloading chunk is fully
+     * hibernated — rig entities removed, complete state (fuel included) serialized
+     * through StoredVehicle — so an unloaded chunk costs zero tick CPU and zero live
+     * entities. Reactivation happens automatically in activateNearbyVehicles() once a
+     * player is near and the chunk is loaded again. */
+    public int hibernateInChunk(org.bukkit.Chunk chunk) {
+        int hibernated = 0;
+        for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
+            org.bukkit.Location location = vehicle.location();
+            org.bukkit.World world = location.getWorld();
+            if (world != null && world.equals(chunk.getWorld())
+                    && (location.getBlockX() >> 4) == chunk.getX()
+                    && (location.getBlockZ() >> 4) == chunk.getZ()) {
+                hibernate(vehicle);
+                hibernated++;
+            }
+        }
+        return hibernated;
     }
 
     private void hibernate(LandVehicle vehicle) {

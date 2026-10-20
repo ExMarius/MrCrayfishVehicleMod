@@ -9,6 +9,16 @@ resource-pack:
 physics:
   global-speed-limit: 100.0
   fuel-consumption-factor: 1.0
+  # Consum dinamic: la ralanti (motor pornit, fara viteza, fara acceleratie) se arde doar
+  # acest procent din rata; in miscare formula este idle + speed-weight*viteza/top +
+  # accel-weight*acceleratie, saturand la 100% la viteza maxima cu acceleratie plina.
+  fuel-idle-ratio: 0.1
+  fuel-speed-weight: 0.6
+  fuel-accel-weight: 0.4
+  # Viteza (blocuri/secunda) la care termenul de viteza e saturat (consum maxim).
+  fuel-full-burn-speed: 18.0
+  # Multiplicator global pentru unghiul maxim de virare al tuturor vehiculelor (1.0 = ca in mod).
+  steering-angle-multiplier: 1.0
 
 performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.

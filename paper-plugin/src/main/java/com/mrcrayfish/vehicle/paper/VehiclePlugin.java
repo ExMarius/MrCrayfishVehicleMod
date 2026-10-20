@@ -107,6 +107,7 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageStationListener(garageStationManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.ShopListener(shop), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.DealerPodiumListener(dealerStations, vehicleManager), this);
+        getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.VehicleChunkListener(vehicleManager), this);
 
         vehicleManager.start();
         gasPumpManager.start();

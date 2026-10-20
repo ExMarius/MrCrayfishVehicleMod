@@ -51,6 +51,27 @@ public final class LandVehicleRig {
     private final ItemDisplay steering;
     private final ItemDisplay fuelFiller;
     private final ItemDisplay towBar;
+
+    /** A vanilla ItemDisplay draws an item's local +Z axis pointing AWAY from the entity's
+     * facing direction (items render 'into the screen'), i.e. turned 180 degrees versus
+     * how Minecraft entity models face. Every vehicle part therefore receives this one
+     * global yaw correction inside place(). */
+    private static final Quaternionf ITEM_DISPLAY_YAW_CORRECTION =
+            new Quaternionf().rotateY((float) Math.PI);
+
+    /* THE tow bar math that burned the six failed nudge rounds, written down exactly:
+     * tow_bar.json is AUTHORED pre-rotated - its drawbar arm already points at the car
+     * when rendered with NO net yaw. But place() applies ITEM_DISPLAY_YAW_CORRECTION (+180 grade) to everything. To exempt the tow bar, its SOURCE rotation must
+     * cancel that correction. The Part is created with rotationY = 180, and building the
+     * source rotation from the Part's own angles (like every other part does) yields
+     * rotateY(+pi); composed with the place() correction the net rotation is
+     * rotateY(+pi). mul rotateY(+pi) = rotateY(2*pi) = IDENTITY. The old hand-written code reached the same identity by
+     * stacking an unexplained second +pi, so any offset edit LOOKED like a no-op while we
+     * were actually editing - wrong file (TRACTOR vs SMART_CAR) - but also fighting an
+     * invisible double flip. From here on: ONE correction constant, ONE explicit source
+     * rotation built from the Part angles, zero hidden flips. */
+    private static final Quaternionf TOW_BAR_SOURCE_ROTATION = new Quaternionf()
+            .rotateY((float) Math.PI); // == Part rotationY = 180; place() adds +180 again -> net 0
     private final List<PartDisplay> chassisParts;
     private final List<PartDisplay> forkParts;
     private final ItemDisplay storageChest;
@@ -377,7 +398,7 @@ public final class LandVehicleRig {
              * center and orientation fixed while the chassis wheelies. */
             Vector3f center = point(spec.towBarVisualCenter());
             place(towBar, renderAnchor, relativeToSeat(center, driverSeat), yaw, new Quaternionf(),
-                    new Vector3f(1.0F), new Quaternionf().rotateY((float) Math.PI));
+                    new Vector3f(1.0F), TOW_BAR_SOURCE_ROTATION);
         }
 
         for (WheelDisplay wheelDisplay : wheels) {
@@ -548,7 +569,7 @@ public final class LandVehicleRig {
                        Quaternionf leftRotation, Vector3f scale, Quaternionf sourceRightRotation) {
         display.teleport(renderAnchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         display.setRotation(yaw, 0.0F);
-        Quaternionf itemDisplayCompensation = new Quaternionf(sourceRightRotation).rotateY((float) Math.PI);
+        Quaternionf itemDisplayCompensation = new Quaternionf(sourceRightRotation).mul(ITEM_DISPLAY_YAW_CORRECTION);
         display.setTransformation(new Transformation(translation, leftRotation, scale, itemDisplayCompensation));
     }
 

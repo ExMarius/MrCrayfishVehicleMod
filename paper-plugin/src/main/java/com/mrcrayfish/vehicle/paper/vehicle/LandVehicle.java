@@ -65,6 +65,9 @@ public final class LandVehicle {
     private float traction;
     private float throttle;
     private float steeringAngle;
+    /** Config multiplier (physics.steering-angle-multiplier) applied to
+     * spec.maxSteeringAngle(); refreshed every tick from DriveTuning. */
+    private double steeringMultiplier = 1.0D;
     private float renderWheelAngle;
     private float frontWheelRotationSpeed;
     private float frontWheelRotation;
@@ -135,13 +138,15 @@ public final class LandVehicle {
         return new LandVehicle(plugin, id, root, spec, trailers, rig);
     }
 
-    public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
+    public void tick(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning) {
         age++;
         // Showcase podium car: a pure static display. Run the first ticks so parts settle,
         // then skip ALL physics/render work - a showroom on a weak host costs ~nothing.
         if (showcase && age > 10) {
             return;
         }
+        double globalSpeedLimit = tuning.globalSpeedLimit();
+        steeringMultiplier = tuning.steeringAngleMultiplier();
         boolean openablesChanged = rig.tickOpenables(location);
         updateSeatGauge();
         rig.tickSeats(location.getYaw());
@@ -161,15 +166,15 @@ public final class LandVehicle {
             return;
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
-            tickWater(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            tickWater(tuning, openablesChanged);
             return;
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.AIR) {
-            tickPlane(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            tickPlane(tuning, openablesChanged);
             return;
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
-            tickHelicopter(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            tickHelicopter(tuning, openablesChanged);
             return;
         }
         Player driver = driver().orElse(null);
@@ -206,7 +211,8 @@ public final class LandVehicle {
         updateInput(driver);
         updateCharging(enginePowered);
         float targetRenderAngle = !charging && isSliding(forward(location.getYaw()))
-                ? -clamp(steeringAngle * 2.0F, -spec.maxSteeringAngle(), spec.maxSteeringAngle())
+                ? -clamp(steeringAngle * 2.0F, (float) (-spec.maxSteeringAngle() * steeringMultiplier),
+                        (float) (spec.maxSteeringAngle() * steeringMultiplier))
                 : steeringAngle;
         renderWheelAngle += (targetRenderAngle - renderWheelAngle) * 0.3F;
         updateVehicleMotion(globalSpeedLimit, enginePowered);
@@ -238,7 +244,10 @@ public final class LandVehicle {
         }
 
         if (driver != null && !creativeDriver && enginePowered) {
-            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+            double effort = !handbraking && !charging ? Math.abs(clamp(throttle, -1.0F, 1.0F)) : 0.0D;
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick()
+                    * tuning.fuelConsumptionFactor()
+                    * fuelLoad(tuning, horizontalSpeed(), effort)));
         }
         updateSeatGauge();
 
@@ -300,8 +309,9 @@ public final class LandVehicle {
      * water/air transition momentum, speed damping, and steering rather than inventing
      * land behavior for the Jet Ski.
      */
-    private void tickWater(double globalSpeedLimit, double fuelConsumptionFactor,
+    private void tickWater(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
                            boolean openablesChanged) {
+        double globalSpeedLimit = tuning.globalSpeedLimit();
         Player driver = driver().orElse(null);
         WaterStatus status = waterStatus();
         previousWaterState = waterState;
@@ -385,7 +395,9 @@ public final class LandVehicle {
         verticalVelocity = velocity.getY();
 
         if (driver != null && !creativeDriver && enginePowered) {
-            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick()
+                    * tuning.fuelConsumptionFactor()
+                    * fuelLoad(tuning, Math.abs(waterSpeed), Math.abs(clamp(throttle, -1.0F, 1.0F)))));
         }
         updateSeatGauge();
         rig.update(location, renderWheelAngle, 0.0F, 0.0F,
@@ -397,8 +409,9 @@ public final class LandVehicle {
     }
 
     /** Direct server-side translation of HelicopterEntity#updateVehicleMotion. */
-    private void tickHelicopter(double globalSpeedLimit, double fuelConsumptionFactor,
-                                boolean openablesChanged) {
+    private void tickHelicopter(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
+                           boolean openablesChanged) {
+        double globalSpeedLimit = tuning.globalSpeedLimit();
         LandVehicleSpec.Helicopter helicopter = spec.helicopter();
         if (helicopter == null) {
             throw new IllegalStateException("Helicopter is missing HelicopterProperties: " + spec.id());
@@ -494,7 +507,10 @@ public final class LandVehicle {
 
         if (driver != null && !creativeDriver && enginePowered) {
             fuel = Math.max(0.0F,
-                    fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+                    fuel - (float) (spec.energyPerTick()
+                            * tuning.fuelConsumptionFactor()
+                            * fuelLoad(tuning, velocity.length() * 20.0D,
+                                    Math.abs(clamp(throttle, -1.0F, 1.0F)))));
         }
         updateSeatGauge();
         helicopterEffects(driver, enginePowered);
@@ -605,8 +621,9 @@ public final class LandVehicle {
     }
 
     /** Direct server-side translation of PlaneEntity#updateVehicleMotion. */
-    private void tickPlane(double globalSpeedLimit, double fuelConsumptionFactor,
+    private void tickPlane(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
                            boolean openablesChanged) {
+        double globalSpeedLimit = tuning.globalSpeedLimit();
         LandVehicleSpec.Plane plane = spec.plane();
         if (plane == null) {
             throw new IllegalStateException("Aircraft is missing PlaneProperties: " + spec.id());
@@ -623,7 +640,8 @@ public final class LandVehicle {
         float liftInput = driver == null ? 0.0F
                 : (input.handbrake() ? 1.0F : 0.0F) + (input.sprint() ? -1.0F : 0.0F);
         float steeringStrength = sideInput != 0.0F ? 0.05F : 0.2F;
-        steeringAngle += (spec.maxSteeringAngle() * sideInput - steeringAngle) * steeringStrength;
+        steeringAngle += (spec.maxSteeringAngle() * (float) steeringMultiplier * sideInput
+                - steeringAngle) * steeringStrength;
         float targetRenderAngle = onGround ? steeringAngle : 0.0F;
         renderWheelAngle += (targetRenderAngle - renderWheelAngle) * 0.3F;
 
@@ -730,7 +748,10 @@ public final class LandVehicle {
             motion.zero();
         }
         if (driver != null && !creativeDriver && enginePowered) {
-            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick()
+                    * tuning.fuelConsumptionFactor()
+                    * fuelLoad(tuning, velocity.length() * 20.0D,
+                            Math.abs(clamp(throttle, -1.0F, 1.0F)))));
         }
         updateSeatGauge();
         updateWheelRotations();
@@ -1028,6 +1049,36 @@ public final class LandVehicle {
     private float wheelieProgress() {
         float progress = wheelieCount / (float) MAX_WHEELIE_TICKS;
         return 1.0F - (1.0F - progress) * (1.0F - progress);
+    }
+
+    /** Dynamic fuel load. Engine on but standing still (speed ~0, no throttle):
+     * idleRatio (default 10%). Moving under power: idle + speedWeight*speedRatio +
+     * accelWeight*throttleRatio, saturating at exactly 1.0 at full-burn speed with
+     * full throttle. Engine off / no driver / resting / showcase: callers never reach
+     * this method, so consumption is strictly 0. */
+    static double fuelLoad(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
+                           double speedBlocksPerSec, double throttleRatio) {
+        double speedRatio = Math.min(1.0D, Math.max(0.0D,
+                speedBlocksPerSec / tuning.fuelFullBurnSpeed()));
+        double throttle = Math.min(1.0D, Math.max(0.0D, throttleRatio));
+        double effort = tuning.fuelSpeedWeight() * speedRatio + tuning.fuelAccelWeight() * throttle;
+        return tuning.fuelIdleRatio()
+                + (1.0D - tuning.fuelIdleRatio()) * Math.min(1.0D, Math.max(0.0D, effort));
+    }
+
+    /** Repacks and resends the ENTIRE rig (teleport + transformation packets for every
+     * part, tow bar included) immediately, outside the normal tick path. TrailerManager
+     * calls this on hitch state changes so a resting/parked car can never keep a
+     * visually locked tow bar or stale part transforms while its physics is asleep. */
+    public void forceVisualSync() {
+        if (!rig.valid()) {
+            return;
+        }
+        boolean engineRunning = driver()
+                .map(d -> d.getGameMode() == org.bukkit.GameMode.CREATIVE || fuel > 0.0F)
+                .orElse(false);
+        rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                0.0F, spec.bodyRoll(steeringAngle, horizontalSpeed()), engineRunning, age);
     }
 
     private double horizontalSpeed() {
