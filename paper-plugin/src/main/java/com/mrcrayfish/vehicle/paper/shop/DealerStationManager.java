@@ -68,6 +68,11 @@ public final class DealerStationManager {
         stations.clear();
     }
 
+    /** Item-based placement (podium in hand): price falls back to the global shop config. */
+    public boolean place(Player player, Location foot, String specId) {
+        return place(player, foot, specId, shop.priceOf(specId));
+    }
+
     /** Places a new static showroom; returns false when another is closer than 8 blocks. */
     public boolean place(Player player, Location foot, String specId, double price) {
         LandVehicleSpec spec = LandVehicleSpec.byId(specId);
