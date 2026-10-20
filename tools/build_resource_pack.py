@@ -256,6 +256,7 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/ai_kart/base.json",
             namespace / "models/item/ai_kart_body.json",
             {"2": "vehicle:item/ai_kart_body", "particle": "vehicle:item/ai_kart_body"},
+            texture_uv_scale={"2": 0.25},
         )
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
