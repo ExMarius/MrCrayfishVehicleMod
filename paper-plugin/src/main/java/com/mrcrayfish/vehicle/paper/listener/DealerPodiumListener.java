@@ -58,7 +58,7 @@ public final class DealerPodiumListener implements Listener {
             return;
         }
         lastPlacements.put(key, now);
-        stations.place(player, foot);
+        stations.place(player, foot, "sports_car");
         if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
             item.setAmount(item.getAmount() - 1);
         }
