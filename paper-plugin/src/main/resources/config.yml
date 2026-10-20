@@ -58,3 +58,12 @@ dealership:
     sports_car: 60000
     compact_helicopter: 250000
     sports_plane: 500000
+
+# Impound ("sechestru") economy
+economy:
+  # Fee charged when taking an SECHESTRATED vehicle out at a PUBLIC garage station.
+  # 0 = impound becomes visual-only (never charged, still blocked at private stations).
+  public-garage-retrieval-fee: 500.0
+  # A vehicle parked within this many blocks of an OWNED PRIVATE garage station
+  # counts as "at home" on quit-auto-park and is NOT seized.
+  home-garage-radius: 64.0

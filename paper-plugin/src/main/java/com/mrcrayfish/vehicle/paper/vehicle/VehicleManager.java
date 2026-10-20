@@ -189,13 +189,45 @@ public final class VehicleManager {
      *  stored in the garage immediately - nothing of theirs stays in the world consuming
      *  tick/bandwidth while they're offline. Forced (ignores occupancy: the quitting player
      *  may still be seated during the event). */
+    /** Probe-ul "acasa": injectat din GarageStationManager la pornire (el detine
+     *  statiile). Default conservator: nimic nu e "acasa" => orice quit = sechestru. */
+    private java.util.function.BiPredicate<java.util.UUID, Location> homeStationProbe =
+            (owner, location) -> false;
+
+    public void setHomeStationProbe(java.util.function.BiPredicate<java.util.UUID, Location> probe) {
+        homeStationProbe = probe == null ? (owner, location) -> false : probe;
+    }
+
+    public double impoundFee() {
+        return Math.max(0.0D, plugin.getConfig().getDouble("economy.public-garage-retrieval-fee", 500.0D));
+    }
+
+    public boolean isImpounded(UUID vehicleId) {
+        StoredVehicle stored = garage.get(vehicleId);
+        return stored != null && stored.impounded();
+    }
+
+    /** Dupa plata taxei: ridica flag-ul si salveaza (altfel ar ramane sechestrata la reload). */
+    public void clearImpounded(UUID vehicleId) {
+        StoredVehicle stored = garage.get(vehicleId);
+        if (stored != null && stored.impounded()) {
+            garage.put(vehicleId, stored.withImpounded(false));
+            save();
+        }
+    }
+
     public int parkAllOwnedBy(java.util.UUID playerId) {
         int count = 0;
+        int impounded = 0;
         for (LandVehicle vehicle : new java.util.ArrayList<>(vehicles.values())) {
             if (vehicle.showcase() || vehicle.owner().map(playerId::equals).orElse(false) == false) {
                 continue;
             }
-            StoredVehicle stored = StoredVehicle.from(vehicle);
+            boolean seized = !homeStationProbe.test(playerId, vehicle.location());
+            StoredVehicle stored = StoredVehicle.from(vehicle).withImpounded(seized);
+            if (seized) {
+                impounded++;
+            }
             unindex(vehicle);
             releaseChunkTicket(vehicle);
             trailers.onVehicleRemoved(vehicle.id());
@@ -207,6 +239,8 @@ public final class VehicleManager {
         }
         if (count > 0) {
             save();
+            plugin.getLogger().info("[Garaj] Quit-auto-park: " + count + " total, "
+                    + impounded + " in SECHESTRU (taxa " + impoundFee() + ").");
         }
         return count;
     }
@@ -251,7 +285,7 @@ public final class VehicleManager {
     }
 
     /** One garaged vehicle, exposed to the GUI: id + type + saved fuel level. */
-    public record GarageEntry(UUID id, String type, float fuel) {
+    public record GarageEntry(UUID id, String type, float fuel, boolean impounded) {
     }
 
     /** All vehicles this player currently has stored in the garage. */
@@ -259,7 +293,7 @@ public final class VehicleManager {
         List<GarageEntry> own = new ArrayList<>();
         for (StoredVehicle stored : garage.values()) {
             if (stored.owner() != null && stored.owner().equals(player.getUniqueId().toString())) {
-                own.add(new GarageEntry(stored.id(), stored.type(), stored.fuel()));
+                own.add(new GarageEntry(stored.id(), stored.type(), stored.fuel(), stored.impounded()));
             }
         }
         return own;
@@ -540,6 +574,9 @@ public final class VehicleManager {
     }
 
     private static void write(YamlConfiguration data, String path, StoredVehicle stored) {
+        if (stored.impounded()) {
+            data.set(path + ".impounded", true);
+        }
         data.set(path + ".type", stored.type());
         data.set(path + ".world", stored.worldId());
         data.set(path + ".world-name", stored.worldName());
@@ -936,7 +973,15 @@ public final class VehicleManager {
                                  float planeRoll, float propellerSpeed,
                                  float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
-                                 Map<String, Boolean> openPartStates, String owner, String trusted) {
+                                 Map<String, Boolean> openPartStates, String owner, String trusted,
+                                 boolean impounded) {
+        private StoredVehicle withImpounded(boolean impounded) {
+            return new StoredVehicle(id, type, worldId, worldName, x, y, z, yaw, pitch, fuel,
+                    velocityX, velocityY, velocityZ, traction, verticalVelocity,
+                    planeRoll, propellerSpeed, flapAngle, elevatorAngle, chestAttached,
+                    storageContents, openPartStates, owner, trusted, impounded);
+        }
+
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
             World world = location.getWorld();
@@ -950,7 +995,7 @@ public final class VehicleManager {
                     vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
                     vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
                     vehicle.storageContents(), vehicle.openPartStates(),
-                    vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle));
+                    vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle), false);
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -979,7 +1024,8 @@ public final class VehicleManager {
                     (float) data.getDouble(path + ".plane.elevator-angle"),
                     data.getBoolean(path + ".storage.chest-attached", false),
                     readStorage(data, path), readOpenPartStates(data, path),
-                    data.getString(path + ".owner"), data.getString(path + ".trusted"));
+                    data.getString(path + ".owner"), data.getString(path + ".trusted"),
+                    data.getBoolean(path + ".impounded", false));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

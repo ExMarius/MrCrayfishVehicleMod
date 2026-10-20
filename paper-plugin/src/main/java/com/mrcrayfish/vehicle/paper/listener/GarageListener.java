@@ -63,7 +63,29 @@ public final class GarageListener implements Listener {
             }
         } else if (com.mrcrayfish.vehicle.paper.garage.GarageGui.ACTION_RETRIEVE.equals(action)) {
             // GTA 1:1 - the car exits at the STATION this window was opened from, if any.
-            if (!vehicles.retrieve(player, vehicleId, GarageStationListener.anchorOf(player))) {
+            org.bukkit.Location anchor = GarageStationListener.anchorOf(player);
+            if (vehicles.isImpounded(vehicleId)) {
+                // Sechestru: doar de la o statie PUBLICA, iar taxa exista prin Vault.
+                if (!plugin.garageStations().isPublicStationAt(anchor)) {
+                    player.sendRichMessage("<red>Mașinile sechestrate pot fi recuperate doar dintr-o parcare publică!</red>");
+                } else if (!com.mrcrayfish.vehicle.paper.shop.ShopEconomy.ready()) {
+                    player.sendRichMessage("<red>Economia nu este activă acum - contactează un admin.</red>");
+                } else {
+                    double fee = vehicles.impoundFee();
+                    if (com.mrcrayfish.vehicle.paper.shop.ShopEconomy.balance(player) < fee) {
+                        player.closeInventory();
+                        player.sendRichMessage("<red>Nu ai suficienți bani pentru a plăti taxa de sechestru! ("
+                                + fee + "$)</red>");
+                    } else if (!vehicles.retrieve(player, vehicleId, anchor)) {
+                        player.sendRichMessage("<red>Nu am putut scoate vehiculul din garaj.</red>");
+                    } else {
+                        com.mrcrayfish.vehicle.paper.shop.ShopEconomy.withdraw(player, fee);
+                        vehicles.clearImpounded(vehicleId);
+                        player.sendRichMessage("<green>Vehicul recuperat din SECHESTRU pentru <gold>"
+                                + fee + "$</gold>.</green>");
+                    }
+                }
+            } else if (!vehicles.retrieve(player, vehicleId, anchor)) {
                 player.sendRichMessage("<red>Nu am putut scoate vehiculul din garaj.</red>");
             } else {
                 player.sendRichMessage("<green>Vehicul scos din garaj - e lângă tine.</green>");

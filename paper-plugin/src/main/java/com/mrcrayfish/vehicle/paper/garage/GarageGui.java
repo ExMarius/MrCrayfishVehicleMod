@@ -28,6 +28,7 @@ import java.util.UUID;
  */
 public final class GarageGui {
     private static final DecimalFormat PERCENT = new DecimalFormat("0.##%");
+    private static final java.text.DecimalFormat FEE = new java.text.DecimalFormat("0.##");
 
     /** Marker holder so the click listener recognises OUR window (and ours only). */
     static final class Holder implements InventoryHolder {
@@ -107,11 +108,35 @@ public final class GarageGui {
             if (spec == null) {
                 continue;
             }
-            inventory.setItem(slot++, item(spec, entry.fuel() / spec.energyCapacity(),
-                    entry.id(), ACTION_RETRIEVE,
-                    Component.text("▼ Scoate: " + spec.displayName(), NamedTextColor.GOLD)
-                            .decoration(TextDecoration.ITALIC, false),
-                    Component.text("Apare lângă tine, cu benzina păstrată.", NamedTextColor.GRAY)));
+            if (entry.impounded()) {
+                // Sechestru: nume rosu + doua linii de lore (status + taxa live din config).
+                ItemStack stack = new ItemStack(Material.PAPER);
+                ItemMeta meta = stack.getItemMeta();
+                meta.setItemModel(new NamespacedKey("vehicle", "vehicle_icon/" + spec.id()));
+                meta.displayName(Component.text("▼ Sechestru: " + spec.displayName(), NamedTextColor.RED)
+                        .decoration(TextDecoration.ITALIC, false));
+                List<Component> lines = new ArrayList<>();
+                lines.add(Component.text("Status: Sechestrată", NamedTextColor.RED)
+                        .decoration(TextDecoration.ITALIC, false));
+                lines.add(Component.text("Taxă recuperare: ", NamedTextColor.GRAY)
+                        .append(Component.text(FEE.format(vehicles.impoundFee()) + "$", NamedTextColor.GREEN))
+                        .decoration(TextDecoration.ITALIC, false));
+                lines.add(Component.text("Rezervor: " + PERCENT.format(Math.max(0.0F,
+                        Math.min(1.0F, entry.fuel() / spec.energyCapacity()))), NamedTextColor.AQUA)
+                        .decoration(TextDecoration.ITALIC, false));
+                meta.lore(lines);
+                meta.getPersistentDataContainer().set(VEHICLE_KEY, PersistentDataType.STRING, entry.id().toString());
+                meta.getPersistentDataContainer().set(ACTION_KEY, PersistentDataType.STRING, ACTION_RETRIEVE);
+                stack.setItemMeta(meta);
+                inventory.setItem(slot++, stack);
+            } else {
+                inventory.setItem(slot++, item(spec, entry.fuel() / spec.energyCapacity(),
+                        entry.id(), ACTION_RETRIEVE,
+                        Component.text("▼ Scoate: " + spec.displayName(), NamedTextColor.GOLD)
+                                .decoration(TextDecoration.ITALIC, false),
+                        Component.text("Apare lângă tine, cu benzina păstrată. GRATUIT (0$).",
+                                NamedTextColor.GRAY)));
+            }
         }
 
         if (parkable.isEmpty() && garaged.isEmpty()) {

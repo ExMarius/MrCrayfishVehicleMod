@@ -75,6 +75,9 @@ public final class VehiclePlugin extends JavaPlugin {
         vehicleManager = new VehicleManager(this);
         gasPumpManager = new GasPumpManager(this, vehicleManager);
         garageStationManager = new com.mrcrayfish.vehicle.paper.garage.GarageStationManager(this, vehicleManager);
+        // Impound probe: VehicleManager's quit-auto-park asks the station manager
+        // whether a vehicle stands "at home" (near the owner's PRIVATE station).
+        vehicleManager.setHomeStationProbe(garageStationManager::isVehicleAtHome);
 
         // #1 FiveM: dealer shop. Vault probe FIRST - Vault classes load only when present.
         if (getServer().getPluginManager().getPlugin("Vault") != null) {
@@ -126,6 +129,10 @@ public final class VehiclePlugin extends JavaPlugin {
 
     public com.mrcrayfish.vehicle.paper.shop.VehicleShop vehicleShop() {
         return shop;
+    }
+
+    public com.mrcrayfish.vehicle.paper.garage.GarageStationManager garageStations() {
+        return garageStationManager;
     }
 
     public com.mrcrayfish.vehicle.paper.shop.DealerStationManager dealerStations() {

@@ -120,6 +120,47 @@ public final class GarageStationManager {
         return Optional.ofNullable(station == null ? null : station.location());
     }
 
+    /** QUIT AUTO-GARAGE "acasa": true cand locatia e in raza configurata fata de
+     * orice statie PRIVATA detinuta de `owner` (garajele publice NU conteaza). */
+    public boolean isVehicleAtHome(java.util.UUID owner, org.bukkit.Location location) {
+        double radius = Math.max(1.0D,
+                plugin.getConfig().getDouble("economy.home-garage-radius", 64.0D));
+        double radiusSquared = radius * radius;
+        for (Station station : stations.values()) {
+            if (station.publicStation() || station.owner() == null || !station.owner().equals(owner)) {
+                continue;
+            }
+            org.bukkit.Location stationLocation = station.location();
+            if (stationLocation.getWorld() == null || location.getWorld() == null
+                    || !stationLocation.getWorld().equals(location.getWorld())) {
+                continue;
+            }
+            if (stationLocation.distanceSquared(location) <= radiusSquared) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Retrieve context: true doar daca anchor-ul apartine unei statii PUBLICE.
+     *  Fara anchor (GUI deschis prin /vehicle garage) => context privat => false. */
+    public boolean isPublicStationAt(org.bukkit.Location anchor) {
+        if (anchor == null || anchor.getWorld() == null) {
+            return false;
+        }
+        for (Station station : stations.values()) {
+            org.bukkit.Location stationLocation = station.location();
+            if (stationLocation.getWorld() == null
+                    || !stationLocation.getWorld().equals(anchor.getWorld())) {
+                continue;
+            }
+            if (stationLocation.distanceSquared(anchor) <= 1.0D) {
+                return station.publicStation();
+            }
+        }
+        return false;
+    }
+
     /** Whether all players may use this station (GTA public) or only its owner. */
     public boolean isPublic(UUID id) {
         Station station = stations.get(id);
