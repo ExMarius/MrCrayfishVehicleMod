@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Deterministic rebuild: same inputs -> same zip -> same SHA-1 (pin in tools/test_fresh_paper_server.sh).
 """Build the vanilla-client resource pack used by the Paper prototype."""
 
 from __future__ import annotations
