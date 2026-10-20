@@ -58,7 +58,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "trusted" -> trusted(sender);
             case "magazin", "shop", "dealer" -> {
                 if (args.length >= 2 && "podium".equalsIgnoreCase(args[1])) {
-                    dealerPodium(sender);
+                    dealerPodium(sender, args);
                 } else {
                     dealer(sender);
                 }
@@ -226,13 +226,18 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     }
 
     /** /vehicle magazin podium - admin PRIVIND locul construieste showroomul DIRECT acolo. */
-    private void dealerPodium(CommandSender sender) {
+    private void dealerPodium(CommandSender sender, String[] args) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Comanda trebuie executata de un jucator.</red>");
             return;
         }
         if (!sender.hasPermission("vehicle.admin")) {
             sender.sendRichMessage("<red>Doar administratorii pot construi un showroom.</red>");
+            return;
+        }
+        if (args.length < 3) {
+            sender.sendRichMessage("<yellow>Utilizare: /vehicle magazin podium <vehicul>"
+                    + " (ex: sports_car, atv, mini_bus).</yellow>");
             return;
         }
         org.bukkit.block.Block target = player.getTargetBlockExact(6,
@@ -243,7 +248,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         Location foot = target.getRelative(org.bukkit.block.BlockFace.UP).getLocation();
-        plugin.dealerStations().place(player, foot);
+        plugin.dealerStations().place(player, foot, args[2]);
     }
 
     /** The vehicle at hand for TRUST commands: the nearest one you OWN within 6 blocks. */
@@ -408,6 +413,10 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         if (args.length == 2 && (args[0].equalsIgnoreCase("magazin") || args[0].equalsIgnoreCase("shop")
                 || args[0].equalsIgnoreCase("dealer"))) {
             return filter(java.util.List.of("podium"), args[1]);
+        }
+        if (args.length == 3 && (args[0].equalsIgnoreCase("magazin") || args[0].equalsIgnoreCase("shop")
+                || args[0].equalsIgnoreCase("dealer")) && "podium".equalsIgnoreCase(args[1])) {
+            return filter(new ArrayList<>(LandVehicleSpec.ids()), args[2]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

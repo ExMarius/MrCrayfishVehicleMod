@@ -18,7 +18,6 @@ import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
-import org.bukkit.scheduler.BukkitTask;
 
 import java.io.File;
 import java.io.IOException;
@@ -27,17 +26,13 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * The FiveM dealership MADE OF WORLD: a quartz podium, the featured vehicle spinning on top
- * slowly, a floating price hologram, and "right-click the car = you bought it". The featured
- * vehicle cycles through the whole catalog (~40s each), so the podium always shows something new.
- * Showroom stations persist in dealer.yml; the display vehicles are showcase-only (never saved,
- * never parkable, never drivable - clicking them runs the purchase flow instead).
+ * STATIC Showroom podium (user design: minimum consumption): /vehicle magazin podium <vehicul>
+ * places a quartz platform with EXACTLY that vehicle on top, standing still - no spin task,
+ * no cycling, nothing ticking (the showcase car also skips its physics tick). It's a pure
+ * day-use display: right-click the car = buy it, sneak+punch as admin = pick the podium up.
  */
 public final class DealerStationManager {
-    private static final long CYCLE_TICKS = 20L * 40;
-    private static final float SPIN_STEP = 2.8F;
-
-    private record Station(Location anchor, int catalogIndex, UUID vehicleId, UUID hologramId) {
+    private record Station(Location anchor, String specId, UUID vehicleId, UUID hologramId) {
     }
 
     private final VehiclePlugin plugin;
@@ -45,8 +40,6 @@ public final class DealerStationManager {
     private final VehicleShop shop;
     private final File dataFile;
     private final List<Station> stations = new ArrayList<>();
-    private BukkitTask spinner;
-    private BukkitTask cycler;
 
     public DealerStationManager(VehiclePlugin plugin, VehicleManager vehicles, VehicleShop shop) {
         this.plugin = plugin;
@@ -58,45 +51,13 @@ public final class DealerStationManager {
     public void start() {
         load();
         for (Station station : new ArrayList<>(stations)) {
-            buildRig(station, true);
+            buildPlatform(station.anchor());
+            killStaleTextDisplays(station.anchor());
+            rebuild(station);
         }
-        spinner = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            for (Station station : stations) {
-                LandVehicle showcase = vehicles.byId(station.vehicleId()).orElse(null);
-                if (showcase == null) {
-                    continue;
-                }
-                // Performanta (host mic): nu toarcem / nu trimitem pachete daca nu e nimeni prin preajma.
-                Location spot = showcase.location();
-                boolean anyoneWatching = spot.getWorld() != null
-                        && spot.getWorld().getPlayers().stream()
-                        .anyMatch(p -> p.getLocation().distanceSquared(spot) < 48.0D * 48.0D);
-                if (!anyoneWatching) {
-                    continue;
-                }
-                float yaw = (showcase.location().getYaw() + SPIN_STEP) % 360.0F;
-                showcase.location().setYaw(yaw);
-            }
-        }, 5L, 4L);
-        cycler = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
-            List<String> catalog = shop.catalogIds();
-            if (catalog.isEmpty()) {
-                return;
-            }
-            for (Station station : new ArrayList<>(stations)) {
-                int next = (station.catalogIndex() + 1) % catalog.size();
-                replaceShowcase(station, catalog, next);
-            }
-        }, CYCLE_TICKS, CYCLE_TICKS);
     }
 
     public void stop() {
-        if (spinner != null) {
-            spinner.cancel();
-        }
-        if (cycler != null) {
-            cycler.cancel();
-        }
         for (Station station : stations) {
             killHologram(station);
             if (station.vehicleId() != null) {
@@ -106,9 +67,13 @@ public final class DealerStationManager {
         stations.clear();
     }
 
-    /** Places a new showroom: quartz platform + spinning showcase + price hologram.
-     *  Returns false when another showroom is closer than 8 blocks (never two in one spot). */
-    public boolean place(Player player, Location foot) {
+    /** Places a new static showroom; returns false when another is closer than 8 blocks. */
+    public boolean place(Player player, Location foot, String specId) {
+        LandVehicleSpec spec = LandVehicleSpec.byId(specId);
+        if (spec == null) {
+            player.sendRichMessage("<red>Tip necunoscut: " + specId + ".</red> <gray>Scrie <tab> pentru lista.</gray>");
+            return false;
+        }
         Location anchor = foot.getBlock().getLocation();
         for (Station station : stations) {
             Location other = station.anchor();
@@ -118,16 +83,16 @@ public final class DealerStationManager {
             }
         }
         buildPlatform(anchor);
-        Station station = new Station(anchor, -1, null, null);
+        Station station = new Station(anchor, specId, null, null);
         stations.add(station);
-        buildRig(station, false);
+        rebuild(station);
         save();
-        player.sendRichMessage("<green>Showroom construit!</green> <gray>Mașina de pe podium se "
-                + "învârte și se schimbă singură la ~40s. Orice jucător dă click dreapta pe ea și o cumpără.</gray>");
+        player.sendRichMessage("<green>Showroom STATIC construit cu: " + spec.displayName()
+                + ".</green> <gray>Sta nemiscata, zero consum. Click drept pe ea = cumperi.</gray>");
         return true;
     }
 
-    /** Admin pickup: sneak + punch the featured car -> station removed, podium item back. */
+    /** Admin pickup: sneak + punch the displayed car -> station removed, podium item back. */
     public boolean tryRemove(Player player, LandVehicle showcase) {
         Station found = null;
         for (Station station : stations) {
@@ -145,52 +110,25 @@ public final class DealerStationManager {
         stations.remove(found);
         save();
         player.getInventory().addItem(DealerPodiumItem.create());
-        player.sendRichMessage("<gold>Showroom ridicat, podiumul ți s-a întors în inventar.</gold>");
+        player.sendRichMessage("<gold>Showroom ridicat, podiumul ti s-a intors in inventar.</gold>");
         return true;
     }
 
-    private void replaceShowcase(Station station, List<String> catalog, int nextIndex) {
-        if (station.vehicleId() != null) {
-            vehicles.byId(station.vehicleId()).ifPresent(vehicles::remove);
+    private void rebuild(Station station) {
+        sweepLeftovers(station.anchor());
+        LandVehicleSpec spec = LandVehicleSpec.byId(station.specId());
+        if (spec == null) {
+            spec = LandVehicleSpec.byId("sports_car");
         }
-        Station updated = spawnShowcase(station, catalog, nextIndex);
-        stations.set(stations.indexOf(station), updated);
-    }
-
-    /** (Re)builds the display rig for a station: showcase car + hologram text with price. */
-    private void buildRig(Station station, boolean restore) {
-        List<String> catalog = shop.catalogIds();
-        if (catalog.isEmpty()) {
-            return;
-        }
-        if (restore) {
-            buildPlatform(station.anchor());
-            killStaleTextDisplays(station.anchor());
-        }
-        int index = station.catalogIndex() < 0 ? 0 : station.catalogIndex();
-        Station updated = spawnShowcase(station, catalog, index);
-        stations.set(stations.indexOf(station), updated);
-    }
-
-    private Station spawnShowcase(Station station, List<String> catalog, int index) {
-        sweepLeftovers(station.anchor(), station.vehicleId());
-        LandVehicleSpec spec = LandVehicleSpec.byId(catalog.get(Math.floorMod(index, catalog.size())));
         Location anchor = station.anchor();
         Location spot = anchor.clone().add(0.5D, 1.05D, 0.5D);
         spot.setYaw(0.0F);
         LandVehicle showcase = vehicles.spawn(spec, spot);
         showcase.setShowcase(true);
-        UUID hologramId = station.hologramId();
-        if (hologramId == null || Bukkit.getEntity(hologramId) == null) {
-            hologramId = spawnHologram(anchor.clone().add(0.5D, 2.6D, 0.5D), spec,
-                    shop.priceOf(spec.id()));
-        } else {
-            Entity existing = Bukkit.getEntity(hologramId);
-            if (existing instanceof TextDisplay text) {
-                text.text(hologramText(spec, shop.priceOf(spec.id())));
-            }
-        }
-        return new Station(anchor, index, showcase.id(), hologramId);
+        UUID hologramId = spawnHologram(anchor.clone().add(0.5D, 2.6D, 0.5D), spec,
+                shop.priceOf(spec.id()));
+        int index = stations.indexOf(station);
+        stations.set(index, new Station(anchor, station.specId(), showcase.id(), hologramId));
     }
 
     private UUID spawnHologram(Location location, LandVehicleSpec spec, double price) {
@@ -199,7 +137,12 @@ public final class DealerStationManager {
             return null;
         }
         return world.spawn(location, TextDisplay.class, sign -> {
-            sign.text(hologramText(spec, price));
+            sign.text(Component.text("🏎️  " + spec.displayName() + "  🏎️", NamedTextColor.GOLD,
+                            TextDecoration.BOLD)
+                    .append(Component.newline())
+                    .append(Component.text(VehicleShop.priceText(price), NamedTextColor.YELLOW))
+                    .append(Component.newline())
+                    .append(Component.text("click drept pe masina = CUMPERI", NamedTextColor.GRAY)));
             sign.setBillboard(Display.Billboard.CENTER);
             try {
                 sign.setBackgroundColor(Color.fromARGB(0x60000000));
@@ -208,37 +151,6 @@ public final class DealerStationManager {
             }
             sign.setPersistent(true);
         }).getUniqueId();
-    }
-
-    private static Component hologramText(LandVehicleSpec spec, double price) {
-        return Component.text("🏎️  " + spec.displayName() + "  🏎️", NamedTextColor.GOLD,
-                        TextDecoration.BOLD)
-                .append(Component.newline())
-                .append(Component.text(VehicleShop.priceText(price), NamedTextColor.YELLOW))
-                .append(Component.newline())
-                .append(Component.text("click drept pe mașină = CUMPERI", NamedTextColor.GRAY));
-    }
-
-    /** Anti-stacking guarantee: removes ANY leftovers within the podium yard - both
-     *  manager-mapped showcase cars that shouldn't be here and orphaned world entities
-     *  (item displays/interactions) from older crashed rigs the manager no longer tracks. */
-    private void sweepLeftovers(Location anchor, UUID keepVehicleId) {
-        Location centre = anchor.clone().add(0.5D, 1.0D, 0.5D);
-        for (LandVehicle vehicle : vehicles.vehiclesWithin(centre, 4.5D)) {
-            if (vehicle.showcase() && (keepVehicleId == null || !vehicle.id().equals(keepVehicleId))) {
-                vehicles.remove(vehicle);
-            }
-        }
-        if (centre.getWorld() == null) {
-            return;
-        }
-        for (Entity entity : centre.getWorld().getNearbyEntities(centre, 3.0D, 3.0D, 3.0D)) {
-            if ((entity instanceof org.bukkit.entity.ItemDisplay
-                    || entity instanceof org.bukkit.entity.Interaction)
-                    && vehicles.byEntity(entity).isEmpty()) {
-                entity.remove();
-            }
-        }
     }
 
     private void killHologram(Station station) {
@@ -263,6 +175,26 @@ public final class DealerStationManager {
         }
     }
 
+    /** Removes any leftover showcase cars and orphaned rig entities around the podium. */
+    private void sweepLeftovers(Location anchor) {
+        Location centre = anchor.clone().add(0.5D, 1.0D, 0.5D);
+        for (LandVehicle vehicle : vehicles.vehiclesWithin(centre, 4.5D)) {
+            if (vehicle.showcase()) {
+                vehicles.remove(vehicle);
+            }
+        }
+        if (centre.getWorld() == null) {
+            return;
+        }
+        for (Entity entity : centre.getWorld().getNearbyEntities(centre, 3.0D, 3.0D, 3.0D)) {
+            if ((entity instanceof org.bukkit.entity.ItemDisplay
+                    || entity instanceof org.bukkit.entity.Interaction)
+                    && vehicles.byEntity(entity).isEmpty()) {
+                entity.remove();
+            }
+        }
+    }
+
     /** 5x5 white-quartz showroom floor, sea-lantern corners; only fills non-solid blocks. */
     private static void buildPlatform(Location anchor) {
         fill(anchor, Material.SMOOTH_QUARTZ, Material.SEA_LANTERN);
@@ -282,9 +214,6 @@ public final class DealerStationManager {
                 Block block = anchor.clone().add(dx, 0, dz).getBlock();
                 boolean isCorner = Math.abs(dx) == 2 && Math.abs(dz) == 2;
                 Material wanted = isCorner ? corner : floor;
-                if (wanted == null) {
-                    continue;
-                }
                 if (wanted.isAir()) {
                     Material current = block.getType();
                     if (current == Material.SMOOTH_QUARTZ || current == Material.SEA_LANTERN) {
@@ -302,7 +231,8 @@ public final class DealerStationManager {
         List<String> list = new ArrayList<>();
         for (Station station : stations) {
             Location a = station.anchor();
-            list.add(a.getWorld().getName() + "," + a.getBlockX() + "," + a.getBlockY() + "," + a.getBlockZ());
+            list.add(a.getWorld().getName() + "," + a.getBlockX() + "," + a.getBlockY() + ","
+                    + a.getBlockZ() + "," + station.specId());
         }
         data.set("stations", list);
         try {
@@ -327,18 +257,19 @@ public final class DealerStationManager {
             if (world == null) {
                 continue;
             }
+            String specId = parts.length >= 5 ? parts[4] : "sports_car";
             try {
                 Location anchor = new Location(world, Integer.parseInt(parts[1].trim()),
                         Integer.parseInt(parts[2].trim()), Integer.parseInt(parts[3].trim()));
                 boolean duplicate = false;
                 for (Station existing : stations) {
                     if (existing.anchor().distanceSquared(anchor) < 2.25D) {
-                        duplicate = true; // collapse stacked same-spot podiums from the double-place bug
+                        duplicate = true;
                         break;
                     }
                 }
                 if (!duplicate) {
-                    stations.add(new Station(anchor, 0, null, null));
+                    stations.add(new Station(anchor, specId, null, null));
                 }
             } catch (NumberFormatException ignored) {
                 // Corrupt line: skip it, keep loading the rest.

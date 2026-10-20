@@ -137,6 +137,11 @@ public final class LandVehicle {
 
     public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
         age++;
+        // Showcase podium car: a pure static display. Run the first ticks so parts settle,
+        // then skip ALL physics/render work - a showroom on a weak host costs ~nothing.
+        if (showcase && age > 10) {
+            return;
+        }
         boolean openablesChanged = rig.tickOpenables(location);
         updateSeatGauge();
         rig.tickSeats(location.getYaw());

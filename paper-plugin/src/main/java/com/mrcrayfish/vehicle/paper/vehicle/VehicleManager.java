@@ -54,12 +54,35 @@ public final class VehicleManager {
     }
 
     public void start() {
+        plugin.getServer().getScheduler().runTaskLater(plugin, this::cleanupOrphanRigEntities, 40L);
         cleanupOrphanedEntities();
         load();
         trailers.start();
         tickTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
         long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
         saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
+    }
+
+    /** Boot cleanup: rig entity corpses from crashy/ungraceful restarts (tagged mcv_plugin_vehicle
+     *  but unknown to this boot's entity index). They never came back from a save, so they
+     *  only cost the server. */
+    public int cleanupOrphanRigEntities() {
+        int removed = 0;
+        for (org.bukkit.World world : plugin.getServer().getWorlds()) {
+            for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                if (!entity.getScoreboardTags().contains(com.mrcrayfish.vehicle.paper.render.LandVehicleRig.ENTITY_TAG)) {
+                    continue;
+                }
+                if (byEntity(entity).isEmpty()) {
+                    entity.remove();
+                    removed++;
+                }
+            }
+        }
+        if (removed > 0) {
+            plugin.getLogger().info("[Curatenie] " + removed + " entitati-rig orfane sterse la pornire.");
+        }
+        return removed;
     }
 
     public void stop() {
