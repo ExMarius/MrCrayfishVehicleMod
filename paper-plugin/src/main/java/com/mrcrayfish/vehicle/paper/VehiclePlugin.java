@@ -48,42 +48,96 @@ public final class VehiclePlugin extends JavaPlugin {
         }
         getLogger().warning("[Wipe] config.yml P\u0102STRAT (preturi si setari neatinse).");
 
-        // Curatenie entitati: ORICE ramasita cu tag mcv_* din lumile incarcate dispare -
-        // riguri de vehicule orfane, vechile terminale de garaj/fise, holograme de podium,
-        // ItemDisplay-uri si hitbox-uri Interaction blocate in chunk-uri din rundele trecute.
-        int entities = 0;
+        // Sweep instant la boot (toate mcv_* + holograme legacy, chiar si pompele - ele
+        // se refac singure din gaspumps.yml imediat dupa, deci raman consistente).
+        int entities = sweepResiduals(true);
+        getLogger().warning("[Wipe] " + count + " fisiere de date sterse + " + entities
+                + " entitati mcv_* eliminate din lumile incarcate.");
+        // Modul PURGE (10 minute): resturile din chunk-urile NEINCARCATE la boot reapar
+        // abia cand cineva trece prin ele - de aceea sweep-ul continua la fiecare chunk
+        // proaspat incarcat si periodic pe toate cele incarcate. Harta devine virgina
+        // garantat, oriunde te plimbi in primele 10 minute dupa restart.
+        startPurge(600);
+        return true;
+    }
+
+    /** O entitate reziduala = are tag mcv_* (opt. fara pompe, care-si revin din date)
+     *  sau e o holograma LEGACY fara tag recunoscuta dupa semnaturile noastre de text. */
+    private static boolean isResidual(org.bukkit.entity.Entity entity, boolean includePumps) {
+        for (String tag : entity.getScoreboardTags()) {
+            if (tag.startsWith("mcv_gaspump") && !includePumps) {
+                continue;
+            }
+            if (tag.startsWith("mcv_")) {
+                return true;
+            }
+        }
+        if (entity instanceof org.bukkit.entity.TextDisplay display) {
+            String text = net.kyori.adventure.text.serializer.plain
+                    .PlainTextComponentSerializer.plainText().serialize(display.text());
+            return text.contains("CUMPERI") || text.contains("G A R A J")
+                    || text.contains("GARAJ PRIVAT") || text.contains("condu aici");
+        }
+        return false;
+    }
+
+    /** Sterge toate entitatile reziduale din toate chunk-urile incarcate; intoarce cate. */
+    private int sweepResiduals(boolean includePumps) {
+        int removed = 0;
         try {
             for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
                 for (org.bukkit.entity.Entity entity : world.getEntities()) {
-                    boolean tagged = false;
-                    for (String tag : entity.getScoreboardTags()) {
-                        if (tag.startsWith("mcv_")) {
-                            tagged = true;
-                            break;
-                        }
-                    }
-                    // Holograme LEGACY fara tag (rundele vechi de test): le recunoastem dupa
-                    // semnaturile de text din podiumuri/garaje - zero daune colaterale.
-                    if (!tagged && entity instanceof org.bukkit.entity.TextDisplay display) {
-                        String text = net.kyori.adventure.text.serializer.plain
-                                .PlainTextComponentSerializer.plainText().serialize(display.text());
-                        if (text.contains("CUMPERI") || text.contains("G A R A J")
-                                || text.contains("GARAJ PRIVAT") || text.contains("condu aici")) {
-                            tagged = true;
-                        }
-                    }
-                    if (tagged) {
+                    if (isResidual(entity, includePumps)) {
                         entity.remove();
-                        entities++;
+                        removed++;
                     }
                 }
             }
         } catch (Throwable sweepFailure) {
             getLogger().severe("[Wipe] Sweep-ul de entitati a dat eroare: " + sweepFailure);
         }
-        getLogger().warning("[Wipe] " + count + " fisiere de date sterse + " + entities
-                + " entitati mcv_* eliminate din lumile incarcate. Server curat, de la 0.");
-        return true;
+        return removed;
+    }
+
+    private int purgeTicksLeft;
+    private org.bukkit.scheduler.BukkitTask purgeTask;
+    private final org.bukkit.event.Listener purgeListener = new org.bukkit.event.Listener() {
+        @org.bukkit.event.EventHandler
+        public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent event) {
+            if (purgeTicksLeft <= 0) {
+                return;
+            }
+            int removed = 0;
+            for (org.bukkit.entity.Entity entity : event.getChunk().getEntities()) {
+                if (isResidual(entity, false)) {
+                    entity.remove();
+                    removed++;
+                }
+            }
+            if (removed > 0) {
+                getLogger().info("[Purge] chunk " + event.getChunk().getX() + ","
+                        + event.getChunk().getZ() + ": " + removed + " reziduuri mcv_* sterse.");
+            }
+        }
+    };
+
+    private void startPurge(int ticks) {
+        purgeTicksLeft = ticks;
+        getServer().getPluginManager().registerEvents(purgeListener, this);
+        purgeTask = getServer().getScheduler().runTaskTimer(this, () -> {
+            purgeTicksLeft -= 1200;
+            int removed = sweepResiduals(false);
+            if (removed > 0) {
+                getLogger().info("[Purge] sweep periodic: " + removed + " reziduuri mcv_* sterse.");
+            }
+            if (purgeTicksLeft <= 0) {
+                purgeTask.cancel();
+                org.bukkit.event.HandlerList.unregisterAll(purgeListener);
+                getLogger().info("[Purge] terminat - harta e curata. (Pompele au ramas intacte.)");
+            }
+        }, 1200L, 1200L);
+        getLogger().warning("[Purge] ACTIV 10 minute: resturile se sterg la fiecare chunk "
+                + "incarcat + sweep pe minut. Plimba-te prin zona cu resturi -> dispar.");
     }
 
     public boolean wasDataWipedThisBoot() {
