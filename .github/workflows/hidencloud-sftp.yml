@@ -113,6 +113,17 @@ jobs:
           echo "fisiere pregatite:"
           find stage -type f | sort
 
+      # One-shot total reset: only when the commit message carries [wipe] we stage a
+      # WIPE_ON_BOOT marker into the plugin data folder. The plugin itself deletes the
+      # marker and then all its data on the next boot (see VehiclePlugin.wipeDataIfRequested),
+      # so the wipe can never loop and deploys without [wipe] never touch data.
+      - name: Pregatesc markerul de reset total ([wipe] in mesajul de commit)
+        if: contains(github.event.head_commit.message, '[wipe]')
+        run: |
+          mkdir -p stage/plugins/MrCrayfishVehiclePlugin
+          echo "wipe-requested-$(date +%s)" > stage/plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT
+          echo "::warning title=HC-WIPE::marker WIPE_ON_BOOT pregatit — pluginul isi sterge TOATE datele la boot"
+
       - name: Urc totul prin SFTP (cheie SSH, fara expirare)
         run: |
           chmod 600 hidencloud/keys/arena_hc_ed25519
@@ -173,6 +184,10 @@ jobs:
             '-rm plugins/worldedit-bukkit.jar' \
             '-rm plugins/MrCrayfishVehiclePlugin-*-SNAPSHOT.jar' \
             >> batch_up.txt
+          if [ -f stage/plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT ]; then
+            printf 'put stage/plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT\n' >> batch_up.txt
+            echo "::warning title=HC-WIPE::markerul WIPE_ON_BOOT inclus in upload"
+          fi
           try_sftp $MODE batch_up.txt
           echo "::notice title=HC-UPLOAD::plugin masini + stack + configuri urcate prin SSH ($MODE)"
 

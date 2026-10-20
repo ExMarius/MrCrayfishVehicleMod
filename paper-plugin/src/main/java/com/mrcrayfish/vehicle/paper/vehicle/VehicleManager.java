@@ -65,22 +65,39 @@ public final class VehicleManager {
 
     /** Boot cleanup: rig entity corpses from crashy/ungraceful restarts (tagged mcv_plugin_vehicle
      *  but unknown to this boot's entity index). They never came back from a save, so they
-     *  only cost the server. */
+     *  only cost the server. After an explicit data wipe (WIPE_ON_BOOT) we purge EVERY
+     *  mcv_-tagged entity instead — vehicles, pumps, garage/dealer rigs — so the world is
+     *  truly back to zero alongside the deleted storage. */
     public int cleanupOrphanRigEntities() {
+        boolean wiped = plugin.wasDataWipedThisBoot();
         int removed = 0;
         for (org.bukkit.World world : plugin.getServer().getWorlds()) {
             for (org.bukkit.entity.Entity entity : world.getEntities()) {
-                if (!entity.getScoreboardTags().contains(com.mrcrayfish.vehicle.paper.render.LandVehicleRig.ENTITY_TAG)) {
+                boolean ours;
+                if (wiped) {
+                    ours = false;
+                    for (String tag : entity.getScoreboardTags()) {
+                        if (tag.startsWith("mcv_")) {
+                            ours = true;
+                            break;
+                        }
+                    }
+                } else {
+                    ours = entity.getScoreboardTags().contains(com.mrcrayfish.vehicle.paper.render.LandVehicleRig.ENTITY_TAG);
+                }
+                if (!ours) {
                     continue;
                 }
-                if (byEntity(entity).isEmpty()) {
+                if (wiped || byEntity(entity).isEmpty()) {
                     entity.remove();
                     removed++;
                 }
             }
         }
         if (removed > 0) {
-            plugin.getLogger().info("[Curatenie] " + removed + " entitati-rig orfane sterse la pornire.");
+            plugin.getLogger().info(wiped
+                    ? "[Curatenie] WIPE: " + removed + " entitati mcv_* sterse din lume (reset total)."
+                    : "[Curatenie] " + removed + " entitati-rig orfane sterse la pornire.");
         }
         return removed;
     }

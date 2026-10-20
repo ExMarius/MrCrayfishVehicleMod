@@ -18,9 +18,58 @@ public final class VehiclePlugin extends JavaPlugin {
     private GasPumpManager gasPumpManager;
     private com.mrcrayfish.vehicle.paper.garage.GarageStationManager garageStationManager;
     private RestartWatcher restartWatcher;
+    private boolean dataWipedThisBoot;
+
+    /** Explicit total reset: the deploy can upload a WIPE_ON_BOOT marker into the data
+     *  folder (only from a commit tagged [wipe]). On the next boot we delete the marker
+     *  FIRST (so a crash can never loop the wipe), then the entire data folder — yml
+     *  storage, configs, everything — and start from zero. The boot entity sweep checks
+     *  wasDataWipedThisBoot() and purges every mcv_-tagged entity left in the world. */
+    private boolean wipeDataIfRequested() {
+        java.io.File dir = getDataFolder();
+        java.io.File marker = new java.io.File(dir, "WIPE_ON_BOOT");
+        if (!marker.isFile()) {
+            return false;
+        }
+        getLogger().warning("[Wipe] WIPE_ON_BOOT gasit — sterg TOATE datele pluginului, totul de la 0.");
+        if (!marker.delete()) {
+            getLogger().severe("[Wipe] Markerul nu s-a sters; ANULEZ wipe-ul ca sa nu ruleze la fiecare boot!");
+            return false;
+        }
+        java.io.File[] entries = dir.listFiles();
+        int count = 0;
+        if (entries != null) {
+            for (java.io.File entry : entries) {
+                count += deleteRecursively(entry);
+            }
+        }
+        getLogger().warning("[Wipe] " + count + " fisiere/foldere sterse din " + dir.getName() + ".");
+        return true;
+    }
+
+    private int deleteRecursively(java.io.File file) {
+        int removed = 0;
+        if (file.isDirectory()) {
+            java.io.File[] children = file.listFiles();
+            if (children != null) {
+                for (java.io.File child : children) {
+                    removed += deleteRecursively(child);
+                }
+            }
+        }
+        if (file.delete()) {
+            removed++;
+        }
+        return removed;
+    }
+
+    public boolean wasDataWipedThisBoot() {
+        return dataWipedThisBoot;
+    }
 
     @Override
     public void onEnable() {
+        dataWipedThisBoot = wipeDataIfRequested();
         saveDefaultConfig();
 
         vehicleManager = new VehicleManager(this);
