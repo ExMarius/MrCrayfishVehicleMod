@@ -196,6 +196,7 @@ public final class DealerStationManager {
                 // Older Paper without setBackgroundColor: default plate is fine.
             }
             sign.setPersistent(true);
+            sign.addScoreboardTag("mcv_podium_hologram");
         }).getUniqueId();
     }
 

@@ -55,12 +55,26 @@ public final class VehiclePlugin extends JavaPlugin {
         try {
             for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
                 for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                    boolean tagged = false;
                     for (String tag : entity.getScoreboardTags()) {
                         if (tag.startsWith("mcv_")) {
-                            entity.remove();
-                            entities++;
+                            tagged = true;
                             break;
                         }
+                    }
+                    // Holograme LEGACY fara tag (rundele vechi de test): le recunoastem dupa
+                    // semnaturile de text din podiumuri/garaje - zero daune colaterale.
+                    if (!tagged && entity instanceof org.bukkit.entity.TextDisplay display) {
+                        String text = net.kyori.adventure.text.serializer.plain
+                                .PlainTextComponentSerializer.plainText().serialize(display.text());
+                        if (text.contains("CUMPERI") || text.contains("G A R A J")
+                                || text.contains("GARAJ PRIVAT") || text.contains("condu aici")) {
+                            tagged = true;
+                        }
+                    }
+                    if (tagged) {
+                        entity.remove();
+                        entities++;
                     }
                 }
             }

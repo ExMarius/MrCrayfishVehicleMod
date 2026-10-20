@@ -61,7 +61,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                     + vehicles.trailers().trailers().size() + " remorci, "
                     + gasPumps.pumps().size() + " pompe de benzină</gray>");
             case "save" -> {
-                if (!sender.hasPermission("vehicle.admin")) {
+                if (!(sender instanceof Player pl && pl.isOp()) && !sender.hasPermission("vehicle.admin")) {
                     sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
                     return true;
                 }
@@ -79,7 +79,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             return;
         }
-        if (!sender.hasPermission("vehicle.admin")) {
+        if (!(sender instanceof Player pl && pl.isOp()) && !sender.hasPermission("vehicle.admin")) {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }
@@ -109,7 +109,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             return;
         }
-        if (!sender.hasPermission("vehicle.admin")) {
+        if (!(sender instanceof Player pl && pl.isOp()) && !sender.hasPermission("vehicle.admin")) {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }
@@ -133,7 +133,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             return;
         }
-        if (!sender.hasPermission("vehicle.admin")) {
+        if (!(sender instanceof Player pl && pl.isOp()) && !sender.hasPermission("vehicle.admin")) {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }

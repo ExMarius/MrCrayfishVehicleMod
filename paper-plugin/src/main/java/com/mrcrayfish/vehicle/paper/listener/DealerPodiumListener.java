@@ -41,7 +41,7 @@ public final class DealerPodiumListener implements Listener {
         }
         event.setCancelled(true);
         Player player = event.getPlayer();
-        if (!player.hasPermission("vehicle.admin")) {
+        if (!player.isOp() && !player.hasPermission("vehicle.admin")) {
             player.sendRichMessage("<red>Podiumul e doar pentru administratori.</red>");
             return;
         }
@@ -76,7 +76,7 @@ public final class DealerPodiumListener implements Listener {
         // Showroom cars never take damage.
         event.setCancelled(true);
         if (event.getDamager() instanceof Player player && player.isSneaking()
-                && player.hasPermission("vehicle.admin")) {
+                && (player.isOp() || player.hasPermission("vehicle.admin"))) {
             stations.tryRemove(player, vehicle);
         }
     }

@@ -1509,7 +1509,7 @@ public final class LandVehicle {
         // ANTI-FURT PERMANENT (podium): a showroom car can never be mounted by ANYONE,
         // ever - the flag is re-asserted on boot (DealerStationManager.rebuild) and this
         // gate sits below every interaction, so restart or listener order cannot reopen it.
-        if (showcase) {
+        if (showcase && !player.isOp()) {
             player.sendActionBar(net.kyori.adventure.text.Component.text(
                     "\ud83d\ude97 Vehicul de SHOWROOM - nu se conduce; doar se cump\u0103r\u0103 (click drept).",
                     net.kyori.adventure.text.format.NamedTextColor.RED));
