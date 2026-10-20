@@ -38,6 +38,16 @@ final class LandVehicleFuelTest {
     }
 
     @Test
+    void nonFiniteInputsFallBackToPureIdleBurn() {
+        // NaN/Infinity leaking from corrupted motion or third-party plugins must never
+        // reach the tank: Math.min/max propagate NaN, which would brick refueling.
+        assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.NaN, 1.0D), EPSILON);
+        assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, 9.0D, Double.NaN), EPSILON);
+        assertEquals(1.0D, LandVehicle.fuelLoad(TUNING, Double.POSITIVE_INFINITY, 1.0D), EPSILON);
+        assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.NEGATIVE_INFINITY, 0.0D), EPSILON);
+    }
+
+    @Test
     void loadIsClampedToTheValidRange() {
         assertEquals(1.0D, LandVehicle.fuelLoad(TUNING, 1000.0D, 1.0D), EPSILON);
         assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, -5.0D, -1.0D), EPSILON);

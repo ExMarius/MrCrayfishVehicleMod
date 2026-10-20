@@ -160,6 +160,19 @@ public final class VehicleManager {
         if (claiming) {
             vehicle.setOwner(player.getUniqueId());
         }
+        if (corruptLocation(vehicle.location())) {
+            player.sendRichMessage("<red>Vehiculul are coordonate corupte si nu poate fi parcat; a fost eliminat.</red>");
+            unindex(vehicle);
+            releaseChunkTicket(vehicle);
+            trailers.onVehicleRemoved(vehicle.id());
+            vehicles.remove(vehicle.id());
+            pendingWorlds.remove(vehicle.id());
+            vehicle.remove();
+            save();
+            plugin.getLogger().severe("[Protectie] Vehicul " + vehicle.id()
+                    + " eliminat la park: coordonate NaN/Inf, nu a intrat in garaj.");
+            return ParkResult.NOT_OWNER;
+        }
         StoredVehicle stored = StoredVehicle.from(vehicle);
         unindex(vehicle);
         releaseChunkTicket(vehicle);
@@ -604,6 +617,12 @@ public final class VehicleManager {
     }
 
     private void restore(StoredVehicle stored, LandVehicleSpec spec, World world) {
+        if (!Double.isFinite(stored.x()) || !Double.isFinite(stored.y()) || !Double.isFinite(stored.z())
+                || !Float.isFinite(stored.fuel())) {
+            plugin.getLogger().severe("[Protectie] Vehicul salvat " + stored.id()
+                    + " avea date corupte (NaN/Inf) - ignorat la restore.");
+            return;
+        }
         Location location = new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F);
         LandVehicle vehicle = spawn(stored.id(), spec, location);
         vehicle.refreshGroundState();
@@ -801,12 +820,28 @@ public final class VehicleManager {
         return hibernated;
     }
 
+    /** A vehicle with NaN/Infinity coordinates is unrecoverable AND would poison
+     * vehicles.yml if serialized. Persisting is skipped (drop, severe log) while the
+     * world entity is still removed, so a corrupted vehicle can never crash a boot. */
+    private static boolean corruptLocation(org.bukkit.Location location) {
+        return location == null
+                || !Double.isFinite(location.getX())
+                || !Double.isFinite(location.getY())
+                || !Double.isFinite(location.getZ());
+    }
+
     private void hibernate(LandVehicle vehicle) {
         if (vehicles.remove(vehicle.id()) == null) {
             return;
         }
         try {
-            pendingWorlds.put(vehicle.id(), StoredVehicle.from(vehicle));
+            if (corruptLocation(vehicle.location())) {
+                pendingWorlds.remove(vehicle.id());
+                plugin.getLogger().severe("[Protectie] Vehicul " + vehicle.id()
+                        + " avea coordonate corupte (NaN/Inf) - sters, nu salvat.");
+            } else {
+                pendingWorlds.put(vehicle.id(), StoredVehicle.from(vehicle));
+            }
         } finally {
             unindex(vehicle);
             releaseChunkTicket(vehicle);

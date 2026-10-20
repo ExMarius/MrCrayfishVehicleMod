@@ -177,6 +177,8 @@ public final class LandVehicle {
             tickHelicopter(tuning, openablesChanged);
             return;
         }
+        sanitizeMotion();
+
         Player driver = driver().orElse(null);
 
         /* LandVehicleEntity#onClientUpdate runs before onUpdateVehicle. */
@@ -215,6 +217,9 @@ public final class LandVehicle {
                         (float) (spec.maxSteeringAngle() * steeringMultiplier))
                 : steeringAngle;
         renderWheelAngle += (targetRenderAngle - renderWheelAngle) * 0.3F;
+        if (!stationaryWithIdleInput(driver)) {
+            updateWheelPositions();
+        }
         updateVehicleMotion(globalSpeedLimit, enginePowered);
 
         verticalVelocity -= 0.08D;
@@ -224,8 +229,11 @@ public final class LandVehicle {
             return;
         }
 
-        /* The original updates wheel contact positions after yaw, but before Entity#move. */
-        updateWheelPositions();
+        /* The original updates wheel contact positions after yaw, but before Entity#move.
+         * Same stationary gate: contact positions cannot change on an unmoved car. */
+        if (!stationaryWithIdleInput(driver)) {
+            updateWheelPositions();
+        }
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
                 spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
@@ -311,6 +319,7 @@ public final class LandVehicle {
      */
     private void tickWater(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
                            boolean openablesChanged) {
+        sanitizeMotion();
         double globalSpeedLimit = tuning.globalSpeedLimit();
         Player driver = driver().orElse(null);
         WaterStatus status = waterStatus();
@@ -898,7 +907,17 @@ public final class LandVehicle {
             chargingAmount = 0.0F;
         }
 
-        SurfaceProfile surface = surfaceProfile();
+        Player idleDriver = driver().orElse(null);
+        boolean stationary = stationaryWithIdleInput(idleDriver);
+        SurfaceProfile surface = stationary ? null : surfaceProfile();
+        if (!stationary && surface != null) {
+            lastSurfaceFriction = surface.friction();
+        }
+        float surfaceFriction = stationary ? (float) lastSurfaceFriction : surface.friction();
+        float surfaceTractionFactor = stationary ? (float) lastSurfaceTractionFactor : surface.tractionFactor();
+        if (!stationary && surface != null) {
+            lastSurfaceTractionFactor = surface.tractionFactor();
+        }
         float enginePower = onGround ? spec.enginePower() : 0.0F;
         float brakePower = onGround ? BRAKE_POWER : 0.0F;
 
@@ -916,7 +935,7 @@ public final class LandVehicle {
             velocity.zero();
         }
         Vector handbrakeForce = velocity.clone().multiply((handbraking ? brakePower : 0.0F) * 0.05D);
-        Vector frictionForce = velocity.clone().multiply(-surface.friction() * 0.05D);
+        Vector frictionForce = velocity.clone().multiply(-surfaceFriction * 0.05D);
         Vector dragForce = velocity.clone().multiply(velocity.length()).multiply(-DRAG * 0.05D);
         acceleration.add(dragForce).add(frictionForce).add(handbrakeForce);
         velocity.add(acceleration);
@@ -949,7 +968,7 @@ public final class LandVehicle {
         Vector nextPosition = worldRearWheel.clone().add(heading.clone().multiply(-spec.rearAxleOffset()));
         motion.add(nextPosition.subtract(position));
 
-        float surfaceTraction = surface.tractionFactor() * traction;
+        float surfaceTraction = surfaceTractionFactor * traction;
         if (heading.dot(normalized(velocity)) > 0.0D) {
             velocity = lerp(velocity, heading.clone().multiply(velocity.length()), surfaceTraction);
         } else {
@@ -1051,6 +1070,23 @@ public final class LandVehicle {
         return 1.0F - (1.0F - progress) * (1.0F - progress);
     }
 
+    /** Corrupted-vector shield: teleports into absence, collision glitches or other
+     * plugins can poison motion/velocity with NaN or Infinity. Java lets those values
+     * propagate silently into the stored location (bricking the vehicle AND writing
+     * NaN into vehicles.yml). Zeroing any non-finite component once per tick keeps
+     * the whole pipeline finite. Called from every live physics branch. */
+    private void sanitizeMotion() {
+        if (!Double.isFinite(motion.getX()) || !Double.isFinite(motion.getY()) || !Double.isFinite(motion.getZ())) {
+            motion = new Vector();
+        }
+        if (!Double.isFinite(velocity.getX()) || !Double.isFinite(velocity.getY()) || !Double.isFinite(velocity.getZ())) {
+            velocity = new Vector();
+        }
+        if (!Double.isFinite(verticalVelocity)) {
+            verticalVelocity = 0.0D;
+        }
+    }
+
     /** Dynamic fuel load. Engine on but standing still (speed ~0, no throttle):
      * idleRatio (default 10%). Moving under power: idle + speedWeight*speedRatio +
      * accelWeight*throttleRatio, saturating at exactly 1.0 at full-burn speed with
@@ -1058,6 +1094,16 @@ public final class LandVehicle {
      * this method, so consumption is strictly 0. */
     static double fuelLoad(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
                            double speedBlocksPerSec, double throttleRatio) {
+        /* Production hardening: NaN/Infinity can leak in through teleports, collision
+         * bugs or other plugins corrupting the motion vector. Java's Math.min/max
+         * PROPAGATE NaN, which would write NaN into the tank and brick refueling
+         * forever. Any non-finite input is treated as "no effort" (idle burn). */
+        if (!Double.isFinite(speedBlocksPerSec)) {
+            speedBlocksPerSec = 0.0D;
+        }
+        if (!Double.isFinite(throttleRatio)) {
+            throttleRatio = 0.0D;
+        }
         double speedRatio = Math.min(1.0D, Math.max(0.0D,
                 speedBlocksPerSec / tuning.fuelFullBurnSpeed()));
         double throttle = Math.min(1.0D, Math.max(0.0D, throttleRatio));
@@ -1081,8 +1127,22 @@ public final class LandVehicle {
                 0.0F, spec.bodyRoll(steeringAngle, horizontalSpeed()), engineRunning, age);
     }
 
+    private double lastSurfaceFriction = 1.0D;
+    private double lastSurfaceTractionFactor = LandVehicleSpec.STANDARD_TRACTION;
+
     private double horizontalSpeed() {
         return Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
+    }
+
+    /** True when the vehicle stands still on the ground with no drive demand this
+     * tick: no throttle, no handbrake, no charging, horizontal speed ~0. In this
+     * state the friction value cannot influence anything (motion is already zero),
+     * so the ground-block raycasts behind updateWheelPositions()/surfaceProfile()
+     * are skipped and the last measured friction is reused instead. */
+    private boolean stationaryWithIdleInput(Player driver) {
+        return driver != null && onGround && !charging && !handbraking
+                && Math.abs(clamp(throttle, -1.0F, 1.0F)) < 1.0E-4F
+                && horizontalSpeed() < 1.0E-4D;
     }
 
     private boolean isSliding(Vector forward) {
@@ -1582,6 +1642,9 @@ public final class LandVehicle {
     }
 
     public void setFuel(float fuel) {
+        if (!Float.isFinite(fuel)) {
+            fuel = 0.0F;
+        }
         this.fuel = clamp(fuel, 0.0F, spec.energyCapacity());
         updateSeatGauge();
     }

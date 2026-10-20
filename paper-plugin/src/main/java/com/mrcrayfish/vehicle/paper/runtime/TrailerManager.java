@@ -133,6 +133,16 @@ public final class TrailerManager {
                 if (!trailer.isInLoadedChunk()) {
                     continue; // parked in an unloaded chunk: zero physics cost
                 }
+                if (!trailer.rig().valid()) {
+                    // Rig entities died with a chunk unload (non-persistent). Rebuild
+                    // in place so the trailer reappears instead of haunting the map.
+                    trailer.rebuildRig();
+                    // Immediate re-index: clicks/tow logic must not wait for the
+                    // periodic 20-tick reverse-index rebuild to see the new entities.
+                    for (Entity entity : trailer.rig().entities()) {
+                        entities.put(entity.getUniqueId(), trailer);
+                    }
+                }
                 trailer.tick();
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Trailer tick failed for " + trailer.id(), exception);
