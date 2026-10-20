@@ -256,7 +256,14 @@ public final class VehicleListener implements Listener {
                     + "<gold>/vehicle garaj</gold>. La iesire de pe server intra singure inapoi.</gray>");
         }
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (event.getPlayer().isOnline() && !ResourcePackSender.suppliedByServer(plugin)) {
+            // Default OFF: the login-time pack from server.properties is synced on
+            // every deploy, and an in-world resource reload is fragile (on weak
+            // clients it fails with the world renderer live and vanilla discards
+            // the whole pack, leaving magenta/black models). /vehicle pack resends
+            // manually with the same dedupe UUID when an admin really needs it.
+            boolean resendOnJoin = plugin.getConfig().getBoolean("resource-pack.resend-on-join", false);
+            if (resendOnJoin && event.getPlayer().isOnline()
+                    && !ResourcePackSender.suppliedByServer(plugin)) {
                 ResourcePackSender.send(plugin, event.getPlayer());
             }
         }, 20L);

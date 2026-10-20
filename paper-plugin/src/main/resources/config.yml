@@ -5,6 +5,10 @@ resource-pack:
   sha1: "c0138a8e4732f183f2ccc443895bb4d70cd8e139"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
+  # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
+  # pe clienti slabi). Pack-ul vine oricum din server.properties la login.
+  # Foloseste manual /vehicle pack ca admin daca un jucator ramane fara pack.
+  resend-on-join: false
 
 physics:
   global-speed-limit: 100.0
