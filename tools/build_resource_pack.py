@@ -148,7 +148,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r38 — twenty-three vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r39 — twenty-four vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -159,6 +159,7 @@ def build(output: Path) -> tuple[Path, str]:
         for item, (model, tint) in {
             # VehicleEntity's default white dye and the default wheel item tint.
             "go_kart_body": ("vehicle:item/go_kart_body", 16383998),
+            "ai_kart_body": ("vehicle:item/ai_kart_body", 16383998),
             "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
             "quad_bike_body": ("vehicle:item/quad_bike_body", 16383998),
             "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),
@@ -250,6 +251,11 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/go_kart/base.json",
             namespace / "models/item/go_kart_body.json",
             {"2": "vehicle:item/go_kart_body", "particle": "vehicle:item/go_kart_body"},
+        )
+        convert_model(
+            ASSETS / "models/vehicle/ai_kart/base.json",
+            namespace / "models/item/ai_kart_body.json",
+            {"2": "vehicle:item/ai_kart_body", "particle": "vehicle:item/ai_kart_body"},
         )
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
@@ -784,6 +790,10 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "textures/item/go_kart_body.png",
         )
         copy(
+            ASSETS / "textures/vehicle/ai_kart/base.png",
+            namespace / "textures/item/ai_kart_body.png",
+        )
+        copy(
             ASSETS / "textures/vehicle/quad_bike/base.png",
             namespace / "textures/item/quad_bike_body.png",
         )
@@ -1290,7 +1300,7 @@ def emit_vehicle_icons(namespace: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip")
     args = parser.parse_args()
     output, sha1 = build(args.output.resolve())
     print(f"Resource pack: {output}")

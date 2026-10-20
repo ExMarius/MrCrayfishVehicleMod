@@ -81,6 +81,37 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* Original AI-authored test vehicle (agent-generated model & texture, 2026-10-21):
+     * a compact racing kart with side pods, a rear wing and a left-mounted engine.
+     * All geometry, artwork and tuning values are original work. */
+    public static final LandVehicleSpec AI_KART = new LandVehicleSpec(
+            "ai_kart", "AI Kart", "ai_kart_body",
+            1.5F, 0.6F, 1.05F,
+            1.0F, -1.0F, 3.2F,
+            20.0F, 24.0F, 9.0F * MODEL_UNIT, -10.0F * MODEL_UNIT, 5.5F,
+            13_000.0F, 0.45F, 0.9F, 2.1F, "vehicle:entity.go_kart.engine",
+            true, new Point(-0.25F, 8.0F * MODEL_UNIT, -1.05F),
+            new Part("iron_small_engine", new Point(-0.3F, 0.6F, -9.7F * MODEL_UNIT),
+                    0.8F, 0.0F, 180.0F, 0.0F),
+            new Part("go_kart_steering_wheel",
+                    new Point(0.0F, 0.5F + (-1.0F + 3.2F) * MODEL_UNIT + 0.6814F * MODEL_UNIT,
+                            3.5F * MODEL_UNIT),
+                    0.9F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -3.4F, 3.2F, -4.5F,
+                    1.0F, 0.0F, -90.0F, 0.0F, 1.0F, -1.0F, 3.2F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 6.9F, 0.0F, 8.5F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
+                    wheel(1, true, 6.9F, 0.0F, 8.5F, 1.0F, 0.8F, 0.8F, 1.0F, -1.0F, 3.2F),
+                    wheel(-1, false, 7.4F, 0.3F, -9.6F, 1.0F, 0.9F, 0.9F, 1.0F, -1.0F, 3.2F),
+                    wheel(1, false, 7.4F, 0.3F, -9.6F, 1.0F, 0.9F, 0.9F, 1.0F, -1.0F, 3.2F)
+            ),
+            List.of(seat(true, 0.0F, -2.5F, -3.0F, 1.0F, -1.0F, 3.2F)),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, -0.031F, -0.375F),
+            null, null, List.of(), false
+    );
+
     /* wheelOffset = (8 * 0.97 / 2) - 0.8 = 3.08; auto-scaled front wheels become 0.77. */
     public static final LandVehicleSpec LAWN_MOWER = new LandVehicleSpec(
             "lawn_mower", "Lawn Mower", "lawn_mower_body",
@@ -893,6 +924,7 @@ public record LandVehicleSpec(
 
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
+            Map.entry(AI_KART.id, AI_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
             Map.entry(QUAD_BIKE.id, QUAD_BIKE),
             Map.entry(DUNE_BUGGY.id, DUNE_BUGGY),

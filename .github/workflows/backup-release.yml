@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f -print -quit)
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
           test -s "$JAR"
           unzip -t "$PACK"
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
@@ -59,7 +59,7 @@ jobs:
           mkdir release
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
           cp "$JAR" "release/MrCrayfishVehiclePlugin-backup.jar"
-          cp "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip" release/
+          cp "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip" release/
           (cd release && sha256sum * > SHA256SUMS.txt)
 
       - name: Publish immutable backup release
@@ -73,7 +73,7 @@ jobs:
             echo "Release $TAG already exists; refusing to overwrite the immutable backup."
             exit 1
           fi
-          NOTES=$(printf 'Checkpoint complet si stabil (pre-vehicule proprii).\n\nInclude:\n- plugin JAR: garaj global fizic r=2 (/garaj hibrid), scoatere gratuita acasa / cu taxa la public (Vault), podiumuri statice anti-furt permanent (showcase + OP bypass), livrare in garaj la cumparare, salvare asincrona vehicles.yml + garages.yml, [wipe] + mod PURGE;\n- resource pack obligatoriu (modele, texturi, sunete) r38;\n- SHA256SUMS pentru ambele artefacte.\n\nClient vanilla + pack-ul = tot ce trebuie. Rollback instant: checkout acest tag + redeploy.\n')
+          NOTES=$(printf 'Checkpoint complet si stabil (pre-vehicule proprii).\n\nInclude:\n- plugin JAR: garaj global fizic r=2 (/garaj hibrid), scoatere gratuita acasa / cu taxa la public (Vault), podiumuri statice anti-furt permanent (showcase + OP bypass), livrare in garaj la cumparare, salvare asincrona vehicles.yml + garages.yml, [wipe] + mod PURGE;\n- resource pack obligatoriu (modele, texturi, sunete) r39;\n- SHA256SUMS pentru ambele artefacte.\n\nClient vanilla + pack-ul = tot ce trebuie. Rollback instant: checkout acest tag + redeploy.\n')
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
             --title "Backup complet ${TAG#backup-release-} - Garaj Global + Podium + Wipe" \
