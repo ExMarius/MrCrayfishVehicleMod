@@ -75,9 +75,9 @@ public final class VehiclePlugin extends JavaPlugin {
         vehicleManager = new VehicleManager(this);
         gasPumpManager = new GasPumpManager(this, vehicleManager);
         garageStationManager = new com.mrcrayfish.vehicle.paper.garage.GarageStationManager(this, vehicleManager);
-        // Impound probe: VehicleManager's quit-auto-park asks the station manager
-        // whether a vehicle stands "at home" (near the owner's PRIVATE station).
-        vehicleManager.setHomeStationProbe(garageStationManager::isVehicleAtHome);
+        // Parking probe: quit + dismount ask whether a vehicle stands inside a LEGAL
+        // circle (any public spot, or the owner's personal one) - else it is impounded.
+        vehicleManager.setHomeStationProbe(garageStationManager::isLegallyParked);
 
         // #1 FiveM: dealer shop. Vault probe FIRST - Vault classes load only when present.
         if (getServer().getPluginManager().getPlugin("Vault") != null) {
@@ -106,8 +106,6 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
-        getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageListener(this, vehicleManager), this);
-        getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.GarageStationListener(garageStationManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.ShopListener(shop), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.DealerPodiumListener(dealerStations, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.VehicleChunkListener(vehicleManager), this);

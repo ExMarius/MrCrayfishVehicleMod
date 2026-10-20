@@ -216,18 +216,23 @@ public final class VehicleManager {
         }
     }
 
+    /**
+     * Physical-parking quit flow (FiveM): a vehicle of the leaving owner that stands
+     * inside a LEGAL circle (public spot or his personal one) stays parked on the asphalt,
+     * for free, and rests at zero cost. A vehicle abandoned anywhere else is despawned
+     * instantly and stored with the SECHESTRU flag - recovery costs the config fee and
+     * is only possible from a public parking spot ({@code /vehicle impound}).
+     */
     public int parkAllOwnedBy(java.util.UUID playerId) {
-        int count = 0;
-        int impounded = 0;
+        int seized = 0;
         for (LandVehicle vehicle : new java.util.ArrayList<>(vehicles.values())) {
             if (vehicle.showcase() || vehicle.owner().map(playerId::equals).orElse(false) == false) {
                 continue;
             }
-            boolean seized = !homeStationProbe.test(playerId, vehicle.location());
-            StoredVehicle stored = StoredVehicle.from(vehicle).withImpounded(seized);
-            if (seized) {
-                impounded++;
+            if (homeStationProbe.test(playerId, vehicle.location())) {
+                continue; // parcata legal: ramane vizibila pe asfalt, gratuit, intra singura in resting
             }
+            StoredVehicle stored = StoredVehicle.from(vehicle).withImpounded(true);
             unindex(vehicle);
             releaseChunkTicket(vehicle);
             trailers.onVehicleRemoved(vehicle.id());
@@ -235,14 +240,26 @@ public final class VehicleManager {
             pendingWorlds.remove(vehicle.id());
             vehicle.remove();
             garage.put(stored.id(), stored);
-            count++;
+            seized++;
         }
-        if (count > 0) {
+        if (seized > 0) {
             save();
-            plugin.getLogger().info("[Garaj] Quit-auto-park: " + count + " total, "
-                    + impounded + " in SECHESTRU (taxa " + impoundFee() + ").");
+            plugin.getLogger().info("[Sechestru] Quit: " + seized
+                    + " vehicule abandonate confiscate (taxa " + impoundFee() + ").");
         }
-        return count;
+        return seized;
+    }
+
+    /** The player's impounded vehicles (the /vehicle impound chat list). */
+    public java.util.List<GarageEntry> impoundedOf(java.util.UUID playerId) {
+        java.util.List<GarageEntry> own = new java.util.ArrayList<>();
+        for (StoredVehicle stored : garage.values()) {
+            if (stored.impounded() && stored.owner() != null
+                    && stored.owner().equals(playerId.toString())) {
+                own.add(new GarageEntry(stored.id(), stored.type(), stored.fuel(), true));
+            }
+        }
+        return own;
     }
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */

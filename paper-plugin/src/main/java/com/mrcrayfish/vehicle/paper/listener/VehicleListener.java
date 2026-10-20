@@ -282,13 +282,30 @@ public final class VehicleListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
-        // QUIT AUTO-GARAGE: the leaving owner's vehicles park themselves instantly -
-        // zero rigs ticking while they're offline.
-        int parked = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
-        if (parked > 0) {
-            plugin.getLogger().info("[Garaj] " + event.getPlayer().getName() + " a iesit - "
-                    + parked + " vehicule au intrat automat in garaj (zero consum).");
+        // QUIT: inside a legal circle the car stays parked on the asphalt for free;
+        // abandoned on the street it is despawned into SECHESTRU (recoverable at a
+        // public spot for the config fee, via /vehicle impound).
+        int seized = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
+        if (seized > 0) {
+            plugin.getLogger().info("[Sechestru] " + event.getPlayer().getName() + " a iesit - "
+                    + seized + " vehicule abandonate au fost confiscate.");
         }
+    }
+
+    /** Stepping out inside a marked circle = parked: the car stays on the asphalt and
+     *  slips into resting (0 CPU) on the next tick when it settles. Anti-theft remains
+     *  the vehicle's own trust gate (canDrive: owner + trusted only). */
+    @EventHandler
+    public void onVehicleDismount(org.bukkit.event.entity.EntityDismountEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        mountedVehicle(event.getDismounted()).ifPresent(vehicle -> {
+            if (plugin.garageStations().isLegallyParked(player.getUniqueId(), vehicle.location())) {
+                player.sendRichMessage("<green>\ud83c\udfc1 Ai parcat in zona marcata - "
+                        + "masina ramane pe asfalt (0 consum).</green>");
+            }
+        });
     }
 
     @EventHandler
