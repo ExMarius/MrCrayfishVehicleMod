@@ -48,9 +48,13 @@ final class LandVehicleFuelTest {
         assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.NaN, 0.0D), EPSILON);
         // real speed at 50% + NaN throttle = idle + (1-idle)*0.6*0.5 = 0.37
         assertEquals(0.37D, LandVehicle.fuelLoad(TUNING, 9.0D, Double.NaN), EPSILON);
-        // +Inf speed saturates the speed term at 1
-        assertEquals(1.0D, LandVehicle.fuelLoad(TUNING, Double.POSITIVE_INFINITY, 1.0D), EPSILON);
+        // +/-Inf speed is NOT finite either: discarded as garbage, never saturates.
+        // With valid full throttle the accel term still applies: 0.46
+        assertEquals(0.46D, LandVehicle.fuelLoad(TUNING, Double.POSITIVE_INFINITY, 1.0D), EPSILON);
+        assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.POSITIVE_INFINITY, 0.0D), EPSILON);
         assertEquals(0.1D, LandVehicle.fuelLoad(TUNING, Double.NEGATIVE_INFINITY, 0.0D), EPSILON);
+        // sanity: the legitimate saturating case stays exactly 1.0
+        assertEquals(1.0D, LandVehicle.fuelLoad(TUNING, 18.0D, 1.0D), EPSILON);
     }
 
     @Test
