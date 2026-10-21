@@ -22,12 +22,65 @@ def patch(y, x, val, buf, depth):
 
 def render(model, palette_png, view="iso", scale=6, keep=None):
     # palette color per uv rect -> rgb
+    textures = model.get("textures", {})
+    palette_ref = None
+    for v in textures.values():
+        if v and "vehicle:" in v:
+            palette_ref = v
     pal = Image.open(palette_png).convert("RGBA")
     elements = model["elements"]
     used = {}
 
+    MC_COLORS = {
+        "minecraft:block/white_concrete": (207, 213, 214, 255),
+        "minecraft:block/black_concrete": (8, 10, 15, 255),
+        "minecraft:block/gray_concrete": (55, 58, 62, 255),
+        "minecraft:block/light_gray_concrete": (125, 125, 115, 255),
+        "minecraft:block/black_wool": (21, 21, 26, 255),
+        "minecraft:block/glass": (180, 220, 235, 255),
+        "minecraft:block/white_stained_glass": (230, 230, 230, 255),
+        "minecraft:block/red_stained_glass": (160, 30, 35, 255),
+        "minecraft:block/redstone_lamp": (150, 100, 40, 255),
+        "minecraft:block/iron_block": (215, 215, 215, 255),
+        "vehicle:item/off_roader_spring": (70, 74, 80, 255),
+        "vehicle:item/off_roader_logo": (160, 30, 35, 255),
+        "vehicle:item/off_roader_grill": (60, 62, 66, 255),
+    }
+
+    KEY_COLORS = {
+        "body": (207, 213, 214, 255),
+        "trim": (207, 213, 214, 255),
+        "seat": (21, 21, 26, 255),
+        "window_frame": (8, 10, 15, 255),
+        "windshield": (180, 220, 235, 255),
+        "headlight_glass": (230, 230, 230, 255),
+        "headlight": (150, 100, 40, 255),
+        "indicator_light": (230, 130, 10, 255),
+        "brake_light": (160, 30, 35, 255),
+        "bumper": (215, 215, 215, 255),
+        "frame": (55, 58, 62, 255),
+        "axel": (125, 125, 115, 255),
+        "spring": (70, 74, 80, 255),
+        "grill": (60, 62, 66, 255),
+        "logo": (160, 30, 35, 255),
+        "livery": (31, 63, 200, 255),
+        "black": (18, 18, 18, 255),
+        "redbar": (168, 32, 45, 255),
+        "bluebar": (31, 63, 200, 255),
+        "metal": (70, 74, 80, 255),
+        "sirens": (238, 242, 248, 255),
+    }
+
     def color_for(face):
         u0, v0, u1, v1 = face["uv"]
+        keyname = face.get("texture", "").lstrip("#")
+        if keyname in KEY_COLORS:
+            return KEY_COLORS[keyname]
+        tex = textures.get(keyname) or keyname
+        if tex in MC_COLORS:
+            return MC_COLORS[tex]
+        if tex != palette_ref:
+            return (90, 90, 95, 255)
         key = (round(u0, 3), round(v0, 3), round(u1, 3), round(v1, 3))
         if key not in used:
             px = int(((key[0] + key[2]) / 2) / 16 * pal.width)
