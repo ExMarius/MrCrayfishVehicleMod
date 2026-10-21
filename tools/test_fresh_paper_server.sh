@@ -147,7 +147,7 @@ grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip' "$DATA_DIR/confi
   || fail "generated config does not select resource pack r39"
 # Pin tracks the currently verified r39 pack (deterministic rebuild; matches the live
 # server + players). MUST be refreshed whenever pack contents change on purpose.
-grep -Fq '8c5dc9b9834df0a71beaf17378a4374d7831db98' "$DATA_DIR/config.yml" \
+grep -Fq 'be683c0c6627d15bf5e064dc2aecfd9ccd920cd5' "$DATA_DIR/config.yml" \
   || fail "generated config does not contain the verified r39 SHA-1"
 
 run_server_cycle 2
