@@ -49,7 +49,6 @@ public final class LandVehicleRig {
     private final ItemDisplay body;
     private final ItemDisplay engine;
     private final ItemDisplay steering;
-    private final ItemDisplay fuelFiller;
     private final ItemDisplay towBar;
 
     /** A vanilla ItemDisplay draws an item's local +Z axis pointing AWAY from the entity's
@@ -90,7 +89,7 @@ public final class LandVehicleRig {
 
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
                            ItemDisplay body, ItemDisplay engine, ItemDisplay steering,
-                           ItemDisplay fuelFiller, ItemDisplay towBar,
+                           ItemDisplay towBar,
                            List<PartDisplay> chassisParts, List<PartDisplay> forkParts,
                            ItemDisplay storageChest, Interaction storageInteraction,
                            List<WheelDisplay> wheels, List<SeatCarrier> seats, List<Entity> entities) {
@@ -100,7 +99,6 @@ public final class LandVehicleRig {
         this.body = body;
         this.engine = engine;
         this.steering = steering;
-        this.fuelFiller = fuelFiller;
         this.towBar = towBar;
         this.chassisParts = chassisParts;
         this.forkParts = forkParts;
@@ -133,11 +131,6 @@ public final class LandVehicleRig {
 
         ItemDisplay engine = partDisplay(world, location, spec.engine(), vehicleId, all);
         ItemDisplay steering = partDisplay(world, location, spec.steering(), vehicleId, all);
-        /* Fuel filler caps are never rendered: on this roleplay server refuelling is
-         * done through direct interaction with the vehicle and the gas pump, so the
-         * cap model is dead geometry. placePropertyPart() and valid() already
-         * tolerate a null filler, so nothing else needs to change per-vehicle. */
-        ItemDisplay fuelFiller = null;
         ItemDisplay towBar = spec.canTowTrailers()
                 ? partDisplay(world, location, new LandVehicleSpec.Part(spec.towBarModel(),
                 spec.towBarVisualCenter(), 1.0F, 0.0F, 180.0F, 0.0F), vehicleId, all)
@@ -198,7 +191,7 @@ public final class LandVehicleRig {
         }
 
         LandVehicleRig rig = new LandVehicleRig(vehicleId, spec, interaction, body, engine, steering,
-                fuelFiller, towBar, Collections.unmodifiableList(chassisParts),
+                towBar, Collections.unmodifiableList(chassisParts),
                 Collections.unmodifiableList(forkParts), storageChest, storageInteraction,
                 Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats), all);
         rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
@@ -392,9 +385,6 @@ public final class LandVehicleRig {
             storageInteraction.teleport(local(root, interactionPoint));
             storageInteraction.setRotation(yaw, 0.0F);
         }
-
-        placePropertyPart(fuelFiller, spec.fuelFiller(), renderAnchor, driverSeat,
-                yaw, wheelieAngle, bodyRoll, chassisRotation);
 
         if (towBar != null) {
             /* AbstractLandVehicleRenderer renders the tow bar before applying the
@@ -816,7 +806,6 @@ public final class LandVehicleRig {
         return interaction.isValid() && body.isValid()
                 && (engine == null || engine.isValid())
                 && (steering == null || steering.isValid())
-                && (fuelFiller == null || fuelFiller.isValid())
                 && (towBar == null || towBar.isValid())
                 && chassisParts.stream().allMatch(part -> part.entity.isValid())
                 && forkParts.stream().allMatch(part -> part.entity.isValid())
