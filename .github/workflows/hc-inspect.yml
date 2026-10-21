@@ -36,7 +36,9 @@ jobs:
           # verification probe: resource pack wiring state on the live server
           printf 'get server.properties /tmp/server.properties\n' > b_props.txt
           if sftp_go -b b_props.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 && [ -s /tmp/server.properties ]; then
-            URL=$(grep '^resource-pack=' /tmp/server.properties | cut -d= -f2-)
+            URL=$(grep '^resource-pack=' /tmp/server.properties | cut -d= -f2- | sed "s/\\//g")
+            echo "pack URL (unescaped): $URL"
+            echo "::notice title=HC-PACK-URL::$URL"
             SHA=$(grep '^resource-pack-sha1=' /tmp/server.properties | cut -d= -f2-)
             ID=$(grep '^resource-pack-id=' /tmp/server.properties | cut -d= -f2-)
             echo "::notice title=HC-PACK-PROPS::sha1=$SHA id=$ID"
