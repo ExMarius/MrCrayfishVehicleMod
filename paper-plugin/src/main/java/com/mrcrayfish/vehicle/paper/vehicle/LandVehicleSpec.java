@@ -891,38 +891,41 @@ public record LandVehicleSpec(
      * source (VehicleUtil.createModDependentEntityType("cfm", "bath", ...)), and this
      * port only reproduces the Vehicle Mod's own source code/assets, not other mods'. */
 
-/* Police Car: voxel-derived body from the user's Sketchfab-sourced .dae
-     * (tools/voxelize_dae.py, anisotropic 0.376,0.284,0.242 px/unit, wheels
-     * excluded and replaced by standard wheels at the detected cluster
-     * anchors x +/-13.3, z +/-14.1, ~4px radius). Aesthetic-first spec: no
-     * extra logic (no storage, no towing). */
+/* Police Car: Blockbench body from ems_police_car.bbmodel (crunkazcanbe /
+     * immersive-railroading-extras, MIT licence - see tools/source_assets/ems_police_car_LICENSE.txt),
+     * converted by tools/bbmodel_to_vanilla.py with a 180-deg y-flip so the nose faces +z
+     * (source was authored UK right-hand-drive; driver front-left after flip). Aesthetic-first
+     * spec: no extra logic (no storage, no towing). Wheels excluded from the body; standard
+     * wheels placed at the detected cluster anchors (file x 0.85/15.15 then flipped,
+     * world +/-7.15; front z +9.6, rear z -8.4, centre file y 2.0). Seats at the authored
+     * interior anchors (cushion tops file y 4.6, cushions x world +/-3.0). */
     public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
             "police_car", "Police Car", "police_car_body",
-            2.1F, 1.5F, 1.05F,
-            1.0F, -1.0F, 4.0F,
-            16.0F, 35.0F, 14.1F * MODEL_UNIT, -14.1F * MODEL_UNIT, 5.0F,
+            1.2F, 1.0F, 1.05F,
+            1.0F, -1.0F, 3.0F,
+            16.0F, 35.0F, 9.6F * MODEL_UNIT, -8.4F * MODEL_UNIT, 5.0F,
             25_000.0F, 0.3F, 0.8F, 1.6F, "vehicle:entity.sports_car.engine",
-            true, new Point(-8.0F * MODEL_UNIT, 0.2F, -1.45F),
-            new Part("iron_small_engine", new Point(0.0F, 0.5F, 16.0F * MODEL_UNIT),
-                    0.9F, 0.0F, 180.0F, 0.0F),
+            true, new Point(-0.3F, 0.03F, -1.05F),
+            new Part("iron_small_engine", new Point(0.0F, 0.32F, 0.70F),
+                    0.7F, 0.0F, 180.0F, 0.0F),
             new Part("go_kart_steering_wheel",
-                    new Point(-0.40625F, 0.5F + (-1.0F + 4.0F) * MODEL_UNIT + 4.0F * MODEL_UNIT,
-                            10.5F * MODEL_UNIT),
+                    new Point(-0.1875F, 0.5F + (-1.0F + 3.0F) * MODEL_UNIT - 3.8F * MODEL_UNIT,
+                            5.7F * MODEL_UNIT),
                     1.0F, -45.0F, 0.0F, 0.0F),
             null,
             null,
             List.of(),
             List.of(
-                    wheel(-1, true, 13.3F, 0.0F, 14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F),
-                    wheel(1, true, 13.3F, 0.0F, 14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F),
-                    wheel(-1, false, 13.3F, 0.0F, -14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F),
-                    wheel(1, false, 13.3F, 0.0F, -14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F)
+                    wheel(-1, true, 7.15F, 0.0F, 9.6F, 0.7F, 0.55F, 0.55F, 1.0F, -1.0F, 3.0F),
+                    wheel(1, true, 7.15F, 0.0F, 9.6F, 0.7F, 0.55F, 0.55F, 1.0F, -1.0F, 3.0F),
+                    wheel(-1, false, 7.15F, 0.0F, -8.4F, 0.7F, 0.55F, 0.55F, 1.0F, -1.0F, 3.0F),
+                    wheel(1, false, 7.15F, 0.0F, -8.4F, 0.7F, 0.55F, 0.55F, 1.0F, -1.0F, 3.0F)
             ),
             List.of(
-                    seat(true, 6.5F, 2.0F, 7.0F, 1.0F, -1.0F, 4.0F),
-                    seat(false, -6.5F, 2.0F, 7.0F, 1.0F, -1.0F, 4.0F),
-                    seat(false, 6.5F, 2.0F, -5.0F, 1.0F, -1.0F, 4.0F),
-                    seat(false, -6.5F, 2.0F, -5.0F, 1.0F, -1.0F, 4.0F)
+                    seat(true, -3.0F, 4.6F, 3.1F, 1.0F, -1.0F, 3.0F),
+                    seat(false, 3.0F, 4.6F, 3.1F, 1.0F, -1.0F, 3.0F),
+                    seat(false, -3.0F, 4.6F, -2.5F, 1.0F, -1.0F, 3.0F),
+                    seat(false, 3.0F, 4.6F, -2.5F, 1.0F, -1.0F, 3.0F)
             ),
             false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
             null, null, List.of(), false
