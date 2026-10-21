@@ -2,7 +2,7 @@
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
   url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
-  sha1: "f9eb521c417a2dbf47e2c4a5ba60b5250fb61581"
+  sha1: "704c26b0d07b3276336edf20e13a89c89562abd5"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
@@ -43,7 +43,6 @@ dealership:
   prices:
     shopping_cart: 100
     go_kart: 2000
-    ai_kart: 2500
     lawn_mower: 2000
     bumper_car: 2000
     mini_bike: 2000

@@ -148,7 +148,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r39 — twenty-four vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r39 — twenty-three vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -159,7 +159,6 @@ def build(output: Path) -> tuple[Path, str]:
         for item, (model, tint) in {
             # VehicleEntity's default white dye and the default wheel item tint.
             "go_kart_body": ("vehicle:item/go_kart_body", 16383998),
-            "ai_kart_body": ("vehicle:item/ai_kart_body", 16383998),
             "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
             "quad_bike_body": ("vehicle:item/quad_bike_body", 16383998),
             "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),
@@ -251,25 +250,6 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/go_kart/base.json",
             namespace / "models/item/go_kart_body.json",
             {"2": "vehicle:item/go_kart_body", "particle": "vehicle:item/go_kart_body"},
-        )
-        convert_model(
-            ASSETS / "models/vehicle/ai_kart/base.json",
-            namespace / "models/item/ai_kart_body.json",
-            {
-                # 100% vanilla-texture vehicle: every face samples stock game
-                # blocks (same convention as the Jet Ski rebuild), so there is
-                # no custom PNG to ship and nothing extra to stitch.
-                "body": "minecraft:block/red_concrete",
-                "dark": "minecraft:block/black_concrete",
-                "dark_wool": "minecraft:block/black_wool",
-                "white": "minecraft:block/white_concrete",
-                "glass": "minecraft:block/tinted_glass",
-                "lamp": "minecraft:block/sea_lantern",
-                "tail": "minecraft:block/redstone_block",
-                "metal": "minecraft:block/iron_block",
-                "pipe": "minecraft:block/anvil",
-                "particle": "minecraft:block/red_concrete",
-            },
         )
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
