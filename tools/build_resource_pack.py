@@ -255,8 +255,20 @@ def build(output: Path) -> tuple[Path, str]:
         convert_model(
             ASSETS / "models/vehicle/ai_kart/base.json",
             namespace / "models/item/ai_kart_body.json",
-            {"2": "vehicle:item/ai_kart_body", "particle": "vehicle:item/ai_kart_body"},
-            texture_uv_scale={"2": 0.25},
+            {
+                # 100% vanilla-texture vehicle: every face samples stock game
+                # blocks (same convention as the Jet Ski rebuild), so there is
+                # no custom PNG to ship and nothing extra to stitch.
+                "body": "minecraft:block/red_concrete",
+                "dark": "minecraft:block/black_concrete",
+                "dark_wool": "minecraft:block/black_wool",
+                "white": "minecraft:block/white_concrete",
+                "lamp": "minecraft:block/sea_lantern",
+                "tail": "minecraft:block/redstone_block",
+                "metal": "minecraft:block/iron_block",
+                "pipe": "minecraft:block/anvil",
+                "particle": "minecraft:block/red_concrete",
+            },
         )
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
@@ -789,10 +801,6 @@ def build(output: Path) -> tuple[Path, str]:
         copy(
             ASSETS / "textures/vehicle/go_kart/base.png",
             namespace / "textures/item/go_kart_body.png",
-        )
-        copy(
-            ASSETS / "textures/vehicle/ai_kart/base.png",
-            namespace / "textures/item/ai_kart_body.png",
         )
         copy(
             ASSETS / "textures/vehicle/quad_bike/base.png",
