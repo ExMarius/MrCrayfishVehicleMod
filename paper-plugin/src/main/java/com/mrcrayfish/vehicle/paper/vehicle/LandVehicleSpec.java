@@ -897,16 +897,16 @@ public record LandVehicleSpec(
      * parts at the same anchor points extracted from the source groups). */
     public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
             "police_car", "Police Car", "police_car_body",
-            1.75F, 1.25F, 1.05F,
-            1.0F, -1.0F, 4.5F,
-            16.0F, 35.0F, 12.1F * MODEL_UNIT, -12.1F * MODEL_UNIT, 5.0F,
+            2.45F, 1.75F, 1.05F,
+            1.4F, -1.0F, 4.5F,
+            16.0F, 35.0F, 12.1F * MODEL_UNIT * 1.4F, -12.1F * MODEL_UNIT * 1.4F, 5.0F,
             25_000.0F, 0.3F, 0.8F, 1.6F, "vehicle:entity.sports_car.engine",
-            true, new Point(-6.0F * MODEL_UNIT, 0.15F, -1.42F),
-            new Part("iron_small_engine", new Point(0.0F, 0.45F, 12.5F * MODEL_UNIT),
-                    0.8F, 0.0F, 180.0F, 0.0F),
+            true, new Point(-8.4F * MODEL_UNIT, 0.21F, -1.99F),
+            new Part("iron_small_engine", new Point(0.0F, 0.63F, 17.5F * MODEL_UNIT),
+                    1.1F, 0.0F, 180.0F, 0.0F),
             new Part("go_kart_steering_wheel",
-                    new Point(-0.28F, 0.5F + (-1.0F + 4.5F) * MODEL_UNIT + 3.04F * MODEL_UNIT,
-                            9.0F * MODEL_UNIT),
+                    new Point(-0.392F, 1.4F * (0.5F + (-1.0F + 4.5F) * MODEL_UNIT + 3.04F * MODEL_UNIT),
+                            12.6F * MODEL_UNIT),
                     1.0F, -45.0F, 0.0F, 0.0F),
             null,
             null,
@@ -926,7 +926,7 @@ public record LandVehicleSpec(
             false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
             null, null,
             List.of(new StorageCompartment("trunk", "Trunk", 1,
-                    new Box(new Point(-0.4F, 0.3F, -1.5F), new Point(0.4F, 0.8F, -1.2F)))),
+                    new Box(new Point(-0.56F, 0.42F, -2.1F), new Point(0.56F, 1.12F, -1.68F)))),
             false
     );
 
