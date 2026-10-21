@@ -200,7 +200,7 @@ public final class VehiclePlugin extends JavaPlugin {
         restartWatcher = new RestartWatcher(this);
         restartWatcher.start();
 
-        getLogger().info("Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.");
+        getLogger().info("Vehicle plugin enabled. Eighteen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.");
     }
 
     public com.mrcrayfish.vehicle.paper.shop.ShopGui shopGui() {

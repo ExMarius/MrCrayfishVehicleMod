@@ -148,7 +148,7 @@ def build(output: Path) -> tuple[Path, str]:
         pack = Path(temporary)
         write_json(pack / "pack.mcmeta", {
             "pack": {
-                "description": "MrCrayfish Vehicle Plugin r39 — twenty-three vehicles and five trailers",
+                "description": "MrCrayfish Vehicle Plugin r39 — twenty-four vehicles and five trailers",
                 "pack_format": 46,
             }
         })
@@ -159,6 +159,7 @@ def build(output: Path) -> tuple[Path, str]:
         for item, (model, tint) in {
             # VehicleEntity's default white dye and the default wheel item tint.
             "go_kart_body": ("vehicle:item/go_kart_body", 16383998),
+            "police_car_body": ("vehicle:item/police_car_body", 0xFFFFFF),
             "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
             "quad_bike_body": ("vehicle:item/quad_bike_body", 16383998),
             "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),
@@ -251,6 +252,16 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "models/item/go_kart_body.json",
             {"2": "vehicle:item/go_kart_body", "particle": "vehicle:item/go_kart_body"},
         )
+        convert_model(
+            ASSETS / "models/vehicle/police_car/base.json",
+            namespace / "models/item/police_car_body.json",
+            {
+                "palette": "vehicle:vehicle/police_car/base",
+                "particle": "vehicle:vehicle/police_car/base",
+            },
+        )
+        copy(ASSETS / "models/vehicle/police_car/base.png",
+             namespace / "textures/vehicle/police_car/base.png")
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
             namespace / "models/item/lawn_mower_body.json",

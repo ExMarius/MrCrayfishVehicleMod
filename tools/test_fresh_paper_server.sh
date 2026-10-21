@@ -107,7 +107,7 @@ run_server_cycle() {
       break
     fi
     if grep -Fq 'Done (' "$SERVER_LOG" \
-        && [ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
+        && [ "$(grep -Fc 'Vehicle plugin enabled. Eighteen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
       ready=true
       break
     fi
@@ -147,12 +147,12 @@ grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip' "$DATA_DIR/confi
   || fail "generated config does not select resource pack r39"
 # Pin tracks the currently verified r39 pack (deterministic rebuild; matches the live
 # server + players). MUST be refreshed whenever pack contents change on purpose.
-grep -Fq '704c26b0d07b3276336edf20e13a89c89562abd5' "$DATA_DIR/config.yml" \
+grep -Fq '9fcc7b364e5ca262db3233bc1cc0fff35c14bba7' "$DATA_DIR/config.yml" \
   || fail "generated config does not contain the verified r39 SHA-1"
 
 run_server_cycle 2
 
-[ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -eq 2 ] \
+[ "$(grep -Fc 'Vehicle plugin enabled. Eighteen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -eq 2 ] \
   || fail "plugin did not enable exactly once per startup"
 # Message gained garage counts when the garage feature shipped; fresh boot logs exactly this.
 [ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred, 0 stored in garages.' "$SERVER_LOG")" -eq 2 ] \

@@ -893,6 +893,7 @@ public record LandVehicleSpec(
 
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
+            Map.entry(POLICE_CAR.id, POLICE_CAR),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
             Map.entry(QUAD_BIKE.id, QUAD_BIKE),
             Map.entry(DUNE_BUGGY.id, DUNE_BUGGY),
@@ -915,6 +916,45 @@ public record LandVehicleSpec(
             Map.entry(COUCH.id, COUCH),
             Map.entry(BUMPER_CAR.id, BUMPER_CAR),
             Map.entry(SHOPPING_CART.id, SHOPPING_CART)
+    );
+
+    /* Police Car: voxel-derived body from the CC0 Kenney Car Kit
+     * (tools/voxelize_vehicle.py, anisotropic 18,15,15 px/unit to fit vanilla
+     * element bounds [-16, 32]; voxel wheels replaced by the standard wheel
+     * parts at the same anchor points extracted from the source groups). */
+    public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
+            "police_car", "Police Car", "police_car_body",
+            1.75F, 1.25F, 1.05F,
+            1.0F, -1.0F, 4.5F,
+            16.0F, 35.0F, 12.1F * MODEL_UNIT, -12.1F * MODEL_UNIT, 5.0F,
+            25_000.0F, 0.3F, 0.8F, 1.6F, "vehicle:entity.sports_car.engine",
+            true, new Point(-6.0F * MODEL_UNIT, 0.15F, -1.42F),
+            new Part("iron_small_engine", new Point(0.0F, 0.45F, 12.5F * MODEL_UNIT),
+                    0.8F, 0.0F, 180.0F, 0.0F),
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.28F, 0.5F + (-1.0F + 4.5F) * MODEL_UNIT + 3.04F * MODEL_UNIT,
+                            9.0F * MODEL_UNIT),
+                    1.0F, -45.0F, 0.0F, 0.0F),
+            null,
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 8.1F, 0.0F, 12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F),
+                    wheel(1, true, 8.1F, 0.0F, 12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F),
+                    wheel(-1, false, 8.1F, 0.0F, -12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F),
+                    wheel(1, false, 8.1F, 0.0F, -12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F)
+            ),
+            List.of(
+                    seat(true, 4.5F, 0.0F, 0.5F, 1.0F, -1.0F, 4.5F),
+                    seat(false, -4.5F, 0.0F, 0.5F, 1.0F, -1.0F, 4.5F),
+                    seat(false, 4.5F, 0.0F, -9.0F, 1.0F, -1.0F, 4.5F),
+                    seat(false, -4.5F, 0.0F, -9.0F, 1.0F, -1.0F, 4.5F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null,
+            List.of(new StorageCompartment("trunk", "Trunk", 1,
+                    new Box(new Point(-0.4F, 0.3F, -1.5F), new Point(0.4F, 0.8F, -1.2F)))),
+            false
     );
 
     public static LandVehicleSpec byId(String id) {
