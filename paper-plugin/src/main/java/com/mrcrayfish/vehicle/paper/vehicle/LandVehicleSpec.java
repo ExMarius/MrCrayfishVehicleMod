@@ -891,33 +891,6 @@ public record LandVehicleSpec(
      * source (VehicleUtil.createModDependentEntityType("cfm", "bath", ...)), and this
      * port only reproduces the Vehicle Mod's own source code/assets, not other mods'. */
 
-    private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
-            Map.entry(GO_KART.id, GO_KART),
-            Map.entry(POLICE_CAR.id, POLICE_CAR),
-            Map.entry(LAWN_MOWER.id, LAWN_MOWER),
-            Map.entry(QUAD_BIKE.id, QUAD_BIKE),
-            Map.entry(DUNE_BUGGY.id, DUNE_BUGGY),
-            Map.entry(TRACTOR.id, TRACTOR),
-            Map.entry(DIRT_BIKE.id, DIRT_BIKE),
-            Map.entry(MOPED.id, MOPED),
-            Map.entry(OFF_ROADER.id, OFF_ROADER),
-            Map.entry(SPORTS_CAR.id, SPORTS_CAR),
-            Map.entry(MINI_BUS.id, MINI_BUS),
-            Map.entry(GOLF_CART.id, GOLF_CART),
-            Map.entry(JET_SKI.id, JET_SKI),
-            Map.entry(SPORTS_PLANE.id, SPORTS_PLANE),
-            Map.entry(COMPACT_HELICOPTER.id, COMPACT_HELICOPTER),
-            Map.entry(SOFACOPTER.id, SOFACOPTER),
-            Map.entry(ATV.id, ATV),
-            Map.entry(MINI_BIKE.id, MINI_BIKE),
-            Map.entry(SMART_CAR.id, SMART_CAR),
-            Map.entry(SPEED_BOAT.id, SPEED_BOAT),
-            Map.entry(ALUMINUM_BOAT.id, ALUMINUM_BOAT),
-            Map.entry(COUCH.id, COUCH),
-            Map.entry(BUMPER_CAR.id, BUMPER_CAR),
-            Map.entry(SHOPPING_CART.id, SHOPPING_CART)
-    );
-
     /* Police Car: voxel-derived body from the CC0 Kenney Car Kit
      * (tools/voxelize_vehicle.py, anisotropic 18,15,15 px/unit to fit vanilla
      * element bounds [-16, 32]; voxel wheels replaced by the standard wheel
@@ -956,6 +929,34 @@ public record LandVehicleSpec(
                     new Box(new Point(-0.4F, 0.3F, -1.5F), new Point(0.4F, 0.8F, -1.2F)))),
             false
     );
+
+    private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
+            Map.entry(GO_KART.id, GO_KART),
+            Map.entry(POLICE_CAR.id, POLICE_CAR),
+            Map.entry(LAWN_MOWER.id, LAWN_MOWER),
+            Map.entry(QUAD_BIKE.id, QUAD_BIKE),
+            Map.entry(DUNE_BUGGY.id, DUNE_BUGGY),
+            Map.entry(TRACTOR.id, TRACTOR),
+            Map.entry(DIRT_BIKE.id, DIRT_BIKE),
+            Map.entry(MOPED.id, MOPED),
+            Map.entry(OFF_ROADER.id, OFF_ROADER),
+            Map.entry(SPORTS_CAR.id, SPORTS_CAR),
+            Map.entry(MINI_BUS.id, MINI_BUS),
+            Map.entry(GOLF_CART.id, GOLF_CART),
+            Map.entry(JET_SKI.id, JET_SKI),
+            Map.entry(SPORTS_PLANE.id, SPORTS_PLANE),
+            Map.entry(COMPACT_HELICOPTER.id, COMPACT_HELICOPTER),
+            Map.entry(SOFACOPTER.id, SOFACOPTER),
+            Map.entry(ATV.id, ATV),
+            Map.entry(MINI_BIKE.id, MINI_BIKE),
+            Map.entry(SMART_CAR.id, SMART_CAR),
+            Map.entry(SPEED_BOAT.id, SPEED_BOAT),
+            Map.entry(ALUMINUM_BOAT.id, ALUMINUM_BOAT),
+            Map.entry(COUCH.id, COUCH),
+            Map.entry(BUMPER_CAR.id, BUMPER_CAR),
+            Map.entry(SHOPPING_CART.id, SHOPPING_CART)
+    );
+
 
     public static LandVehicleSpec byId(String id) {
         return id == null ? null : BY_ID.get(id.toLowerCase(Locale.ROOT));
