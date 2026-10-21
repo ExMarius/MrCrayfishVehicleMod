@@ -62,19 +62,53 @@ def main():
     model = json.load(open(SRC))
     els = [mirror_x(e) for e in model['elements']]
 
-    # livery stripes (flat planes, uv 0..16 mapped via base.png palette)
-    stripe_y = (10.95, 12.55)
-    for side, x in (('west', -5.0), ('east', 21.0)):
-        els.append({
-            'from': [x + (-0.05 if side == 'west' else 0.0), stripe_y[0], -16.0],
-            'to': [x + (0.0 if side == 'west' else 0.05), stripe_y[1], 32.0],
-            'faces': {side: {'uv': [0, 0, 16, 16], 'texture': '#livery', 'tintindex': 1}},
-        })
-    # nose stripe on the bonnet/top-front area (up face visible from the front 3/4)
-    els.append({
-        'from': [2.0, 14.4, 20.5], 'to': [14.0, 14.55, 25.5],
-        'faces': {'up': {'uv': [0, 0, 16, 16], 'texture': '#black', 'tintindex': 1}},
-    })
+    # ------------------------------------------------------------------
+    # Romanian police livery (Politia Romana / Dacia-Duster style):
+    #   - big blue horizontal band, y 9..14, full length, both sides
+    #   - POLITIA white pixel text on the band (side doors + bonnet + tailgate)
+    #   - slim full-width blue lightbar on the roof
+    #   - gray metal push bar in front
+    # ------------------------------------------------------------------
+    BAND_Y = (9.0, 14.0)
+    # side skin per 4px z-bin (outer x), band sticks 0.07 out of the skin
+    side_left = [(-16, -5.0), (-12, -5.0), (-8, -5.0), (-4, -5.0), (0, -4.0),
+                 (4, -4.0), (8, -4.0), (12, -4.0), (16, -5.0), (20, -5.0),
+                 (24, -5.0), (28, -4.0)]
+    for lo, x in side_left:
+        for sx in (x - 0.07, (16 - x) + 0.07):
+            x0, x1 = (sx, sx + 0.07) if sx < 8 else (sx, sx + 0.07)
+            els.append({
+                'from': [round(x0, 2), BAND_Y[0], float(lo)],
+                'to': [round(x1, 2), BAND_Y[1], float(lo + 4)],
+                'faces': {('west' if sx < 8 else 'east'):
+                          {'uv': [0.03, 0.03, 1.97, 1.97], 'texture': '#livery', 'tintindex': 1}},
+            })
+
+    # POLITIA text planes (drawn white-on-transparent in the palette, swatch
+    # at texture px x 4..50, y 17..26 -> uv window below); left/right doors,
+    # bonnet top and tailgate.
+    TW, TH = 46 * 0.25, 9 * 0.5  # 11.5 x 4.5 uv
+    TEXT_UV = [round(4 * 0.25 + 0.03, 2), round(17 * 0.5 + 0.03, 2),
+               round(4 * 0.25 + 0.03 + TW, 2), round(17 * 0.5 + 0.03 + TH, 2)]
+
+    def text_face(d, flip_h=False, flip_v=False):
+        u = TEXT_UV if not flip_h else [TEXT_UV[2], TEXT_UV[1], TEXT_UV[0], TEXT_UV[3]]
+        if flip_v:
+            u = [u[0], u[3], u[2], u[1]]
+        return {'uv': u, 'texture': '#politia_text', 'tintindex': 1}
+
+    # doors: cabin tall zone spans z -4..20; band height 5 -> text 4.5 tall centred
+    ty0, ty1 = 9.4, 13.1
+    els.append({'from': [-4.16, ty0, -2.0], 'to': [-4.14, ty1, 12.0],
+                'faces': {'west': text_face('west')}})
+    els.append({'from': [20.14, ty0, -2.0], 'to': [20.16, ty1, 12.0],
+                'faces': {'east': text_face('east', flip_h=True)}})
+    # bonnet (nose is +z): hood top y=13, x 2..14, z 20..30; reads from the nose
+    els.append({'from': [3.0, 13.06, 21.0], 'to': [13.0, 13.095, 26.0],
+                'faces': {'up': text_face('up', flip_v=True)}})
+    # tailgate: rear face is north (-z); trunk top 13
+    els.append({'from': [3.0, 9.6, -16.12], 'to': [13.0, 13.4, -16.10],
+                'faces': {'north': text_face('north', flip_h=True)}})
 
     # push bar: two vertical posts + two horizontal bars, in front of the bumper
     els.append(cube(3.6, 6.0, 30.6, 4.8, 10.8, 31.8, '#metal'))
@@ -82,20 +116,17 @@ def main():
     els.append(cube(3.6, 9.6, 30.4, 12.4, 10.8, 32.0, '#metal'))
     els.append(cube(3.6, 6.4, 30.4, 12.4, 7.6, 32.0, '#metal'))
 
-    # lightbar: 2 blocks/cell, sloped roof y 23.1 at z 3.5..10.5 -> front cell slightly higher
-    els.append(cube(4.0, 23.1, 4.4, 12.0, 23.6, 7.0, '#metal'))     # base
-    els.append(cube(4.8, 23.6, 4.6, 8.0, 24.9, 6.8, '#redbar',
-                    ('north', 'east', 'south', 'west', 'up')))
-    els.append(cube(8.0, 23.6, 4.6, 11.2, 24.9, 6.8, '#bluebar',
+    # slim full-width blue lightbar (LED look), centred on the roof
+    els.append(cube(3.9, 23.1, 4.4, 12.1, 23.55, 7.0, '#metal'))          # base rail
+    els.append(cube(4.3, 23.55, 4.6, 11.7, 24.35, 6.8, '#bluebar',
                     ('north', 'east', 'south', 'west', 'up')))
 
     # textures: body keys must match off_roader mapping in the pack build;
     # palette fills are referenced by the amber '#name' keys used above.
     # uv() face uvs in extra cubes are coordinates into the 64x32 base.png palette:
-    #   row 0 swatches x 0..8 livery(blue), 8..16 black, 16..24 redbar, 24..32 bluebar,
-    #   32..40 metal, 40..48 sirens(white-bright). keep the swatch interiors offset ~0.5
-    # extra cube face uvs (already written in-swatches by cube() using 0..16 windows:
-    # remap 0..16 into the right swatch window below per texture key)
+    #   row 0 swatches x 0..8 livery(blue), 8..16 metal tint, 16..24 redbar, 24..32 bluebar,
+    #   32..40 gray metal, 40..48 sirens(white-bright); '#politia_text' faces carry their
+    #   own explicit uv into the text strip (texture px x 4..50, y 17..26) - do not remap.
     SWATCH = {'#livery': 0, '#black': 8, '#redbar': 16, '#bluebar': 24, '#metal': 32, '#sirens': 40}
     for e in els:
         for f in (e.get('faces') or {}).values():
@@ -111,7 +142,7 @@ def main():
                            round(0.03 + f['uv'][3] * 1.94 / 16, 3)]
 
     textures = {key: 'vehicle:item/police_car_body' for key in
-                list(model.get('textures', {}).keys()) + ['livery', 'black', 'redbar', 'bluebar', 'metal', 'sirens']}
+                list(model.get('textures', {}).keys()) + ['livery', 'black', 'redbar', 'bluebar', 'metal', 'sirens', 'politia_text']}
     textures['particle'] = 'vehicle:item/police_car_body'
     model['textures'] = textures
     model['elements'] = els
@@ -131,8 +162,8 @@ def main():
         return
     img = Image.new('RGBA', (64, 32), (0, 0, 0, 0))
     colors = {
-        'redbar': (168, 32, 45, 255), 'bluebar': (31, 63, 200, 255),
-        'livery': (31, 63, 200, 255), 'black': (18, 18, 18, 255),
+        'redbar': (168, 32, 45, 255), 'bluebar': (21, 57, 190, 255),
+        'livery': (21, 57, 190, 255), 'black': (18, 18, 18, 255),
         'metal': (70, 74, 80, 255), 'sirens': (238, 242, 248, 255),
     }
     for i, name in enumerate(colors):
@@ -141,6 +172,29 @@ def main():
         for dx in range(8):
             for dy in range(8):
                 img.putpixel((x0 + dx, y0 + dy), colors[name])
+
+    # POLITIA pixel text (5x8 glyphs, white on transparent) into the text strip
+    GLYPHS = {
+        'P': ['11110', '10001', '10001', '11110', '10000', '10000', '10000', '10000'],
+        'O': ['01110', '10001', '10001', '10001', '10001', '10001', '10001', '01110'],
+        'L': ['10000', '10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+        'I': ['01110', '00100', '00100', '00100', '00100', '00100', '00100', '01110'],
+        # T with the comma accent baked low (close enough at 5x8 for POLITIA)
+        '\u021a': ['11111', '00100', '00100', '00100', '00100', '00100', '00110', '00100'],
+        'A': ['01110', '10001', '10001', '10001', '11111', '10001', '10001', '10001'],
+    }
+    word = 'POLI\u021aIA'
+    xcur = 4
+    white = (244, 246, 250, 255)
+    for ch in word:
+        g = GLYPHS[ch]
+        for gy, row in enumerate(g[:9]):
+            for gx, bit in enumerate(row):
+                if bit == '1':
+                    img.putpixel((xcur + gx, 17 + gy), white)
+        xcur += 6
+    print('text strip ends at x', xcur, '(window to 50)')
+
     img.save(DST / 'base.png')
     print('palette wrote', DST / 'base.png')
 
