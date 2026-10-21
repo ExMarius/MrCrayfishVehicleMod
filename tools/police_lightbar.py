@@ -106,9 +106,13 @@ def main():
     # bonnet (nose is +z): hood top y=13, x 2..14, z 20..30; reads from the nose
     els.append({'from': [3.0, 13.06, 21.0], 'to': [13.0, 13.095, 26.0],
                 'faces': {'up': text_face('up', flip_v=True)}})
-    # tailgate: rear face is north (-z); trunk top 13
-    els.append({'from': [3.0, 9.6, -16.12], 'to': [13.0, 13.4, -16.10],
-                'faces': {'north': text_face('north', flip_h=True)}})
+    # tailgate: paint POLITIA onto the rear-most body face (reusing the north face
+    # of the tailgate skin keeps everything inside the vanilla -16..32 window)
+    for e in els:
+        if (e['from'][2] == -16.0 and e['to'][0] >= 12 and e['from'][0] <= 4
+                and e['from'][1] < 14 and e['to'][1] > 9 and 'north' in e['faces']):
+            e['faces']['north'] = text_face('north', flip_h=True)
+            break
 
     # push bar: two vertical posts + two horizontal bars, in front of the bumper
     els.append(cube(3.6, 6.0, 30.6, 4.8, 10.8, 31.8, '#metal'))
