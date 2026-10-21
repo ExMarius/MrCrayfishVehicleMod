@@ -891,44 +891,43 @@ public record LandVehicleSpec(
      * source (VehicleUtil.createModDependentEntityType("cfm", "bath", ...)), and this
      * port only reproduces the Vehicle Mod's own source code/assets, not other mods'. */
 
-    /* Police Car: voxel-derived body from the CC0 Kenney Car Kit
-     * (tools/voxelize_vehicle.py, anisotropic 18,15,15 px/unit to fit vanilla
-     * element bounds [-16, 32]; voxel wheels replaced by the standard wheel
-     * parts at the same anchor points extracted from the source groups). */
+/* Police Car: voxel-derived body from the user's Sketchfab-sourced .dae
+     * (tools/voxelize_dae.py, anisotropic 0.376,0.284,0.242 px/unit, wheels
+     * excluded and replaced by standard wheels at the detected cluster
+     * anchors x +/-13.3, z +/-14.1, ~4px radius). Aesthetic-first spec: no
+     * extra logic (no storage, no towing). */
     public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
             "police_car", "Police Car", "police_car_body",
-            2.45F, 1.75F, 1.05F,
-            1.4F, -1.0F, 4.5F,
-            16.0F, 35.0F, 12.1F * MODEL_UNIT * 1.4F, -12.1F * MODEL_UNIT * 1.4F, 5.0F,
+            2.1F, 1.5F, 1.05F,
+            1.0F, -1.0F, 4.0F,
+            16.0F, 35.0F, 14.1F * MODEL_UNIT, -14.1F * MODEL_UNIT, 5.0F,
             25_000.0F, 0.3F, 0.8F, 1.6F, "vehicle:entity.sports_car.engine",
-            true, new Point(-8.4F * MODEL_UNIT, 0.21F, -1.99F),
-            new Part("iron_large_engine", new Point(0.0F, 0.75F, 17.5F * MODEL_UNIT),
-                    1.2F, 0.0F, 180.0F, 0.0F),
+            true, new Point(-8.0F * MODEL_UNIT, 0.2F, -1.45F),
+            new Part("iron_small_engine", new Point(0.0F, 0.5F, 16.0F * MODEL_UNIT),
+                    0.9F, 0.0F, 180.0F, 0.0F),
             new Part("go_kart_steering_wheel",
-                    new Point(-0.392F, 0.5F + (-1.0F + 7.84F) * MODEL_UNIT + 2.24F * MODEL_UNIT,
-                            12.6F * MODEL_UNIT),
-                    1.25F, -45.0F, 0.0F, 0.0F),
+                    new Point(-0.40625F, 0.5F + (-1.0F + 4.0F) * MODEL_UNIT + 4.0F * MODEL_UNIT,
+                            10.5F * MODEL_UNIT),
+                    1.0F, -45.0F, 0.0F, 0.0F),
             null,
             null,
             List.of(),
             List.of(
-                    wheel(-1, true, 10.5F, 0.0F, 12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F),
-                    wheel(1, true, 10.5F, 0.0F, 12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F),
-                    wheel(-1, false, 10.5F, 0.0F, -12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F),
-                    wheel(1, false, 10.5F, 0.0F, -12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F)
+                    wheel(-1, true, 13.3F, 0.0F, 14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F),
+                    wheel(1, true, 13.3F, 0.0F, 14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F),
+                    wheel(-1, false, 13.3F, 0.0F, -14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F),
+                    wheel(1, false, 13.3F, 0.0F, -14.1F, 1.2F, 1.0F, 1.0F, 1.0F, -1.0F, 4.0F)
             ),
             List.of(
-                    seat(true, 4.5F, -2.0F, 0.5F, 1.4F, -1.0F, 7.84F),
-                    seat(false, -4.5F, -2.0F, 0.5F, 1.4F, -1.0F, 7.84F),
-                    seat(false, 4.5F, -2.0F, -9.0F, 1.4F, -1.0F, 7.84F),
-                    seat(false, -4.5F, -2.0F, -9.0F, 1.4F, -1.0F, 7.84F)
+                    seat(true, 6.5F, 2.0F, 7.0F, 1.0F, -1.0F, 4.0F),
+                    seat(false, -6.5F, 2.0F, 7.0F, 1.0F, -1.0F, 4.0F),
+                    seat(false, 6.5F, 2.0F, -5.0F, 1.0F, -1.0F, 4.0F),
+                    seat(false, -6.5F, 2.0F, -5.0F, 1.0F, -1.0F, 4.0F)
             ),
             false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
-            null, null,
-            List.of(new StorageCompartment("trunk", "Trunk", 1,
-                    new Box(new Point(-0.56F, 0.42F, -2.1F), new Point(0.56F, 1.12F, -1.68F)))),
-            false
+            null, null, List.of(), false
     );
+;
 
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
