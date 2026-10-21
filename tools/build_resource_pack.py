@@ -263,6 +263,7 @@ def build(output: Path) -> tuple[Path, str]:
                 "dark": "minecraft:block/black_concrete",
                 "dark_wool": "minecraft:block/black_wool",
                 "white": "minecraft:block/white_concrete",
+                "glass": "minecraft:block/tinted_glass",
                 "lamp": "minecraft:block/sea_lantern",
                 "tail": "minecraft:block/redstone_block",
                 "metal": "minecraft:block/iron_block",
