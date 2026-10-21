@@ -259,7 +259,7 @@ def build(obj_path, colormap_path, out_dir, s=24.0):
         faces = {}
         for name, d in FACE_DEFS:
             if face_visible(kept_set, b, name, d):
-                faces[name] = {"uv": [u0, v0, u1, v1], "texture": "#palette"}
+                faces[name] = {"uv": [u0, v0, u1, v1], "texture": "#0"}
                 face_count += 1
         fx0, fy0, fz0 = x0 + 8, y0 + 8, z0 + 8
         fx1, fy1, fz1 = x1 + 9, y1 + 9, z1 + 9
@@ -273,7 +273,7 @@ def build(obj_path, colormap_path, out_dir, s=24.0):
     (out / "base.png").write_bytes(_png_bytes(pal_img))
     model = {
         "credit": "Kenney Car Kit (CC0, kenney.nl) voxelized via tools/voxelize_vehicle.py",
-        "textures": {"palette": "vehicle:vehicle/police_car/base", "particle": "vehicle:vehicle/police_car/base"},
+        "textures": {"0": "vehicle:item/police_car_body", "particle": "vehicle:item/police_car_body"},
         "elements": elements,
         "gui_light": "front",
         "display": {"gui": {"rotation": [30, 225, 0], "translation": [0, 0, 0], "scale": [0.6, 0.6, 0.6]}},

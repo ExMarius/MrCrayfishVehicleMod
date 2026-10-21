@@ -256,12 +256,12 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/police_car/base.json",
             namespace / "models/item/police_car_body.json",
             {
-                "palette": "vehicle:vehicle/police_car/base",
-                "particle": "vehicle:vehicle/police_car/base",
+                "0": "vehicle:item/police_car_body",
+                "particle": "vehicle:item/police_car_body",
             },
         )
         copy(ASSETS / "models/vehicle/police_car/base.png",
-             namespace / "textures/vehicle/police_car/base.png")
+             namespace / "textures/item/police_car_body.png")
         convert_model(
             ASSETS / "models/vehicle/lawn_mower_body.json",
             namespace / "models/item/lawn_mower_body.json",
