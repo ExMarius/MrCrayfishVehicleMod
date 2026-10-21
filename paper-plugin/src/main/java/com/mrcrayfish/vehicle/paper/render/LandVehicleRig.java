@@ -133,7 +133,11 @@ public final class LandVehicleRig {
 
         ItemDisplay engine = partDisplay(world, location, spec.engine(), vehicleId, all);
         ItemDisplay steering = partDisplay(world, location, spec.steering(), vehicleId, all);
-        ItemDisplay fuelFiller = partDisplay(world, location, spec.fuelFiller(), vehicleId, all);
+        /* Fuel filler caps are never rendered: on this roleplay server refuelling is
+         * done through direct interaction with the vehicle and the gas pump, so the
+         * cap model is dead geometry. placePropertyPart() and valid() already
+         * tolerate a null filler, so nothing else needs to change per-vehicle. */
+        ItemDisplay fuelFiller = null;
         ItemDisplay towBar = spec.canTowTrailers()
                 ? partDisplay(world, location, new LandVehicleSpec.Part(spec.towBarModel(),
                 spec.towBarVisualCenter(), 1.0F, 0.0F, 180.0F, 0.0F), vehicleId, all)
