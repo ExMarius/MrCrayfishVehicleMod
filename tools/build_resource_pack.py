@@ -277,6 +277,7 @@ def build(output: Path) -> tuple[Path, str]:
                 "bluebar": "vehicle:item/police_car_body",
                 "metal": "vehicle:item/police_car_body",
                 "sirens": "vehicle:item/police_car_body",
+                "politia_text": "vehicle:item/police_car_body",
                 "particle": "minecraft:block/white_concrete",
             },
         )
