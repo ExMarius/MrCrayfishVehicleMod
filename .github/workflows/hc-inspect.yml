@@ -33,6 +33,21 @@ jobs:
           sftp_go -b b_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > lsout.txt 2>&1 || true
           echo "== /plugins =="
           grep -E '(\.jar|drwx)' lsout.txt | awk '{printf "%-46s %8.2f KB\n", $NF, $5/1024}' | sort || cat lsout.txt
+          # verification probe: resource pack wiring state on the live server
+          printf 'get server.properties /tmp/server.properties\n' > b_props.txt
+          if sftp_go -b b_props.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 && [ -s /tmp/server.properties ]; then
+            URL=$(grep '^resource-pack=' /tmp/server.properties | cut -d= -f2-)
+            SHA=$(grep '^resource-pack-sha1=' /tmp/server.properties | cut -d= -f2-)
+            ID=$(grep '^resource-pack-id=' /tmp/server.properties | cut -d= -f2-)
+            echo "::notice title=HC-PACK-PROPS::sha1=$SHA id=$ID"
+            if [ -n "$URL" ]; then
+              curl -sfL "$URL" -o /tmp/served.zip && DL=$(sha1sum /tmp/served.zip | cut -d' ' -f1)
+              echo "::notice title=HC-PACK-DL::served pack sha1=$DL size=$(stat -c%s /tmp/served.zip)"
+              [ "$DL" = "$SHA" ] && echo "::notice title=HC-PACK-MATCH::DISPATCH-OK sha matches" || echo "::warning title=HC-PACK-MATCH::MISMATCH props=$SHA served=$DL"
+            fi
+          else
+            echo "::warning title=HC-PACK-PROPS::nu am putut citi server.properties"
+          fi
           # ultimul log
           printf 'get logs/latest.log /tmp/latest.log\n' > b_get.txt
           if sftp_go -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1; then

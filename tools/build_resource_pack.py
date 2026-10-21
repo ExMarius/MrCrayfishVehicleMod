@@ -159,7 +159,7 @@ def build(output: Path) -> tuple[Path, str]:
         for item, (model, tint) in {
             # VehicleEntity's default white dye and the default wheel item tint.
             "go_kart_body": ("vehicle:item/go_kart_body", 16383998),
-            "police_car_body": ("vehicle:item/police_car_body", 0xFFFFFF),
+            "police_car_body": ("vehicle:item/police_car_body", 16383998),
             "lawn_mower_body": ("vehicle:item/lawn_mower_body", 16383998),
             "quad_bike_body": ("vehicle:item/quad_bike_body", 16383998),
             "quad_bike_handles": ("vehicle:item/quad_bike_handles", 0xFFFFFF),

@@ -902,26 +902,26 @@ public record LandVehicleSpec(
             16.0F, 35.0F, 12.1F * MODEL_UNIT * 1.4F, -12.1F * MODEL_UNIT * 1.4F, 5.0F,
             25_000.0F, 0.3F, 0.8F, 1.6F, "vehicle:entity.sports_car.engine",
             true, new Point(-8.4F * MODEL_UNIT, 0.21F, -1.99F),
-            new Part("iron_small_engine", new Point(0.0F, 0.63F, 17.5F * MODEL_UNIT),
-                    1.1F, 0.0F, 180.0F, 0.0F),
+            new Part("iron_large_engine", new Point(0.0F, 0.75F, 17.5F * MODEL_UNIT),
+                    1.2F, 0.0F, 180.0F, 0.0F),
             new Part("go_kart_steering_wheel",
-                    new Point(-0.392F, 1.4F * (0.5F + (-1.0F + 4.5F) * MODEL_UNIT + 3.04F * MODEL_UNIT),
+                    new Point(-0.392F, 0.5F + (-1.0F + 7.84F) * MODEL_UNIT + 2.24F * MODEL_UNIT,
                             12.6F * MODEL_UNIT),
-                    1.0F, -45.0F, 0.0F, 0.0F),
+                    1.25F, -45.0F, 0.0F, 0.0F),
             null,
             null,
             List.of(),
             List.of(
-                    wheel(-1, true, 8.1F, 0.0F, 12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F),
-                    wheel(1, true, 8.1F, 0.0F, 12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F),
-                    wheel(-1, false, 8.1F, 0.0F, -12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F),
-                    wheel(1, false, 8.1F, 0.0F, -12.1F, 1.35F, 1.125F, 1.125F, 1.0F, -1.0F, 4.5F)
+                    wheel(-1, true, 10.5F, 0.0F, 12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F),
+                    wheel(1, true, 10.5F, 0.0F, 12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F),
+                    wheel(-1, false, 10.5F, 0.0F, -12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F),
+                    wheel(1, false, 10.5F, 0.0F, -12.1F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 7.84F)
             ),
             List.of(
-                    seat(true, 4.5F, 0.0F, 0.5F, 1.0F, -1.0F, 4.5F),
-                    seat(false, -4.5F, 0.0F, 0.5F, 1.0F, -1.0F, 4.5F),
-                    seat(false, 4.5F, 0.0F, -9.0F, 1.0F, -1.0F, 4.5F),
-                    seat(false, -4.5F, 0.0F, -9.0F, 1.0F, -1.0F, 4.5F)
+                    seat(true, 4.5F, -2.0F, 0.5F, 1.4F, -1.0F, 7.84F),
+                    seat(false, -4.5F, -2.0F, 0.5F, 1.4F, -1.0F, 7.84F),
+                    seat(false, 4.5F, -2.0F, -9.0F, 1.4F, -1.0F, 7.84F),
+                    seat(false, -4.5F, -2.0F, -9.0F, 1.4F, -1.0F, 7.84F)
             ),
             false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
             null, null,
