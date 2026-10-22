@@ -151,12 +151,16 @@ public final class MechanicItems {
         return wrench(null);
     }
 
-    private static ItemStack clampStack1(ItemStack item) {
+    /** Uneltele (cheie/wrench) nu se stack-uiesc: fiecare poarta PDC propriul. */
+    private static void antiStack(ItemStack item) {
         ItemMeta meta = item.getItemMeta();
-        meta.setMaxStackSize(1);
+        meta.getPersistentDataContainer().set(new NamespacedKey("vehicle", "unique_id"),
+                PersistentDataType.STRING, UUID.randomUUID().toString());
         item.setItemMeta(meta);
-        return item;
     }
+
+    /** Cheia data de un banc de lucru: poarta id-ul bancului in PDC, ca sa
+     *  dispara din inventar cand jucatorul iese din zona de service. */
 
     /** Cheia data de un banc de lucru: poarta id-ul bancului in PDC, ca sa
      *  dispara din inventar cand jucatorul iese din zona de service. */
@@ -171,7 +175,8 @@ public final class MechanicItems {
         finish(item, Component.text("Cheie de mecanic", NamedTextColor.GOLD), List.of(
                 Component.text("Click cu cheia pe banc = ridici/cobori masina.", NamedTextColor.GRAY),
                 Component.text("Click pe masina ridicata = meniul de mecanic.", NamedTextColor.GRAY)));
-        return clampStack1(item);
+        antiStack(item);
+        return item;
     }
 
     /** Id-ul bancului care a dat cheia; null = cheie libera (creative / veche). */
@@ -191,18 +196,43 @@ public final class MechanicItems {
         }
     }
 
-    /** HammerItem.durability(200) din mod: 200 de folosiri (bara vanilla de durabilitate). */
+    /** HammerItem.durability(200) din mod: 200 de demontari. Paper 1.21.4 nu expune
+     *  metoda vanilla max-damage, asa ca durabilitatea o tinem in PDC si o aratam in lore. */
     public static final int HAMMER_MAX_DAMAGE = 200;
 
     public static ItemStack hammer() {
         ItemStack item = base(Kind.HAMMER, "hammer");
-        ItemMeta meta = item.getItemMeta();
-        meta.setMaxDamage(HAMMER_MAX_DAMAGE);
-        item.setItemMeta(meta);
-        finish(item, Component.text("Ciocan de lăcătuș", NamedTextColor.GOLD), List.of(
-                Component.text("Loveste masina TA: o demontezi in cufar de transport.",
-                        NamedTextColor.GRAY)));
+        updateHammerLore(item, 0);
         return item;
+    }
+
+    /** Cate demontari mai rezista ciocanul (0 = erodat complet). */
+    public static int hammerUsesLeft(ItemStack stack) {
+        if (kindOf(stack) != Kind.HAMMER) {
+            return 0;
+        }
+        Integer uses = stack.getItemMeta().getPersistentDataContainer()
+                .get(HAMMER_USES, PersistentDataType.INTEGER);
+        return HAMMER_MAX_DAMAGE - (uses == null ? 0 : uses);
+    }
+
+    /** Noteaza o folosire; returneaza true cand ciocanul se rupe (0 ramase). */
+    public static boolean useHammer(ItemStack stack) {
+        int used = HAMMER_MAX_DAMAGE - hammerUsesLeft(stack) + 1;
+        ItemMeta meta = stack.getItemMeta();
+        meta.getPersistentDataContainer().set(HAMMER_USES, PersistentDataType.INTEGER, used);
+        stack.setItemMeta(meta);
+        updateHammerLore(stack, used);
+        return used >= HAMMER_MAX_DAMAGE;
+    }
+
+    private static void updateHammerLore(ItemStack stack, int used) {
+        int left = Math.max(0, HAMMER_MAX_DAMAGE - used);
+        finish(stack, Component.text("Ciocan de lacatus", NamedTextColor.GOLD), List.of(
+                Component.text("Loveste masina TA: o demontezi in cufar de transport.",
+                        NamedTextColor.GRAY),
+                Component.text("Folosiri ramase: " + left + "/" + HAMMER_MAX_DAMAGE,
+                        left <= 20 ? NamedTextColor.RED : NamedTextColor.AQUA)));
     }
 
     /** Cheia masinii: legata de vehicul la cumparare; click pe masina = incui/deschide. */
@@ -211,8 +241,8 @@ public final class MechanicItems {
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(KEY_TARGET, PersistentDataType.STRING,
                 vehicleId.toString());
-        meta.setMaxStackSize(1);
         item.setItemMeta(meta);
+        antiStack(item);
         finish(item, Component.text("Cheie: " + vehicleName, NamedTextColor.GOLD), List.of(
                 Component.text("Click dreapta pe masina = incui/deschide.", NamedTextColor.GRAY)));
         return item;

@@ -164,20 +164,12 @@ public final class MechanicListener implements Listener {
         }
         if (vehicles.dismantleToCrate(player, target)) {
             // HammerItem.durability(200) din mod: fiecare demontare toceste ciocanul.
-            if (player.getGameMode() != GameMode.CREATIVE) {
-                org.bukkit.inventory.meta.ItemMeta meta = held.getItemMeta();
-                if (meta instanceof org.bukkit.inventory.meta.Damageable damageable) {
-                    int damage = damageable.getDamage() + 1;
-                    if (damage >= MechanicItems.HAMMER_MAX_DAMAGE) {
-                        held.setAmount(held.getAmount() - 1);
-                        player.playSound(player.getLocation(),
-                                org.bukkit.Sound.ENTITY_ITEM_BREAK, 0.9F, 1.0F);
-                        player.sendRichMessage("<yellow>Ciocanul s-a uzat si s-a rupt.</yellow>");
-                    } else {
-                        damageable.setDamage(damage);
-                        held.setItemMeta(meta);
-                    }
-                }
+            if (player.getGameMode() != GameMode.CREATIVE
+                    && MechanicItems.useHammer(held)) {
+                held.setAmount(held.getAmount() - 1);
+                player.playSound(player.getLocation(),
+                        org.bukkit.Sound.ENTITY_ITEM_BREAK, 0.9F, 1.0F);
+                player.sendRichMessage("<yellow>Ciocanul s-a uzat si s-a rupt.</yellow>");
             }
             player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_DESTROY, 0.8F, 0.7F);
             player.sendRichMessage("<gray>Masina demontata - ai primit-o in cufar de transport.</gray>");
