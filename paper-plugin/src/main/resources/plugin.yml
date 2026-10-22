@@ -54,4 +54,7 @@ permissions:
   mcv.vehicle.dismantle:
     description: Demontarea vehiculului propriu cu ciocanul.
     default: op
+  mcv.fluidmixer.use:
+    description: Folosirea mixerului de fluide (Blaze Juice + Ender Sap = Fuellium).
+    default: op
 softdepend: [Vault]
