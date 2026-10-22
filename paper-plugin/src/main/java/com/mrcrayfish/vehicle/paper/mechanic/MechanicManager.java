@@ -49,6 +49,7 @@ public final class MechanicManager {
     private final FluidMixerManager mixers;
     private final MechanicGui mechanicGui;
     private BukkitTask saveTask;
+    private BukkitTask previewTask;
 
     public MechanicManager(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -69,11 +70,18 @@ public final class MechanicManager {
         mixers.start();
         long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
         saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
+        // Preview-ul rotativ din meniul cricului (fereastra din mod): un cadru la
+        // 6 tick-uri => o rotatie completa la ~2.4s, cost ~zero (doar jucatorii
+        // cu meniul deschis primesc un setItem).
+        previewTask = Bukkit.getScheduler().runTaskTimer(plugin, mechanicGui::advancePreviewFrames, 6L, 6L);
     }
 
     public void stop() {
         if (saveTask != null) {
             saveTask.cancel();
+        }
+        if (previewTask != null) {
+            previewTask.cancel();
         }
         save();
         props.stop();

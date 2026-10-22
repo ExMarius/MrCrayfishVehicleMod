@@ -1500,6 +1500,7 @@ def build(output: Path) -> tuple[Path, str]:
         })
 
         emit_vehicle_icons(namespace)
+        emit_vehicle_previews(namespace)
 
         if output.exists():
             output.unlink()
@@ -1578,6 +1579,203 @@ def emit_vehicle_icons(namespace: Path) -> None:
             namespace / f"items/vehicle_icon_big/{icon_id}.json",
             item_definition(f"vehicle:item/vehicle_icon_big/{icon_id}", 16383998),
         )
+
+
+# =====================================================================
+# PREVIEW ROTATIV pentru meniul cricului (fereastra EditVehicleScreen din mod):
+# pe client vanilla un item din GUI nu se poate invarti cu mouse-ul, deci animam
+# SERVER-SIDE: 8 cadre statice (45 grade) cu modelul 3D COMPUS (caroserie + roti
+# reale ale modului), schimbate de plugin la cateva tick-uri. Geometria rotilor e
+# citita din LandVehicleSpec.java - SURSA de adevar validata de rig-ul live:
+#   pozitie (pixeli model) = (side*offsetX, wheelOffset+offsetY, offsetZ),
+#   scara = scaleX/Y/Z, oglinda X pe partea dreapta - exact LandVehicleSpec.wheel().
+# =====================================================================
+
+MODELUNIT = 1.0 / 16.0
+
+
+def _parse_java_args(text: str, start: int) -> tuple:
+    """Top-level comma-separated args of the call whose '(' is right before `start`."""
+    depth = 1
+    i = start
+    args, cur = [], []
+    while i < len(text):
+        ch = text[i]
+        if ch == '(':
+            depth += 1
+        elif ch == ')':
+            depth -= 1
+            if depth == 0:
+                if cur:
+                    args.append(''.join(cur))
+                return [a.strip() for a in args], i + 1
+        elif ch == ',' and depth == 1:
+            args.append(''.join(cur))
+            cur = []
+        else:
+            cur.append(ch)
+        i += 1
+    raise RuntimeError('unbalanced parens in LandVehicleSpec.java')
+
+
+def _parse_float_args(text: str, start: int) -> tuple:
+    args, end = _parse_java_args(text, start)
+    out = []
+    for a in args:
+        token = a.strip()
+        if token == 'true':
+            out.append(1.0)
+        elif token == 'false':
+            out.append(0.0)
+        else:
+            out.append(float(token.replace('F', '').replace('_', '')))
+    return out, end
+
+
+def parse_preview_wheels() -> dict:
+    """Per-vehicle [(side, front, ox, oy, oz, sx, sy, sz, bs, ax, wo)] from every
+    wheel(...) helper call in LandVehicleSpec.java, keyed by the spec id declared
+    above them (same source of truth as the live world rig)."""
+    import re as _re
+    text = (ROOT / 'paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/vehicle/'
+            'LandVehicleSpec.java').read_text(encoding='utf-8')
+    result: dict = {}
+    for match in _re.finditer(r'\bwheel\(', text):
+        try:
+            values, _ = _parse_float_args(text, match.end())
+        except (ValueError, RuntimeError):
+            continue  # helper DEFINITION (typed params), not a data call
+        if len(values) != 11:
+            continue
+        spec_id = None
+        for decl in _re.finditer(r'new LandVehicleSpec\(\s*"([a-z_0-9]+)"', text[:match.start()]):
+            spec_id = decl.group(1)
+        if spec_id is None:
+            continue
+        result.setdefault(spec_id, []).append(values)
+    return result
+
+
+def _bbox(elements: list) -> tuple:
+    xs, ys, zs = [], [], []
+    for element in elements:
+        for corner in ('from', 'to'):
+            xs.append(float(element[corner][0]))
+            ys.append(float(element[corner][1]))
+            zs.append(float(element[corner][2]))
+    return (min(xs), min(ys), min(zs)), (max(xs), max(ys), max(zs))
+
+
+def _transformed_element(element: dict, scale: tuple, offset: tuple, mirrored: bool) -> dict:
+    """Scale around model centre (8,8,8), then translate so the centre lands at
+    (8+offset) - i.e. offset = centre_final - 8 on each axis. mirrored flips X
+    around the element's own scaled centre (the right-side wheel, as the mod does)."""
+    sx, sy, sz = scale
+    ox, oy, oz = offset
+    out = json.loads(json.dumps(element))
+    for corner in ('from', 'to'):
+        vx, vy, vz = (float(element[corner][0]), float(element[corner][1]),
+                      float(element[corner][2]))
+        tx, ty, tz = (vx - 8.0) * sx + ox, (vy - 8.0) * sy + oy, (vz - 8.0) * sz + oz
+        if mirrored:
+            tx = -tx
+        out[corner][0] = round(tx + 8.0, 3)
+        out[corner][1] = round(ty + 8.0, 3)
+        out[corner][2] = round(tz + 8.0, 3)
+    if mirrored:
+        out['from'][0], out['to'][0] = out['to'][0], out['from'][0]
+    return out
+
+
+def compose_preview_model(namespace: Path, vehicle_id: str, wheels: list) -> dict:
+    """Body (already-converted pack model: textures rezolvate) + roata standard
+    scalata/pozitionata per LandVehicleSpec, aliniata sub caroserie prin centrul
+    grupului de roti pe centrul bbox-ului caroseriei (aceeasi translatie globala
+    ca in rig; distantele relative sunt EXACT cele din spec)."""
+    body = json.loads((namespace / f'models/item/{vehicle_id}_body.json').read_text(encoding='utf-8'))
+    wheel = json.loads((namespace / 'models/item/standard_wheel.json').read_text(encoding='utf-8'))
+    elements = list(body.get('elements', []))
+    textures = dict(body.get('textures', {}))
+    if not elements or not wheels:
+        return {'textures': textures, 'elements': elements}
+    (lo_x, _, lo_z), (hi_x, _, hi_z) = _bbox(elements)
+    raw = [(side * ox, wo + oy, oz) for side, _f, ox, oy, oz, sx, sy, sz, _bs, _ax, wo in wheels]
+    mean_x = sum(p[0] for p in raw) / len(raw)
+    mean_z = sum(p[2] for p in raw) / len(raw)
+    fit_x = (lo_x + hi_x) / 2.0 - mean_x
+    fit_z = (lo_z + hi_z) / 2.0 - mean_z
+    # texturile rotii se muta sub chei prefixate ca sa nu se ciocneasca de ale caroseriei
+    wheel_tex = dict(wheel.get('textures', {}))
+    remap = {}
+    for key, value in wheel_tex.items():
+        new_key = f'w_{key}'
+        remap[key] = new_key
+        textures.setdefault(new_key, value)
+    for (side, _f, ox, oy, oz, sx, sy, sz, _bs, _ax, wo) in wheels:
+        centre = (side * ox + fit_x, wo + oy, oz + fit_z)
+        for element in wheel.get('elements', []):
+            transformed = _transformed_element(element, (sx, sy, sz),
+                                               (centre[0] - 8.0, centre[1] - 8.0, centre[2] - 8.0),
+                                               side > 0)
+            for face in transformed.get('faces', {}).values():
+                tex = face.get('texture', '')
+                if tex.startswith('#'):
+                    face['texture'] = '#' + remap.get(tex[1:], tex[1:])
+            elements.append(transformed)
+    return {'textures': textures, 'elements': elements}
+
+
+def emit_vehicle_previews(namespace: Path) -> None:
+    """8 rotation frames per vehicle for the jack-service GUI window (server-side
+    animation), composed of the REAL mod models: body + wheels."""
+    try:
+        wheels_by_id = parse_preview_wheels()
+    except (OSError, RuntimeError) as exc:
+        print(f'[preview] LandVehicleSpec parse skipped: {exc}')
+        wheels_by_id = {}
+    frames = 8
+    for body_path in sorted((namespace / 'models/item').glob('*_body.json')):
+        vehicle_id = body_path.stem.removesuffix('_body')
+        composed = compose_preview_model(namespace, vehicle_id, wheels_by_id.get(vehicle_id, []))
+        elements = composed.get('elements', [])
+        if not elements:
+            continue
+        # Vanilla refuza elementele in afara [-16, 32] (model intreg = missing):
+        # micsoram uniform in jurul (8,8,8) si recentram pana incapem in cubul legal.
+        lo, hi = _bbox(elements)
+        biggest = max(hi[i] - lo[i] for i in range(3))
+        if biggest > 47.9:
+            factor = 47.9 / biggest
+            for element in elements:
+                for corner in ('from', 'to'):
+                    for i in range(3):
+                        element[corner][i] = round(8.0 + (element[corner][i] - 8.0) * factor, 3)
+            lo, hi = _bbox(elements)
+        shift = [max(-16.0 - lo[i] + 0.05, 0.0) - max(hi[i] - 31.95, 0.0) for i in range(3)]
+        if any(abs(s) > 1.0E-9 for s in shift):
+            for element in elements:
+                for corner in ('from', 'to'):
+                    for i in range(3):
+                        element[corner][i] = round(element[corner][i] + shift[i], 3)
+            lo, hi = _bbox(elements)
+        center = [-(a + b) / 2.0 for a, b in zip(lo, hi)]
+        size = max(b - a for a, b in zip(lo, hi))
+        scale = 52.0 / size if size > 0 else 1.0  # ~3.7x slot: umple fereastra de 4 randuri
+        for frame in range(frames):
+            yaw = -135.0 + frame * 45.0
+            model = dict(composed)
+            model['display'] = {
+                'gui': {
+                    'rotation': [30.0, round(yaw, 1), 0.0],
+                    'translation': [round(v, 3) for v in center],
+                    'scale': [round(scale, 4)] * 3,
+                }
+            }
+            write_json(namespace / f'models/item/vehicle_preview/{vehicle_id}/frame_{frame}.json', model)
+            write_json(
+                namespace / f'items/vehicle_preview/{vehicle_id}/frame_{frame}.json',
+                item_definition(f'vehicle:item/vehicle_preview/{vehicle_id}/frame_{frame}', 16383998),
+            )
 
 
 def main() -> None:

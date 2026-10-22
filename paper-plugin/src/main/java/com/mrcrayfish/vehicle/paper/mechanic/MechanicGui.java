@@ -37,6 +37,9 @@ public final class MechanicGui {
         private Inventory inventory;
         private final UUID vehicleId;
         private final boolean paintPage;
+        /** Preview-ul rotativ: id-ul modelului + cadrul curent (0..FRAMES-1). */
+        private String previewId;
+        private int frame;
 
         public Holder(UUID vehicleId, boolean paintPage) {
             this.vehicleId = vehicleId;
@@ -101,8 +104,12 @@ public final class MechanicGui {
                 inventory.setItem(slot, frame);
             }
         }
-        // Centrul ferestrei: vehiculul (icon model + date complete), ca preview-ul 3D.
-        inventory.setItem(INFO_SLOT, info(vehicle));
+        // Centrul ferestrei: vehiculul MARE (modelul 3D compus caroserie+roti din
+        // mod) + datele complete; preview-ul se ROTESTE lent (cadrele vin din
+        // advancePreviewFrames, apelat de task-ul din MechanicManager).
+        holder.previewId = vehicle.spec().id();
+        holder.frame = 0;
+        inventory.setItem(INFO_SLOT, info(vehicle, previewModelKey(holder)));
 
         if (vehicle.spec().defaultEngineType() == EngineType.NONE) {
             inventory.setItem(ENGINE_SLOT, tag(make(Material.BARRIER,
@@ -161,10 +168,40 @@ public final class MechanicGui {
         player.openInventory(inventory);
     }
 
-    private static ItemStack info(LandVehicle vehicle) {
+    /** Numarul de cadre ale preview-ului rotativ (8 unghiuri cate 45°, generate in pack). */
+    public static final int FRAMES = 8;
+
+    private static NamespacedKey previewModelKey(Holder holder) {
+        return new NamespacedKey("vehicle",
+                "vehicle_preview/" + holder.previewId + "/frame_" + holder.frame);
+    }
+
+    /** Rotația „slow in continuare" ceruta: la cateva tick-uri mutam cadrul modelului
+     *  din fereastra fiecarui jucator care are deschis bancul (nu si pagina de vopsea).
+     *  Cost: 1 setItem pe jucator cu meniul deschis per task - nesemnificativ. */
+    public void advancePreviewFrames() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Inventory top = player.getOpenInventory().getTopInventory();
+            if (!(top.getHolder() instanceof Holder holder)
+                    || holder.paintPage() || top.getSize() != SIZE || holder.previewId == null) {
+                continue;
+            }
+            ItemStack stack = top.getItem(INFO_SLOT);
+            if (stack == null || !stack.hasItemMeta()) {
+                continue;
+            }
+            holder.frame = (holder.frame + 1) % FRAMES;
+            ItemMeta meta = stack.getItemMeta();
+            meta.setItemModel(previewModelKey(holder));
+            stack.setItemMeta(meta);
+            top.setItem(INFO_SLOT, stack);
+        }
+    }
+
+    private static ItemStack info(LandVehicle vehicle, NamespacedKey modelKey) {
         ItemStack stack = new ItemStack(Material.PAPER);
         ItemMeta meta = stack.getItemMeta();
-        meta.setItemModel(new NamespacedKey("vehicle", "vehicle_icon_big/" + vehicle.spec().id()));
+        meta.setItemModel(modelKey);
         meta.displayName(Component.text(vehicle.spec().displayName(), NamedTextColor.WHITE,
                 TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
         List<Component> lore = new ArrayList<>();
