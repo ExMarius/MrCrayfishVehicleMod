@@ -1873,14 +1873,14 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
 
 
 def emit_vehicle_previews(namespace: Path) -> None:
-    """8 rotation frames per vehicle for the jack-service GUI window (server-side
-    animation), FULL montaj ca in mod: body + wheels + motor + volan/manere."""
+    """Cadrul STATIC al ferestrei din meniul cricului (unghiul initial din
+    EditVehicleScreen; rotatia dinamica ar cere client modat), montaj FULL ca
+    in mod: body + wheels + motor + volan/manere."""
     try:
         specs, corrections = parse_preview_spec()
     except (OSError, RuntimeError) as exc:
         print(f'[preview] LandVehicleSpec parse skipped: {exc}')
         specs, corrections = {}, {}
-    frames = 8
     for body_path in sorted((namespace / 'models/item').glob('*_body.json')):
         vehicle_id = body_path.stem.removesuffix('_body')
         composed = compose_preview_model(
@@ -1910,21 +1910,22 @@ def emit_vehicle_previews(namespace: Path) -> None:
         center = [-(a + b) / 2.0 for a, b in zip(lo, hi)]
         size = max(b - a for a, b in zip(lo, hi))
         scale = 52.0 / size if size > 0 else 1.0  # ~3.7x slot: umple fereastra de 4 randuri
-        for frame in range(frames):
-            yaw = -135.0 + frame * 45.0
-            model = dict(composed)
-            model['display'] = {
-                'gui': {
-                    'rotation': [30.0, round(yaw, 1), 0.0],
-                    'translation': [round(v, 3) for v in center],
-                    'scale': [round(scale, 4)] * 3,
-                }
+        # Cadrul este STATIC 1:1 cu EditVehicleScreen: modul NU roteste singur
+        # (rotatia cu mouse-ul cere client modat); acesta e unghiul initial
+        # al ferestrei din mod: tilt X ~20, yaw -135.
+        model = dict(composed)
+        model['display'] = {
+            'gui': {
+                'rotation': [20.0, -135.0, 0.0],
+                'translation': [round(v, 3) for v in center],
+                'scale': [round(scale, 4)] * 3,
             }
-            write_json(namespace / f'models/item/vehicle_preview/{vehicle_id}/frame_{frame}.json', model)
-            write_json(
-                namespace / f'items/vehicle_preview/{vehicle_id}/frame_{frame}.json',
-                item_definition(f'vehicle:item/vehicle_preview/{vehicle_id}/frame_{frame}', 16383998),
-            )
+        }
+        write_json(namespace / f'models/item/vehicle_preview/{vehicle_id}/frame_0.json', model)
+        write_json(
+            namespace / f'items/vehicle_preview/{vehicle_id}/frame_0.json',
+            item_definition(f'vehicle:item/vehicle_preview/{vehicle_id}/frame_0', 16383998),
+        )
 
 
 # =====================================================================
@@ -2031,11 +2032,32 @@ def emit_jack_gui_backdrop(namespace: Path) -> None:
             d_off = ((dst_y0 + row) * width) * 4
             canvas[d_off:d_off + width * 4] = src[s_off:s_off + width * 4]
 
-    paste(0, 88, 0)       # titlu + motor(8,17) + roti(8,35) + fereastra (17..87)
-    paste(88, 103, 88)    # separator + margine sub fereastra
-    paste(103, 157, 140)  # 3 randuri inventar jucator pe grila exacta (y 140..194)
-    paste(157, 161, 194)  # banda de 4px din textura dintre grila si hotbar
-    paste(161, 179, 198)  # hotbar pe grila exacta (y 198..216)
+    paste(0, 89, 0)       # titlu + motor(8,17) + roti(8,35) + fereastra (17..87)
+    # y 89..100: banda gri separator (ramane din prefill)
+    paste(101, 155, 139)  # 3 randuri inventar: border la y139 => continut 140.. (grila chest)
+    # y 193..196: banda gri dintre grila si hotbar (ramane din prefill)
+    paste(159, 176, 197)  # hotbar: border la y197 => continut 198.. (grila chest)
+    paste(176, 183, 214)  # marginea de jos a ferestrei modului (border + umbra)
+    # ultimul rand al ferestrei chest (221) primeste borderul inchis al modului (v183)
+    for x in range(width):
+        s_off = (183 * src_w + x) * 4
+        d_off = (221 * width + x) * 4
+        canvas[d_off:d_off + 4] = src[s_off:s_off + 4]
+    # sub slotul de roti: in mod e BUTON (vopseste), NU casuta de inventar:
+    # stergem chenarul acelui slot din textura (8,53), ramane panoul plat.
+    for y in range(52, 72):
+        for x in range(7, 26):
+            d_off = (y * width + x) * 4
+            canvas[d_off:d_off + 4] = b'\xc6\xc6\xc6\xff'
+    # fereastra de preview: in mod framebuffer-ul 3D acopera tot interiorul;
+    # noi desenam modelul compus - curatam panourile ajutatoare ale texturii
+    # pe fundalul intunecat al ferestrei (bordurile raman).
+    dark = b'\x1c\x1c\x1c\xff'
+    for y in range(18, 87):
+        for x in range(27, 168):
+            d_off = (y * width + x) * 4
+            if canvas[d_off:d_off + 4] != dark:
+                canvas[d_off:d_off + 4] = dark
     tex_path = namespace / 'textures/font/gui/edit_vehicle_bg.png'
     tex_path.parent.mkdir(parents=True, exist_ok=True)
     tex_path.write_bytes(_png_encode_rgba(width, height, bytes(canvas)))

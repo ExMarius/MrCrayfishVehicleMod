@@ -149,7 +149,10 @@ public record LandVehicleSpec(
             10.0F, 35.0F, 5.3F * MODEL_UNIT * 1.3F, -5.7F * MODEL_UNIT * 1.3F, 5.0F,
             5_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.bumper_car.engine",
             false, new Point(0.0F, 0.0F, 0.0F),
-            null,
+            /* La fel ca ATV/Quad: buggy-ul are motor mic montat; fara el slotul
+             * MOTOR din meniul cricului ramanea blocat pe "FARA MOTOR". */
+            new Part("iron_small_engine", new Point(0.0F, 0.611875F, -0.06875F),
+                    0.55F, 0.0F, 180.0F, 0.0F),
             new Part("dune_buggy_handles", new Point(0.0F, 0.66625F, -0.00609375F),
                     1.3F, 0.0F, 0.0F, 0.0F),
             itemPart("fuel_door_closed", 0.0F, 3.0F, -7.0F,
@@ -674,7 +677,11 @@ public record LandVehicleSpec(
             1.25F, -1.5F, 4.624F,
             15.0F, 35.0F, 10.5F * MODEL_UNIT * 1.25F, -10.5F * MODEL_UNIT * 1.25F, 5.0F,
             20_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.atv.engine",
-            false, new Point(0.0F, 0.0F, 0.0F), null,
+            false, new Point(0.0F, 0.0F, 0.0F),
+            /* Acelasi motor mic ca la Quad Bike (aceeasi clasa de vehicul);
+             * fara el slotul MOTOR din meniul cricului era inutilizabil pentru ATV. */
+            new Part("iron_small_engine", new Point(0.0F, 0.611875F, -0.06875F),
+                    0.55F, 0.0F, 180.0F, 0.0F),
             new Part("atv_handles", new Point(0.0F, 1.2688404F, 0.3345971F),
                     1.25F, -45.0F, 0.0F, 0.0F),
             itemPart("small_fuel_door_closed", 0.0F, 6.55F, 5.0F,
