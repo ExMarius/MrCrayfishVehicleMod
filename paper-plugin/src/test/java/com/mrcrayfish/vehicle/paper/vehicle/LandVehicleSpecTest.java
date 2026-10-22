@@ -308,7 +308,11 @@ class LandVehicleSpecTest {
         assertEquals(1.2F, spec.maxEnginePitch(), EPSILON);
         assertEquals("vehicle:entity.bumper_car.engine", spec.engineSound());
         assertFalse(spec.exhaustFumes());
-        assertNull(spec.engine());
+        /* Motor mic montat din fabrica (ca la Quad Bike/ATV): fara el slotul MOTOR
+         * din meniul cricului ramanea blocat pe "FARA MOTOR" si nu facea nimic. */
+        assertEquals("iron_small_engine", spec.engine().model());
+        assertPoint(spec.engine().center(), 0.0F, 0.611875F, -0.06875F);
+        assertEquals(0.55F, spec.engine().scale(), EPSILON);
         assertNull(spec.ignition());
         assertEquals("dune_buggy_handles", spec.steering().model());
         assertPoint(spec.steering().center(), 0.0F, 0.66625F, -0.00609375F);
