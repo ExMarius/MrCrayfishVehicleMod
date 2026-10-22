@@ -25,7 +25,9 @@ import java.util.UUID;
  * Aspectul copiaza layout-ul din mod (edit_vehicle.png):
  *  - STANGA, vertical: slot MOTOR (sus) + slot ROTI (sub) - pui piesa noua pe
  *    cursor si click = schimb (cursorul pastreaza piesa veche, ca in mod);
- *  - CENTRU: fereastra mare de previzualizare cu vehiculul (icon + date);
+ *  - CENTRU: fereastra mare cu MODELUL 3D real al vehiculului, marit de 4x
+ *    (aceeasi vedere 3/4 [30,-135] ca fereastra din mod; rotatia libera cu
+ *    mouse-ul nu exista in GUI vanilla - acesta e maximul posibil);
  *  - JOS: UNICUL extras fata de mod, cerut de tine - butonul VOPSESTE
  *    (paleta celor 16 culori, gratuita). Atat, restul e 1:1.
  * Inventarul jucatorului ramane jos, ca in mod.
@@ -162,7 +164,7 @@ public final class MechanicGui {
     private static ItemStack info(LandVehicle vehicle) {
         ItemStack stack = new ItemStack(Material.PAPER);
         ItemMeta meta = stack.getItemMeta();
-        meta.setItemModel(new NamespacedKey("vehicle", "vehicle_icon/" + vehicle.spec().id()));
+        meta.setItemModel(new NamespacedKey("vehicle", "vehicle_icon_big/" + vehicle.spec().id()));
         meta.displayName(Component.text(vehicle.spec().displayName(), NamedTextColor.WHITE,
                 TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
         List<Component> lore = new ArrayList<>();

@@ -1559,6 +1559,25 @@ def emit_vehicle_icons(namespace: Path) -> None:
             namespace / f"items/vehicle_icon/{icon_id}.json",
             item_definition(f"vehicle:item/vehicle_icon/{icon_id}", 16383998),
         )
+        # Varianta MARE (preview-ul din meniul cricului = fereastra din mod, 4x):
+        # acelasi model 3D real, aceeasi vedere 3/4 [30,-135], scalat sa umple
+        # fereastra de 4x8 sloturi (in jur de 56px inaltime) in loc de 1 slot (14px).
+        big_scale = scale * 4.0
+        big_model = {
+            "parent": f"vehicle:item/{name}",
+            "display": {
+                "gui": {
+                    "rotation": [30, -135, 0],
+                    "translation": [round(v, 3) for v in center],
+                    "scale": [round(big_scale, 4)] * 3,
+                }
+            },
+        }
+        write_json(namespace / f"models/item/vehicle_icon_big/{icon_id}.json", big_model)
+        write_json(
+            namespace / f"items/vehicle_icon_big/{icon_id}.json",
+            item_definition(f"vehicle:item/vehicle_icon_big/{icon_id}", 16383998),
+        )
 
 
 def main() -> None:
