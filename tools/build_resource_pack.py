@@ -1211,16 +1211,34 @@ def build(output: Path) -> tuple[Path, str]:
                    _jack_composite(_jack_down, _jack_head, 0.0))
         write_json(namespace / "models/block/mcv_jack_up.json",
                    _jack_composite(_jack_down, _jack_head, 8.0))
-        # Blockstates: doua fisiere vanilla autocontinute, acoperire 100% a starilor
-        # (waterlogged false/true incluse - statiile le aseaza mereu pe false).
+
+        # Fata de JOS cu cullface (fix definitiv pentru „gaura de sub statii"):
+        # modelele modului nu au fund - prin ele se putea vedea golul cand statia
+        # atarna deasupra unui spatiu. Un quad zero-grosime la y=0, randat doar cand
+        # sub e aer (cullface=down il ascunde cand e rezemat de un bloc opac).
+        def _add_bottom_face(model_path: Path, texture_key: str) -> None:
+            _model = json.loads(model_path.read_text(encoding="utf-8"))
+            _model.setdefault("elements", []).append({
+                "from": [0, 0, 0], "to": [16, 0.001, 16],
+                "faces": {"down": {"uv": [0, 0, 16, 16],
+                                   "texture": f"#{texture_key}", "cullface": "down"}},
+            })
+            write_json(model_path, _model)
+        _add_bottom_face(namespace / "models/block/mcv_workstation.json", "workstation")
+        _add_bottom_face(namespace / "models/block/mcv_jack_down.json", "jack")
+        _add_bottom_face(namespace / "models/block/mcv_jack_up.json", "jack")
+        # Blockstates: gazde NEOPACE peste tot (niciun culling pe nicio parte):
+        #  - elevator: petrified_oak_slab bottom=JOS, top=SUS (platforma la +0.5),
+        #    double = tamplarie vanilla (oak_planks), neatins
+        #  - banc: composter[level=7], level 0-6+8 = composter vanilla
         _mc_namespace = namespace.parent / "minecraft"
         write_json(_mc_namespace / "blockstates/petrified_oak_slab.json", {"variants": {
             "type=bottom,waterlogged=false": {"model": "vehicle:block/mcv_jack_down"},
             "type=bottom,waterlogged=true": {"model": "vehicle:block/mcv_jack_down"},
-            "type=top,waterlogged=false": {"model": "minecraft:block/petrified_oak_slab_top"},
-            "type=top,waterlogged=true": {"model": "minecraft:block/petrified_oak_slab_top"},
-            "type=double,waterlogged=false": {"model": "vehicle:block/mcv_jack_up"},
-            "type=double,waterlogged=true": {"model": "vehicle:block/mcv_jack_up"},
+            "type=top,waterlogged=false": {"model": "vehicle:block/mcv_jack_up"},
+            "type=top,waterlogged=true": {"model": "vehicle:block/mcv_jack_up"},
+            "type=double,waterlogged=false": {"model": "minecraft:block/oak_planks"},
+            "type=double,waterlogged=true": {"model": "minecraft:block/oak_planks"},
         }})
         write_json(_mc_namespace / "blockstates/composter.json", {"multipart": [
             {"when": {"level": "0|1|2|3|4|5|6|8"},

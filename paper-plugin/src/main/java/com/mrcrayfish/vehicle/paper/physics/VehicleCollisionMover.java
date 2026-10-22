@@ -135,7 +135,64 @@ public final class VehicleCollisionMover {
 
     private static boolean collides(World world, BoundingBox box) {
         BoundingBox query = box.clone().expand(-COLLISION_EPSILON);
-        return world.hasCollisionsIn(query);
+        // Poarta rapida: doar daca in zona exista vreun bloc-statie trecem pe calea
+        // detaliata (extrem de rar in lumea reala); in rest ramane calea nativa.
+        if (!hasStationBlock(world, query)) {
+            return world.hasCollisionsIn(query);
+        }
+        return collidesIgnoringStations(world, query);
+    }
+
+    /** Misiunea anti-lag + cerinta user: statiile-bloc (cric jos, banc etc.) sunt
+     *  INTANGIBILE pentru vehicule - masina trece prin ele la nivelul solului in
+     *  loc sa fie urcata/blocata. Jucatorii colideaza normal cu ele (selectia se
+     *  face aici, in fizica vehiculului, nu in cea vanilla). */
+    private static boolean hasStationBlock(World world, BoundingBox box) {
+        int minX = (int) Math.floor(box.getMinX());
+        int minY = (int) Math.floor(box.getMinY());
+        int minZ = (int) Math.floor(box.getMinZ());
+        int maxX = (int) Math.floor(box.getMaxX());
+        int maxY = (int) Math.floor(box.getMaxY());
+        int maxZ = (int) Math.floor(box.getMaxZ());
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    if (com.mrcrayfish.vehicle.paper.mechanic.StationBlocks.kindOf(
+                            world.getBlockAt(x, y, z)) != null) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Coliziune manuala identica cu cea nativa, dar sari peste blocurile-statie.
+     *  Folosita DOAR cand poarta de mai sus a gasit vreo statie in zona. */
+    private static boolean collidesIgnoringStations(World world, BoundingBox query) {
+        int minX = (int) Math.floor(query.getMinX());
+        int minY = (int) Math.floor(query.getMinY());
+        int minZ = (int) Math.floor(query.getMinZ());
+        int maxX = (int) Math.floor(query.getMaxX());
+        int maxY = (int) Math.floor(query.getMaxY());
+        int maxZ = (int) Math.floor(query.getMaxZ());
+        for (int x = minX; x <= maxX; x++) {
+            for (int y = minY; y <= maxY; y++) {
+                for (int z = minZ; z <= maxZ; z++) {
+                    org.bukkit.block.Block block = world.getBlockAt(x, y, z);
+                    if (block.getType().isAir()
+                            || com.mrcrayfish.vehicle.paper.mechanic.StationBlocks.kindOf(block) != null) {
+                        continue;
+                    }
+                    for (BoundingBox shape : block.getCollisionShape().getBoundingBoxes()) {
+                        if (query.overlaps(shape.clone().shift(x, y, z))) {
+                            return true;
+                        }
+                    }
+                }
+            }
+        }
+        return false;
     }
 
     private static BoundingBox shifted(BoundingBox box, Axis axis, double amount) {

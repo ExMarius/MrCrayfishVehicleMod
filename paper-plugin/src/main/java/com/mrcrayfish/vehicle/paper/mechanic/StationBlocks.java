@@ -52,10 +52,12 @@ public final class StationBlocks {
     public static final BlockData WORKSTATION = workstationData();
     /** Elevator JOS: jumatea de jos de bloc - masina intra fix peste el (ca in mod). */
     public static final BlockData JACK_DOWN = slabData(Slab.Type.BOTTOM);
-    /** Elevator SUS (cap ridicat +0.5): bloc plin = platforma reala sub masina. */
-    public static final BlockData JACK_UP = slabData(Slab.Type.DOUBLE);
+    /** Elevator SUS (cap ridicat): jumatatea DE SUS = platforma la +0.5 sub masina.
+     *  Ambele jumatati de slab sunt NEOPACE - nici blocul de dedesubt nu-si mai
+     *  ascunde fata de sus (fixul gaurii spre void de sub statii). */
+    public static final BlockData JACK_UP = slabData(Slab.Type.TOP);
 
-    /** Identifica statiile noastre dupa bloc+stare; type=top al slab-ului e vanilla. */
+    /** Identifica statiile noastre dupa bloc+stare; type=double/alte sunt vanilla. */
     public static Kind kindOf(Block block) {
         if (block == null) {
             return null;
@@ -69,8 +71,8 @@ public final class StationBlocks {
                 && block.getBlockData() instanceof Slab slab) {
             return switch (slab.getType()) {
                 case BOTTOM -> Kind.JACK_DOWN;
-                case DOUBLE -> Kind.JACK_UP;
-                case TOP -> null; // varianta vanilla, pastrata pentru slab-urile legitime
+                case TOP -> Kind.JACK_UP;
+                case DOUBLE -> null; // varianta vanilla (tamplarie), neatinsa
             };
         }
         return null;
