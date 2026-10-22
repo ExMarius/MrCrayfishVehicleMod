@@ -83,6 +83,7 @@ workstation:
 jack:
   # Inaltimea la care cricul ridica masina (2.5 = mergi pe sub ea, ca la service real).
   # Cricul ridica masina exact ca in mod: maxim +0.5 bloc deasupra solului.
+  # (SHAPE 10/16 + 0.5 * progress in JackBlock; capul cricului urca cu acelasi 0.5.)
   lift-height: 0.5
   # Timpul urcarii/coborarii, in tick-uri (20 = 1 secunda).
   lift-speed-ticks: 50

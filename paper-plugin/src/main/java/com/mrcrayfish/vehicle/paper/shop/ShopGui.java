@@ -103,31 +103,32 @@ public final class ShopGui {
             }
             slot += 5; // rand pe familie
         }
-        slot = 28;
+        // Roti pe primul rand (5-7), ferite de spraiuri (28+); unelte/consumabile
+        // pe randul 3 sub ele (23-26) - layout 1:1 cu magazinul de piese.
+        slot = 5;
         for (com.mrcrayfish.vehicle.paper.mechanic.WheelType type
                 : com.mrcrayfish.vehicle.paper.mechanic.WheelType.values()) {
             String key = "wheel_" + type.name().toLowerCase(java.util.Locale.ROOT);
-            inventory.setItem(slot, partEntry(
+            inventory.setItem(slot++, partEntry(
                     com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.wheel(type),
                     key, shop.partPrice(key)));
-            slot += 2;
         }
-        // Unelte/consumabile: canistra industriala, panel si galetile de fluid.
-        inventory.setItem(30, partEntry(
+        inventory.setItem(23, partEntry(
                 com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.industrialJerryCan(),
                 "industrial_jerry_can", shop.partPrice("industrial_jerry_can")));
-        inventory.setItem(47, partEntry(
+        inventory.setItem(24, partEntry(
                 com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.panel(),
                 "panel", shop.partPrice("panel")));
-        inventory.setItem(48, partEntry(
+        inventory.setItem(25, partEntry(
                 com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.fluidBucket(
                         com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Fluid.FUELIUM),
                 "fuelium_bucket", shop.partPrice("fuelium_bucket")));
-        inventory.setItem(49, partEntry(
+        inventory.setItem(26, partEntry(
                 com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.fluidBucket(
                         com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Fluid.ENDER_SAP),
                 "ender_sap_bucket", shop.partPrice("ender_sap_bucket")));
-        inventory.setItem(50, partEntry(
+        // sub cele 3 motoare electrice (16/18) - 15 ramane liber
+        inventory.setItem(15, partEntry(
                 com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.fluidBucket(
                         com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Fluid.BLAZE_JUICE),
                 "blaze_juice_bucket", shop.partPrice("blaze_juice_bucket")));
