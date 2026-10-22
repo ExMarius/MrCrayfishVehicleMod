@@ -1059,7 +1059,8 @@ public final class LandVehicle {
         if (wheelCount == 0) {
             return new SurfaceProfile(SurfaceProfile.Category.NONE, 0.0F, 1.0F);
         }
-        return new SurfaceProfile(friction / wheelCount, tractionFactor / wheelCount);
+        return new SurfaceProfile(SurfaceProfile.Category.ROAD,
+                friction / wheelCount, tractionFactor / wheelCount);
     }
 
     private void updateWheelRotations() {
@@ -1172,7 +1173,8 @@ public final class LandVehicle {
     private double lastSurfaceFriction = 1.0D;
     private double lastSurfaceTractionFactor = LandVehicleSpec.STANDARD_TRACTION;
 
-    private double horizontalSpeed() {
+    /** Viteza orizontala in blocuri/secunda (public - si PropManager/boost pad o foloseste). */
+    public double horizontalSpeed() {
         return Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
     }
 

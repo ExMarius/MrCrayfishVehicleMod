@@ -198,6 +198,7 @@ public final class VehicleManager {
                 player.getLocation().getYaw(), 0.0F, spec.energyCapacity(),
                 0.0D, 0.0D, 0.0D, LandVehicleSpec.STANDARD_TRACTION, 0.0D,
                 0.0F, 0.0F, 0.0F, 0.0F, false, java.util.Map.of(), java.util.Map.of(),
+                "IRON", "STANDARD", 100.0D, -1, false, "NONE", null,
                 player.getUniqueId().toString(), "");
         garage.put(stored.id(), stored);
         save();
