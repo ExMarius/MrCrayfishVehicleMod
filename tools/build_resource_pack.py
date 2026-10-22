@@ -1204,17 +1204,15 @@ def build(output: Path) -> tuple[Path, str]:
                 "tints": [{"type": "minecraft:dye", "default": 0xF2F2F2}],
             }
         })
-        # Vopsea pe vehicul: fiecare *_body capata tintindex pe toate fetele si o
-        # definitie cu tint de tip dye (default alb => neschimbat); doar cand
-        # stack-ul poarta dyed_color (spray can) caroseria se recoloreaza.
+        # Vopsea pe vehicul, MASCA AUTORULUI (1-la-1 cu modul): doar fetele pe care
+        # modelele sursa ale modului le au tintindex autor se recoloreaza la spray;
+        # restul (interior, scaune, crom, geamuri) raman cu textura lor. Geometria
+        # NU se atinge deloc - doar scriem definitiile cu tint DYE default alb opac
+        # (-1 = 0xFFFFFFFF): pe clientii noi (ARGB) alfa e opaca; nevopsit = alb,
+        # vopsit = culoarea din dyed_color de pe stack.
         for _body_path in sorted((namespace / "models/item").glob("*_body.json")):
             _body = json.loads(_body_path.read_text(encoding="utf-8"))
             if _body.get("elements"):
-                for _element in _body["elements"]:
-                    for _face in _element.get("faces", {}).values():
-                        if "tintindex" not in _face:
-                            _face["tintindex"] = 0
-                write_json(_body_path, _body)
                 _body_name = _body_path.stem
                 write_json(namespace / f"items/{_body_name}.json", {
                     "model": {
@@ -1223,13 +1221,12 @@ def build(output: Path) -> tuple[Path, str]:
                         "tints": [{"type": "minecraft:dye", "default": -1}],
                     }
                 })
-        # Vopsea pe PARTILE caroseriei (capota, usi, acoperis, aripi...): modul
-        # recoloreaza tot corpul vehiculului, nu doar *_body. Toate modelele de piese
-        # de caroserie primesc tintindex pe fete + definitie item cu tint DYE implicit
-        # alb (nemodificat vizual pe stack-uri nevopsite), astfel incat spray-ul sa
-        # vopseasca si ele - altfel masina ramane "pe jumatate" nevopsita (BUG 2a).
-        # Exclusiv: roti, motoare, cockpit (volane/manere/scaune/tablou), unelte si
-        # statii - acelea NU se recoloreaza cand vopsesti caroseria.
+        # Vopsea pe PARTILE caroseriei (capota, usi, acoperis, aripi...) cu aceeasi
+        # masca a autorului: compunerea modelelor a pastrat deja tintindex-ul autor
+        # din sursa modului, deci aici numai scriem definitiile item cu tint DYE
+        # implicit alb opac - geometria ramane neatinsa. Exclusiv: roti, motoare,
+        # cockpit (volane/manere/scaune/tablou), unelte si statii - acelea NU se
+        # recoloreaza cand vopsesti caroseria.
         _DYE_EXCLUDES = ("wheel",)
         def _dyeable_part(name: str) -> bool:
             if name.endswith("_body"):
@@ -1257,14 +1254,6 @@ def build(output: Path) -> tuple[Path, str]:
                 continue  # wrapper vanilla, nu geometrie proprie
             if not _part.get("elements"):
                 continue
-            _changed = False
-            for _element in _part["elements"]:
-                for _face in _element.get("faces", {}).values():
-                    if "tintindex" not in _face:
-                        _face["tintindex"] = 0
-                        _changed = True
-            if _changed:
-                write_json(_part_path, _part)
             _def_path = namespace / f"items/{_part_name}.json"
             _tints = []
             if _def_path.exists():
