@@ -83,30 +83,41 @@ def main():
 
     text_strips = []   # (comp_index, face_name) that should receive the POLITIA artwork
 
-    # repaint rules on exterior body-black faces:
-    #   - whole rect becomes white; rows whose world-y band overlaps 8..14 become blue
+    # repaint rules on exterior body-black faces (paint variants 50,49,46 / 60,59,56):
+    #   vertical faces only, elements starting at y >= 2 (never the floor plate, interior
+    #   or undercarriage); band rows land only where the face's world-y overlaps 5.5..10.5
+    # Bonnets/boot decks (big flat 'up' faces at y >= 8) become white, no band.
     for idx, e in enumerate(comp):
         x0, y0, z0 = e['from']; x1, y1, z1 = e['to']
         side_area = max((y1 - y0) * (z1 - z0), (x1 - x0) * (z1 - z0))
         for face_name in ('west', 'east', 'north', 'south'):
             f = e.get('faces', {}).get(face_name)
-            if not f or 'uv' not in f:
+            f0check = f
+            if not f0check or 'uv' not in f0check or y0 < 2.0:
                 continue
             u0, v0, u1, v1 = f['uv']
             rect = (u0 * 8, v0 * 8, u1 * 8, v1 * 8)
             c = median_color(canvas, rect)
             if not near(c, BODY_BLACK):
                 continue
-            # side faces: repaint body white + blue band rows inside the rect
-            ry0, ry1 = (y0, y1)
-            # v axis maps face y -> v (bottom->top)
             for py in range(int(rect[1]), int(rect[3])):
                 frac = (py - rect[1]) / max(1.0, rect[3] - rect[1])
-                wy = ry0 + frac * (ry1 - ry0)
+                wy = y0 + frac * (y1 - y0)
                 col = BAND if BAND_Y[0] <= wy <= BAND_Y[1] else WHITE
                 for px in range(int(rect[0]), int(rect[2])):
                     if canvas.getpixel((px, py))[3] > 0:
                         canvas.putpixel((px, py), col)
+        f = e.get('faces', {}).get('up')
+        top_area = (x1 - x0) * (z1 - z0)
+        if f and 'uv' in f and y0 >= 8.0 and top_area >= 60:
+            u0, v0, u1, v1 = f['uv']
+            rect = (u0 * 8, v0 * 8, u1 * 8, v1 * 8)
+            c = median_color(canvas, rect)
+            if near(c, BODY_BLACK):
+                for py in range(int(rect[1]), int(rect[3])):
+                    for px in range(int(rect[0]), int(rect[2])):
+                        if canvas.getpixel((px, py))[3] > 0:
+                            canvas.putpixel((px, py), WHITE)
     # POLITIA goes on the merged flank doors: comp37 west (visible, normal reading),
     # comp37 east (mirrored reading), comp40 north (rear tailgate, mirrored)
     strips = []
@@ -145,16 +156,15 @@ def main():
     # lightbar on the greenhouse roof plate: sports_car roof cosmetic caries the cabin
     # shell (top plate y 16..17, native frame, same scale/wo as the body), so the bar
     # mounts at y 17.0 over the cockpit centre line z 5..9, x centred on the plate.
-    ry = 17.0
-    cx0, cx1 = 4.5, 11.5
-    cz0, cz1 = 5.2, 8.8
+    ry = 20.76
+    cx0, cx1 = 3.6, 12.4
+    cz0, cz1 = 18.42, 20.30
     new = list(comp)
-    new.append(comp_box(cx0, ry, cz0, cx1, ry + 0.5, cz1, '#metal'))
+    new.append(comp_box(cx0, ry, cz0, cx1, ry + 0.42, cz1, '#metal'))
     mid = (cx0 + cx1) / 2.0
-    # Romanian bar = single slim blue LED; keep a subtle red accent on the right cap
-    new.append(comp_box(cx0 + 0.4, ry + 0.5, cz0 + 0.25, mid - 0.15, ry + 1.15, cz1 - 0.25,
+    new.append(comp_box(cx0 + 0.35, ry + 0.42, cz0 + 0.18, mid - 0.1, ry + 1.1, cz1 - 0.18,
                         '#bluebar', 0))
-    new.append(comp_box(mid + 0.15, ry + 0.5, cz0 + 0.25, cx1 - 0.4, ry + 1.15, cz1 - 0.25,
+    new.append(comp_box(mid + 0.1, ry + 0.42, cz0 + 0.18, cx1 - 0.35, ry + 1.1, cz1 - 0.18,
                         '#bluebar', 0))
 
     # slim gray push bar under the nose (+z friendly, kept inside x edges)
