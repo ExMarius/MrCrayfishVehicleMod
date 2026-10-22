@@ -91,6 +91,24 @@ public final class LandVehicle {
      *  Clicking it runs the purchase flow instead of mounting. */
     private boolean showcase;
 
+    /* ===== Sistem mecanic (motoare/roti/daune/vopsea/incuiere/cric) ========== */
+    /** Starea fata de cric: NONE = fizica normala; LIFTING/LIFTED/LOWERING =
+     *  fizica inghetata, pozitia verticala dictata de JackManager (ca la 'transported'). */
+    public enum JackState { NONE, LIFTING, LIFTED, LOWERING }
+
+    private com.mrcrayfish.vehicle.paper.mechanic.EngineTier engineTier =
+            com.mrcrayfish.vehicle.paper.mechanic.EngineTier.IRON;
+    private com.mrcrayfish.vehicle.paper.mechanic.WheelType wheelType =
+            com.mrcrayfish.vehicle.paper.mechanic.WheelType.STANDARD;
+    private double health = 100.0D;
+    /** -1 = nevopsit; altfel RGB 0xRRGGBB din spray can (persistent). */
+    private int paintColor = -1;
+    private boolean locked;
+    private JackState jackState = JackState.NONE;
+    private java.util.UUID jackId;
+    /** Cate tick-uri mai lasam fara a reaplica damage de coliziune (anti-spam per impact). */
+    private int damageCooldown;
+
     private boolean chestAttached;
     /* ShoppingCartEntity#tick replaces normal driving with position-following
      * whenever a player is pushing it from behind; null means nobody is pushing. */
@@ -153,6 +171,14 @@ public final class LandVehicle {
         if (age % 10 == 0) {
             showFuelOverlay();
         }
+        // Pe cric: aceeasi inghetare ca la 'transported' (sunet idle + rig refresh);
+        // pozitia verticala e dictata de JackManager - vezi JackState.
+        if (jackState != JackState.NONE) {
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
+            rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                    0.0F, spec.bodyRoll(steeringAngle, 0.0F), false, age);
+            return;
+        }
         if (transported) {
             soundController.tick(location, false, spec.minEnginePitch(), List.of());
             if (openablesChanged) {
@@ -198,7 +224,7 @@ public final class LandVehicle {
             if (Math.abs(renderWheelAngle) < 0.001F) {
                 renderWheelAngle = 0.0F;
             }
-            traction = LandVehicleSpec.STANDARD_TRACTION;
+            traction = wheelType.baseTraction();
             if (openablesChanged || previousRenderAngle != renderWheelAngle) {
                 rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
                         0.0F, spec.bodyRoll(steeringAngle, horizontalSpeed()), false, age);
@@ -209,7 +235,7 @@ public final class LandVehicle {
         }
 
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
         updateInput(driver);
         updateCharging(enginePowered);
         float targetRenderAngle = !charging && isSliding(forward(location.getYaw()))
@@ -241,6 +267,20 @@ public final class LandVehicle {
         onGround = collision.onGround();
         if (collision.verticalCollision()) {
             verticalVelocity = 0.0D;
+        }
+        // Daune la impact: mersul blocat orizontal la viteza avariaza proportional si
+        // avertizeaza soferul; formula e a portului (modul nu avea valori exacte ale
+        // impactului, doar health + drop la 0), pragul porneste de la viteza de mers.
+        if (damageCooldown > 0) {
+            damageCooldown--;
+        }
+        double blockedX = requestedMovement.getX() - collision.movement().getX();
+        double blockedZ = requestedMovement.getZ() - collision.movement().getZ();
+        double blockedSpeed = Math.hypot(blockedX, blockedZ) * 20.0D; // blocuri/secunda
+        if (driver != null && damageCooldown <= 0 && plugin.mechanic() != null
+                && blockedSpeed >= plugin.mechanic().collisionSpeedThreshold()) {
+            applyDamage(blockedSpeed * plugin.mechanic().collisionDamageMultiplier(), driver);
+            damageCooldown = 15;
         }
 
         if (boostTimer > 0 && throttle > 0.0F) {
@@ -327,7 +367,7 @@ public final class LandVehicle {
         waterState = status.state();
 
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
         updateInput(driver);
         renderWheelAngle += (steeringAngle - renderWheelAngle) * 0.3F;
         if (Math.abs(renderWheelAngle) < 0.001F) {
@@ -427,7 +467,7 @@ public final class LandVehicle {
         }
         Player driver = driver().orElse(null);
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
         boolean operating = driver != null && enginePowered;
         VehicleInput input = driver == null ? VehicleInput.idle()
                 : VehicleInput.from(driver.getCurrentInput());
@@ -639,7 +679,7 @@ public final class LandVehicle {
         }
         Player driver = driver().orElse(null);
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
         VehicleInput input = driver == null ? VehicleInput.idle()
                 : VehicleInput.from(driver.getCurrentInput());
 
@@ -901,7 +941,8 @@ public final class LandVehicle {
                     rotateYLikeMinecraft(frontWheel, Math.toRadians(steeringAngle)));
             motion.add(nextPosition.multiply(speed));
             location.setYaw(normalizeYaw(location.getYaw() - steeringAngle * speed));
-            float forwardForce = clamp(throttle, -1.0F, 1.0F); // Iron engine multiplier is 1.0.
+            // Iron engine multiplier is 1.0; engine tier aplicat exact ca in mod.
+            float forwardForce = clamp(throttle, -1.0F, 1.0F) * engineTier.powerMultiplier();
             chargingAmount = clamp(chargingAmount + forwardForce * 0.025F, 0.0F, 1.0F);
         } else {
             chargingAmount = 0.0F;
@@ -922,7 +963,8 @@ public final class LandVehicle {
         float brakePower = onGround ? BRAKE_POWER : 0.0F;
 
         float effectiveThrottle = !enginePowered || handbraking || charging ? 0.0F : throttle;
-        float forwardForce = enginePower * clamp(effectiveThrottle, -1.0F, 1.0F);
+        float forwardForce = enginePower * clamp(effectiveThrottle, -1.0F, 1.0F)
+                * engineTier.powerMultiplier();
         if (boosting) {
             forwardForce += forwardForce * speedMultiplier;
         }
@@ -942,11 +984,11 @@ public final class LandVehicle {
         clampLength(velocity, Math.max(0.0D, globalSpeedLimit));
 
         if (isSliding(forward) && throttle > 0.0F) {
-            traction = LandVehicleSpec.SLIDE_TRACTION;
+            traction = wheelType.slideTraction();
         } else if (handbraking) {
             traction = 0.05F;
         } else {
-            float targetTraction = LandVehicleSpec.STANDARD_TRACTION;
+            float targetTraction = wheelType.baseTraction();
             if (acceleration.length() > 0.0D) {
                 targetTraction *= clamp((float) (velocity.length() / acceleration.length()), 0.0F, 1.0F);
             }
@@ -996,7 +1038,7 @@ public final class LandVehicle {
     private SurfaceProfile surfaceProfile() {
         World world = location.getWorld();
         if (world == null) {
-            return new SurfaceProfile(0.0F, 1.0F);
+            return new SurfaceProfile(SurfaceProfile.Category.NONE, 0.0F, 1.0F);
         }
 
         float friction = 0.0F;
@@ -1010,12 +1052,12 @@ public final class LandVehicle {
             if (profile.friction() == 0.0F) {
                 continue;
             }
-            friction += profile.friction();
+            friction += profile.friction() * wheelType.surfaceModifier(profile.category());
             tractionFactor += profile.tractionFactor();
             wheelCount++;
         }
         if (wheelCount == 0) {
-            return new SurfaceProfile(0.0F, 1.0F);
+            return new SurfaceProfile(SurfaceProfile.Category.NONE, 0.0F, 1.0F);
         }
         return new SurfaceProfile(friction / wheelCount, tractionFactor / wheelCount);
     }
@@ -2030,5 +2072,130 @@ public final class LandVehicle {
 
     private static float clamp(float value, float minimum, float maximum) {
         return Math.max(minimum, Math.min(maximum, value));
+    }
+
+    /* ================= Sistem mecanic: stare + API pentru manageri ============== */
+
+    public com.mrcrayfish.vehicle.paper.mechanic.EngineTier engineTier() {
+        return engineTier;
+    }
+
+    /** Tier NOU de motor (acelasi EngineType ca la spec - validarea tipului e in
+     *  MechanicManager). Fizica preia multiplicatorul chiar din urmatorul tick. */
+    public void setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier engineTier) {
+        this.engineTier = engineTier == null
+                ? com.mrcrayfish.vehicle.paper.mechanic.EngineTier.IRON : engineTier;
+        // part-ul vizual urmeaza tier-ul (iron_small_engine -> gold_small_engine etc.)
+        if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+            rig.setEngineModel(this.engineTier.name().toLowerCase(java.util.Locale.ROOT)
+                    + "_" + spec.defaultEngineType().folder() + "_engine");
+        }
+    }
+
+    public com.mrcrayfish.vehicle.paper.mechanic.WheelType wheelType() {
+        return wheelType;
+    }
+
+    public void setWheelType(com.mrcrayfish.vehicle.paper.mechanic.WheelType wheelType) {
+        this.wheelType = wheelType == null
+                ? com.mrcrayfish.vehicle.paper.mechanic.WheelType.STANDARD : wheelType;
+        rig.setWheelModel(this.wheelType.model());
+    }
+
+    public double health() {
+        return health;
+    }
+
+    public double maxHealth() {
+        return 100.0D;
+    }
+
+    public boolean engineBroken() {
+        return health <= 0.0D;
+    }
+
+    /** Sistemul de daune (#9 din audit): impact aplica damage, la 0 motorul moare.
+     *  Mesajul merge la sofer (actiune audio-vizuala minima - fara efecte inventate). */
+    public void applyDamage(double amount, org.bukkit.entity.Player driver) {
+        if (amount <= 0.0D || showcase) {
+            return;
+        }
+        double previous = health;
+        health = Math.max(0.0D, health - amount);
+        if (driver != null && health < previous) {
+            driver.sendActionBar(net.kyori.adventure.text.Component.text(
+                    String.format(java.util.Locale.ROOT,
+                            "Daune: %.0f/100", health),
+                    health <= 25.0D ? net.kyori.adventure.text.format.NamedTextColor.RED
+                            : net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            if (previous > 0.0D && engineBroken()) {
+                driver.sendRichMessage("<red><bold>Motorul s-a distrus!</bold> "
+                        + "Tracteaz-o pe un cric si repar-o (cheia de mecanic).</red>");
+            }
+        }
+    }
+
+    public void repairFully() {
+        health = maxHealth();
+    }
+
+    public int paintColor() {
+        return paintColor;
+    }
+
+    public boolean painted() {
+        return paintColor >= 0;
+    }
+
+    public void setPaintColor(int rgb) {
+        paintColor = rgb;
+        rig.applyColor(rgb >= 0 ? Integer.valueOf(rgb) : null);
+    }
+
+    public void clearPaint() {
+        setPaintColor(-1);
+    }
+
+    public boolean locked() {
+        return locked;
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
+    }
+
+    public JackState jackState() {
+        return jackState;
+    }
+
+    public void setJackState(JackState jackState) {
+        this.jackState = jackState == null ? JackState.NONE : jackState;
+    }
+
+    public boolean onJack() {
+        return jackState != JackState.NONE;
+    }
+
+    public java.util.UUID jackId() {
+        return jackId;
+    }
+
+    public void setJackId(java.util.UUID jackId) {
+        this.jackId = jackId;
+    }
+
+    /** JackManager muta vehiculul pe verticala in timpul ridicarii/coborarii. */
+    public void setLiftedY(double y) {
+        Location moved = location.clone();
+        moved.setY(y);
+        location = moved;
+    }
+
+    /** Boost pad: intensifica temporar forta (acelasi tel ca rampota din mod). */
+    public void applyBoost(float strength, int ticks) {
+        boostStrength = strength;
+        speedMultiplier = Math.max(speedMultiplier, strength);
+        boostTimer = Math.max(boostTimer, ticks);
+        boosting = true;
     }
 }

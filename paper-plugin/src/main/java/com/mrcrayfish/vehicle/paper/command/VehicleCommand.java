@@ -69,9 +69,23 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 sender.sendRichMessage("<green>Vehicule salvate.</green>");
             }
             case "pack" -> pack(sender);
+            case "creative" -> creative(sender);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle creative (mcv.creative): meniul complet al sistemului mecanic. */
+    private void creative(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Doar din joc.");
+            return;
+        }
+        if (!sender.hasPermission("mcv.creative")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea mcv.creative.</red>");
+            return;
+        }
+        com.mrcrayfish.vehicle.paper.mechanic.CreativeGui.open(player);
     }
 
     private void spawn(CommandSender sender, String[] args) {
@@ -394,7 +408,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

@@ -16,6 +16,7 @@ public final class VehiclePlugin extends JavaPlugin {
     private com.mrcrayfish.vehicle.paper.shop.DealerStationManager dealerStations;
     private VehicleManager vehicleManager;
     private GasPumpManager gasPumpManager;
+    private com.mrcrayfish.vehicle.paper.mechanic.MechanicManager mechanicManager;
     private com.mrcrayfish.vehicle.paper.garage.GarageStationManager garageStationManager;
     private RestartWatcher restartWatcher;
     private boolean dataWipedThisBoot;
@@ -37,7 +38,7 @@ public final class VehiclePlugin extends JavaPlugin {
             return false;
         }
         // Doar cele 3 fisiere de date cerute - config.yml (preturi/setari live) RAMANE INTACT.
-        String[] dataFiles = {"vehicles.yml", "garages.yml", "dealer.yml"};
+        String[] dataFiles = {"vehicles.yml", "garages.yml", "dealer.yml", "mechanics.yml"};
         int count = 0;
         for (String name : dataFiles) {
             java.io.File target = new java.io.File(dir, name);
@@ -188,14 +189,24 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
-        getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.ShopListener(shop), this);
+        com.mrcrayfish.vehicle.paper.listener.ShopListener shopListener =
+                new com.mrcrayfish.vehicle.paper.listener.ShopListener(shop);
+        shopListener.bindGui(shopGui);
+        getServer().getPluginManager().registerEvents(shopListener, this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.DealerPodiumListener(dealerStations, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.VehicleChunkListener(vehicleManager), this);
+
+        // Sistemul mecanic: piese + cric + banc de lucru + props + GUI + chefie/vopsire.
+        mechanicManager = new com.mrcrayfish.vehicle.paper.mechanic.MechanicManager(this, vehicleManager);
+        getServer().getPluginManager().registerEvents(
+                new com.mrcrayfish.vehicle.paper.mechanic.MechanicListener(mechanicManager, vehicleManager), this);
 
         vehicleManager.start();
         gasPumpManager.start();
         garageStationManager.start();
         dealerStations.start();
+
+        mechanicManager.start();
 
         restartWatcher = new RestartWatcher(this);
         restartWatcher.start();
@@ -221,6 +232,9 @@ public final class VehiclePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (mechanicManager != null) {
+            mechanicManager.stop();
+        }
         if (dealerStations != null) {
             dealerStations.stop();
         }
@@ -245,5 +259,9 @@ public final class VehiclePlugin extends JavaPlugin {
 
     public GasPumpManager gasPumps() {
         return gasPumpManager;
+    }
+
+    public com.mrcrayfish.vehicle.paper.mechanic.MechanicManager mechanic() {
+        return mechanicManager;
     }
 }

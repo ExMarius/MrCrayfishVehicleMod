@@ -893,6 +893,53 @@ public final class LandVehicleRig {
                 + c1 * Math.pow(progress - 1.0D, 2.0D);
     }
 
+    /* ===== Sistem mecanic: schimbare model roti + vopsea caroserie ============= */
+
+    /** Schimba si PART-ul vizual al motorului la upgrade (ex. iron_small_engine ->
+     *  diamond_small_engine), exact ca in mod, la schimbarea tier-ului. */
+    public void setEngineModel(String modelName) {
+        if (!removed && engine != null && engine.isValid()) {
+            engine.setItemStack(model(modelName));
+        }
+    }
+
+    /** Leaps rotile pe noul model (STANDARD/SPORTS/OFF_ROAD - roti schimbate la mecanic). */
+    public void setWheelModel(String modelName) {
+        if (removed) {
+            return;
+        }
+        ItemStack stack = model(modelName);
+        for (WheelDisplay wheel : wheels) {
+            if (wheel.entity != null && wheel.entity.isValid()) {
+                wheel.entity.setItemStack(stack);
+            }
+        }
+    }
+
+    /** Vopsire cu spray can: caroseria trece pe un stack vopsibil (dyed_color) purtand
+     *  acelasi model; tint-ul "dye" din definitia pack-ului recoloreaza fetele marcate.
+     *  rgb null = revine la modelul nevopsit (paper, default alb). */
+    public void applyColor(Integer rgb) {
+        if (removed) {
+            return;
+        }
+        ItemStack stack;
+        if (rgb != null) {
+            stack = new ItemStack(Material.LEATHER_HORSE_ARMOR);
+            ItemMeta meta = stack.getItemMeta();
+            if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+                armor.setItemModel(new NamespacedKey("vehicle", spec.bodyModel()));
+                armor.setColor(org.bukkit.Color.fromRGB(rgb));
+            }
+            stack.setItemMeta(meta);
+        } else {
+            stack = model(spec.bodyModel());
+        }
+        if (body != null && body.isValid()) {
+            body.setItemStack(stack);
+        }
+    }
+
     private static final class SeatCarrier {
         private final ItemDisplay anchor;
         private final LandVehicleSpec.Seat properties;

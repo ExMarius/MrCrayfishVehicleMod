@@ -1093,6 +1093,124 @@ def build(output: Path) -> tuple[Path, str]:
             namespace / "sounds/entity/vehicle/horn.ogg",
         )
 
+        # ==== Sistem mecanic (motoare / roti / unelte / jack / props) ==========
+        # Totul reuseste modelele + texturile proprii ale modului original
+        # (engines 3x4 tier, wheels, wrench/key/hammer/spray can, jack, cone,
+        # boost pad, fluid pipe); vectorii "vehicle:model//block(s)" sunt
+        # redirigati spre copii in textures/item/ ca la celelalte iteme.
+        _MECHANIC_TEXTURE_SOURCES = (
+            (ASSETS / "textures/model", "vehicle:model/"),
+            (ASSETS / "textures/block", "vehicle:block/"),
+            # the mod wrote "vehicle:blocks/boost_pad" but the png actually lives
+            # in Forge's textures/block/ (same folder as vehicle:block/*).
+            (ASSETS / "textures/block", "vehicle:blocks/"),
+        )
+
+        def mechanic_convert(source: Path, destination: Path,
+                             texture_overrides: dict[str, str] | None = None) -> None:
+            """Copy a mod item/block model into the pack as a self-contained item
+            model: parent refs into vehicle:* are dropped and every texture value
+            under vehicle:model/, vehicle:block/ or vehicle:blocks/ is rerouted to
+            a copied textures/item/ file (same convention as the rest of the pack)."""
+            model = json.loads(source.read_text(encoding="utf-8"))
+            parent = model.get("parent", "")
+            if isinstance(parent, str) and parent.startswith("vehicle:"):
+                del model["parent"]
+            textures = {}
+            for key, value in (model.get("textures") or {}).items():
+                if not isinstance(value, str) or not value.startswith("vehicle:"):
+                    textures[key] = value
+                    continue
+                rerouted = value
+                for source_dir, prefix in _MECHANIC_TEXTURE_SOURCES:
+                    if value.startswith(prefix):
+                        name = value[len(prefix):]
+                        copy(source_dir / f"{name}.png", namespace / f"textures/item/{name}.png")
+                        rerouted = f"vehicle:item/{name}"
+                        break
+                textures[key] = (texture_overrides or {}).get(key, rerouted)
+            model["textures"] = textures
+            write_json(destination, model)
+
+        MOTOR_DIR = ASSETS / "models/item"
+        for _tier in ("iron", "gold", "diamond", "netherite"):
+            for _etype in ("small", "large", "electric"):
+                _key = f"{_etype}_engine"          # texture key in the base parent model
+                _name = f"{_tier}_{_etype}_engine"
+                _base = json.loads((MOTOR_DIR / f"{_etype}_engine.json").read_text(encoding="utf-8"))
+                _base["textures"] = {_key: f"vehicle:item/{_name}", "particle": f"vehicle:item/{_name}"}
+                copy(ASSETS / f"textures/model/{_name}.png", namespace / f"textures/item/{_name}.png")
+                write_json(namespace / f"models/item/{_name}.json", _base)
+                write_json(namespace / f"items/{_name}.json", item_definition(f"vehicle:item/{_name}"))
+
+        mechanic_convert(ASSETS / "models/item/sports_wheel.json",
+                         namespace / "models/item/sports_wheel.json")
+        mechanic_convert(ASSETS / "models/item/off_road_wheel.json",
+                         namespace / "models/item/off_road_wheel.json")
+        mechanic_convert(ASSETS / "models/item/wrench.json",
+                         namespace / "models/item/wrench.json")
+        mechanic_convert(ASSETS / "models/item/hammer.json",
+                         namespace / "models/item/hammer.json")
+        mechanic_convert(ASSETS / "models/item/key.json",
+                         namespace / "models/item/key.json")
+        mechanic_convert(ASSETS / "models/item/spray_can_default.json",
+                         namespace / "models/item/spray_can.json")
+        mechanic_convert(ASSETS / "models/item/jack.json",
+                         namespace / "models/item/jack.json")
+        mechanic_convert(ASSETS / "models/block/jack_head.json",
+                         namespace / "models/item/jack_head.json")
+        mechanic_convert(ASSETS / "models/block/disabled_jack.json",
+                         namespace / "models/item/disabled_jack.json")
+        mechanic_convert(ASSETS / "models/block/workstation.json",
+                         namespace / "models/item/mechanic_workstation.json")
+        mechanic_convert(ASSETS / "models/block/traffic_cone.json",
+                         namespace / "models/item/traffic_cone.json")
+        mechanic_convert(ASSETS / "models/block/boost_pad.json",
+                         namespace / "models/item/boost_pad.json")
+        mechanic_convert(ASSETS / "models/block/fluid_pipe.json",
+                         namespace / "models/item/fluid_pipe.json")
+        copy(ASSETS / "textures/item/wrench.png", namespace / "textures/item/wrench.png")
+        copy(ASSETS / "textures/item/hammer.png", namespace / "textures/item/hammer.png")
+        copy(ASSETS / "textures/item/key.png", namespace / "textures/item/key.png")
+        for _extra_item in ("sports_wheel", "off_road_wheel", "wrench", "hammer", "key",
+                            "jack", "jack_head", "disabled_jack", "mechanic_workstation",
+                            "traffic_cone", "boost_pad", "fluid_pipe", "spray_can"):
+            write_json(namespace / f"items/{_extra_item}.json",
+                       item_definition(f"vehicle:item/{_extra_item}"))
+        # Spray can = dye-tinted icon: the can hints the paint color it carries.
+        write_json(namespace / "items/spray_can.json", {
+            "model": {
+                "type": "minecraft:model",
+                "model": "vehicle:item/spray_can",
+                "tints": [{"type": "minecraft:dye", "default": 0xF2F2F2}],
+            }
+        })
+        # Vopsea pe vehicul: fiecare *_body capata tintindex pe toate fetele si o
+        # definitie cu tint de tip dye (default alb => neschimbat); doar cand
+        # stack-ul poarta dyed_color (spray can) caroseria se recoloreaza.
+        for _body_path in sorted((namespace / "models/item").glob("*_body.json")):
+            _body = json.loads(_body_path.read_text(encoding="utf-8"))
+            if _body.get("elements"):
+                for _element in _body["elements"]:
+                    for _face in (element_faces := _element.get("faces", {})).values():
+                        if "tintindex" not in _face:
+                            _face["tintindex"] = 0
+                write_json(_body_path, _body)
+                _body_name = _body_path.stem
+                write_json(namespace / f"items/{_body_name}.json", {
+                    "model": {
+                        "type": "minecraft:model",
+                        "model": f"vehicle:item/{_body_name}",
+                        "tints": [{"type": "minecraft:dye", "default": 16383998}],
+                    }
+                })
+        # Sunetele originale ale jack-ului si spray can-ului din mod.
+        for _snd_dir, _snd_names in (
+                ("sounds/block/jack", ("head_up", "head_down", "air_wrench_gun")),
+                ("sounds/item/spray_can", ("shake", "spray"))):
+            for _snd in _snd_names:
+                copy(ASSETS / f"{_snd_dir}/{_snd}.ogg", namespace / f"{_snd_dir}/{_snd}.ogg")
+
         copy(
             ASSETS / "sounds/entity/go_kart/engine.ogg",
             namespace / "sounds/entity/go_kart/engine.ogg",
@@ -1222,6 +1340,21 @@ def build(output: Path) -> tuple[Path, str]:
             },
             "item.jerry_can.liquid_glug": {
                 "sounds": [{"name": "vehicle:item/jerry_can/liquid_glug"}]
+            },
+            "block.jack.head_up": {
+                "sounds": [{"name": "vehicle:block/jack/head_up"}]
+            },
+            "block.jack.head_down": {
+                "sounds": [{"name": "vehicle:block/jack/head_down"}]
+            },
+            "block.jack.air_wrench_gun": {
+                "sounds": [{"name": "vehicle:block/jack/air_wrench_gun"}]
+            },
+            "item.spray_can.shake": {
+                "sounds": [{"name": "vehicle:item/spray_can/shake"}]
+            },
+            "item.spray_can.spray": {
+                "sounds": [{"name": "vehicle:item/spray_can/spray"}]
             },
         })
 

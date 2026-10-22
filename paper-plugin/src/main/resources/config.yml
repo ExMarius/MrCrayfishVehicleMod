@@ -2,7 +2,7 @@
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
   url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
-  sha1: "704c26b0d07b3276336edf20e13a89c89562abd5"
+  sha1: "d7c6ef1dde5855039999aadaafe27f8d1c4d6837"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
@@ -70,3 +70,43 @@ economy:
   public-garage-retrieval-fee: 500.0
   # Parking spots are PHYSICAL circles of exactly 2 blocks (the spark ring).
   # On quit every owned vehicle is stored, no flags, no differentiation.
+
+# ===== Sistem mecanic (motoare/roti/reparatii/vopsire/cric) ==================
+jack:
+  # Inaltimea la care cricul ridica masina (2.5 = mergi pe sub ea, ca la service real).
+  lift-height: 2.5
+  # Timpul urcarii/coborarii, in tick-uri (20 = 1 secunda).
+  lift-speed-ticks: 50
+
+mechanic:
+  # Reparatiile cer masina ridicata pe cric (recomandat pentre RP de service).
+  require-lift: true
+  # Itemele consumate la o reparatie completa (format MATERIAL:cantitate).
+  # BANII NU se deduc automat - pretul in bani se negociaza intre jucatori (RP).
+  repair-items:
+    - "IRON_INGOT:2"
+    - "REDSTONE:1"
+  damage:
+    # Impacturi sub aceasta viteza (blocuri/secunda) nu avariaza.
+    collision-speed-threshold: 3.0
+    # Cat de mult se inmulteste viteza de impact in puncte de daune.
+    multiplier: 4.0
+  # Preturile pieselor in magazinul de piese (tab-ul Piese din /vehicle shop).
+  parts:
+    prices:
+      engine_iron_small: 3000
+      engine_iron_large: 4000
+      engine_iron_electric: 5000
+      engine_gold_small: 6000
+      engine_gold_large: 7000
+      engine_gold_electric: 8000
+      engine_diamond_small: 12000
+      engine_diamond_large: 14000
+      engine_diamond_electric: 16000
+      engine_netherite_small: 22000
+      engine_netherite_large: 25000
+      engine_netherite_electric: 30000
+      wheel_standard: 1500
+      wheel_sports: 6000
+      wheel_off_road: 4500
+      spray_can: 1200

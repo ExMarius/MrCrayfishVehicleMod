@@ -961,6 +961,30 @@ public record LandVehicleSpec(
         };
     }
 
+    /** Ce familie de motor accepta vehiculul (derivat din part-ul de motor montat
+     *  la fabrica in spec; NONE = vehicul fara motor, nu primeste upgrade-uri). */
+    public com.mrcrayfish.vehicle.paper.mechanic.EngineType defaultEngineType() {
+        Part part = engine();
+        if (part == null || part.model() == null) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE;
+        }
+        String model = part.model();
+        if (model.contains("small_engine")) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR;
+        }
+        if (model.contains("large_engine")) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.LARGE_MOTOR;
+        }
+        if (model.contains("electric_engine")) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.ELECTRIC_MOTOR;
+        }
+        return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR;
+    }
+
+    public boolean hasWheels() {
+        return wheels() != null && !wheels().isEmpty();
+    }
+
     public MotionType motionType() {
         if ("jet_ski".equals(id) || "speed_boat".equals(id) || "aluminum_boat".equals(id)) {
             return MotionType.WATER;

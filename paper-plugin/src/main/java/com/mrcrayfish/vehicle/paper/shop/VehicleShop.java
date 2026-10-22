@@ -69,6 +69,40 @@ public final class VehicleShop {
         return config.getDouble("dealership.prices." + specId, fallback);
     }
 
+    /** Pretul unei piese din tab-ul Piese (prefixul id-ului inainte de ':'). */
+    public double partPrice(String partId) {
+        String configKey = partId == null ? "" : partId.split(":")[0];
+        return config.getDouble("mechanic.parts.prices." + configKey, 1000.0D);
+    }
+
+    /** Cumpara o piesa (motor/roti/spray) - intra direct in inventarul jucatorului. */
+    public void buyPart(Player player, String partId) {
+        org.bukkit.inventory.ItemStack stack = com.mrcrayfish.vehicle.paper.shop.ShopGui.partStackOf(partId);
+        if (stack == null) {
+            return;
+        }
+        if (!economyReady) {
+            player.sendRichMessage("<red>Magazinul are nevoie de economie: instaleaza Vault + "
+                    + "EssentialsX pe server, restart, si revii.</red>");
+            return;
+        }
+        double price = partPrice(partId);
+        double balance = ShopEconomy.balance(player);
+        if (balance < price) {
+            player.sendRichMessage("<red>Nu-ti ajung banii: ai " + priceText(balance)
+                    + ", piesa costa " + priceText(price) + ".</red>");
+            return;
+        }
+        if (!ShopEconomy.withdraw(player, price)) {
+            player.sendRichMessage("<red>Plata a esuat (banca a refuzat). Incearca din nou.</red>");
+            return;
+        }
+        player.getInventory().addItem(stack);
+        player.sendRichMessage("<gray>[Magazin Piese] Ai cumparat piesa! "
+                + "Monteaza-o cu click dreapta pe vehicul.</gray>");
+        player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8F, 1.2F);
+    }
+
     public static String priceText(double value) {
         return "\uD83D\uDCB0 " + String.format("%,d", (long) value).replace(',', ' ');
     }
@@ -107,7 +141,13 @@ public final class VehicleShop {
         }
         // LIVRAREA: nu mai apare pe strada - intra DIRECT in garajul global al jucatorului
         // (garage.<uuid>.*), de unde il ridica GRATUIT de acasa sau cu taxa de la public (/garaj).
-        vehicles.storeNewVehicle(player, spec);
+        java.util.UUID vehicleId = vehicles.storeNewVehicle(player, spec);
+        // CHEIA masinii: legata de vehicul la cumparare; click pe masina = incui/deschide.
+        if (vehicleId != null) {
+            player.getInventory().addItem(
+                    com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.key(
+                            vehicleId, spec.displayName()));
+        }
         player.sendMessage(net.kyori.adventure.text.Component
                 .text("[Magazin Auto] ", net.kyori.adventure.text.format.NamedTextColor.GOLD)
                 .append(net.kyori.adventure.text.Component.text("Vehiculul a fost achizi\u021bionat! ",

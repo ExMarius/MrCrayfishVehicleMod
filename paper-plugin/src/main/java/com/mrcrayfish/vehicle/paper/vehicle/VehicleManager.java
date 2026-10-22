@@ -442,6 +442,25 @@ public final class VehicleManager {
         if (vehicle.showcase()) {
             return; // podium cars: never pushed, carried, attached or driven (buy = right-click)
         }
+        // Sistemul mecanic: uneltele (cheie de mecanic/cheie masinii/spray/motor/roti)
+        // consuma interactiunea - jucatorul NU urca in masina.
+        if (plugin.mechanic() != null && plugin.mechanic().handleToolClick(player, vehicle,
+                player.getInventory().getItemInMainHand())) {
+            save();
+            return;
+        }
+        // Pe cric: nu urci in masina (e in service).
+        if (vehicle.onJack()) {
+            player.sendRichMessage("<yellow>Masina e pe cric in service - nu poti urca in ea.</yellow>");
+            return;
+        }
+        // Incuierea cu cheia: pasagerii simpli nu intra deloc, conducatorul neautorizat e
+        // oricum impiedicat de sistemul de trust deja existent.
+        if (vehicle.locked() && !vehicle.canDrive(player)) {
+            player.sendRichMessage("<red>Masina este <gold>INCHISA</gold> - doar proprietarul "
+                    + "si cei autorizati au cheia.</red>");
+            return;
+        }
         if (vehicle.handleSpecialInteraction(player, clicked)) {
             save();
             return;
@@ -504,6 +523,79 @@ public final class VehicleManager {
             player.sendRichMessage("<gray>Împingi căruciorul din spate. Mergi pentru a-l deplasa; "
                     + "interacționează din nou ghemuit pentru a-l lăsa.</gray>");
         }
+    }
+
+    /** Hammer: masina se demonteaza in "cufar de transport" (item) pentru proprietar.
+     *  Continutul depozitelor se varsa pe jos (nu bagam inventare intregi in PDC). */
+    public boolean dismantleToCrate(Player player, LandVehicle vehicle) {
+        if (!hasVehicleId(vehicle.id())) {
+            return false;
+        }
+        for (org.bukkit.inventory.ItemStack content : vehicle.storageContents()
+                .values().stream().flatMap(java.util.List::stream).toList()) {
+            if (content != null && !content.getType().isAir()) {
+                vehicle.location().getWorld().dropItemNaturally(vehicle.location(), content);
+            }
+        }
+        String payload = com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.cratePayload(
+                vehicle.spec().id(), (int) vehicle.fuel(), vehicle.engineTier().name(),
+                vehicle.wheelType().name(), (int) Math.round(vehicle.health()),
+                vehicle.paintColor(), vehicle.locked(),
+                vehicle.owner().map(UUID::toString).orElse(""));
+        player.getInventory().addItem(com.mrcrayfish.vehicle.paper.mechanic.MechanicItems
+                .vehicleCrate(vehicle.spec().id(), vehicle.spec().displayName(), payload));
+        remove(vehicle);
+        save();
+        return true;
+    }
+
+    /** Click pe jos cu cufarul: vehiculul revine pe strada cu starea salvata in payload. */
+    public boolean deployCrate(Player player, org.bukkit.inventory.ItemStack crate,
+                               Location face, float yaw) {
+        com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind kind =
+                com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.kindOf(crate);
+        if (kind != com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind.VEHICLE_CRATE) {
+            return false;
+        }
+        if (!player.hasPermission("vehicle.use")) {
+            player.sendRichMessage("<red>Nu ai permisiunea vehicle.use.</red>");
+            return false;
+        }
+        String[] data = com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.parseCratePayload(
+                com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.cratePayloadOf(crate));
+        LandVehicleSpec spec = LandVehicleSpec.byId(data[0]);
+        if (spec == null) {
+            player.sendRichMessage("<red>Cufarul tine un vehicul necunoscut.</red>");
+            return false;
+        }
+        if (!vehiclesWithin(face, 1.6D).isEmpty()) {
+            player.sendRichMessage("<red>Nu e loc - alta masina e deja aici.</red>");
+            return false;
+        }
+        Location location = face.clone();
+        location.setYaw(yaw);
+        LandVehicle vehicle = spawn(spec, location);
+        try {
+            vehicle.setFuel(Math.max(0.0F, Integer.parseInt(data[1])));
+            vehicle.setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier.fromName(data[2]));
+            vehicle.setWheelType(com.mrcrayfish.vehicle.paper.mechanic.WheelType.fromName(data[3]));
+            double health = Double.parseDouble(data[4]);
+            if (health < 100.0D) {
+                vehicle.applyDamage(100.0D - health, null);
+            }
+            int color = Integer.parseInt(data[5]);
+            if (color >= 0) {
+                vehicle.setPaintColor(color);
+            }
+            vehicle.setLocked(Boolean.parseBoolean(data[6]));
+            if (!data[7].isEmpty()) {
+                vehicle.setOwner(UUID.fromString(data[7]));
+            }
+        } catch (RuntimeException parseFailure) {
+            plugin.getLogger().warning("Crate payload partial corupt: " + parseFailure.getMessage());
+        }
+        save();
+        return true;
     }
 
     public void handleAttack(Player player, Entity clicked) {
@@ -645,6 +737,27 @@ public final class VehicleManager {
         if (stored.trusted() != null && !stored.trusted().isEmpty()) {
             data.set(path + ".trusted", stored.trusted());
         }
+        if (!"IRON".equals(stored.engineTier())) {
+            data.set(path + ".mechanic.engine-tier", stored.engineTier());
+        }
+        if (!"STANDARD".equals(stored.wheelType())) {
+            data.set(path + ".mechanic.wheel-type", stored.wheelType());
+        }
+        if (stored.health() < 100.0D) {
+            data.set(path + ".mechanic.health", stored.health());
+        }
+        if (stored.paintColor() >= 0) {
+            data.set(path + ".mechanic.paint-color", stored.paintColor());
+        }
+        if (stored.locked()) {
+            data.set(path + ".mechanic.locked", true);
+        }
+        if (stored.jackState() != null && !"NONE".equals(stored.jackState())) {
+            data.set(path + ".mechanic.jack-state", stored.jackState());
+        }
+        if (stored.jackId() != null && !stored.jackId().isEmpty()) {
+            data.set(path + ".mechanic.jack-id", stored.jackId());
+        }
     }
 
     private void load() {
@@ -710,6 +823,30 @@ public final class VehicleManager {
             vehicle.setOwner(UUID.fromString(stored.owner()));
         }
         vehicle.restoreTrustedDrivers(parseTrusted(stored.trusted()));
+        // Starea mecanica (motoare/roti/daune/vopsea/incuiere/cric) - persistata 1-la-1.
+        vehicle.setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier.fromName(stored.engineTier()));
+        vehicle.setWheelType(com.mrcrayfish.vehicle.paper.mechanic.WheelType.fromName(stored.wheelType()));
+        if (stored.health() < 100.0D) {
+            vehicle.applyDamage(100.0D - stored.health(), null);
+        }
+        if (stored.paintColor() >= 0) {
+            vehicle.setPaintColor(stored.paintColor());
+        }
+        vehicle.setLocked(stored.locked());
+        if (stored.jackState() != null) {
+            try {
+                vehicle.setJackState(LandVehicle.JackState.valueOf(stored.jackState()));
+            } catch (IllegalArgumentException ignored) {
+                // stare cric necunoscuta - ramanem cu fizica normala
+            }
+        }
+        if (stored.jackId() != null) {
+            try {
+                vehicle.setJackId(UUID.fromString(stored.jackId()));
+            } catch (IllegalArgumentException ignored) {
+                // id cric corupt - ignorat
+            }
+        }
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {
@@ -1008,7 +1145,9 @@ public final class VehicleManager {
                                  float planeRoll, float propellerSpeed,
                                  float flapAngle, float elevatorAngle, boolean chestAttached,
                                  Map<String, List<ItemStack>> storageContents,
-                                 Map<String, Boolean> openPartStates, String owner, String trusted) {
+                                 Map<String, Boolean> openPartStates, String owner, String trusted,
+                                 String engineTier, String wheelType, double health, int paintColor,
+                                 boolean locked, String jackState, String jackId) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
@@ -1023,7 +1162,10 @@ public final class VehicleManager {
                     vehicle.verticalVelocity(), vehicle.planeRoll(), vehicle.propellerSpeed(),
                     vehicle.flapAngle(), vehicle.elevatorAngle(), vehicle.chestAttached(),
                     vehicle.storageContents(), vehicle.openPartStates(),
-                    vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle));
+                    vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle),
+                    vehicle.engineTier().name(), vehicle.wheelType().name(), vehicle.health(),
+                    vehicle.paintColor(), vehicle.locked(), vehicle.jackState().name(),
+                    vehicle.jackId() == null ? null : vehicle.jackId().toString());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -1052,7 +1194,14 @@ public final class VehicleManager {
                     (float) data.getDouble(path + ".plane.elevator-angle"),
                     data.getBoolean(path + ".storage.chest-attached", false),
                     readStorage(data, path), readOpenPartStates(data, path),
-                    data.getString(path + ".owner"), data.getString(path + ".trusted"));
+                    data.getString(path + ".owner"), data.getString(path + ".trusted"),
+                    data.getString(path + ".mechanic.engine-tier"),
+                    data.getString(path + ".mechanic.wheel-type"),
+                    data.getDouble(path + ".mechanic.health", 100.0D),
+                    data.getInt(path + ".mechanic.paint-color", -1),
+                    data.getBoolean(path + ".mechanic.locked", false),
+                    data.getString(path + ".mechanic.jack-state"),
+                    data.getString(path + ".mechanic.jack-id"));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

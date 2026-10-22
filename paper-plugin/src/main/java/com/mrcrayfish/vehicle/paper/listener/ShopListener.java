@@ -14,14 +14,20 @@ import org.bukkit.event.inventory.InventoryDragEvent;
  */
 public final class ShopListener implements Listener {
     private final VehicleShop shop;
+    private com.mrcrayfish.vehicle.paper.shop.ShopGui gui;
 
     public ShopListener(VehicleShop shop) {
         this.shop = shop;
     }
 
+    /** GUI-ul e legat de listener din VehiclePlugin (openParts/open pentru tab-uri). */
+    public void bindGui(com.mrcrayfish.vehicle.paper.shop.ShopGui gui) {
+        this.gui = gui;
+    }
+
     @EventHandler
     public void onClick(InventoryClickEvent event) {
-        if (!(event.getInventory().getHolder() instanceof ShopGui.Holder)) {
+        if (!(event.getInventory().getHolder() instanceof ShopGui.Holder holder)) {
             return;
         }
         event.setCancelled(true);
@@ -29,6 +35,22 @@ public final class ShopListener implements Listener {
             return;
         }
         if (event.getClickedInventory() != event.getView().getTopInventory()) {
+            return;
+        }
+        // comutare tab-uri: VEHICULE <-> PIESE
+        String page = ShopGui.pageOf(event.getCurrentItem());
+        if (page != null) {
+            if ("parts".equals(page)) {
+                gui.openParts(player);
+            } else {
+                gui.open(player);
+            }
+            return;
+        }
+        String partId = ShopGui.partOf(event.getCurrentItem());
+        if (partId != null) {
+            player.closeInventory();
+            shop.buyPart(player, partId);
             return;
         }
         String specId = ShopGui.specOf(event.getCurrentItem());

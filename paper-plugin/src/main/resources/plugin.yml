@@ -27,4 +27,31 @@ permissions:
   vehicle.garage:
     description: Allows players to set/remove their personal parking spot (/garaj set|remove). OP bypasses it.
     default: false
+  mcv.creative:
+    description: Deschide /vehicle creative (meniul complet al sistemului mecanic).
+    default: op
+  mcv.jack.use:
+    description: Folosirea cricului/elevatorului auto.
+    default: false
+  mcv.workstation.use:
+    description: Primirea cheii de mecanic de la bancul de lucru.
+    default: false
+  mcv.mechanic.engine:
+    description: Schimbarea motorului unui vehicul.
+    default: false
+  mcv.mechanic.wheel:
+    description: Schimbarea rotilor unui vehicul.
+    default: false
+  mcv.mechanic.repair:
+    description: Repararea vehiculelor (de pe cric, din iteme).
+    default: false
+  mcv.mechanic.paint:
+    description: Vopsirea vehiculelor cu spray can.
+    default: false
+  mcv.vehicle.lock:
+    description: Inchiderea/deschiderea masinii cu cheia.
+    default: false
+  mcv.vehicle.dismantle:
+    description: Demontarea vehiculului propriu cu ciocanul.
+    default: false
 softdepend: [Vault]
