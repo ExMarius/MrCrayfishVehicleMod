@@ -236,7 +236,12 @@ public final class MechanicManager {
         return true;
     }
 
-    /** Spray can pe vehicul: vopseste caroseria direct (modul vopsia tot cu clickul). */
+    /** Spray can pe vehicul, 1-la-1 cu VehicleEntity.interact din mod:
+     *  - vopseste instant pe click (fara cric);
+     *  - RemainingSprays > 0 cerut TUTUROR (si in creative, ca in mod);
+     *  - aceeasi culoare = silent no-op (fara consum, fara sunet, ca in mod);
+     *  - consum 1 pulverizare la fiecare aplicare (si in creative, ca in mod);
+     *  - modul nu trimite mesaje in chat; la noi confirmarea e pe action bar. */
     private boolean handleSpray(Player player, LandVehicle vehicle, ItemStack can) {
         Integer rgb = MechanicItems.sprayColorOf(can);
         if (rgb == null) {
@@ -246,11 +251,13 @@ public final class MechanicManager {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.paint.</red>");
             return true;
         }
-        if (player.getGameMode() != GameMode.CREATIVE
-                && MechanicItems.spraysRemainingOf(can) <= 0) {
+        if (MechanicItems.spraysRemainingOf(can) <= 0) {
             player.sendRichMessage("<red>Spray-ul s-a golit - reumple-l cumparand alta "
                     + "vopsea (shop > Piese).</red>");
             return true;
+        }
+        if (vehicle.paintColor() == rgb) {
+            return true; // aceeasi culoare: ca in mod, nimic nu se intampla
         }
         vehicle.setPaintColor(rgb);
         vehicles.save();
@@ -263,12 +270,10 @@ public final class MechanicManager {
                         at.getX(), at.getY(), at.getZ());
             }
         }
-        int remaining = player.getGameMode() == GameMode.CREATIVE
-                ? MechanicItems.spraysRemainingOf(can)
-                : MechanicItems.useSpray(can, sprayCapacity());
-        player.sendRichMessage("<gray>Ai vopsit masina in <gold>" + colorName + "</gold>"
-                + (player.getGameMode() == GameMode.CREATIVE ? "."
-                : " (ramas: " + remaining + "/" + sprayCapacity() + ").") + "</gray>");
+        int remaining = MechanicItems.useSpray(can, sprayCapacity());
+        player.sendActionBar(net.kyori.adventure.text.Component.text(
+                "Vopsea " + colorName + " (ramas: " + remaining + "/" + sprayCapacity() + ")",
+                net.kyori.adventure.text.format.NamedTextColor.GOLD));
         return true;
     }
 

@@ -25,6 +25,9 @@ import java.util.UUID;
 
 /** Toate evenimentele sistemului mecanic intr-un singur listener coerent. */
 public final class MechanicListener implements Listener {
+    private static final net.kyori.adventure.key.Key SPRAY_SHAKE =
+            net.kyori.adventure.key.Key.key("vehicle:item.spray_can.shake");
+
     private final MechanicManager mechanic;
     private final VehicleManager vehicles;
     private final Map<UUID, Long> paintCooldowns = new HashMap<>();
@@ -32,6 +35,23 @@ public final class MechanicListener implements Listener {
     public MechanicListener(MechanicManager mechanic, VehicleManager vehicles) {
         this.mechanic = mechanic;
         this.vehicles = vehicles;
+    }
+
+    /** SprayCanHandler din mod: la selectarea spray can-ului in hotbar se aude un
+     *  "shake" cu ton variabil (urca cu pulverizarile ramase). */
+    @EventHandler
+    public void onHotbarSelect(org.bukkit.event.player.PlayerItemHeldEvent event) {
+        ItemStack next = event.getPlayer().getInventory().getItem(event.getNewSlot());
+        if (MechanicItems.kindOf(next) != MechanicItems.Kind.SPRAY_CAN) {
+            return;
+        }
+        float ratio = MechanicItems.spraysRemainingOf(next)
+                / (float) mechanic.sprayCapacity();
+        float pitch = 0.85F + 0.15F * ratio;
+        Location at = event.getPlayer().getLocation();
+        event.getPlayer().playSound(net.kyori.adventure.sound.Sound.sound(SPRAY_SHAKE,
+                        net.kyori.adventure.sound.Sound.Source.PLAYER, 0.75F, pitch),
+                at.getX(), at.getY(), at.getZ());
     }
 
     /* ============================ plasare iteme ============================ */
@@ -280,6 +300,10 @@ public final class MechanicListener implements Listener {
             return;
         }
         paintCooldowns.put(player.getUniqueId(), now);
+        if (vehicle.paintColor() == color.rgb()) {
+            // Ca in mod: aceeasi culoare = fara consum si fara sunet.
+            return;
+        }
         if (player.getGameMode() != GameMode.CREATIVE) {
             int slot = -1;
             ItemStack[] contents = player.getInventory().getContents();
