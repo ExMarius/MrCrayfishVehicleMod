@@ -152,8 +152,8 @@ public final class MechanicListener implements Listener {
 
     /* ==================== statiile BLOC SOLID (anti-lag) ==================== */
 
-    /** Click-dreapta pe o statie-bloc (banc de lucru; cricul vine in ciclul 2).
-     *  Anulam PRIMA interactiunea ca note_block-ul sa nu se retuneze niciodata. */
+    /** Click-dreapta pe o statie-bloc (banc/elevator). Anulam PRIMA interactiunea:
+     *  composterul nu primeste compost, slab-ul nu se waterlog-uieste din galeta. */
     @EventHandler(priority = EventPriority.HIGH)
     public void onStationBlockUse(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
@@ -210,15 +210,6 @@ public final class MechanicListener implements Listener {
                 event.setCancelled(true);
                 return;
             }
-        }
-    }
-
-    /** Pulsul de redstone pe note_block = „pling" - il suprimam complet (statia
-     *  arata oricum identic powered/ne-powered, pack-ul mapeaza ambele stari). */
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
-    public void onStationNotePlay(org.bukkit.event.block.NotePlayEvent event) {
-        if (StationBlocks.kindOf(event.getBlock()) != null) {
-            event.setCancelled(true);
         }
     }
 

@@ -1176,11 +1176,12 @@ def build(output: Path) -> tuple[Path, str]:
         mechanic_convert(ASSETS / "models/item/vehicle_crate.json",
                          namespace / "models/item/vehicle_crate.json")
         # === STATII CA BLOCURI SOLIDE (misiunea anti-lag: 200+ vehicule pe server) ===
-        # Bancul de lucru si cricul devin blocuri note_block reale (zero entitati,
-        # zero tick): suprascriem in pack cateva stari instrument+nota=17 cu
-        # modelele statiilor. Interactiunea e anulata server-side (nu se retuneaza),
-        # pling-ul de redstone se suprima prin NotePlayEvent, iar powered=true
-        # arata identic - regulile multipart de mai jos ignora powered.
+        # Gazdele (v2, dupa feedback live): NEOPACE, ca sa nu taie fetele vecinilor
+        # (note_block era OPAC => X-ray/gol spre void pe la colturile statiilor).
+        #  - elevator = petrified_oak_slab (nu exista in survival; bottom = JOS,
+        #    double = SUS, top = ramane vanilla pentru orice slab legit)
+        #  - banc = composter[level=7] (neopac, coliziune de masa, spargere normala;
+        #    conflicte cosmetice acceptate cu compostoarele de ferma la nivelul 7)
         for _solid, _src in (("mcv_workstation", "workstation"),):
             mechanic_convert(ASSETS / f"models/block/{_src}.json",
                              namespace / f"models/block/{_solid}.json")
@@ -1190,9 +1191,9 @@ def build(output: Path) -> tuple[Path, str]:
         mechanic_convert(ASSETS / "models/block/jack.json",
                          namespace / "models/block/mcv_jack_down.json")
         mechanic_convert(ASSETS / "models/block/jack_head.json",
-                         namespace / "models/block/mcv_jack_head_parts.json")
+                         namespace / "models/block/mcv_jack_parts.json")
         _jack_down = json.loads((namespace / "models/block/mcv_jack_down.json").read_text(encoding="utf-8"))
-        _jack_head = json.loads((namespace / "models/block/mcv_jack_head_parts.json").read_text(encoding="utf-8"))
+        _jack_head = json.loads((namespace / "models/block/mcv_jack_parts.json").read_text(encoding="utf-8"))
 
         def _jack_composite(down: dict, head: dict, lift_units: float) -> dict:
             merged = {"textures": {**head.get("textures", {}), **down.get("textures", {})},
@@ -1210,30 +1211,23 @@ def build(output: Path) -> tuple[Path, str]:
                    _jack_composite(_jack_down, _jack_head, 0.0))
         write_json(namespace / "models/block/mcv_jack_up.json",
                    _jack_composite(_jack_down, _jack_head, 8.0))
+        # Blockstates: doua fisiere vanilla autocontinute, acoperire 100% a starilor
+        # (waterlogged false/true incluse - statiile le aseaza mereu pe false).
         _mc_namespace = namespace.parent / "minecraft"
-        # MULTIPART blindat (nu ne bazam pe fallback-ul "" din variants): TOATE
-        # combinatiile vanilla raman note_block normal; doar instrumentele noastre
-        # la nota 17 arata ca statiile. Acoperire 100% - niciun bloc nu dispare.
-        _STATION_INSTRUMENTS = ("wither_skeleton", "zombie", "creeper")
-        _VANILLA_INSTRUMENTS = ("harp", "basedrum", "snare", "hat", "bass", "flute",
-                                "bell", "guitar", "chime", "xylophone", "iron_xylophone",
-                                "cow_bell", "didgeridoo", "bit", "banjo", "pling",
-                                "dragon", "piglin", "custom_head", "skeleton")
-        _NOTES_EXCEPT_17 = "|".join(str(_n) for _n in range(25) if _n != 17)
-        _nb_multipart = [
-            {"when": {"instrument": "|".join(_VANILLA_INSTRUMENTS)},
-             "apply": {"model": "minecraft:block/note_block"}},
-            {"when": {"instrument": "|".join(_STATION_INSTRUMENTS), "note": _NOTES_EXCEPT_17},
-             "apply": {"model": "minecraft:block/note_block"}},
-            {"when": {"instrument": "wither_skeleton", "note": "17"},
+        write_json(_mc_namespace / "blockstates/petrified_oak_slab.json", {"variants": {
+            "type=bottom,waterlogged=false": {"model": "vehicle:block/mcv_jack_down"},
+            "type=bottom,waterlogged=true": {"model": "vehicle:block/mcv_jack_down"},
+            "type=top,waterlogged=false": {"model": "minecraft:block/petrified_oak_slab_top"},
+            "type=top,waterlogged=true": {"model": "minecraft:block/petrified_oak_slab_top"},
+            "type=double,waterlogged=false": {"model": "vehicle:block/mcv_jack_up"},
+            "type=double,waterlogged=true": {"model": "vehicle:block/mcv_jack_up"},
+        }})
+        write_json(_mc_namespace / "blockstates/composter.json", {"multipart": [
+            {"when": {"level": "0|1|2|3|4|5|6|8"},
+             "apply": {"model": "minecraft:block/composter"}},
+            {"when": {"level": "7"},
              "apply": {"model": "vehicle:block/mcv_workstation"}},
-            {"when": {"instrument": "zombie", "note": "17"},
-             "apply": {"model": "vehicle:block/mcv_jack_down"}},
-            {"when": {"instrument": "creeper", "note": "17"},
-             "apply": {"model": "vehicle:block/mcv_jack_up"}},
-        ]
-        write_json(_mc_namespace / "blockstates/note_block.json",
-                   {"multipart": _nb_multipart})
+        ]})
         copy(ASSETS / "textures/item/wrench.png", namespace / "textures/item/wrench.png")
         copy(ASSETS / "textures/item/hammer.png", namespace / "textures/item/hammer.png")
         copy(ASSETS / "textures/item/key.png", namespace / "textures/item/key.png")
