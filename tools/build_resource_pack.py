@@ -1501,6 +1501,7 @@ def build(output: Path) -> tuple[Path, str]:
 
         emit_vehicle_icons(namespace)
         emit_vehicle_previews(namespace)
+        emit_jack_gui_backdrop(namespace)
 
         if output.exists():
             output.unlink()
@@ -1776,6 +1777,127 @@ def emit_vehicle_previews(namespace: Path) -> None:
                 namespace / f'items/vehicle_preview/{vehicle_id}/frame_{frame}.json',
                 item_definition(f'vehicle:item/vehicle_preview/{vehicle_id}/frame_{frame}', 16383998),
             )
+
+
+# =====================================================================
+# GUI-UL CRICULUI = TEXTURA REALA A MODULUI (fereastra EditVehicleScreen):
+# pe client vanilla, containerul unui meniu nu poate fi inlocuit, DAR textul
+# TITLULUI se randeaza cu fonturile pack-ului - asa ca desenam intreaga textura
+# a GUI-ului din mod ca GLIF de font, plasat pixel-perfect sub inventar, cu
+# spatii negative ca sa acopere exact fereastra 9x6 (176x222 = generic_54).
+# Glifa = edit_vehicle.png remapat pe pozitiile reale ale sloturilor chest:
+#   mod (184px)              chest 54-slot (222px)
+#   titlu+motor+roti+window  -> y 0..88 identic (grila sloturilor coincide!)
+#   separator                -> y 88..103
+#   label „Inventory"        -> gri (vanilla il deseneaza la y=128)
+#   randuri inventar jucator -> mod y 103..157 la y 140 (grila exacta)
+#   hotbar                   -> mod y 161..179 la y 198
+# =====================================================================
+
+import struct
+import zlib
+
+
+def _png_decode_rgba(path: Path) -> tuple:
+    """"Minimal stdlib PNG decoder: RGBA8, non-interlaced (the mod GUI files)."""
+    data = path.read_bytes()
+    if data[:8] != b'\x89PNG\r\n\x1a\n':
+        raise RuntimeError(f'{path}: not a PNG')
+    pos = 8
+    width = height = None
+    idat = bytearray()
+    while pos < len(data):
+        length, ctype = struct.unpack('>I4s', data[pos:pos + 8])
+        chunk = data[pos + 8:pos + 8 + length]
+        if ctype == b'IHDR':
+            width, height, bitdepth, color, _c, _f, interlace = struct.unpack('>IIBBBBB', chunk)
+            if bitdepth != 8 or color != 6 or interlace != 0:
+                raise RuntimeError(f'{path}: unsupported PNG variant '
+                                   f'(bitdepth={bitdepth} color={color} interlace={interlace})')
+        elif ctype == b'IDAT':
+            idat.extend(chunk)
+        elif ctype == b'IEND':
+            break
+        pos += 12 + length
+    raw = zlib.decompress(bytes(idat))
+    stride = width * 4
+    out = bytearray(width * height * 4)
+    prev = bytearray(stride)
+    src = 0
+    for y in range(height):
+        filt = raw[src]
+        src += 1
+        row = bytearray(raw[src:src + stride])
+        src += stride
+        if filt == 1:      # Sub
+            for i in range(4, stride):
+                row[i] = (row[i] + row[i - 4]) & 0xFF
+        elif filt == 2:    # Up
+            for i in range(stride):
+                row[i] = (row[i] + prev[i]) & 0xFF
+        elif filt == 3:    # Average
+            for i in range(stride):
+                left = row[i - 4] if i >= 4 else 0
+                row[i] = (row[i] + ((left + prev[i]) >> 1)) & 0xFF
+        elif filt == 4:    # Paeth
+            for i in range(stride):
+                a = row[i - 4] if i >= 4 else 0
+                b = prev[i]
+                c = prev[i - 4] if i >= 4 else 0
+                p = a + b - c
+                pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+                pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
+                row[i] = (row[i] + pr) & 0xFF
+        elif filt != 0:
+            raise RuntimeError(f'{path}: unknown PNG filter {filt}')
+        out[y * stride:(y + 1) * stride] = row
+        prev = row
+    return width, height, bytes(out)
+
+
+def _png_encode_rgba(width: int, height: int, rgba: bytes) -> bytes:
+    """"Deterministic minimal PNG encoder (filter 0 per row)."""
+    def chunk(ctype: bytes, payload: bytes) -> bytes:
+        return (struct.pack('>I', len(payload)) + ctype + payload
+                + struct.pack('>I', zlib.crc32(ctype + payload) & 0xFFFFFFFF))
+    scan = b''.join(b'\x00' + rgba[y * width * 4:(y + 1) * width * 4] for y in range(height))
+    return (b'\x89PNG\r\n\x1a\n'
+            + chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0))
+            + chunk(b'IDAT', zlib.compress(scan, 9))
+            + chunk(b'IEND', b''))
+
+
+def emit_jack_gui_backdrop(namespace: Path) -> None:
+    """"Font-backdrop: textures/font/gui/edit_vehicle_bg.png (176x222) remapat din
+    textura reala a modului + assets/vehicle/font/jack_gui.json cu glifa + spatii
+    negative. Titlul meniului o invoca (vezi MechanicGui)."""
+    src_w, _src_h, src = _png_decode_rgba(ASSETS / 'textures/gui/edit_vehicle.png')
+    width, height = 176, 222
+    canvas = bytearray()
+    for _y in range(height):
+        canvas.extend(b'\xc6\xc6\xc6\xff' * width)          # griul GUI standard
+
+    def paste(src_y0: int, src_y1: int, dst_y0: int) -> None:
+        for row in range(src_y1 - src_y0):
+            s_off = ((src_y0 + row) * src_w) * 4
+            d_off = ((dst_y0 + row) * width) * 4
+            canvas[d_off:d_off + width * 4] = src[s_off:s_off + width * 4]
+
+    paste(0, 88, 0)       # titlu + motor(8,17) + roti(8,35) + fereastra (17..87)
+    paste(88, 103, 88)    # separator + margine sub fereastra
+    paste(103, 157, 140)  # 3 randuri inventar jucator pe grila exacta (y 140..194)
+    paste(157, 161, 194)  # banda de 4px din textura dintre grila si hotbar
+    paste(161, 179, 198)  # hotbar pe grila exacta (y 198..216)
+    tex_path = namespace / 'textures/font/gui/edit_vehicle_bg.png'
+    tex_path.parent.mkdir(parents=True, exist_ok=True)
+    tex_path.write_bytes(_png_encode_rgba(width, height, bytes(canvas)))
+    write_json(namespace / 'font/jack_gui.json', {
+        'providers': [
+            {'type': 'space', 'advances': {'\ue7f0': -8, '\ue7f1': -168}},
+            {'type': 'bitmap', 'file': 'vehicle:font/gui/edit_vehicle_bg.png',
+             'ascent': 13, 'height': 222, 'chars': ['\ue700']},
+        ],
+    })
 
 
 def main() -> None:

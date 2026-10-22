@@ -22,15 +22,17 @@ import java.util.UUID;
 /**
  * Bancul de service deschis cu cheia de mecanic pe o masina RIDICATA pe cric
  * (exact fluxul din mod: wrench pe vehiculul de pe EntityJack -> EditVehicleScreen).
- * Aspectul copiaza layout-ul din mod (edit_vehicle.png):
- *  - STANGA, vertical: slot MOTOR (sus) + slot ROTI (sub) - pui piesa noua pe
- *    cursor si click = schimb (cursorul pastreaza piesa veche, ca in mod);
- *  - CENTRU: fereastra mare cu MODELUL 3D real al vehiculului, marit de 4x
- *    (aceeasi vedere 3/4 [30,-135] ca fereastra din mod; rotatia libera cu
- *    mouse-ul nu exista in GUI vanilla - acesta e maximul posibil);
- *  - JOS: UNICUL extras fata de mod, cerut de tine - butonul VOPSESTE
- *    (paleta celor 16 culori, gratuita). Atat, restul e 1:1.
- * Inventarul jucatorului ramane jos, ca in mod.
+ * Acesta ESTE ecranul modului, reprodus viu pe client vanilla:
+ *  - fundalul = TEXTURA REALA edit_vehicle.png a modului, desenata pixel-perfect
+ *    de fontul-backdrop (glifa \uE700 din pack) in spatele inventarului 9x6;
+ *  - sloturile MOTOR (8,17) si ROTI (8,35) coincid cu grila chest - pui piesa
+ *    noua pe cursor si click = schimb, cursorul pastreaza piesa veche (ca in mod);
+ *  - in fereastra desenata de mod sta MODELUL 3D COMPUS (caroserie+roti), MARE,
+ *    care se ROTESTE SINGUR lent (cadre server-side: rotatia cu mouse-ul cere
+ *    client modat - animatia continua e echivalentul vanilla);
+ *  - numele vehiculului pe bara de titlu, pozitia exacta a textului din mod;
+ *  - jos pe banda libera: UNICUL extras cerut - butonul VOPSESTE (16 culori,
+ *    gratuit). Inventarul jucatorului ramane jos, ca in mod.
  */
 public final class MechanicGui {
     public static final class Holder implements InventoryHolder {
@@ -61,14 +63,22 @@ public final class MechanicGui {
     }
 
     private static final NamespacedKey ACTION = new NamespacedKey("vehicle", "mechanic_gui_action");
-    private static final int SIZE = 54; // piept dublu - cat sa incapa fereastra din mod
-    // Layout-ul din mod (edit_vehicle.png): motor (8,17) si roti (8,35) pe STANGA,
-    // fereastra de previzualizare (26..168 x 17..87) in CENTRU. Coloana 0 = coloana
-    // sloturilor din mod; randurile 1-4 = fereastra; randul 5 = butoanele noastre.
-    public static final int ENGINE_SLOT = 9;   // rand 1, col 0
-    public static final int WHEEL_SLOT = 18;   // rand 2, col 0
-    public static final int INFO_SLOT = 22;    // centrul ferestrei de previzualizare
-    public static final int PAINT_SLOT = 47;   // UNICUL buton extra cerut (nu exista in mod)
+    private static final int SIZE = 54; // piept dublu = fereastra 176x222 a texturii modului
+    // Layout 1:1 cu edit_vehicle.png (textura reala desenata ca font-backdrop):
+    //  - sloturile desenate de mod coincid cu grila chest: MOTOR (8,17) = slot 0,
+    //    ROTI (8,35) = slot 9;
+    //  - fereastra desenata (26..168 x 17..87) primeste in centru masina 3D MARE,
+    //    rotativa (slot 13 = rand 1, col 4);
+    //  - butonul VOPSESTE (extrasul cerut) sta pe banda goala de sub fereastra.
+    public static final int ENGINE_SLOT = 0;   // pozitia exacta din mod (8,17)
+    public static final int WHEEL_SLOT = 9;    // pozitia exacta din mod (8,35)
+    public static final int INFO_SLOT = 13;    // centrul ferestrei desenate de mod
+    public static final int PAINT_SLOT = 40;   // buton extra, banda de sub fereastra
+    /** Fontul-backdrop din pack: deseneaza textura edit_vehicle.png in spatele meniului. */
+    private static final net.kyori.adventure.key.Key GUI_FONT =
+            net.kyori.adventure.key.Key.key("vehicle", "jack_gui");
+    /** Glifele din font: shift la marginea ferestrei + glifa texturii + shift inapoi la x=8. */
+    private static final String BACKDROP = "\uE7F0\uE700\uE7F1";
 
     private final MechanicManager mechanic;
 
@@ -85,25 +95,16 @@ public final class MechanicGui {
 
     public void open(Player player, LandVehicle vehicle) {
         Holder holder = new Holder(vehicle.id(), false);
-        // Titlul = numele vehiculului, exact ca in mod (EditVehicleScreen).
-        Inventory inventory = Bukkit.createInventory(holder, SIZE, Component.text(
-                vehicle.spec().displayName(), NamedTextColor.DARK_GRAY));
+        // Titlul = EFECTIV ecranul din mod: TEXTURA edit_vehicle.png desenata de
+        // fontul-backdrop (glifa) in spatele inventarului + numele vehiculului pe
+        // bara de titlu, exact pozitia la care modul scrie titlul (8,6).
+        Component title = Component.text(BACKDROP).font(GUI_FONT)
+                .append(Component.text(vehicle.spec().displayName(), NamedTextColor.DARK_GRAY));
+        Inventory inventory = Bukkit.createInventory(holder, SIZE, title);
         holder.inventory = inventory;
 
-        // Rama: panouri gri deschis (fara nume) pe rama exterioara; fereastra de
-        // previzualizare = panouri negre, ca fundalul intunecat al ferestrei din mod.
-        ItemStack frame = pane(Material.LIGHT_GRAY_STAINED_GLASS_PANE);
-        ItemStack window = pane(Material.BLACK_STAINED_GLASS_PANE);
-        for (int slot = 0; slot < SIZE; slot++) {
-            int row = slot / 9;
-            int col = slot % 9;
-            boolean isWindow = row >= 1 && row <= 4 && col >= 1;
-            if (isWindow) {
-                inventory.setItem(slot, window);
-            } else if (slot != ENGINE_SLOT && slot != WHEEL_SLOT && slot != PAINT_SLOT) {
-                inventory.setItem(slot, frame);
-            }
-        }
+        // Niciun panou de umplutura: fundalul e textura reala a modului (randata
+        // de font); singurele elemente deasupra ei sunt sloturile functionale.
         // Centrul ferestrei: vehiculul MARE (modelul 3D compus caroserie+roti din
         // mod) + datele complete; preview-ul se ROTESTE lent (cadrele vin din
         // advancePreviewFrames, apelat de task-ul din MechanicManager).
@@ -138,7 +139,9 @@ public final class MechanicGui {
         player.openInventory(inventory);
     }
 
-    /** Panou de rama/fereastra fara nume (doar umplutura vizuala, ca in mod). */
+    /** Panou de rama/fereastra fara nume - inutilizat de la backdrop-ul cu textura
+     *  reala a modului, pastrat pentru eventuale pagini auxiliare viitoare. */
+    @SuppressWarnings("unused")
     private static ItemStack pane(Material material) {
         ItemStack stack = new ItemStack(material);
         ItemMeta meta = stack.getItemMeta();
