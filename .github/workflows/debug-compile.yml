@@ -1,8 +1,7 @@
 name: Debug compile
 on:
-  push:
-    branches:
-      - arena/2f9f7b9e-mrcrayfishvehiclemod
+  # Doar manual (workflow_dispatch) - folosit pentru a scoate erorile javac din CI
+  # ca adnotari cand sandbox-ul nu poate descarca logurile de build.
   workflow_dispatch:
 
 jobs:
