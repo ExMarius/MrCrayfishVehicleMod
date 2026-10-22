@@ -120,6 +120,17 @@ public final class MechanicManager {
         return plugin.getConfig().getDouble("mechanic.damage.multiplier", 4.0D);
     }
 
+    /** Mod: Config.SERVER.sprayCanCapacity (default 20). */
+    public int sprayCapacity() {
+        return Math.max(1, plugin.getConfig().getInt("mechanic.spray-capacity",
+                MechanicItems.DEFAULT_SPRAY_CAPACITY));
+    }
+
+    /** Cat combustibil toarna o galetusa cu fluid intr-un rezervor. */
+    public float fluidBucketAmount() {
+        return (float) plugin.getConfig().getDouble("mechanic.fluid-bucket-amount", 1000.0D);
+    }
+
     public boolean requiresLiftForRepair() {
         return plugin.getConfig().getBoolean("mechanic.require-lift", true);
     }
@@ -175,6 +186,9 @@ public final class MechanicManager {
             case SPRAY_CAN -> {
                 return handleSpray(player, vehicle, held);
             }
+            case FLUID_BUCKET -> {
+                return handleFluidBucket(player, vehicle, held);
+            }
             case ENGINE -> {
                 return handleEngineSwap(player, vehicle, held);
             }
@@ -223,6 +237,12 @@ public final class MechanicManager {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.paint.</red>");
             return true;
         }
+        if (player.getGameMode() != GameMode.CREATIVE
+                && MechanicItems.spraysRemainingOf(can) <= 0) {
+            player.sendRichMessage("<red>Spray-ul s-a golit - reumple-l cumparand alta "
+                    + "vopsea (shop > Piese).</red>");
+            return true;
+        }
         vehicle.setPaintColor(rgb);
         vehicles.save();
         String colorName = Objects.requireNonNullElse(
@@ -234,10 +254,12 @@ public final class MechanicManager {
                         at.getX(), at.getY(), at.getZ());
             }
         }
-        if (player.getGameMode() != GameMode.CREATIVE) {
-            can.setAmount(can.getAmount() - 1);
-        }
-        player.sendRichMessage("<gray>Ai vopsit masina in <gold>" + colorName + "</gold>.</gray>");
+        int remaining = player.getGameMode() == GameMode.CREATIVE
+                ? MechanicItems.spraysRemainingOf(can)
+                : MechanicItems.useSpray(can, sprayCapacity());
+        player.sendRichMessage("<gray>Ai vopsit masina in <gold>" + colorName + "</gold>"
+                + (player.getGameMode() == GameMode.CREATIVE ? "."
+                : " (ramas: " + remaining + "/" + sprayCapacity() + ").") + "</gray>");
         return true;
     }
 
@@ -301,6 +323,31 @@ public final class MechanicManager {
         player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.7F, 1.0F);
         player.sendRichMessage("<gray>Roti schimbate: <gold>" + wanted.label()
                 + "</gold>. Vechile " + previous.label().toLowerCase() + " le-ai primit inapoi.</gray>");
+        return true;
+    }
+
+    /** Galetusa cu fluid (fuelium/ender_sap/blaze_juice) pe vehicul: toarna
+     *  mechanic.fluid-bucket-amount in rezervor si ramane galetusa goala. */
+    private boolean handleFluidBucket(Player player, LandVehicle vehicle, ItemStack bucket) {
+        MechanicItems.Fluid fluid = MechanicItems.bucketFluidOf(bucket);
+        if (fluid == null) {
+            return false;
+        }
+        float capacity = vehicle.spec().energyCapacity();
+        if (vehicle.fuel() >= capacity) {
+            player.sendRichMessage("<yellow>Rezervorul vehiculului este deja plin.</yellow>");
+            return true;
+        }
+        float poured = Math.min(fluidBucketAmount(), capacity - vehicle.fuel());
+        vehicle.setFuel(vehicle.fuel() + poured);
+        vehicles.save();
+        if (player.getGameMode() != GameMode.CREATIVE) {
+            player.getInventory().setItemInMainHand(new ItemStack(Material.BUCKET));
+        }
+        player.playSound(player.getLocation(), org.bukkit.Sound.ITEM_BUCKET_FILL, 0.8F, 1.0F);
+        player.sendRichMessage("<gray>Ai turnat <gold>" + (int) poured + "</gold> din galetusa de "
+                + fluid.label + " (rezervor: <gold>" + (int) vehicle.fuel() + "</gold>/"
+                + (int) capacity + ").</gray>");
         return true;
     }
 
@@ -370,7 +417,7 @@ public final class MechanicManager {
                     + "(de la bancul de lucru).</gray>");
             return true;
         }
-        if (workstations.handleClick(player, entity)) {
+        if (workstations.handleClick(player, entity, held)) {
             return true;
         }
         if (props.byEntityPublic(entity).isPresent()) {

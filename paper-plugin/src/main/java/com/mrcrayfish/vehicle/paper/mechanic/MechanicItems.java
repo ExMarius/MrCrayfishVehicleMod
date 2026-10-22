@@ -14,6 +14,7 @@ import org.bukkit.persistence.PersistentDataType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 
 /**
@@ -25,7 +26,8 @@ import java.util.UUID;
 public final class MechanicItems {
     public enum Kind {
         ENGINE, WHEEL, WRENCH, HAMMER, KEY, SPRAY_CAN,
-        JACK, WORKSTATION, TRAFFIC_CONE, BOOST_PAD, FLUID_PIPE, VEHICLE_CRATE
+        JACK, WORKSTATION, TRAFFIC_CONE, BOOST_PAD, FLUID_PIPE, VEHICLE_CRATE,
+        PANEL, FLUID_BUCKET
     }
 
     private static final NamespacedKey KIND = new NamespacedKey("vehicle", "mechanic_kind");
@@ -37,6 +39,8 @@ public final class MechanicItems {
     private static final NamespacedKey SPRAY_NAME = new NamespacedKey("vehicle", "spray_color_name");
     private static final NamespacedKey CRATE_PAYLOAD = new NamespacedKey("vehicle", "crate_payload");
     private static final NamespacedKey WRENCH_STATION = new NamespacedKey("vehicle", "wrench_station");
+    private static final NamespacedKey SPRAY_REMAINING = new NamespacedKey("vehicle", "spray_remaining");
+    private static final NamespacedKey BUCKET_FLUID = new NamespacedKey("vehicle", "bucket_fluid");
 
     private MechanicItems() {
     }
@@ -147,6 +151,13 @@ public final class MechanicItems {
         return wrench(null);
     }
 
+    private static ItemStack clampStack1(ItemStack item) {
+        ItemMeta meta = item.getItemMeta();
+        meta.setMaxStackSize(1);
+        item.setItemMeta(meta);
+        return item;
+    }
+
     /** Cheia data de un banc de lucru: poarta id-ul bancului in PDC, ca sa
      *  dispara din inventar cand jucatorul iese din zona de service. */
     public static ItemStack wrench(UUID stationId) {
@@ -158,9 +169,9 @@ public final class MechanicItems {
             item.setItemMeta(meta);
         }
         finish(item, Component.text("Cheie de mecanic", NamedTextColor.GOLD), List.of(
-                Component.text("Click pe cric = ridica/coboara masina.", NamedTextColor.GRAY),
+                Component.text("Click cu cheia pe banc = ridici/cobori masina.", NamedTextColor.GRAY),
                 Component.text("Click pe masina ridicata = meniul de mecanic.", NamedTextColor.GRAY)));
-        return item;
+        return clampStack1(item);
     }
 
     /** Id-ul bancului care a dat cheia; null = cheie libera (creative / veche). */
@@ -180,8 +191,14 @@ public final class MechanicItems {
         }
     }
 
+    /** HammerItem.durability(200) din mod: 200 de folosiri (bara vanilla de durabilitate). */
+    public static final int HAMMER_MAX_DAMAGE = 200;
+
     public static ItemStack hammer() {
         ItemStack item = base(Kind.HAMMER, "hammer");
+        ItemMeta meta = item.getItemMeta();
+        meta.setMaxDamage(HAMMER_MAX_DAMAGE);
+        item.setItemMeta(meta);
         finish(item, Component.text("Ciocan de lăcătuș", NamedTextColor.GOLD), List.of(
                 Component.text("Loveste masina TA: o demontezi in cufar de transport.",
                         NamedTextColor.GRAY)));
@@ -194,6 +211,7 @@ public final class MechanicItems {
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(KEY_TARGET, PersistentDataType.STRING,
                 vehicleId.toString());
+        meta.setMaxStackSize(1);
         item.setItemMeta(meta);
         finish(item, Component.text("Cheie: " + vehicleName, NamedTextColor.GOLD), List.of(
                 Component.text("Click dreapta pe masina = incui/deschide.", NamedTextColor.GRAY)));
@@ -223,7 +241,15 @@ public final class MechanicItems {
 
     /* ================================ spray can ============================= */
 
+    /** SprayCanItem din mod: capacitate din config (implicit 20 de pulverizari),
+     *  RemainingSprays in PDC; se goleste treptat si se reumple cu refill(). */
+    public static final int DEFAULT_SPRAY_CAPACITY = 20;
+
     public static ItemStack sprayCan(int rgb, String colorName) {
+        return sprayCan(rgb, colorName, DEFAULT_SPRAY_CAPACITY);
+    }
+
+    public static ItemStack sprayCan(int rgb, String colorName, int capacity) {
         ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         LeatherArmorMeta meta = (LeatherArmorMeta) item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", "spray_can"));
@@ -232,11 +258,53 @@ public final class MechanicItems {
         meta.getPersistentDataContainer().set(SPRAY_COLOR, PersistentDataType.INTEGER, rgb);
         meta.getPersistentDataContainer().set(SPRAY_NAME, PersistentDataType.STRING, colorName);
         item.setItemMeta(meta);
-        finish(item, Component.text("Spray vopsea (" + colorName + ")", NamedTextColor.GOLD), List.of(
-                Component.text("Click dreapta pe vehicul = vopsesti caroseria.",
-                        NamedTextColor.GRAY),
-                Component.text("O singura folosinta.", NamedTextColor.DARK_GRAY)));
+        refill(item, capacity);
         return item;
+    }
+
+    /** Reumple spray-ul pana la capacitate (numele/lore-ul se rescriu pe stack-ul viu). */
+    public static void refill(ItemStack stack, int capacity) {
+        ItemMeta meta = stack.getItemMeta();
+        meta.getPersistentDataContainer().set(SPRAY_REMAINING, PersistentDataType.INTEGER,
+                Math.max(1, capacity));
+        stack.setItemMeta(meta);
+        Integer rgb = stack.getItemMeta().getPersistentDataContainer()
+                .get(SPRAY_COLOR, PersistentDataType.INTEGER);
+        String colorName = Objects.requireNonNullElse(stack.getItemMeta()
+                .getPersistentDataContainer().get(SPRAY_NAME, PersistentDataType.STRING), "?");
+        finish(stack, Component.text("Spray vopsea (" + colorName + ")", NamedTextColor.GOLD), List.of(
+                Component.text("Click dreapta pe vehicul = vopsesti partile vopsibile.",
+                        NamedTextColor.GRAY),
+                Component.text("Pulverizari ramase: " + Math.max(1, capacity) + "/"
+                        + Math.max(1, capacity), NamedTextColor.AQUA)));
+    }
+
+    public static int spraysRemainingOf(ItemStack stack) {
+        if (kindOf(stack) != Kind.SPRAY_CAN) {
+            return 0;
+        }
+        Integer remaining = stack.getItemMeta().getPersistentDataContainer()
+                .get(SPRAY_REMAINING, PersistentDataType.INTEGER);
+        return remaining == null ? 0 : remaining;
+    }
+
+    /** Consuma o pulverizare; returneaza ce a ramas (lore-ul se actualizeaza pe loc). */
+    public static int useSpray(ItemStack stack, int capacity) {
+        int remaining = Math.max(0, spraysRemainingOf(stack) - 1);
+        int effective = Math.max(1, capacity);
+        ItemMeta meta = stack.getItemMeta();
+        meta.getPersistentDataContainer().set(SPRAY_REMAINING, PersistentDataType.INTEGER, remaining);
+        stack.setItemMeta(meta);
+        String colorName = Objects.requireNonNullElse(stack.getItemMeta()
+                .getPersistentDataContainer().get(SPRAY_NAME, PersistentDataType.STRING), "?");
+        finish(stack, Component.text("Spray vopsea (" + colorName + ")", NamedTextColor.GOLD), List.of(
+                Component.text("Click dreapta pe vehicul = vopsesti partile vopsibile.",
+                        NamedTextColor.GRAY),
+                Component.text(remaining > 0
+                                ? "Pulverizari ramase: " + remaining + "/" + effective
+                                : "GOL - reumple-l cumparand alta vopsea (shop > Piese).",
+                        remaining > 0 ? NamedTextColor.AQUA : NamedTextColor.RED)));
+        return remaining;
     }
 
     public static Integer sprayColorOf(ItemStack stack) {
@@ -253,6 +321,69 @@ public final class MechanicItems {
         }
         return stack.getItemMeta().getPersistentDataContainer()
                 .get(SPRAY_NAME, PersistentDataType.STRING);
+    }
+
+    /* ========================== panel / jerry can industrial ================= */
+
+    /** Itemul PANEL din ModItems - component de baza, fara comportament. */
+    public static ItemStack panel() {
+        ItemStack item = base(Kind.PANEL, "panel");
+        finish(item, Component.text("Panou metalic", NamedTextColor.GOLD), List.of(
+                Component.text("Material pentru atelierul auto.", NamedTextColor.GRAY)));
+        return item;
+    }
+
+    /** Canistra industriala (din ModItems, capacitate mai mare din config). */
+    public static ItemStack industrialJerryCan() {
+        return com.mrcrayfish.vehicle.paper.jerrycan.JerryCanItem
+                .create(com.mrcrayfish.vehicle.paper.jerrycan.JerryCanItem.Type.INDUSTRIAL);
+    }
+
+    /* =========================== galeti cu fluid ============================ */
+
+    public enum Fluid {
+        FUELIUM("fuelium_bucket", "Fuellium"),
+        ENDER_SAP("ender_sap_bucket", "Ender Sap"),
+        BLAZE_JUICE("blaze_juice_bucket", "Blaze Juice");
+
+        public final String model;
+        public final String label;
+
+        Fluid(String model, String label) {
+            this.model = model;
+            this.label = label;
+        }
+
+        public static Fluid fromName(String name) {
+            for (Fluid fluid : values()) {
+                if (fluid.name().equalsIgnoreCase(name == null ? "" : name)) {
+                    return fluid;
+                }
+            }
+            return FUELIUM;
+        }
+    }
+
+    /** Galetusa cu fluid (fuelium/ender_sap/blaze_juice) - in mod se toarna in
+     *  rezervorul vehiculului; la noi toarna configurabil mechanic.fluid-bucket-amount,
+     *  apoi ramane galetusa goala. */
+    public static ItemStack fluidBucket(Fluid fluid) {
+        ItemStack item = base(Kind.FLUID_BUCKET, fluid.model);
+        ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(BUCKET_FLUID, PersistentDataType.STRING, fluid.name());
+        item.setItemMeta(meta);
+        finish(item, Component.text("Galeata de " + fluid.label, NamedTextColor.GOLD), List.of(
+                Component.text("Click dreapta pe vehicul = torni combustibilul.",
+                        NamedTextColor.GRAY)));
+        return item;
+    }
+
+    public static Fluid bucketFluidOf(ItemStack stack) {
+        if (kindOf(stack) != Kind.FLUID_BUCKET) {
+            return null;
+        }
+        return Fluid.fromName(stack.getItemMeta().getPersistentDataContainer()
+                .get(BUCKET_FLUID, PersistentDataType.STRING));
     }
 
     /* ================================ plasabile ============================= */

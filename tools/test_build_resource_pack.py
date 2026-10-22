@@ -40,6 +40,11 @@ class ResourcePackBuildTest(unittest.TestCase):
             item = self.read_json(entry)
             model = item["model"]["model"]
             namespace, model_path = model.split(":", 1)
+            # Galetile cu fluid refolosesc modelul vanilie (minecraft:item/bucket +
+            # tints constante generate), asa cum face modul (parent forge:item/bucket).
+            if model == "minecraft:item/bucket":
+                self.assertTrue(entry.endswith("_bucket.json"), entry)
+                continue
             self.assertEqual("vehicle", namespace, entry)
             model_entry = f"assets/vehicle/models/{model_path}.json"
             self.assertIn(model_entry, self.entries, entry)

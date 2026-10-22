@@ -48,6 +48,12 @@ public final class MechanicListener implements Listener {
             return;
         }
         Player player = event.getPlayer();
+        // Toate statiile/props-urile se pun DOAR pe fata de sus a unui bloc: pe fete
+        // laterale modelul ar ajunge jumatate in perete/pamant (originea e in colt).
+        if (event.getBlockFace() != org.bukkit.block.BlockFace.UP) {
+            player.sendRichMessage("<yellow>Aseaza-l pe fata de SUS a unui bloc.</yellow>");
+            return;
+        }
         Location face = event.getClickedBlock().getRelative(event.getBlockFace()).getLocation();
         float yaw = player.getLocation().getYaw();
         boolean creative = player.getGameMode() == GameMode.CREATIVE;
@@ -80,10 +86,6 @@ public final class MechanicListener implements Listener {
             }
             case VEHICLE_CRATE -> {
                 event.setCancelled(true);
-                if (event.getBlockFace() != org.bukkit.block.BlockFace.UP) {
-                    player.sendRichMessage("<red>Cufarul se deschide pe fata de SUS a unui bloc.</red>");
-                    return;
-                }
                 placeCrate(player, held, face, yaw);
             }
             default -> {
@@ -161,6 +163,22 @@ public final class MechanicListener implements Listener {
             return;
         }
         if (vehicles.dismantleToCrate(player, target)) {
+            // HammerItem.durability(200) din mod: fiecare demontare toceste ciocanul.
+            if (player.getGameMode() != GameMode.CREATIVE) {
+                org.bukkit.inventory.meta.ItemMeta meta = held.getItemMeta();
+                if (meta instanceof org.bukkit.inventory.meta.Damageable damageable) {
+                    int damage = damageable.getDamage() + 1;
+                    if (damage >= MechanicItems.HAMMER_MAX_DAMAGE) {
+                        held.setAmount(held.getAmount() - 1);
+                        player.playSound(player.getLocation(),
+                                org.bukkit.Sound.ENTITY_ITEM_BREAK, 0.9F, 1.0F);
+                        player.sendRichMessage("<yellow>Ciocanul s-a uzat si s-a rupt.</yellow>");
+                    } else {
+                        damageable.setDamage(damage);
+                        held.setItemMeta(meta);
+                    }
+                }
+            }
             player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_DESTROY, 0.8F, 0.7F);
             player.sendRichMessage("<gray>Masina demontata - ai primit-o in cufar de transport.</gray>");
             mechanic.save();
@@ -280,7 +298,12 @@ public final class MechanicListener implements Listener {
                 return;
             }
             ItemStack can = player.getInventory().getItem(slot);
-            can.setAmount(can.getAmount() - 1);
+            if (MechanicItems.spraysRemainingOf(can) <= 0) {
+                player.sendRichMessage("<red>Spray-ul s-a golit - reumple-l cumparand alta "
+                        + "vopsea (shop > Piese).</red>");
+                return;
+            }
+            MechanicItems.useSpray(can, mechanic.sprayCapacity());
         }
         vehicle.setPaintColor(color.rgb());
         vehicles.save();

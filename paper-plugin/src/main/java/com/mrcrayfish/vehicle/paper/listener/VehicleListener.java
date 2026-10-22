@@ -261,6 +261,12 @@ public final class VehicleListener implements Listener {
             // clients it fails with the world renderer live and vanilla discards
             // the whole pack, leaving magenta/black models). /vehicle pack resends
             // manually with the same dedupe UUID when an admin really needs it.
+            // Randare: clientul primeste de la server entitatile display la incarcare,
+            // dar daca jucatorul intra cu vehicule deja urcate in chunk-uri vechi ele
+            // pot ajunge inaintea pachetelor metadate - forteaza starea vizuala (BUG 1).
+            if (plugin.mechanic() != null && event.getPlayer().isOnline()) {
+                vehicles.syncVisualsAround(event.getPlayer());
+            }
             boolean resendOnJoin = plugin.getConfig().getBoolean("resource-pack.resend-on-join", false);
             if (resendOnJoin && event.getPlayer().isOnline()
                     && !ResourcePackSender.suppliedByServer(plugin)) {

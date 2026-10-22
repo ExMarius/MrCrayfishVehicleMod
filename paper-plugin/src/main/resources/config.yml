@@ -2,7 +2,7 @@
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
   url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
-  sha1: "352fc45a70c86a95fc4aa89aeea0173dbca92a93"
+  sha1: "1b0630a12d528b1bf2555b62a44e8453393bb995"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
@@ -82,11 +82,16 @@ workstation:
 
 jack:
   # Inaltimea la care cricul ridica masina (2.5 = mergi pe sub ea, ca la service real).
-  lift-height: 2.5
+  # Cricul ridica masina exact ca in mod: maxim +0.5 bloc deasupra solului.
+  lift-height: 0.5
   # Timpul urcarii/coborarii, in tick-uri (20 = 1 secunda).
   lift-speed-ticks: 50
 
 mechanic:
+  # Capacitatea spray-ului (Config.SERVER.sprayCanCapacity din mod: 20 pulverizari).
+  spray-capacity: 20
+  # Cat toarna o galetusa cu fluid in rezervor (mB echivalent).
+  fluid-bucket-amount: 1000
   # Reparatiile cer masina ridicata pe cric (recomandat pentre RP de service).
   require-lift: true
   # Itemele consumate la o reparatie completa (format MATERIAL:cantitate).
@@ -114,6 +119,11 @@ mechanic:
       engine_netherite_small: 22000
       engine_netherite_large: 25000
       engine_netherite_electric: 30000
+      industrial_jerry_can: 3500
+      panel: 500
+      fuelium_bucket: 800
+      ender_sap_bucket: 1500
+      blaze_juice_bucket: 1500
       wheel_standard: 1500
       wheel_sports: 6000
       wheel_off_road: 4500

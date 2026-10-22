@@ -101,9 +101,14 @@ public final class CreativeGui {
             }
             case TOOLS -> {
                 inventory.setItem(10, give(MechanicItems.wrench()));
-                inventory.setItem(12, give(MechanicItems.hammer()));
-                inventory.setItem(14, give(MechanicItems.blankKey()));
-                inventory.setItem(16, give(JerryCanItem.create(JerryCanItem.Type.NORMAL)));
+                inventory.setItem(11, give(MechanicItems.hammer()));
+                inventory.setItem(12, give(MechanicItems.blankKey()));
+                inventory.setItem(13, give(JerryCanItem.create(JerryCanItem.Type.NORMAL)));
+                inventory.setItem(14, give(MechanicItems.industrialJerryCan()));
+                inventory.setItem(15, give(MechanicItems.panel()));
+                inventory.setItem(19, give(MechanicItems.fluidBucket(MechanicItems.Fluid.FUELIUM)));
+                inventory.setItem(20, give(MechanicItems.fluidBucket(MechanicItems.Fluid.ENDER_SAP)));
+                inventory.setItem(21, give(MechanicItems.fluidBucket(MechanicItems.Fluid.BLAZE_JUICE)));
                 int slot = 28;
                 for (PaintColors color : PaintColors.values()) {
                     inventory.setItem(slot, give(MechanicItems.sprayCan(color.rgb(), color.label())));

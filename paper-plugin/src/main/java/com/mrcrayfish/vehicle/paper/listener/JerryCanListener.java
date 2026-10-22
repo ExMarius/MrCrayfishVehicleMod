@@ -3,6 +3,8 @@ package com.mrcrayfish.vehicle.paper.listener;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.jerrycan.JerryCanItem;
+import com.mrcrayfish.vehicle.paper.mechanic.MechanicItems;
+import org.bukkit.Material;
 import com.mrcrayfish.vehicle.paper.vehicle.LandVehicle;
 import com.mrcrayfish.vehicle.paper.vehicle.VehicleManager;
 import net.kyori.adventure.key.Key;
@@ -83,6 +85,10 @@ public final class JerryCanListener implements Listener {
 
     private void pour(Player player, org.bukkit.entity.Entity target, PlayerInteractEntityEvent event) {
         ItemStack item = player.getInventory().getItemInMainHand();
+        if (MechanicItems.bucketFluidOf(item) != null) {
+            pourBucket(player, target, event, item);
+            return;
+        }
         if (!JerryCanItem.isJerryCan(item)) {
             return;
         }
@@ -122,4 +128,39 @@ public final class JerryCanListener implements Listener {
                         + "  •  Canistră: " + FUEL_FORMAT.format(canFuel - poured),
                 NamedTextColor.GREEN));
     }
+
+    /** Galetusa cu fluid (fuelium/ender_sap/blaze_juice): toarna
+     *  mechanic.fluid-bucket-amount si inlocuieste itemul cu galetusa goala. */
+    private void pourBucket(Player player, org.bukkit.entity.Entity target,
+                    PlayerInteractEntityEvent event, ItemStack item) {
+        LandVehicle vehicle = vehicles.byEntity(target).orElse(null);
+        if (vehicle == null) {
+            return;
+        }
+        event.setCancelled(true);
+        MechanicItems.Fluid fluid = MechanicItems.bucketFluidOf(item);
+        float capacity = vehicle.spec().energyCapacity();
+        if (vehicle.fuel() >= capacity) {
+            player.sendActionBar(Component.text("Rezervorul vehiculului este deja plin.",
+                    NamedTextColor.YELLOW));
+            return;
+        }
+        float amount = plugin.getConfig().getInt("mechanic.fluid-bucket-amount", 1000);
+        float poured = Math.min(amount, capacity - vehicle.fuel());
+        if (poured <= 0) {
+            return;
+        }
+        vehicle.setFuel(vehicle.fuel() + poured);
+        vehicles.save();
+        if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
+            player.getInventory().setItemInMainHand(new ItemStack(Material.BUCKET));
+        }
+        Location at = vehicle.location();
+        player.playSound(Sound.sound(GLUG, Sound.Source.BLOCK, 0.8F, 1.0F),
+                at.getX(), at.getY(), at.getZ());
+        player.sendActionBar(Component.text("Ai turnat " + fluid.label + ": +"
+                + FUEL_FORMAT.format(poured) + " (rezervor: " + FUEL_FORMAT.format(vehicle.fuel())
+                + " / " + FUEL_FORMAT.format(capacity) + ")", NamedTextColor.GREEN));
+    }
+
 }

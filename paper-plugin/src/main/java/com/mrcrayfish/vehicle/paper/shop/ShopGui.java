@@ -112,7 +112,26 @@ public final class ShopGui {
                     key, shop.partPrice(key)));
             slot += 2;
         }
-        int canSlot = 37;
+        // Unelte/consumabile: canistra industriala, panel si galetile de fluid.
+        inventory.setItem(30, partEntry(
+                com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.industrialJerryCan(),
+                "industrial_jerry_can", shop.partPrice("industrial_jerry_can")));
+        inventory.setItem(47, partEntry(
+                com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.panel(),
+                "panel", shop.partPrice("panel")));
+        inventory.setItem(48, partEntry(
+                com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.fluidBucket(
+                        com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Fluid.FUELIUM),
+                "fuelium_bucket", shop.partPrice("fuelium_bucket")));
+        inventory.setItem(49, partEntry(
+                com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.fluidBucket(
+                        com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Fluid.ENDER_SAP),
+                "ender_sap_bucket", shop.partPrice("ender_sap_bucket")));
+        inventory.setItem(50, partEntry(
+                com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.fluidBucket(
+                        com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Fluid.BLAZE_JUICE),
+                "blaze_juice_bucket", shop.partPrice("blaze_juice_bucket")));
+        int canSlot = 28;
         for (com.mrcrayfish.vehicle.paper.mechanic.PaintColors color
                 : com.mrcrayfish.vehicle.paper.mechanic.PaintColors.values()) {
             inventory.setItem(canSlot, partEntry(
@@ -120,7 +139,9 @@ public final class ShopGui {
                             color.rgb(), color.label()),
                     "spray_can:" + color.name(), shop.partPrice("spray_can")));
             canSlot++;
-            if (canSlot == 43) {
+            if (canSlot == 36) {
+                canSlot = 37;
+            } else if (canSlot == 45) {
                 canSlot = 46;
             }
         }
@@ -199,6 +220,18 @@ public final class ShopGui {
             // la cumparare pretul e cel al spray_can-ului generic
             return com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.sprayCan(
                     color.rgb(), color.label());
+        }
+        if ("industrial_jerry_can".equals(partId)) {
+            return com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.industrialJerryCan();
+        }
+        if ("panel".equals(partId)) {
+            return com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.panel();
+        }
+        if ("fuelium_bucket".equals(partId) || "ender_sap_bucket".equals(partId)
+                || "blaze_juice_bucket".equals(partId)) {
+            return com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.fluidBucket(
+                    com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Fluid.fromName(
+                            partId.replace("_bucket", "").toUpperCase(java.util.Locale.ROOT)));
         }
         return null;
     }

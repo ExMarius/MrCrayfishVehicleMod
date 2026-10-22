@@ -180,11 +180,11 @@ public final class WorkstationManager {
 
     private Station spawnRig(UUID id, Location ground) {
         World world = ground.getWorld();
-        // Modelul e un bloc directional: yaw fixat la multiplu de 90 grade + rotire
-        // aplicata in transformarea display-ului (altfel apare "pe jumatate" - BUG 2b).
+        // Conventia GasPumpRig (dovedita vizual): yaw pe entitate + translatare
+        // de centrare rotita automat de Paper - vezi JackManager.applyBlockTransform.
         float snapped = JackManager.snapYaw(ground.getYaw());
         Location spawnAt = ground.clone();
-        spawnAt.setYaw(0.0F);
+        spawnAt.setYaw(snapped);
         spawnAt.setPitch(0.0F);
         ItemDisplay display = world.spawn(spawnAt, ItemDisplay.class, spawned -> {
             ItemStack stack = new ItemStack(Material.PAPER);
@@ -196,7 +196,7 @@ public final class WorkstationManager {
             spawned.setInvulnerable(true);
             spawned.setPersistent(false);
             spawned.setShadowRadius(0.2F);
-            JackManager.applyBlockTransform(spawned, snapped);
+            JackManager.applyBlockTransform(spawned, spawned.getLocation().getYaw());
             spawned.addScoreboardTag(ENTITY_TAG);
             spawned.addScoreboardTag("mcv_" + id);
         });
@@ -229,9 +229,12 @@ public final class WorkstationManager {
 
     /* ============================ click ============================ */
 
-    /** Click pe banc: shift = ridicare inapoi (doar plasator/op); altfel cheia de
-     *  mecanic, cu limitele de zona (max 2 jucatori, cate o singura cheie). */
-    public boolean handleClick(Player player, Entity entity) {
+    /** Click pe banc:
+     *   - shift = ridicare inapoi (doar plasator/op);
+     *   - cu CHEIA in mana = ridicare/coborare a masinii de pe cricul legat (activarea
+     *     elevatorului, ca in mod);
+     *   - cu mana goala = primesti cheia de mecanic, cu limitele de zona. */
+    public boolean handleClick(Player player, Entity entity, ItemStack held) {
         Optional<Station> found = findByEntity(entity);
         if (found.isEmpty()) {
             return false;
@@ -247,6 +250,10 @@ public final class WorkstationManager {
             pickup(station);
             player.getInventory().addItem(MechanicItems.workstation());
             player.sendRichMessage("<gray>Ai ridicat bancul de lucru.</gray>");
+            return true;
+        }
+        if (MechanicItems.kindOf(held) == MechanicItems.Kind.WRENCH) {
+            handleLiftToggle(player, station);
             return true;
         }
         if (!MechanicManager.has(player, "mcv.workstation.use")) {
@@ -285,6 +292,33 @@ public final class WorkstationManager {
         player.sendRichMessage("<gray>Ai primit <gold>cheia de mecanic</gold> de la bancul de lucru. "
                 + "Ramai in zona de service!</gray>");
         return true;
+    }
+
+    /** Cheia pe banc: ridici/cobori masina aflata deasupra cricului legat. */
+    private void handleLiftToggle(Player player, Station station) {
+        Optional<Jack> jack = station.jackId == null ? Optional.empty() : jacks.byId(station.jackId);
+        if (jack.isEmpty()) {
+            // Cricul legat a disparut: inclercam sa relegam la cel mai apropiat din zona.
+            double nearest = Double.MAX_VALUE;
+            Jack found = null;
+            for (Jack candidate : jacks.jacks()) {
+                if (candidate.location.getWorld() != station.location.getWorld()) {
+                    continue;
+                }
+                double distance = candidate.location.distance(station.location);
+                if (distance < nearest) {
+                    nearest = distance;
+                    found = candidate;
+                }
+            }
+            if (found == null || nearest > maxJackDistance()) {
+                player.sendRichMessage("<red>Bancul nu mai are cric in zona - pune unul langa el.</red>");
+                return;
+            }
+            station.jackId = found.id;
+            jack = Optional.of(found);
+        }
+        jacks.toggleLift(player, jack.get());
     }
 
     private void pickup(Station station) {

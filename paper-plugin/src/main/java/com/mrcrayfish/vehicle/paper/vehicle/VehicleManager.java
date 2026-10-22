@@ -855,6 +855,36 @@ public final class VehicleManager {
                 // id cric corupt - ignorat
             }
         }
+        // Rig complet inainte de primul frame al re-activarii: modelul, culoarea si
+        // piesele din starea persistata (la join/restart/activare) - BUG randare.
+        vehicle.settleVisualState();
+    }
+
+    /** Re-aplica starea vizuala (model/body/culoare/piese) pentru toate vehiculele
+     *  incarcate din jurul unui jucator proaspat conectat, ca pachetele clientului sa
+     *  aiba totul sanatos din primul frame (spec final - BUG 1: body invizibil la join). */
+    public void syncVisualsAround(Player player) {
+        if (player == null || !player.isOnline()) {
+            return;
+        }
+        double range = Math.max(32.0D,
+                plugin.getConfig().getDouble("performance.activation-distance", 64.0D));
+        double rangeSquared = range * range;
+        for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
+            Location location = vehicle.location();
+            if (location.getWorld() != player.getWorld()
+                    || location.distanceSquared(player.getLocation()) > rangeSquared) {
+                continue;
+            }
+            try {
+                if (vehicle.rig().valid()) {
+                    vehicle.settleVisualState();
+                }
+            } catch (RuntimeException exception) {
+                plugin.getLogger().warning("Visual sync failed for " + vehicle.id()
+                        + ": " + exception.getMessage());
+            }
+        }
     }
 
     private static boolean matchesWorld(StoredVehicle stored, World world) {

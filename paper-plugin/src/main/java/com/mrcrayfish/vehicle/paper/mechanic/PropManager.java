@@ -128,7 +128,7 @@ public final class PropManager {
     private void spawnRig(UUID id, String kind, Location ground, float snappedYaw) {
         World world = ground.getWorld();
         Location spawnAt = ground.clone();
-        spawnAt.setYaw(0.0F);
+        spawnAt.setYaw(snappedYaw);
         spawnAt.setPitch(0.0F);
         ItemDisplay display = world.spawn(spawnAt, ItemDisplay.class, spawned -> {
             ItemStack stack = new ItemStack(Material.PAPER);
@@ -140,7 +140,7 @@ public final class PropManager {
             spawned.setInvulnerable(true);
             spawned.setPersistent(false);
             spawned.setShadowRadius(0.1F);
-            JackManager.applyBlockTransform(spawned, snappedYaw);
+            JackManager.applyBlockTransform(spawned, spawned.getLocation().getYaw());
             spawned.addScoreboardTag(ENTITY_TAG);
             spawned.addScoreboardTag("mcv_" + id);
         });
@@ -152,9 +152,7 @@ public final class PropManager {
             spawned.addScoreboardTag(ENTITY_TAG);
             spawned.addScoreboardTag("mcv_" + id);
         });
-        Location stored = spawnAt.clone();
-        stored.setYaw(snappedYaw);
-        props.put(id, new Prop(id, kind, stored, display, hitbox));
+        props.put(id, new Prop(id, kind, spawnAt.clone(), display, hitbox));
     }
 
     /** Lookup public pentru routing-ul din MechanicManager (mesaje indrumare). */

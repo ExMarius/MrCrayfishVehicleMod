@@ -60,7 +60,8 @@ public final class JackManager {
     }
 
     private double liftHeight() {
-        return Math.max(0.5D, plugin.getConfig().getDouble("jack.lift-height", 2.5D));
+        // Inaltimea maxima din mod: +0.5 * progress (JackBlock SHAPE 10/16 + 0.5).
+        return Math.max(0.1D, plugin.getConfig().getDouble("jack.lift-height", 0.5D));
     }
 
     private int liftTicks() {
@@ -162,21 +163,25 @@ public final class JackManager {
 
     private Jack spawnRig(UUID id, Location ground) {
         World world = ground.getWorld();
-        // Punct de spawm: entitatea ramane cu yaw 0; rotirea modelului intra in
-        // transformarea display-ului (a se vedea applyBlockTransform), altfel la
-        // unghiuri intre 0/90 modelul ar sta deplasat din bloc (bug "jumatate").
+        // Conventia DOVEDITA vizual pe server (GasPumpRig): yaw-ul sta pe ENTITATE,
+        // iar translatarea de centrare (-0.5, 0, -0.5) e rotita automat de Paper cu
+        // acelasi yaw - modelul ramane aliniat la bloc indiferent de directie.
+        // Yaw e fixat la multiplu de 90 grade ca blocul directional din mod.
+        // ATENTIE: rotirea o ascundem clientilor care intra MAI TARZIU in chunk prin
+        // yaw pe entitate (mai jos); primii spawners pastreaza rotirea vizuala prin
+        // rotirea in stanga din transform.
         Location spawnAt = ground.clone();
-        spawnAt.setYaw(0.0F);
         spawnAt.setPitch(0.0F);
+        float yaw = ground.getYaw();
         ItemDisplay base = world.spawn(spawnAt, ItemDisplay.class, display -> {
             display.setItemStack(model("jack"));
-            applyBlockTransform(display, ground.getYaw());
+            applyBlockTransform(display, yaw);
             display.setShadowRadius(0.15F);
             tag(display, id);
         });
         ItemDisplay head = world.spawn(spawnAt, ItemDisplay.class, display -> {
             display.setItemStack(model("jack_head"));
-            applyBlockTransform(display, ground.getYaw());
+            applyBlockTransform(display, yaw);
             display.setInterpolationDuration(2);
             display.setShadowRadius(0.0F);
             tag(display, id);
@@ -191,18 +196,21 @@ public final class JackManager {
         return new Jack(id, ground, base, head, interaction);
     }
 
-    /** Modelul de bloc (origine in colt, geometrie 0..1) centrat corect la ORICE yaw:
-     *  rotirea se face in spațiul modelului (leftRotation), iar translatarea de
-     *  centrare se roteste cu același unghi, ca centrul blocului sa ramana pe
-     *  entitate indiferent de directie. Entitatea in sine nu se mai roteste. */
+    /** Modelul de bloc (origine in colt, geometrie 0..1) centrat pe entitate pe
+     *  orizontala; baza ramane pe sol (y 0). La spawn, rotim MODELUL cu yaw-ul ales
+     *  (in jurul punctului de pivot al entitatii) ca de pe prima secunda directia sa
+     *  fie vizibila corect; dupa, Paper roteste si translatarea cu yaw-ul entitatii
+     *  cand o trimitem clientilor noi (chunk ulterior). */
+    static void applyBlockTransform(ItemDisplay display) {
+        applyBlockTransform(display, 0.0F);
+    }
+
     static void applyBlockTransform(ItemDisplay display, float yaw) {
         display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
         display.setInvulnerable(true);
         display.setPersistent(false);
-        Quaternionf rotation = new Quaternionf()
-                .rotateY((float) Math.toRadians(-yaw));
-        Vector3f translation = new Vector3f(-0.5F, 0.0F, -0.5F).rotate(rotation);
-        display.setTransformation(new Transformation(translation,
+        Quaternionf rotation = new Quaternionf().rotateY((float) Math.toRadians(yaw));
+        display.setTransformation(new Transformation(new Vector3f(-0.5F, 0.0F, -0.5F),
                 rotation, new Vector3f(1.0F), new Quaternionf()));
     }
 
@@ -268,14 +276,28 @@ public final class JackManager {
 
     /* ============================ interactiune ============================ */
 
-    /** Click cu cheia de mecanic pe cric: ridica / coboara (animat pe jack.lift-speed-ticks). */
+    /** Cea mai apropiata masina deasupra cricului (folosit pentru legarea la ridicare). */
+    public Optional<LandVehicle> vehicleOver(Jack jack, double range) {
+        return vehicles.nearest(jack.location, range)
+                .filter(vehicle -> !vehicle.onJack() && !vehicle.showcase());
+    }
+
+    /** Click cu cheia de mecanic PE CRIC: cricul in sine nu se actioneaza - activarea
+     *  e din bancul de lucru (modul leaga bancul de cric). Shift = pickup. */
     public boolean handleWrenchClick(Player player, Jack jack) {
+        if (player.isSneaking()) {
+            return tryPickup(player, jack);
+        }
+        player.sendRichMessage("<gray>Cricul se ridica din <gold>bancul de lucru</gold>: "
+                + "click cu cheia de mecanic pe banc.</gray>");
+        return true;
+    }
+
+    /** Ridicare / coborare (animat pe jack.lift-speed-ticks) - apelata din banc cu cheia. */
+    public boolean toggleLift(Player player, Jack jack) {
         if (!MechanicManager.has(player, "mcv.jack.use")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.jack.use.</red>");
             return true;
-        }
-        if (player.isSneaking()) {
-            return tryPickup(player, jack);
         }
         switch (jack.state) {
             case DOWN -> {
@@ -358,10 +380,11 @@ public final class JackManager {
 
     private void moveHead(Jack jack) {
         Location headLocation = jack.location.clone();
-        headLocation.setYaw(0.0F);
         headLocation.setPitch(0.0F);
-        headLocation.add(0.0D, jack.progress * (liftHeight() + 0.4D), 0.0D);
+        // Capul cricului urca exact cu inaltimea de ridicare (0.5 blocuri, ca in mod).
+        headLocation.add(0.0D, jack.progress * liftHeight(), 0.0D);
         jack.head.teleport(headLocation);
+        jack.head.setRotation(jack.location.getYaw(), 0.0F);
     }
 
     private static void playSound(Jack jack, Key sound, float volume, float pitch) {
