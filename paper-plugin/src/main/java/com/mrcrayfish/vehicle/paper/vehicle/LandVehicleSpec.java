@@ -891,44 +891,85 @@ public record LandVehicleSpec(
      * source (VehicleUtil.createModDependentEntityType("cfm", "bath", ...)), and this
      * port only reproduces the Vehicle Mod's own source code/assets, not other mods'. */
 
-/* Police Car: off-roader silhouette reused 1:1 (all wheel/seat/engine/steering/trailer
-     * anchor values identical to OFF_ROADER below) with police livery stripes, a roof
-     * lightbar and a front push bar baked into the cloned body by tools/police_lightbar.py.
-     * Aesthetic-first spec: no extra logic (no storage, no towing). */
+/* Police Car v5: Romanian police sedan. Body cloned from the sports car
+     * (tools/police_sedan.py paints the Politia Romana livery into a police
+     * copy of the 128x128 sports texture: white body, blue waistline band,
+     * POLITIA text strips on both door flanks + rear gate, and a slim blue
+     * lightbar over the greenhouse roof plate). All anchors, wheels, seats,
+     * steering, cosmetics (opening hood/boot/doors) and storage copied 1:1
+     * from SPORTS_CAR; no extra logic. */
     public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
             "police_car", "Police Car", "police_car_body",
-            2.0F, 1.0F, 1.0F,
-            1.4F, -1.0F, 5.6F,
-            16.0F, 35.0F, 14.5F * MODEL_UNIT * 1.4F, -14.5F * MODEL_UNIT * 1.4F, 5.0F,
-            25_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.jet_ski.engine",
-            false, new Point(0.0F, 0.0F, 0.0F), null,
-            new Part("go_kart_steering_wheel",
-                    new Point(-0.4375F, 1.572701F, 0.299799F),
-                    1.05F, -45.0F, 0.0F, 0.0F),
-            itemPart("fuel_door_closed", -12.0F, 10.5F, -6.5F,
-                    0.5F, 0.0F, -90.0F, 0.0F, 1.4F, -1.0F, 5.6F),
-            itemPart("key_hole", 0.0F, 7.0F, 6.2F,
-                    0.5F, -67.5F, 0.0F, 0.0F, 1.4F, -1.0F, 5.6F),
-            List.of(),
+            1.5F, 1.0F, 1.0F,
+            1.0F, 0.0F, 2.6F,
+            20.0F, 35.0F, 20.0F * MODEL_UNIT, -19.0F * MODEL_UNIT, 5.0F,
+            20_000.0F, 0.25F, 0.9F, 1.5F, "vehicle:entity.sports_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F),
+            new Part("iron_large_engine", new Point(0.0F, 0.763125F, 1.1875F),
+                    0.825F, 0.0F, 0.0F, 0.0F),
+            new Part("sports_car_steering_wheel", new Point(-0.25F, 0.59399375F, 0.1023625F),
+                    0.7F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -10.0F, 6.5F, -14.0F,
+                    0.4F, 0.0F, -90.0F, 0.0F, 1.0F, 0.0F, 2.6F),
+            itemPart("key_hole", -5.0F, 4.5F, 6.5F,
+                    0.5F, -45.0F, 0.0F, 0.0F, 1.0F, 0.0F, 2.6F),
             List.of(
-                    wheel(-1, true, 10.0F, 0.0F, 14.5F,
-                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
-                    wheel(1, true, 10.0F, 0.0F, 14.5F,
-                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
-                    wheel(-1, false, 10.0F, 0.0F, -14.5F,
-                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
-                    wheel(1, false, 10.0F, 0.0F, -14.5F,
-                            1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F)
+                    new Part("sports_car_hood", new Point(0.0F, 1.00625F, 0.84375F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("hood", Axis.X, -60.0F, 12,
+                                    "vehicle:entity.vehicle.hood.open", "vehicle:entity.vehicle.hood.close",
+                                    new Box(new Point(-0.6875F, -0.198366F, -0.03125F),
+                                            new Point(0.6875F, 0.03125F, 0.883688F)))),
+                    new Part("sports_car_left_door", new Point(0.9375F, 0.225F, 0.625F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("left_door", Axis.Y, -75.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.09375F, 0.0F, -1.1875F),
+                                            new Point(0.288713F, 1.25F, 0.010787F)))),
+                    new Part("sports_car_right_door", new Point(-0.9375F, 0.225F, 0.625F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("right_door", Axis.Y, 90.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.288713F, 0.0F, -1.1875F),
+                                            new Point(0.09375F, 1.25F, 0.010787F)))),
+                    new Part("sports_car_boot", new Point(0.0F, 1.13125F, -1.46875F),
+                            1.0F, 0.0F, 0.0F, 0.0F,
+                            new Openable("spoiler", Axis.X, 90.0F, 12,
+                                    "vehicle:entity.vehicle.door.open", "vehicle:entity.vehicle.door.close",
+                                    new Box(new Point(-0.625F, -0.34375F, -0.468751F),
+                                            new Point(0.625F, 0.031251F, 0.03125F)))),
+                    new Part("sports_car_seat", new Point(0.0F, 0.225F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_car_dashboard", new Point(0.0F, 1.0375F, 0.75F),
+                            1.0F, 0.0F, 0.0F, 0.0F),
+                    new Part("sports_car_roof", new Point(0.0F, 1.0375F, 0.0F),
+                            1.0F, 0.0F, 0.0F, 0.0F)
             ),
             List.of(
-                    seat(true, 5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
-                    seat(false, -5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
-                    /* Rear positions kept at the lower standing-seat Y like OFF_ROADER. */
-                    seat(false, 5.0F, 3.5F, -14.5F, 1.4F, -1.0F, 5.6F),
-                    seat(false, -5.0F, 3.5F, -18.9F, 1.4F, -1.0F, 5.6F)
+                    wheel(-1, true, 12.0F, 3.0F, 20.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(1, true, 12.0F, 3.0F, 20.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(-1, false, 12.0F, 3.0F, -19.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F),
+                    wheel(1, false, 12.0F, 3.0F, -19.0F,
+                            1.0F, 1.4F, 1.4F, 1.0F, 0.0F, 2.6F)
+            ),
+            List.of(
+                    seat(true, 7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F),
+                    seat(false, -7.0F, -2.0F, -5.0F, 1.0F, 0.0F, 2.6F)
             ),
             false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
-            null, null, List.of(), false
+            null, null,
+            List.of(
+                    new StorageCompartment("glove_box", "Glove Box", 1,
+                            new Box(new Point(0.125F, 0.38125F, 0.1875F),
+                                    new Point(0.5F, 0.63125F, 0.3125F))),
+                    new StorageCompartment("trunk", "Trunk", 3,
+                            new Box(new Point(-0.4375F, 0.4125F, -1.1875F),
+                                    new Point(0.4375F, 0.6F, -0.75F)))
+            ),
+            false
     );
 ;
 

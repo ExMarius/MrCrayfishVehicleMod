@@ -256,21 +256,7 @@ def build(output: Path) -> tuple[Path, str]:
             ASSETS / "models/vehicle/police_car/base.json",
             namespace / "models/item/police_car_body.json",
             {
-                "indicator_light": "minecraft:block/orange_stained_glass",
-                "brake_light": "minecraft:block/red_stained_glass",
-                "headlight_glass": "minecraft:block/white_stained_glass",
-                "headlight": "minecraft:block/redstone_lamp",
-                "body": "minecraft:block/white_concrete",
-                "seat": "minecraft:block/black_wool",
-                "spring": "vehicle:item/off_roader_spring",
-                "axel": "minecraft:block/light_gray_concrete",
-                "trim": "minecraft:block/white_concrete",
-                "logo": "vehicle:item/off_roader_logo",
-                "window_frame": "minecraft:block/black_concrete",
-                "windshield": "minecraft:block/glass",
-                "bumper": "minecraft:block/iron_block",
-                "grill": "vehicle:item/off_roader_grill",
-                "frame": "minecraft:block/gray_concrete",
+                "8": "vehicle:item/police_sedan_base",
                 "livery": "vehicle:item/police_car_body",
                 "black": "vehicle:item/police_car_body",
                 "redbar": "vehicle:item/police_car_body",
@@ -278,9 +264,12 @@ def build(output: Path) -> tuple[Path, str]:
                 "metal": "vehicle:item/police_car_body",
                 "sirens": "vehicle:item/police_car_body",
                 "politia_text": "vehicle:item/police_car_body",
-                "particle": "minecraft:block/white_concrete",
+                "particle": "vehicle:item/police_sedan_base",
             },
+            geometry_scale=0.5,
         )
+        copy(ASSETS / "models/vehicle/police_car/sedan_base.png",
+             namespace / "textures/item/police_sedan_base.png")
         copy(ASSETS / "models/vehicle/police_car/base.png",
              namespace / "textures/item/police_car_body.png")
         convert_model(
