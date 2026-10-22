@@ -49,6 +49,8 @@ public final class JackManager {
     private final MechanicStore store;
     private final Map<UUID, Jack> jacks = new ConcurrentHashMap<>();
     private final Map<UUID, Jack> byInteraction = new ConcurrentHashMap<>();
+    /** Notifica sistemul cand un cric dispare (bancurile legate de el se dezleaga). */
+    private java.util.function.Consumer<UUID> removedHook = id -> { };
     private BukkitTask tickTask;
 
     public JackManager(VehiclePlugin plugin, VehicleManager vehicles, MechanicStore store) {
@@ -100,6 +102,7 @@ public final class JackManager {
             }
             Location location = new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F);
             Jack jack = spawnRig(stored.id(), location);
+            jack.ownerId = stored.ownerId();
             jack.progress = stored.raised() ? 1.0D : 0.0D;
             moveHead(jack);
             if (stored.vehicleId() != null) {
@@ -127,7 +130,8 @@ public final class JackManager {
             World world = jack.location.getWorld();
             stored.add(new MechanicStore.StoredJack(jack.id, world.getUID(),
                     jack.location.getX(), jack.location.getY(), jack.location.getZ(),
-                    jack.location.getYaw(), jack.raised(), jack.vehicleId));
+                    jack.location.getYaw(), jack.raised(), jack.vehicleId,
+                    jack.ownerId == null ? jack.ownerId : jack.ownerId));
         }
         return stored;
     }
@@ -135,10 +139,14 @@ public final class JackManager {
     /* ============================ plasare / rig ============================ */
 
     public boolean place(Player player, Location clickedFace, float yaw) {
+        // Cricul e un bloc DIRECTIONAL ca in mod: rotirea e fixata la multiplu de 90
+        // grade spre jucator, altfel coltul modelului iese din grila blocului.
+        float snapped = snapYaw(normalizeYaw(yaw + 180.0F));
         Location ground = clickedFace.getBlock().getLocation().add(0.5D, 0.0D, 0.5D);
-        ground.setYaw(normalizeYaw(yaw + 180.0F));
+        ground.setYaw(snapped);
         UUID id = UUID.randomUUID();
         Jack jack = spawnRig(id, ground);
+        jack.ownerId = player.getUniqueId();
         jacks.put(id, jack);
         byInteraction.put(jack.interaction.getUniqueId(), jack);
         player.sendRichMessage("<gray>Cric pus jos. Pune masina deasupra si apasa cu "
@@ -146,22 +154,34 @@ public final class JackManager {
         return true;
     }
 
+    /** Cea mai apropiata rotire de 90 grade (ca FACING la blocurile directionale). */
+    static float snapYaw(float yaw) {
+        float snapped = Math.round(yaw / 90.0F) * 90.0F;
+        return normalizeYaw(snapped);
+    }
+
     private Jack spawnRig(UUID id, Location ground) {
         World world = ground.getWorld();
-        ItemDisplay base = world.spawn(ground, ItemDisplay.class, display -> {
+        // Punct de spawm: entitatea ramane cu yaw 0; rotirea modelului intra in
+        // transformarea display-ului (a se vedea applyBlockTransform), altfel la
+        // unghiuri intre 0/90 modelul ar sta deplasat din bloc (bug "jumatate").
+        Location spawnAt = ground.clone();
+        spawnAt.setYaw(0.0F);
+        spawnAt.setPitch(0.0F);
+        ItemDisplay base = world.spawn(spawnAt, ItemDisplay.class, display -> {
             display.setItemStack(model("jack"));
-            applyBlockTransform(display);
+            applyBlockTransform(display, ground.getYaw());
             display.setShadowRadius(0.15F);
             tag(display, id);
         });
-        ItemDisplay head = world.spawn(ground, ItemDisplay.class, display -> {
+        ItemDisplay head = world.spawn(spawnAt, ItemDisplay.class, display -> {
             display.setItemStack(model("jack_head"));
-            applyBlockTransform(display);
+            applyBlockTransform(display, ground.getYaw());
             display.setInterpolationDuration(2);
             display.setShadowRadius(0.0F);
             tag(display, id);
         });
-        Interaction interaction = world.spawn(ground, Interaction.class, hitbox -> {
+        Interaction interaction = world.spawn(spawnAt, Interaction.class, hitbox -> {
             hitbox.setInteractionWidth(1.1F);
             hitbox.setInteractionHeight(0.9F);
             hitbox.setResponsive(true);
@@ -171,12 +191,19 @@ public final class JackManager {
         return new Jack(id, ground, base, head, interaction);
     }
 
-    private static void applyBlockTransform(ItemDisplay display) {
+    /** Modelul de bloc (origine in colt, geometrie 0..1) centrat corect la ORICE yaw:
+     *  rotirea se face in spațiul modelului (leftRotation), iar translatarea de
+     *  centrare se roteste cu același unghi, ca centrul blocului sa ramana pe
+     *  entitate indiferent de directie. Entitatea in sine nu se mai roteste. */
+    static void applyBlockTransform(ItemDisplay display, float yaw) {
         display.setItemDisplayTransform(ItemDisplay.ItemDisplayTransform.NONE);
         display.setInvulnerable(true);
         display.setPersistent(false);
-        display.setTransformation(new Transformation(new Vector3f(-0.5F, 0.0F, -0.5F),
-                new Quaternionf(), new Vector3f(1.0F), new Quaternionf()));
+        Quaternionf rotation = new Quaternionf()
+                .rotateY((float) Math.toRadians(-yaw));
+        Vector3f translation = new Vector3f(-0.5F, 0.0F, -0.5F).rotate(rotation);
+        display.setTransformation(new Transformation(translation,
+                rotation, new Vector3f(1.0F), new Quaternionf()));
     }
 
     private static ItemStack model(String name) {
@@ -190,6 +217,10 @@ public final class JackManager {
     private void tag(Entity entity, UUID jackId) {
         entity.addScoreboardTag(ENTITY_TAG);
         entity.addScoreboardTag("mcv_" + jackId);
+    }
+
+    public void setRemovedHook(java.util.function.Consumer<UUID> removedHook) {
+        this.removedHook = removedHook == null ? id -> { } : removedHook;
     }
 
     public Optional<Jack> byInteraction(Entity entity) {
@@ -213,15 +244,23 @@ public final class JackManager {
         jack.interaction.remove();
     }
 
-    /** Shift + click cu cheia de mecanic = ridici cricul inapoi in inventar (doar jos). */
+    /** Shift + click = ridici cricul inapoi: DOAR cel care l-a pus sau un operator,
+     *  si DOAR cand e gol (fara masina) si complet jos. Nimeni altcineva nu-l ia. */
     public boolean tryPickup(Player player, Jack jack) {
-        if (jack.state != Jack.State.DOWN || jack.vehicleId != null) {
-            player.sendRichMessage("<red>Cricul e in uz - mai intai coboara masina.</red>");
+        if (jack.vehicleId != null || jack.state != Jack.State.DOWN) {
+            player.sendRichMessage("<red>Cricul e in uz - mai intai coboara si da jos masina.</red>");
+            return true;
+        }
+        boolean allowed = player.isOp()
+                || (jack.ownerId != null && jack.ownerId.equals(player.getUniqueId()));
+        if (!allowed) {
+            player.sendRichMessage("<red>Doar cel care a pus cricul (sau un operator) il poate ridica.</red>");
             return true;
         }
         jacks.remove(jack.id);
         byInteraction.remove(jack.interaction.getUniqueId());
         removeRig(jack);
+        removedHook.accept(jack.id);
         player.getInventory().addItem(MechanicItems.jack());
         player.sendRichMessage("<gray>Ai ridicat cricul.</gray>");
         return true;
@@ -231,7 +270,7 @@ public final class JackManager {
 
     /** Click cu cheia de mecanic pe cric: ridica / coboara (animat pe jack.lift-speed-ticks). */
     public boolean handleWrenchClick(Player player, Jack jack) {
-        if (!player.hasPermission("mcv.jack.use")) {
+        if (!MechanicManager.has(player, "mcv.jack.use")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.jack.use.</red>");
             return true;
         }
@@ -319,9 +358,10 @@ public final class JackManager {
 
     private void moveHead(Jack jack) {
         Location headLocation = jack.location.clone();
+        headLocation.setYaw(0.0F);
+        headLocation.setPitch(0.0F);
         headLocation.add(0.0D, jack.progress * (liftHeight() + 0.4D), 0.0D);
         jack.head.teleport(headLocation);
-        jack.head.setRotation(jack.location.getYaw(), 0.0F);
     }
 
     private static void playSound(Jack jack, Key sound, float volume, float pitch) {

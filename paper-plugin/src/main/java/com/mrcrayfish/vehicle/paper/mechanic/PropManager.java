@@ -85,7 +85,8 @@ public final class PropManager {
                 continue;
             }
             spawnRig(stored.id(), stored.kind(),
-                    new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F));
+                    new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F),
+                    JackManager.snapYaw(stored.yaw()));
         }
     }
 
@@ -94,15 +95,18 @@ public final class PropManager {
         for (Prop prop : props.values()) {
             stored.add(new MechanicStore.StoredStation(prop.id(), prop.kind(),
                     prop.location().getWorld().getUID(), prop.location().getX(),
-                    prop.location().getY(), prop.location().getZ(), prop.location().getYaw()));
+                    prop.location().getY(), prop.location().getZ(), prop.location().getYaw(),
+                    null, null, java.util.List.of()));
         }
         return stored;
     }
 
     public void place(String kind, Location clickedFace, float yaw) {
+        // Spline ca la jack/banc: rotire la multiplu de 90 grade (ca blocul din mod)
+        // si orientarea modelului prin transformare (dealtfel piesele isi ies din grila).
+        float snappedYaw = JackManager.snapYaw(yaw);
         Location ground = clickedFace.getBlock().getLocation().add(0.5D, 0.0D, 0.5D);
-        ground.setYaw(yaw);
-        spawnRig(UUID.randomUUID(), kind, ground);
+        spawnRig(UUID.randomUUID(), kind, ground, snappedYaw);
     }
 
     private static String modelFor(String kind) {
@@ -121,9 +125,12 @@ public final class PropManager {
         };
     }
 
-    private void spawnRig(UUID id, String kind, Location ground) {
+    private void spawnRig(UUID id, String kind, Location ground, float snappedYaw) {
         World world = ground.getWorld();
-        ItemDisplay display = world.spawn(ground, ItemDisplay.class, spawned -> {
+        Location spawnAt = ground.clone();
+        spawnAt.setYaw(0.0F);
+        spawnAt.setPitch(0.0F);
+        ItemDisplay display = world.spawn(spawnAt, ItemDisplay.class, spawned -> {
             ItemStack stack = new ItemStack(Material.PAPER);
             ItemMeta meta = stack.getItemMeta();
             meta.setItemModel(new NamespacedKey("vehicle", modelFor(kind)));
@@ -133,12 +140,11 @@ public final class PropManager {
             spawned.setInvulnerable(true);
             spawned.setPersistent(false);
             spawned.setShadowRadius(0.1F);
-            spawned.setTransformation(new Transformation(new Vector3f(-0.5F, 0.0F, -0.5F),
-                    new Quaternionf(), new Vector3f(1.0F), new Quaternionf()));
+            JackManager.applyBlockTransform(spawned, snappedYaw);
             spawned.addScoreboardTag(ENTITY_TAG);
             spawned.addScoreboardTag("mcv_" + id);
         });
-        Interaction hitbox = world.spawn(ground, Interaction.class, spawned -> {
+        Interaction hitbox = world.spawn(spawnAt, Interaction.class, spawned -> {
             spawned.setInteractionWidth("traffic_cone".equals(kind) ? 0.65F : 1.0F);
             spawned.setInteractionHeight("traffic_cone".equals(kind) ? 0.95F : 0.4F);
             spawned.setResponsive(true);
@@ -146,7 +152,9 @@ public final class PropManager {
             spawned.addScoreboardTag(ENTITY_TAG);
             spawned.addScoreboardTag("mcv_" + id);
         });
-        props.put(id, new Prop(id, kind, ground, display, hitbox));
+        Location stored = spawnAt.clone();
+        stored.setYaw(snappedYaw);
+        props.put(id, new Prop(id, kind, stored, display, hitbox));
     }
 
     /** Lookup public pentru routing-ul din MechanicManager (mesaje indrumare). */

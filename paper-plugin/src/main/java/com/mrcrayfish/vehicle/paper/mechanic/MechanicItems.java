@@ -36,6 +36,7 @@ public final class MechanicItems {
     private static final NamespacedKey SPRAY_COLOR = new NamespacedKey("vehicle", "spray_color");
     private static final NamespacedKey SPRAY_NAME = new NamespacedKey("vehicle", "spray_color_name");
     private static final NamespacedKey CRATE_PAYLOAD = new NamespacedKey("vehicle", "crate_payload");
+    private static final NamespacedKey WRENCH_STATION = new NamespacedKey("vehicle", "wrench_station");
 
     private MechanicItems() {
     }
@@ -141,12 +142,42 @@ public final class MechanicItems {
 
     /* ================================ unelte ================================ */
 
+    /** Cheia "libera" (din /vehicle creative) - nu e legata de niciun banc. */
     public static ItemStack wrench() {
+        return wrench(null);
+    }
+
+    /** Cheia data de un banc de lucru: poarta id-ul bancului in PDC, ca sa
+     *  dispara din inventar cand jucatorul iese din zona de service. */
+    public static ItemStack wrench(UUID stationId) {
         ItemStack item = base(Kind.WRENCH, "wrench");
+        if (stationId != null) {
+            ItemMeta meta = item.getItemMeta();
+            meta.getPersistentDataContainer().set(WRENCH_STATION, PersistentDataType.STRING,
+                    stationId.toString());
+            item.setItemMeta(meta);
+        }
         finish(item, Component.text("Cheie de mecanic", NamedTextColor.GOLD), List.of(
                 Component.text("Click pe cric = ridica/coboara masina.", NamedTextColor.GRAY),
-                Component.text("Click pe masina ridicata = bancul de lucru.", NamedTextColor.GRAY)));
+                Component.text("Click pe masina ridicata = meniul de mecanic.", NamedTextColor.GRAY)));
         return item;
+    }
+
+    /** Id-ul bancului care a dat cheia; null = cheie libera (creative / veche). */
+    public static UUID wrenchStationOf(ItemStack stack) {
+        if (kindOf(stack) != Kind.WRENCH) {
+            return null;
+        }
+        String raw = stack.getItemMeta().getPersistentDataContainer()
+                .get(WRENCH_STATION, PersistentDataType.STRING);
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     public static ItemStack hammer() {

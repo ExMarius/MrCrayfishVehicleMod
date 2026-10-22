@@ -32,6 +32,13 @@ import java.util.UUID;
 public final class MechanicManager {
     private static final Key SPRAY = Key.key("vehicle:item.spray_can.spray");
 
+    /** Verificarea unica de permisiune pentru modelul mecanic: permisiunile sunt
+     *  default-off in plugin.yml, dar un OPERATOR de server nu poate fi blocat
+     *  niciodata de ele (BUG: op primea "no permission" pe bancul de lucru). */
+    public static boolean has(Player player, String permission) {
+        return player.isOp() || player.hasPermission(permission);
+    }
+
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
     private final MechanicStore store;
@@ -46,7 +53,8 @@ public final class MechanicManager {
         this.vehicles = vehicles;
         this.store = new MechanicStore(plugin);
         this.jacks = new JackManager(plugin, vehicles, store);
-        this.workstations = new WorkstationManager(plugin, store);
+        this.workstations = new WorkstationManager(plugin, store, jacks);
+        this.jacks.setRemovedHook(this.workstations::handleJackRemoved);
         this.props = new PropManager(plugin, vehicles, store);
         this.mechanicGui = new MechanicGui(this);
     }
@@ -185,7 +193,7 @@ public final class MechanicManager {
         if (!vehicle.id().equals(target)) {
             return false; // cheia altei masini - comportament normal
         }
-        if (!player.hasPermission("mcv.vehicle.lock")) {
+        if (!has(player, "mcv.vehicle.lock")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.vehicle.lock.</red>");
             return true;
         }
@@ -211,7 +219,7 @@ public final class MechanicManager {
         if (rgb == null) {
             return false;
         }
-        if (!player.hasPermission("mcv.mechanic.paint")) {
+        if (!has(player, "mcv.mechanic.paint")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.paint.</red>");
             return true;
         }
@@ -236,7 +244,7 @@ public final class MechanicManager {
     /** Motor nou pe vehicul (click cu itemul): tier nou intra imediat in fizica;
      *  motorul vechi, de acelasi rebut de tip, revine in inventar. */
     private boolean handleEngineSwap(Player player, LandVehicle vehicle, ItemStack engineItem) {
-        if (!player.hasPermission("mcv.mechanic.engine")) {
+        if (!has(player, "mcv.mechanic.engine")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.engine.</red>");
             return true;
         }
@@ -270,7 +278,7 @@ public final class MechanicManager {
 
     /** Roti noi: modelul vizual se schimba, iar fizica preia tractiunea tipului. */
     private boolean handleWheelSwap(Player player, LandVehicle vehicle, ItemStack wheelItem) {
-        if (!player.hasPermission("mcv.mechanic.wheel")) {
+        if (!has(player, "mcv.mechanic.wheel")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.wheel.</red>");
             return true;
         }
@@ -298,7 +306,7 @@ public final class MechanicManager {
 
     /** Reparatie completa (din GUI, de obicei pe cric): consuma itemele din config. */
     public boolean tryRepair(Player player, LandVehicle vehicle) {
-        if (!player.hasPermission("mcv.mechanic.repair")) {
+        if (!has(player, "mcv.mechanic.repair")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.repair.</red>");
             return false;
         }

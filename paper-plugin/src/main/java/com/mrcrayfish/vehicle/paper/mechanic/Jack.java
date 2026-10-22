@@ -22,6 +22,8 @@ final class Jack {
     /** 0.0 = jos, 1.0 = complet ridicat. */
     double progress;
     UUID vehicleId;
+    /** Cine a pus cricul: pentru pickup (doar el sau un operator, si doar gol). */
+    UUID ownerId;
 
     Jack(UUID id, Location location, ItemDisplay base, ItemDisplay head, Interaction interaction) {
         this.id = id;

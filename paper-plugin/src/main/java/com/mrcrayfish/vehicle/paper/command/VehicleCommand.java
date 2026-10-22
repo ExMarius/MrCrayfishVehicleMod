@@ -81,7 +81,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendMessage("Doar din joc.");
             return;
         }
-        if (!sender.hasPermission("mcv.creative")) {
+        if (!com.mrcrayfish.vehicle.paper.mechanic.MechanicManager.has(player, "mcv.creative")) {
             sender.sendRichMessage("<red>Nu ai permisiunea mcv.creative.</red>");
             return;
         }

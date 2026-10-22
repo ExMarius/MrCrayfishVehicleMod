@@ -32,26 +32,26 @@ permissions:
     default: op
   mcv.jack.use:
     description: Folosirea cricului/elevatorului auto.
-    default: false
+    default: op
   mcv.workstation.use:
     description: Primirea cheii de mecanic de la bancul de lucru.
-    default: false
+    default: op
   mcv.mechanic.engine:
     description: Schimbarea motorului unui vehicul.
-    default: false
+    default: op
   mcv.mechanic.wheel:
     description: Schimbarea rotilor unui vehicul.
-    default: false
+    default: op
   mcv.mechanic.repair:
     description: Repararea vehiculelor (de pe cric, din iteme).
-    default: false
+    default: op
   mcv.mechanic.paint:
     description: Vopsirea vehiculelor cu spray can.
-    default: false
+    default: op
   mcv.vehicle.lock:
     description: Inchiderea/deschiderea masinii cu cheia.
-    default: false
+    default: op
   mcv.vehicle.dismantle:
     description: Demontarea vehiculului propriu cu ciocanul.
-    default: false
+    default: op
 softdepend: [Vault]

@@ -1204,6 +1204,61 @@ def build(output: Path) -> tuple[Path, str]:
                         "tints": [{"type": "minecraft:dye", "default": 16383998}],
                     }
                 })
+        # Vopsea pe PARTILE caroseriei (capota, usi, acoperis, aripi...): modul
+        # recoloreaza tot corpul vehiculului, nu doar *_body. Toate modelele de piese
+        # de caroserie primesc tintindex pe fete + definitie item cu tint DYE implicit
+        # alb (nemodificat vizual pe stack-uri nevopsite), astfel incat spray-ul sa
+        # vopseasca si ele - altfel masina ramane "pe jumatate" nevopsita (BUG 2a).
+        # Exclusiv: roti, motoare, cockpit (volane/manere/scaune/tablou), unelte si
+        # statii - acelea NU se recoloreaza cand vopsesti caroseria.
+        _DYE_EXCLUDES = ("wheel",)
+        def _dyeable_part(name: str) -> bool:
+            if name.endswith("_body"):
+                return False  # tratat deja mai sus
+            if name.endswith("_wheel") or "_engine" in name:
+                return False
+            if "steering" in name or "handles" in name:
+                return False
+            if name.endswith("_seat") or "dashboard" in name:
+                return False
+            if name in ("wrench", "hammer", "key", "jack", "jack_head", "disabled_jack",
+                        "mechanic_workstation", "traffic_cone", "boost_pad", "fluid_pipe",
+                        "spray_can", "hose_segment", "nozzle", "jerry_can",
+                        "industrial_jerry_can", "garage_terminal", "tow_bar",
+                        "go_kart_body", "fluid_tank"):
+                return False
+            return True
+        for _part_path in sorted((namespace / "models/item").glob("*.json")):
+            _part_name = _part_path.stem
+            if not _dyeable_part(_part_name):
+                continue
+            _part = json.loads(_part_path.read_text(encoding="utf-8"))
+            if "parent" in _part and isinstance(_part["parent"], str) \
+                    and _part["parent"].startswith("minecraft:"):
+                continue  # wrapper vanilla, nu geometrie proprie
+            if not _part.get("elements"):
+                continue
+            _changed = False
+            for _element in _part["elements"]:
+                for _face in _element.get("faces", {}).values():
+                    if "tintindex" not in _face:
+                        _face["tintindex"] = 0
+                        _changed = True
+            if _changed:
+                write_json(_part_path, _part)
+            _def_path = namespace / f"items/{_part_name}.json"
+            _tints = []
+            if _def_path.exists():
+                _tints = (json.loads(_def_path.read_text(encoding="utf-8"))
+                          .get("model", {}).get("tints", []))
+            if not any(t.get("type") == "minecraft:dye" for t in _tints):
+                write_json(_def_path, {
+                    "model": {
+                        "type": "minecraft:model",
+                        "model": f"vehicle:item/{_part_name}",
+                        "tints": [{"type": "minecraft:dye", "default": 16383998}],
+                    }
+                })
         # Sunetele originale ale jack-ului si spray can-ului din mod.
         for _snd_dir, _snd_names in (
                 ("sounds/block/jack", ("head_up", "head_down", "air_wrench_gun")),

@@ -550,7 +550,9 @@ public final class VehicleManager {
         return true;
     }
 
-    /** Click pe jos cu cufarul: vehiculul revine pe strada cu starea salvata in payload. */
+    /** Click pe jos cu cufarul: vehiculul revine pe strada cu starea salvata in payload.
+     *  Plasarea se face DOAR pe fata de sus a unui bloc (altfel masina ajunge ingropata
+     *  in perete/"dispare" - spec final, bug randare), centrata pe blocul tintit. */
     public boolean deployCrate(Player player, org.bukkit.inventory.ItemStack crate,
                                Location face, float yaw) {
         com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind kind =
@@ -573,8 +575,10 @@ public final class VehicleManager {
             player.sendRichMessage("<red>Nu e loc - alta masina e deja aici.</red>");
             return false;
         }
-        Location location = face.clone();
-        location.setYaw(yaw);
+        // Centrare stricta pe blocul tintit (spawn-ul pe colt punea masina jumatate
+        // ingropata in blocurile vecine) si rotire catre jucator, pitch 0.
+        Location location = new Location(face.getWorld(), face.getBlockX() + 0.5D,
+                face.getBlockY(), face.getBlockZ() + 0.5D, yaw, 0.0F);
         LandVehicle vehicle = spawn(spec, location);
         try {
             vehicle.setFuel(Math.max(0.0F, Integer.parseInt(data[1])));
@@ -595,6 +599,9 @@ public final class VehicleManager {
         } catch (RuntimeException parseFailure) {
             plugin.getLogger().warning("Crate payload partial corupt: " + parseFailure.getMessage());
         }
+        // Aplica starea finala (model/pivoti/culoare/piese) INAINTE de primul frame:
+        // un update fortat al rig-ului in acelasi tick cu aplicatorii de stare.
+        vehicle.settleVisualState();
         save();
         return true;
     }

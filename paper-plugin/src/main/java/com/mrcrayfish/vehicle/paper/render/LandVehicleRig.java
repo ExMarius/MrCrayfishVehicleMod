@@ -923,21 +923,39 @@ public final class LandVehicleRig {
         if (removed) {
             return;
         }
-        ItemStack stack;
-        if (rgb != null) {
-            stack = new ItemStack(Material.LEATHER_HORSE_ARMOR);
-            ItemMeta meta = stack.getItemMeta();
-            if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
-                armor.setItemModel(new NamespacedKey("vehicle", spec.bodyModel()));
-                armor.setColor(org.bukkit.Color.fromRGB(rgb));
-            }
-            stack.setItemMeta(meta);
-        } else {
-            stack = model(spec.bodyModel());
-        }
         if (body != null && body.isValid()) {
-            body.setItemStack(stack);
+            body.setItemStack(coloredStack(spec.bodyModel(), rgb));
         }
+        // Modul inroseste TOATE partile caroseriei (capota/usile/acoperisul etc.), nu
+        // doar corpul principal: replicam acelasi comportament ca sa nu ramana masina
+        // vopsita "pe jumatate".
+        for (PartDisplay part : chassisParts) {
+            if (part.entity != null && part.entity.isValid()) {
+                part.entity.setItemStack(coloredStack(part.properties.model(), rgb));
+            }
+        }
+        for (PartDisplay part : forkParts) {
+            if (part.entity != null && part.entity.isValid()) {
+                part.entity.setItemStack(coloredStack(part.properties.model(), rgb));
+            }
+        }
+    }
+
+    /** Stack vopsit (dyed_color) pentru un model de caroserie; stack normal cand rgb e
+     *  null (nevopsit). Pack-ul are pentru modelele de caroserie definitie cu tint
+     *  "dye" implicit alb, deci pe stack-uri nevopsite nu se schimba NIMIC vizual. */
+    private static ItemStack coloredStack(String modelName, Integer rgb) {
+        if (rgb == null) {
+            return model(modelName);
+        }
+        ItemStack stack = new ItemStack(Material.LEATHER_HORSE_ARMOR);
+        ItemMeta meta = stack.getItemMeta();
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setItemModel(new NamespacedKey("vehicle", modelName));
+            armor.setColor(org.bukkit.Color.fromRGB(rgb));
+        }
+        stack.setItemMeta(meta);
+        return stack;
     }
 
     private static final class SeatCarrier {

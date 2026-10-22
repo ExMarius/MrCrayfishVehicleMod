@@ -18,11 +18,12 @@ import java.util.logging.Level;
  */
 public final class MechanicStore {
     public record StoredJack(UUID id, UUID worldId, double x, double y, double z, float yaw,
-                             boolean raised, UUID vehicleId) {
+                             boolean raised, UUID vehicleId, UUID ownerId) {
     }
 
     public record StoredStation(UUID id, String kind, UUID worldId,
-                                double x, double y, double z, float yaw) {
+                                double x, double y, double z, float yaw,
+                                UUID jackId, UUID ownerId, List<UUID> recipients) {
     }
 
     private final JavaPlugin plugin;
@@ -52,7 +53,8 @@ public final class MechanicStore {
                         entry.getDouble("x"), entry.getDouble("y"), entry.getDouble("z"),
                         (float) entry.getDouble("yaw"),
                         entry.getBoolean("raised", false),
-                        vehicleRaw == null || vehicleRaw.isEmpty() ? null : UUID.fromString(vehicleRaw)));
+                        uuidOrNull(vehicleRaw),
+                        uuidOrNull(entry.getString("owner"))));
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.WARNING, "Skipping invalid jack entry " + key, exception);
             }
@@ -72,12 +74,23 @@ public final class MechanicStore {
                 if (entry == null) {
                     continue;
                 }
+                List<UUID> recipients = new ArrayList<>();
+                for (String raw : entry.getStringList("recipients")) {
+                    try {
+                        recipients.add(UUID.fromString(raw));
+                    } catch (IllegalArgumentException ignored) {
+                        // skip invalide
+                    }
+                }
                 stations.add(new StoredStation(
                         UUID.fromString(key),
                         entry.getString("kind", ""),
                         UUID.fromString(entry.getString("world")),
                         entry.getDouble("x"), entry.getDouble("y"), entry.getDouble("z"),
-                        (float) entry.getDouble("yaw")));
+                        (float) entry.getDouble("yaw"),
+                        uuidOrNull(entry.getString("jack")),
+                        uuidOrNull(entry.getString("owner")),
+                        recipients));
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.WARNING,
                         "Skipping invalid " + rootName + " entry " + key, exception);
@@ -95,13 +108,27 @@ public final class MechanicStore {
                 yaml.set(path + ".raised", jack.raised());
                 yaml.set(path + ".vehicle",
                         jack.vehicleId() == null ? null : jack.vehicleId().toString());
+                yaml.set(path + ".owner",
+                        jack.ownerId() == null ? null : jack.ownerId().toString());
             } else if (entry instanceof StoredStation station) {
                 String section = sectionName(station.kind());
                 if (section == null) {
                     continue;
                 }
-                writeStation(yaml, section + "." + station.id(),
+                String stationPath = section + "." + station.id();
+                writeStation(yaml, stationPath,
                         station.worldId(), station.x(), station.y(), station.z(), station.yaw());
+                yaml.set(stationPath + ".jack",
+                        station.jackId() == null ? null : station.jackId().toString());
+                yaml.set(stationPath + ".owner",
+                        station.ownerId() == null ? null : station.ownerId().toString());
+                if (station.recipients() != null && !station.recipients().isEmpty()) {
+                    List<String> raw = new ArrayList<>();
+                    for (UUID recipient : station.recipients()) {
+                        raw.add(recipient.toString());
+                    }
+                    yaml.set(stationPath + ".recipients", raw);
+                }
             }
         }
         try {
@@ -128,6 +155,17 @@ public final class MechanicStore {
             case "traffic_cone", "boost_pad", "fluid_pipe" -> "props";
             default -> null;
         };
+    }
+
+    private static UUID uuidOrNull(String raw) {
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
     }
 
     private ConfigurationSection section(String name) {

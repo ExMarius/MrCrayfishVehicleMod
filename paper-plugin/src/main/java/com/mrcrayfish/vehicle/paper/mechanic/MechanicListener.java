@@ -59,9 +59,9 @@ public final class MechanicListener implements Listener {
             }
             case WORKSTATION -> {
                 event.setCancelled(true);
-                mechanic.workstations().place(face, yaw);
-                player.sendRichMessage("<gray>Banc de lucru pus jos. Click pe el = cheia de mecanic.</gray>");
-                consumeIfNotCreative(held, creative);
+                if (mechanic.workstations().place(player, face, yaw)) {
+                    consumeIfNotCreative(held, creative);
+                }
             }
             case TRAFFIC_CONE -> {
                 event.setCancelled(true);
@@ -80,6 +80,10 @@ public final class MechanicListener implements Listener {
             }
             case VEHICLE_CRATE -> {
                 event.setCancelled(true);
+                if (event.getBlockFace() != org.bukkit.block.BlockFace.UP) {
+                    player.sendRichMessage("<red>Cufarul se deschide pe fata de SUS a unui bloc.</red>");
+                    return;
+                }
                 placeCrate(player, held, face, yaw);
             }
             default -> {
@@ -142,7 +146,7 @@ public final class MechanicListener implements Listener {
             return;
         }
         event.setCancelled(true);
-        if (!player.hasPermission("mcv.vehicle.dismantle")) {
+        if (!MechanicManager.has(player, "mcv.vehicle.dismantle")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.vehicle.dismantle.</red>");
             return;
         }
@@ -250,7 +254,7 @@ public final class MechanicListener implements Listener {
     }
 
     private void handlePaintChoice(Player player, LandVehicle vehicle, PaintColors color) {
-        if (!player.hasPermission("mcv.mechanic.paint")) {
+        if (!MechanicManager.has(player, "mcv.mechanic.paint")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.paint.</red>");
             return;
         }

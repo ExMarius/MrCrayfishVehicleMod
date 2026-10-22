@@ -2149,6 +2149,20 @@ public final class LandVehicle {
         return paintColor >= 0;
     }
 
+    /** Aplica imediat starea vizuala finala (model, pivoti, vopsea, piese) printr-un
+     *  update forțat al rig-ului - chemat dupa spawnul din cufar, ca primul frame sa
+     *  fie deja corect (spec final, bug 2a). */
+    public void settleVisualState() {
+        rig.applyColor(paintColor < 0 ? null : paintColor);
+        rig.setWheelModel(wheelType.model());
+        if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+            rig.setEngineModel(engineTier.name().toLowerCase(java.util.Locale.ROOT)
+                    + "_" + spec.defaultEngineType().folder() + "_engine");
+        }
+        rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                0.0F, spec.bodyRoll(steeringAngle, 0.0F), false, age);
+    }
+
     public void setPaintColor(int rgb) {
         paintColor = rgb;
         rig.applyColor(rgb >= 0 ? Integer.valueOf(rgb) : null);
