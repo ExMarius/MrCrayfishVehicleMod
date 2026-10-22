@@ -135,6 +135,17 @@ public final class MechanicManager {
                 MechanicItems.DEFAULT_SPRAY_CAPACITY));
     }
 
+    /** Paleta noastra de vopsea GRATUITA (sistem propriu, fara consum de iteme):
+     *  /vehicle paint + butonul VOPSESTE din banc o deschid amandoua. */
+    public boolean paintMenuEnabled() {
+        return plugin.getConfig().getBoolean("mechanic.paint-menu.enabled", true);
+    }
+
+    /** Distanta maxima (blocuri) la care /vehicle paint gaseste masina jucatorului. */
+    public double paintMenuRadius() {
+        return Math.max(2.0D, plugin.getConfig().getDouble("mechanic.paint-menu.radius", 6.0D));
+    }
+
     /** Cat combustibil toarna o galetusa cu fluid intr-un rezervor. */
     public float fluidBucketAmount() {
         return (float) plugin.getConfig().getDouble("mechanic.fluid-bucket-amount", 1000.0D);

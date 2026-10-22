@@ -289,9 +289,13 @@ public final class MechanicListener implements Listener {
         return mechanic.handleToolClick(player, vehicle, cursor);
     }
 
+    /** Paleta noastra de vopsea: GRATUITA, fara consum de iteme (sistem propriu).
+     *  Accesul il guverneaza proprietarul - poate vopsi cine poate si conduce
+     *  masina (el + cei trusted via /vehicle trust). Aceeasi culoare = no-op. */
     private void handlePaintChoice(Player player, LandVehicle vehicle, PaintColors color) {
-        if (!MechanicManager.has(player, "mcv.mechanic.paint")) {
-            player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.paint.</red>");
+        if (!vehicle.canDrive(player)) {
+            player.sendRichMessage("<red>Doar proprietarul si jucatorii autorizati "
+                    + "(trust) pot vopsi aceasta masina.</red>");
             return;
         }
         long now = System.currentTimeMillis();
@@ -301,31 +305,8 @@ public final class MechanicListener implements Listener {
         }
         paintCooldowns.put(player.getUniqueId(), now);
         if (vehicle.paintColor() == color.rgb()) {
-            // Ca in mod: aceeasi culoare = fara consum si fara sunet.
+            // Ca in mod: aceeasi culoare = fara efect si fara sunet.
             return;
-        }
-        if (player.getGameMode() != GameMode.CREATIVE) {
-            int slot = -1;
-            ItemStack[] contents = player.getInventory().getContents();
-            for (int index = 0; index < contents.length; index++) {
-                Integer rgb = MechanicItems.sprayColorOf(contents[index]);
-                if (rgb != null && rgb == color.rgb()) {
-                    slot = index;
-                    break;
-                }
-            }
-            if (slot < 0) {
-                player.sendRichMessage("<red>Nu ai un spray can cu vopsea " + color.label()
-                        + " in inventar - il cumperi de la magazin (Piese) sau /vehicle creative.</red>");
-                return;
-            }
-            ItemStack can = player.getInventory().getItem(slot);
-            if (MechanicItems.spraysRemainingOf(can) <= 0) {
-                player.sendRichMessage("<red>Spray-ul s-a golit - reumple-l cumparand alta "
-                        + "vopsea (shop > Piese).</red>");
-                return;
-            }
-            MechanicItems.useSpray(can, mechanic.sprayCapacity());
         }
         vehicle.setPaintColor(color.rgb());
         vehicles.save();
@@ -338,7 +319,8 @@ public final class MechanicListener implements Listener {
                         at.getX(), at.getY(), at.getZ());
             }
         }
-        player.sendRichMessage("<gray>Ai vopsit masina in <gold>" + color.label() + "</gold>.</gray>");
+        player.sendRichMessage("<gray>Ai vopsit masina in <gold>" + color.label()
+                + "</gold> - gratuit, fara consum.</gray>");
     }
 
     private void onCreativeGuiClick(InventoryClickEvent event, CreativeGui.Holder holder) {

@@ -23,7 +23,8 @@ import java.util.UUID;
  * Bancul de mecanic (deschis cu cheia de mecanic pe o masina RIDICATA pe cric):
  * slot motor (tier actual + schimb din piata), slot roti, buton REPARA (consuma
  * itemele din config - fara bani, pretul in bani se negociaza RP), buton VOPSESTE
- * (paleta 16 culori; consuma spray can-ul cu culoarea potrivita din inventar).
+ * (paleta 16 culori - sistemul nostru de vopsea: GRATUITA, fara consum; o deschide
+ *  si comanda /vehicle paint langa o masina proprie/trusted).
  */
 public final class MechanicGui {
     public static final class Holder implements InventoryHolder {
@@ -109,7 +110,7 @@ public final class MechanicGui {
         inventory.setItem(PAINT_SLOT, tag(entry(
                 MechanicItems.sprayCan(0xB02E26, "rosie"),
                 Component.text("VOPSESTE", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD),
-                List.of(Component.text("Deschide paleta - consuma spray can-ul cu culoarea aleasa.",
+                List.of(Component.text("Deschide paleta - vopsire GRATUITA, nu consuma nimic.",
                         NamedTextColor.GRAY))), "paint"));
         player.openInventory(inventory);
     }
@@ -124,7 +125,7 @@ public final class MechanicGui {
             inventory.setItem(slot++, tag(entry(
                     MechanicItems.sprayCan(color.rgb(), color.label()),
                     Component.text("Vopsea " + color.label(), NamedTextColor.WHITE),
-                    List.of(Component.text("Consuma 1 spray can cu aceasta culoare.",
+                    List.of(Component.text("Click = vopsesti instant. GRATUIT - nu consuma nimic.",
                             NamedTextColor.GRAY))), "color:" + color.name()));
             if (slot == 12 || slot == 21) {
                 slot += 2;

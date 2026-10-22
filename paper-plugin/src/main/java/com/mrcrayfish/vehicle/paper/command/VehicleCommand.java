@@ -70,6 +70,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             }
             case "pack" -> pack(sender);
             case "creative" -> creative(sender);
+            case "paint", "vopsea", "vopseste" -> paint(sender);
             default -> help(sender, label);
         }
         return true;
@@ -86,6 +87,41 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         com.mrcrayfish.vehicle.paper.mechanic.CreativeGui.open(player);
+    }
+
+    /** /vehicle paint: paleta noastra de vopsea, GRATUITA (fara consum de iteme), pe
+     *  cea mai apropiata masina pe care jucatorul are voie s-o conduca (proprietar,
+     *  trusted via /vehicle trust, sau masina fara proprietar). Sistem propriu -
+     *  inlocuieste fluxul cu spray can din mod pentru vopsirea de zi cu zi. */
+    private void paint(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage("Doar din joc.");
+            return;
+        }
+        if (plugin.mechanic() == null || !plugin.mechanic().paintMenuEnabled()) {
+            player.sendRichMessage("<red>Vopsirea libera este dezactivata in config.</red>");
+            return;
+        }
+        double radius = plugin.mechanic().paintMenuRadius();
+        LandVehicle best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (LandVehicle vehicle : vehicles.vehicles()) {
+            if (vehicle.location().getWorld() != player.getWorld()
+                    || !vehicle.canDrive(player)) {
+                continue;
+            }
+            double distance = vehicle.location().distanceSquared(player.getLocation());
+            if (distance <= radius * radius && distance < bestDistance) {
+                bestDistance = distance;
+                best = vehicle;
+            }
+        }
+        if (best == null) {
+            player.sendRichMessage("<red>Nicio masina pe care ai voie s-o vopsesti la "
+                    + "mai putin de " + (int) radius + " blocuri - stai langa masina ta.</red>");
+            return;
+        }
+        plugin.mechanic().gui().openPaintPage(player, best);
     }
 
     private void spawn(CommandSender sender, String[] args) {
@@ -399,6 +435,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " gaspump</yellow> <gray>- primești o pompă de benzină plasabilă</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " paint</yellow> <gray>- paleta noastră de vopsea GRATUITĂ (stai lângă mașina ta)</gray>");
         sender.sendRichMessage("<yellow>/" + label + " podium set <vehicul> <pret></yellow> <gray>- showroom static (admin); remove = șterge podiumul de aici</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
         sender.sendRichMessage("<yellow>/garaj</yellow> <gray>- garajul global (set/remove, liste în chat; acasă gratuit, public cu taxă)</gray>");
@@ -408,7 +445,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

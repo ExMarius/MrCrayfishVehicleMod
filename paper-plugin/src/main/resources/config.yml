@@ -91,6 +91,13 @@ jack:
 mechanic:
   # Capacitatea spray-ului (Config.SERVER.sprayCanCapacity din mod: 20 pulverizari).
   spray-capacity: 20
+  # Paleta noastra de vopsea (sistem PROPRU, diferit de spray-ul 1:1 din mod):
+  # GRATUITA - nu consuma niciun item. O deschizi cu /vehicle paint langa o
+  # masina proprie/trusted, sau din butonul VOPSESTE al bancului de mecanic.
+  paint-menu:
+    enabled: true
+    # Distanta maxima (blocuri) pana la masina vizata de /vehicle paint.
+    radius: 6.0
   # Cat toarna o galetusa cu fluid in rezervor (mB echivalent).
   fluid-bucket-amount: 1000
   # Mixerul de fluide (FluidMixerBlock din mod): Blaze Juice + Ender Sap = Fuellium.
