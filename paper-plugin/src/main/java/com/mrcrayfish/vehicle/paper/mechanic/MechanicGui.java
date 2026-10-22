@@ -98,6 +98,10 @@ public final class MechanicGui {
         List<Component> repairLore = new ArrayList<>();
         repairLore.add(Component.text(String.format(Locale.ROOT, "Stare: %.0f/100", vehicle.health()),
                 vehicle.health() < 30.0D ? NamedTextColor.RED : NamedTextColor.GREEN));
+        if (!mechanic.damageEnabled()) {
+            repairLore.add(Component.text("Masinile nu se uzeaza momentan - nu ai ce repara.",
+                    NamedTextColor.DARK_GRAY));
+        }
         mechanic.repairItems().forEach(entry -> repairLore.add(Component.text(
                 "Consuma: " + entry.getValue() + "x " + entry.getKey().name().toLowerCase(Locale.ROOT),
                 NamedTextColor.YELLOW)));

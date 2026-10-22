@@ -126,6 +126,12 @@ public final class MechanicManager {
         return plugin.getConfig().getDouble("mechanic.damage.collision-speed-threshold", 3.0D);
     }
 
+    /** Daune mecanice ACTIVE? Dezactivate temporar la cerere (ciclu 6): masinile
+     *  nu se strica deloc - reparatia ramane in meniu doar ca rezerva viitoare. */
+    public boolean damageEnabled() {
+        return plugin.getConfig().getBoolean("mechanic.damage.enabled", false);
+    }
+
     public double collisionDamageMultiplier() {
         return plugin.getConfig().getDouble("mechanic.damage.multiplier", 4.0D);
     }

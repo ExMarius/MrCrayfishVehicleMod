@@ -279,6 +279,7 @@ public final class LandVehicle {
         double blockedZ = requestedMovement.getZ() - collision.movement().getZ();
         double blockedSpeed = Math.hypot(blockedX, blockedZ) * 20.0D; // blocuri/secunda
         if (driver != null && damageCooldown <= 0 && plugin.mechanic() != null
+                && plugin.mechanic().damageEnabled()
                 && blockedSpeed >= plugin.mechanic().collisionSpeedThreshold()) {
             applyDamage(blockedSpeed * plugin.mechanic().collisionDamageMultiplier(), driver);
             damageCooldown = 15;

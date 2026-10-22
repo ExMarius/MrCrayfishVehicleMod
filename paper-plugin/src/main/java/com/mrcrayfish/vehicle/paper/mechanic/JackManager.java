@@ -32,11 +32,15 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * Cricul/elevatorul ca BLOC SOLID real (misiunea anti-lag: 200+ vehicule) - zero
  * entitati per statie; doar blocurile lumii + UN task global 1-tick care misca
- * cricele active (idle = cost zero). Ca in mod: blocul are doua fete vizuale,
- * JOS (cap impaturit) si SUS (cap ridicat +0.5 = lift-height implicit), schimbate
- * la jumatatea animatiei; masina urca/coboara fin pe jack.lift-speed-ticks si
- * intra in starea „pe elevator" (fizica inghetata, fara tractiune).
- * Actiunea e DIRECT pe cric cu cheia de mecanic (pompezi cricul, ca in mod);
+ * cricele active (idle = cost zero, fara scanari automate). Ca in mod: blocul are
+ * doua fete vizuale, JOS (cap impaturit) si SUS (cap ridicat +0.5 = lift-height
+ * implicit), schimbate la jumatatea animatiei; masina urca/coboara fin pe
+ * jack.lift-speed-ticks si intra in starea „pe elevator" (fizica inghetata).
+ * Pozitiile de stat SUNT cele din mod (vehicul montat pe capul cricului):
+ * jos = PE suprafata slab-ului (+0.5), sus = +0.5 mai sus (+1.0), deci capul
+ * nu strabate niciodata caroseria - nici la masinile joase.
+ * Actiunea e EXCLUSIV manuala, cu cheia de mecanic pe cric (cerere ciclu 6:
+ * nimic nu se ridica singur - nici la parcare, nici la coborarea din masina);
  * bancul de lucru legat poate actiona si el cricul (vechiul flux, pastrat).
  * Sunetele head_up/head_down/air_wrench_gun sunt cele originale.
  * Ghemuit + click = ridici cricul (doar plasator/op si doar gol si complet jos);
@@ -112,7 +116,9 @@ public final class JackManager {
                             ? LandVehicle.JackState.LIFTED : LandVehicle.JackState.NONE);
                     found.setJackId(jack.id);
                     if (stored.raised()) {
-                        found.setLiftedY(jack.location.getY() + liftHeight());
+                        found.setLiftedY(jack.location.getY() + REST_OFFSET + liftHeight());
+                    } else {
+                        found.setLiftedY(jack.location.getY() + REST_OFFSET);
                     }
                 });
             }
@@ -143,8 +149,8 @@ public final class JackManager {
         Jack jack = placeBlockRig(id, target.getLocation(), false);
         jack.ownerId = player.getUniqueId();
         jacks.put(id, jack);
-        player.sendRichMessage("<gray>Cric pus jos. Pune masina deasupra si apasa cu "
-                + "<gold>cheia de mecanic</gold> ca sa o ridici.</gray>");
+        player.sendRichMessage("<gray>Cric pus jos. Parcheaza masina deasupra si da cu "
+                + "<gold>cheia de mecanic</gold> pe cric ca sa o ridici.</gray>");
         return true;
     }
 
@@ -245,8 +251,8 @@ public final class JackManager {
         if (MechanicItems.kindOf(held) == MechanicItems.Kind.WRENCH) {
             return toggleLift(player, jack);
         }
-        player.sendRichMessage("<gray>Parcheaza masina pe cric - se aliniaza si se ridica "
-                + "SINGURA (ca in mod). <gold>Cheia de mecanic</gold> = pompare manuala/coborare. "
+        player.sendRichMessage("<gray>Parcheaza masina deasupra, apoi da cu "
+                + "<gold>cheia de mecanic</gold> pe cric: se aliniaza si se ridica (ca in mod). "
                 + "Ghemuit + click = strangi cricul gol.</gray>");
         return true;
     }
@@ -307,11 +313,12 @@ public final class JackManager {
         }
         switch (jack.state) {
             case DOWN -> {
-                // Manual (ca in mod: pompezi cricul): aceeasi aliniere + ridicare,
-                // ignorand cooldown-ul de dupa ultima coborare.
-                LandVehicle target = snapCandidate(jack, true).orElse(null);
+                // Ridicarea e EXCLUSIV manuala (cerere ciclu 6): cheie pe cric =
+                // aliniere la central + ridicare, exact montarea din mod.
+                LandVehicle target = snapCandidate(jack).orElse(null);
                 if (target != null && target.occupied()) {
-                    player.sendRichMessage("<red>Cineva sta in masina - mai intai trebuie sa coboare.</red>");
+                    player.sendRichMessage(
+                            "<red>Nu poți ridica mașina cât timp cineva se află în ea!</red>");
                     return true;
                 }
                 if (target != null) {
@@ -326,9 +333,13 @@ public final class JackManager {
             case SNAPPING ->
                     player.sendRichMessage("<yellow>Mașina se aliniază pe cric - stai departe.</yellow>");
             case LIFTED -> {
+                Optional<LandVehicle> target = linked(jack);
+                if (target.isPresent() && target.get().occupied()) {
+                    player.sendRichMessage(
+                            "<red>Nu poți coborî mașina cât timp cineva se află în ea!</red>");
+                    return true;
+                }
                 jack.state = Jack.State.LOWERING;
-                Optional<LandVehicle> target = jack.vehicleId == null
-                        ? Optional.<LandVehicle>empty() : vehicles.byId(jack.vehicleId);
                 target.ifPresent(vehicle -> vehicle.setJackState(LandVehicle.JackState.LOWERING));
                 playSound(jack, HEAD_DOWN, 0.9F, 1.0F);
                 player.sendRichMessage("<gray>Cobor masina de pe cric...</gray>");
@@ -344,20 +355,18 @@ public final class JackManager {
     private static final double SNAP_RANGE = 1.6D;
     private static final double SNAP_DONE_SQ = 0.15D * 0.15D;
     private static final int SNAP_MAX_TICKS = 40;
-    private static final int SCAN_EVERY_TICKS = 5;
-    private int scanTick;
+    /** Cat sta masina PESTE cric in repaus (fata de sus a slab-ului jos = 0.5).
+     *  In mod vehiculul stationeaza ca pasager la ~11px deasupra blocului; ale noastre
+     *  0.5 = exact suprafata superioara a elevatorului jos (nu intra in model). */
+    private static final double REST_OFFSET = 0.5D;
 
     private void tick() {
         int ticks = liftTicks();
-        boolean doScan = (++scanTick % SCAN_EVERY_TICKS) == 0;
         for (Jack jack : jacks.values()) {
             switch (jack.state) {
-                case DOWN -> {
-                    // Ca in mod (prezenta = activare): masina parcata pe placa e
-                    // detectata si aliniata SINGURA. Scanarea e rara (5 tick-uri).
-                    if (doScan) {
-                        scanForVehicle(jack);
-                    }
+                case DOWN, LIFTED -> {
+                    // Stari stationare - zero scanari, zero cost (cerere ciclu 6:
+                    // nimic automat; ridicarea e exclusiv cu cheia, din toggleLift).
                 }
                 case SNAPPING -> {
                     LandVehicle vehicle = linked(jack).orElse(null);
@@ -397,46 +406,27 @@ public final class JackManager {
                             vehicle.setJackId(null);
                             vehicle.setLiftedY(jack.startY);
                         });
-                        // Nu o re-ridica SINGUR pe aceeasi cat e inca parcata pe placa
-                        // (altfel oscileaza ridicat/coborat); se reseteaza cand pleaca.
-                        jack.recentReleasedId = jack.vehicleId;
                         jack.vehicleId = null;
                         jack.snapTicks = 0;
                         playSound(jack, AIR_WRENCH, 0.7F, 0.9F);
                     }
                 }
-                case LIFTED -> {
-                    // Stare stationara - nu costa nimic.
-                }
             }
         }
     }
 
-    /** Masina gata de snap: deasupra placii, libră, neocupata, nu proaspat coborata. */
-    private Optional<LandVehicle> snapCandidate(Jack jack, boolean ignoreRecent) {
-        Optional<LandVehicle> nearest = vehicles.nearest(jack.location, SNAP_RANGE)
-                .filter(vehicle -> !vehicle.onJack() && !vehicle.showcase()
-                        && !vehicle.occupied());
-        if (nearest.isEmpty()) {
-            jack.recentReleasedId = null; // placa s-a golit - cooldown consumat
-            return Optional.empty();
-        }
-        if (!ignoreRecent && jack.recentReleasedId != null
-                && jack.recentReleasedId.equals(nearest.get().id())) {
-            return Optional.empty();
-        }
-        return nearest;
+    /** Masina gata de snap: deasupra placii, libera (nu e pe alt cric / podium). */
+    private Optional<LandVehicle> snapCandidate(Jack jack) {
+        return vehicles.nearest(jack.location, SNAP_RANGE)
+                .filter(vehicle -> !vehicle.onJack() && !vehicle.showcase());
     }
 
-    private void scanForVehicle(Jack jack) {
-        snapCandidate(jack, false).ifPresent(vehicle -> beginSnap(jack, vehicle));
-    }
-
-    /** Alinierea din mod: vehiculul ingheata si e tras exact la centrul placii
-     *  (x+0.5, z+0.5, yaw pastrat), apoi urmeaza ridicarea automata. */
+    /** Montarea din mod: vehiculul ingheata si e tras exact la centrul placii
+     *  (x+0.5, z+0.5, yaw pastrat). Y-ul de stat = REST_OFFSET peste blocul cricului:
+     *  masina sta PE elevator (jos = pe slab, sus = pe capul ridicat), nu in el. */
     private void beginSnap(Jack jack, LandVehicle vehicle) {
         jack.vehicleId = vehicle.id();
-        jack.startY = vehicle.location().getY();
+        jack.startY = jack.location.getY() + REST_OFFSET;
         jack.snapTicks = 0;
         jack.state = Jack.State.SNAPPING;
         vehicle.setJackState(LandVehicle.JackState.LIFTING);

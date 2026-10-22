@@ -11,7 +11,7 @@ import java.util.UUID;
 final class Jack {
     enum State {
         DOWN,
-        /** Automat (ca in mod): vehicul parcat pe placa se aliniaza la centru. */
+        /** Montare ca in mod: vehiculul tras cu cheia se aliniaza la centrul placii. */
         SNAPPING,
         LIFTING, LIFTED, LOWERING
     }
@@ -25,10 +25,8 @@ final class Jack {
     UUID vehicleId;
     /** Cine a pus cricul: pentru pickup (doar el sau un operator, si doar gol). */
     UUID ownerId;
-    /** Y-ul vehiculului inainte de ridicare (inapoi la coborare: slab-top sau sol). */
+    /** Y-ul de stat al vehiculului pe cric (bloc + REST_OFFSET; setat la montare). */
     double startY;
-    /** Ultimul vehicul coborat - nu se re-ridica singur cat timp ramane pe placa. */
-    UUID recentReleasedId;
     int snapTicks;
 
     Jack(UUID id, Location location) {

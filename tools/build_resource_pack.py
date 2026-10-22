@@ -1217,19 +1217,23 @@ def build(output: Path) -> tuple[Path, str]:
         # acopera (si slab, si composter), deci STATIA trebuie sa-si deseneze SINGURA
         # fundul. Quad subtire la y=0, fara cullface (nu exista risc de z-fight:
         # fata blocului de dedesubt este deja cull-ata de station-block).
-        def _add_bottom_face(model_path: Path, texture_key: str) -> None:
+        # Textura „oglinda a podelei": neteda de beton/piatra (smooth_stone) - neutra
+        # pe orice podea de garaj; oglindirea REALA a blocului de dedesubt e
+        # imposibila cu modele statice (slab-ul nu are stari libere, composterul
+        # are un singur nivel legitim), asa ca alegem aspectul de „umbra de contact".
+        def _add_bottom_face(model_path: Path) -> None:
             _model = json.loads(model_path.read_text(encoding="utf-8"))
             _model.setdefault("elements", []).append({
                 "from": [0, 0, 0], "to": [16, 0.01, 16],
                 "faces": {
-                    "up": {"uv": [0, 0, 16, 16], "texture": f"#{texture_key}"},
-                    "down": {"uv": [0, 0, 16, 16], "texture": f"#{texture_key}"},
+                    "up": {"uv": [0, 0, 16, 16], "texture": "minecraft:block/smooth_stone"},
+                    "down": {"uv": [0, 0, 16, 16], "texture": "minecraft:block/smooth_stone"},
                 },
             })
             write_json(model_path, _model)
-        _add_bottom_face(namespace / "models/block/mcv_workstation.json", "workstation")
-        _add_bottom_face(namespace / "models/block/mcv_jack_down.json", "jack")
-        _add_bottom_face(namespace / "models/block/mcv_jack_up.json", "jack")
+        _add_bottom_face(namespace / "models/block/mcv_workstation.json")
+        _add_bottom_face(namespace / "models/block/mcv_jack_down.json")
+        _add_bottom_face(namespace / "models/block/mcv_jack_up.json")
         # Blockstates: gazde NEOPACE peste tot (niciun culling pe nicio parte):
         #  - elevator: petrified_oak_slab bottom=JOS, top=SUS (platforma la +0.5),
         #    double = tamplarie vanilla (oak_planks), neatins
