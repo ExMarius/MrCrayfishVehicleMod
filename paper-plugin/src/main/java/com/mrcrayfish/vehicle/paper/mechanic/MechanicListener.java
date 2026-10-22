@@ -150,6 +150,77 @@ public final class MechanicListener implements Listener {
         }
     }
 
+    /* ==================== statiile BLOC SOLID (anti-lag) ==================== */
+
+    /** Click-dreapta pe o statie-bloc (banc de lucru; cricul vine in ciclul 2).
+     *  Anulam PRIMA interactiunea ca note_block-ul sa nu se retuneze niciodata. */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onStationBlockUse(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null) {
+            return;
+        }
+        if (StationBlocks.kindOf(event.getClickedBlock()) == null) {
+            return;
+        }
+        event.setCancelled(true);
+        if (event.getHand() != EquipmentSlot.HAND) {
+            return;
+        }
+        if (mechanic.handleStationBlockClick(event.getPlayer(), event.getClickedBlock(),
+                event.getPlayer().getInventory().getItemInMainHand())) {
+            mechanic.save();
+        }
+    }
+
+    /** Blocurile-statie NU se sparg - se strang cu ghemuit + click dreapta (owner/op). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onStationBlockBreak(org.bukkit.event.block.BlockBreakEvent event) {
+        if (StationBlocks.kindOf(event.getBlock()) != null) {
+            event.setCancelled(true);
+            event.getPlayer().sendRichMessage(
+                    "<yellow>Statia se strange cu ghemuit + click dreapta (proprietar/op).</yellow>");
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onStationEntityExplode(org.bukkit.event.entity.EntityExplodeEvent event) {
+        event.blockList().removeIf(block -> StationBlocks.kindOf(block) != null);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onStationBlockExplode(org.bukkit.event.block.BlockExplodeEvent event) {
+        event.blockList().removeIf(block -> StationBlocks.kindOf(block) != null);
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onStationPistonExtend(org.bukkit.event.block.BlockPistonExtendEvent event) {
+        for (org.bukkit.block.Block block : event.getBlocks()) {
+            if (StationBlocks.kindOf(block) != null) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onStationPistonRetract(org.bukkit.event.block.BlockPistonRetractEvent event) {
+        for (org.bukkit.block.Block block : event.getBlocks()) {
+            if (StationBlocks.kindOf(block) != null) {
+                event.setCancelled(true);
+                return;
+            }
+        }
+    }
+
+    /** Pulsul de redstone pe note_block = „pling" - il suprimam complet (statia
+     *  arata oricum identic powered/ne-powered, pack-ul mapeaza ambele stari). */
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onStationNotePlay(org.bukkit.event.block.NotePlayEvent event) {
+        if (StationBlocks.kindOf(event.getBlock()) != null) {
+            event.setCancelled(true);
+        }
+    }
+
     /* ============================ hammer = demontare ============================ */
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)

@@ -1175,6 +1175,27 @@ def build(output: Path) -> tuple[Path, str]:
                          namespace / "models/item/fluid_mixer.json")
         mechanic_convert(ASSETS / "models/item/vehicle_crate.json",
                          namespace / "models/item/vehicle_crate.json")
+        # === STATII CA BLOCURI SOLIDE (misiunea anti-lag: 200+ vehicule pe server) ===
+        # Bancul de lucru si cricul devin blocuri note_block reale (zero entitati,
+        # zero tick): suprascriem in pack cateva stari instrument+nota=17 cu
+        # modelele statiilor. Interactiunea e anulata server-side (nu se retuneaza),
+        # pling-ul de redstone se suprima prin NotePlayEvent, iar powered=true
+        # arata identic - cele doua variante powered duc la acelasi model.
+        for _solid, _src in (("mcv_workstation", "workstation"),
+                             ("mcv_jack", "jack"),
+                             ("mcv_jack_head", "jack_head")):
+            mechanic_convert(ASSETS / f"models/block/{_src}.json",
+                             namespace / f"models/block/{_solid}.json")
+        _mc_namespace = namespace.parent / "minecraft"
+        _nb_variants = {"": {"model": "minecraft:block/note_block"}}
+        for _instr, _solid in (("wither_skeleton", "mcv_workstation"),
+                               ("zombie", "mcv_jack"),
+                               ("skeleton", "mcv_jack_head")):
+            for _powered in ("false", "true"):
+                _nb_variants[f"instrument={_instr},note=17,powered={_powered}"] = {
+                    "model": f"vehicle:block/{_solid}"}
+        write_json(_mc_namespace / "blockstates/note_block.json",
+                   {"variants": _nb_variants})
         copy(ASSETS / "textures/item/wrench.png", namespace / "textures/item/wrench.png")
         copy(ASSETS / "textures/item/hammer.png", namespace / "textures/item/hammer.png")
         copy(ASSETS / "textures/item/key.png", namespace / "textures/item/key.png")

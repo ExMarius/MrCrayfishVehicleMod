@@ -11,6 +11,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
@@ -442,9 +443,6 @@ public final class MechanicManager {
                     + "(de la bancul de lucru).</gray>");
             return true;
         }
-        if (workstations.handleClick(player, entity, held)) {
-            return true;
-        }
         if (mixers.handleClick(player, entity, held)) {
             return true;
         }
@@ -453,5 +451,16 @@ public final class MechanicManager {
             return true;
         }
         return false;
+    }
+
+    /** Click-dreapta pe un BLOC-statie solid (note_block suprascris in pack):
+     *  vine din MechanicListener DUPA ce interactiunea a fost anulata (fara
+     *  retunare a notei). Returneaza true mereu (blocul e al sistemului). */
+    public boolean handleStationBlockClick(Player player, Block block, ItemStack held) {
+        if (workstations.isStationBlock(block)) {
+            return workstations.handleBlockClick(player, block, held);
+        }
+        // JACK_BASE/JACK_HEAD: ciclul 2 (cricul devine si el bloc solid).
+        return true;
     }
 }
