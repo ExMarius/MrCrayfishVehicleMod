@@ -262,7 +262,8 @@ public final class LandVehicle {
         }
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         if (collision.verticalCollision()) {
@@ -428,7 +429,8 @@ public final class LandVehicle {
         Vector requestedMovement = velocity.clone().add(motion);
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         if (collision.verticalCollision()) {
@@ -529,7 +531,8 @@ public final class LandVehicle {
         }
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         verticalVelocity = velocity.getY();
@@ -787,7 +790,8 @@ public final class LandVehicle {
         Vector requestedMovement = motion.clone();
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         verticalVelocity = velocity.getY();
@@ -1735,7 +1739,8 @@ public final class LandVehicle {
         }
         onGround = VehicleCollisionMover.move(world, location,
                 new Vector(0.0D, -0.001D, 0.0D), false,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight()).onGround();
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs()).onGround();
     }
 
     public float traction() {
@@ -2205,6 +2210,22 @@ public final class LandVehicle {
         Location moved = location.clone();
         moved.setY(y);
         location = moved;
+    }
+
+    /** Snap-ul cricului din mod (masina devine „pasagerul" cricului - aliniere exacta
+     *  la centrul blocului): trage vehiculul spre centru cu un factor pe tick.
+     *  Yaw-ul ramane neschimbat (id VehicleMod mount). */
+    public void snapToward(double centerX, double centerZ, double factor) {
+        Location moved = location.clone();
+        moved.setX(moved.getX() + (centerX - moved.getX()) * factor);
+        moved.setZ(moved.getZ() + (centerZ - moved.getZ()) * factor);
+        location = moved;
+    }
+
+    public double horizontalDistanceSquared(double x, double z) {
+        double dx = location.getX() - x;
+        double dz = location.getZ() - z;
+        return dx * dx + dz * dz;
     }
 
     /** Boost pad: intensifica temporar forta (acelasi tel ca rampota din mod). */

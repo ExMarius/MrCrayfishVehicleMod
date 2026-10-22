@@ -1212,16 +1212,19 @@ def build(output: Path) -> tuple[Path, str]:
         write_json(namespace / "models/block/mcv_jack_up.json",
                    _jack_composite(_jack_down, _jack_head, 8.0))
 
-        # Fata de JOS cu cullface (fix definitiv pentru „gaura de sub statii"):
-        # modelele modului nu au fund - prin ele se putea vedea golul cand statia
-        # atarna deasupra unui spatiu. Un quad zero-grosime la y=0, randat doar cand
-        # sub e aer (cullface=down il ascunde cand e rezemat de un bloc opac).
+        # Fata de JOS mereu randata (fix definitiv pentru „gaura de sub statii"):
+        # fata de sus a blocului de dedesubt e oricum taiata de orice bloc care il
+        # acopera (si slab, si composter), deci STATIA trebuie sa-si deseneze SINGURA
+        # fundul. Quad subtire la y=0, fara cullface (nu exista risc de z-fight:
+        # fata blocului de dedesubt este deja cull-ata de station-block).
         def _add_bottom_face(model_path: Path, texture_key: str) -> None:
             _model = json.loads(model_path.read_text(encoding="utf-8"))
             _model.setdefault("elements", []).append({
-                "from": [0, 0, 0], "to": [16, 0.001, 16],
-                "faces": {"down": {"uv": [0, 0, 16, 16],
-                                   "texture": f"#{texture_key}", "cullface": "down"}},
+                "from": [0, 0, 0], "to": [16, 0.01, 16],
+                "faces": {
+                    "up": {"uv": [0, 0, 16, 16], "texture": f"#{texture_key}"},
+                    "down": {"uv": [0, 0, 16, 16], "texture": f"#{texture_key}"},
+                },
             })
             write_json(model_path, _model)
         _add_bottom_face(namespace / "models/block/mcv_workstation.json", "workstation")

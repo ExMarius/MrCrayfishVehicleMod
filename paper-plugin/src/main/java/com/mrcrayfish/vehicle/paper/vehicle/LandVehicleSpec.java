@@ -985,6 +985,16 @@ public record LandVehicleSpec(
         return wheels() != null && !wheels().isEmpty();
     }
 
+    /** Vehiculele JOASE (cerinta user): ele vad cricul ca pe un slab solid -
+     *  urca pe el cu step-up-ul normal (altfel jucaria trece prin el si nu mai
+     *  poate fi „parcata" curat pe placa). Restul vehiculelor trec prin statii. */
+    private static final java.util.Set<String> STATION_CLIMBING_IDS = java.util.Set.of(
+            "bumper_car", "go_kart", "dune_buggy", "lawn_mower", "moped");
+
+    public boolean climbsStationSlabs() {
+        return STATION_CLIMBING_IDS.contains(id);
+    }
+
     public MotionType motionType() {
         if ("jet_ski".equals(id) || "speed_boat".equals(id) || "aluminum_boat".equals(id)) {
             return MotionType.WATER;

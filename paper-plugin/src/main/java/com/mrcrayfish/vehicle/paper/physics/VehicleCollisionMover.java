@@ -20,8 +20,17 @@ public final class VehicleCollisionMover {
 
     public static Result move(World world, Location origin, Vector requested, boolean wasOnGround,
                               double entityWidth, double entityHeight, double stepHeight) {
+        return move(world, origin, requested, wasOnGround, entityWidth, entityHeight, stepHeight,
+                true);
+    }
+
+    /** {@code ignoreStations}: true = vehiculul trece prin blocurile-statie (cric/banc);
+     *  false = le simte solide (vehiculele joase urca pe cric ca pe un slab). */
+    public static Result move(World world, Location origin, Vector requested, boolean wasOnGround,
+                              double entityWidth, double entityHeight, double stepHeight,
+                              boolean ignoreStations) {
         BoundingBox start = vehicleBox(origin, entityWidth, entityHeight);
-        Candidate normal = moveWithoutStep(world, start, requested);
+        Candidate normal = moveWithoutStep(world, start, requested, ignoreStations);
 
         boolean clippedHorizontal = different(normal.movement.getX(), requested.getX())
                 || different(normal.movement.getZ(), requested.getZ());
@@ -30,7 +39,7 @@ public final class VehicleCollisionMover {
 
         Candidate selected = normal;
         if (clippedHorizontal && (wasOnGround || landedDuringNormalMove)) {
-            Candidate stepped = moveWithStep(world, start, requested, stepHeight);
+            Candidate stepped = moveWithStep(world, start, requested, stepHeight, ignoreStations);
             if (horizontalLengthSquared(stepped.movement) > horizontalLengthSquared(normal.movement) + 1.0E-9D) {
                 selected = stepped;
             }
@@ -41,65 +50,68 @@ public final class VehicleCollisionMover {
         return new Result(selected.movement, onGround, verticalCollision);
     }
 
-    private static Candidate moveWithoutStep(World world, BoundingBox start, Vector requested) {
+    private static Candidate moveWithoutStep(World world, BoundingBox start, Vector requested,
+                                             boolean ignoreStations) {
         BoundingBox box = start.clone();
         Vector moved = new Vector();
 
-        double y = resolveAxis(world, box, Axis.Y, requested.getY());
+        double y = resolveAxis(world, box, Axis.Y, requested.getY(), ignoreStations);
         box.shift(0.0D, y, 0.0D);
         moved.setY(y);
 
         if (Math.abs(requested.getX()) < Math.abs(requested.getZ())) {
-            double z = resolveAxis(world, box, Axis.Z, requested.getZ());
+            double z = resolveAxis(world, box, Axis.Z, requested.getZ(), ignoreStations);
             box.shift(0.0D, 0.0D, z);
             moved.setZ(z);
-            double x = resolveAxis(world, box, Axis.X, requested.getX());
+            double x = resolveAxis(world, box, Axis.X, requested.getX(), ignoreStations);
             box.shift(x, 0.0D, 0.0D);
             moved.setX(x);
         } else {
-            double x = resolveAxis(world, box, Axis.X, requested.getX());
+            double x = resolveAxis(world, box, Axis.X, requested.getX(), ignoreStations);
             box.shift(x, 0.0D, 0.0D);
             moved.setX(x);
-            double z = resolveAxis(world, box, Axis.Z, requested.getZ());
+            double z = resolveAxis(world, box, Axis.Z, requested.getZ(), ignoreStations);
             box.shift(0.0D, 0.0D, z);
             moved.setZ(z);
         }
         return new Candidate(box, moved);
     }
 
-    private static Candidate moveWithStep(World world, BoundingBox start, Vector requested, double stepHeight) {
+    private static Candidate moveWithStep(World world, BoundingBox start, Vector requested,
+                                          double stepHeight, boolean ignoreStations) {
         BoundingBox box = start.clone();
         Vector moved = new Vector();
 
-        double up = resolveAxis(world, box, Axis.Y, stepHeight);
+        double up = resolveAxis(world, box, Axis.Y, stepHeight, ignoreStations);
         if (up <= COLLISION_EPSILON) {
             return new Candidate(box, moved);
         }
         box.shift(0.0D, up, 0.0D);
 
         if (Math.abs(requested.getX()) < Math.abs(requested.getZ())) {
-            double z = resolveAxis(world, box, Axis.Z, requested.getZ());
+            double z = resolveAxis(world, box, Axis.Z, requested.getZ(), ignoreStations);
             box.shift(0.0D, 0.0D, z);
             moved.setZ(z);
-            double x = resolveAxis(world, box, Axis.X, requested.getX());
+            double x = resolveAxis(world, box, Axis.X, requested.getX(), ignoreStations);
             box.shift(x, 0.0D, 0.0D);
             moved.setX(x);
         } else {
-            double x = resolveAxis(world, box, Axis.X, requested.getX());
+            double x = resolveAxis(world, box, Axis.X, requested.getX(), ignoreStations);
             box.shift(x, 0.0D, 0.0D);
             moved.setX(x);
-            double z = resolveAxis(world, box, Axis.Z, requested.getZ());
+            double z = resolveAxis(world, box, Axis.Z, requested.getZ(), ignoreStations);
             box.shift(0.0D, 0.0D, z);
             moved.setZ(z);
         }
 
-        double down = resolveAxis(world, box, Axis.Y, requested.getY() - up);
+        double down = resolveAxis(world, box, Axis.Y, requested.getY() - up, ignoreStations);
         box.shift(0.0D, down, 0.0D);
         moved.setY(up + down);
         return new Candidate(box, moved);
     }
 
-    private static double resolveAxis(World world, BoundingBox start, Axis axis, double requested) {
+    private static double resolveAxis(World world, BoundingBox start, Axis axis, double requested,
+                                      boolean ignoreStations) {
         if (Math.abs(requested) <= COLLISION_EPSILON) {
             return 0.0D;
         }
@@ -111,7 +123,7 @@ public final class VehicleCollisionMover {
 
         for (int index = 0; index < slices; index++) {
             BoundingBox target = shifted(box, axis, slice);
-            if (!collides(world, target)) {
+            if (!collides(world, target, ignoreStations)) {
                 box = target;
                 moved += slice;
                 continue;
@@ -121,7 +133,7 @@ public final class VehicleCollisionMover {
             double blocked = slice;
             for (int iteration = 0; iteration < BINARY_SEARCH_STEPS; iteration++) {
                 double middle = (clear + blocked) * 0.5D;
-                if (collides(world, shifted(box, axis, middle))) {
+                if (collides(world, shifted(box, axis, middle), ignoreStations)) {
                     blocked = middle;
                 } else {
                     clear = middle;
@@ -133,11 +145,11 @@ public final class VehicleCollisionMover {
         return moved;
     }
 
-    private static boolean collides(World world, BoundingBox box) {
+    private static boolean collides(World world, BoundingBox box, boolean ignoreStations) {
         BoundingBox query = box.clone().expand(-COLLISION_EPSILON);
-        // Poarta rapida: doar daca in zona exista vreun bloc-statie trecem pe calea
-        // detaliata (extrem de rar in lumea reala); in rest ramane calea nativa.
-        if (!hasStationBlock(world, query)) {
+        // Poarta rapida: doar daca vehiculul ignora statiile SI in zona exista
+        // vreun bloc-statie trecem pe calea detaliata (rar); in rest calea nativa.
+        if (!ignoreStations || !hasStationBlock(world, query)) {
             return world.hasCollisionsIn(query);
         }
         return collidesIgnoringStations(world, query);

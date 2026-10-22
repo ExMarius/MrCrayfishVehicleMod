@@ -132,7 +132,7 @@ public final class PaperTrailer {
             return;
         }
         VehicleCollisionMover.Result result = VehicleCollisionMover.move(world, location, requested, onGround,
-                spec.entityWidth(), spec.entityHeight(), 1.0D);
+                spec.entityWidth(), spec.entityHeight(), 1.0D, true);
         location.add(result.movement());
         onGround = result.onGround();
         verticalVelocity = result.verticalCollision() ? 0.0D : result.movement().getY();
