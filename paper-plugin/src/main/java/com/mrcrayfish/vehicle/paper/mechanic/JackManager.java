@@ -106,6 +106,9 @@ public final class JackManager {
             Jack jack = placeBlockRig(stored.id(), location, stored.raised());
             jack.ownerId = stored.ownerId();
             jack.progress = stored.raised() ? 1.0D : 0.0D;
+            // startY e VOLATIL (nu e salvat) - fara el, prima coborare dupa restart
+            // ar teleporta masina la y=0 (bugul „masina dispare la coborare").
+            jack.startY = restY(jack);
             if (stored.vehicleId() != null) {
                 jack.vehicleId = stored.vehicleId();
                 jack.state = stored.raised() ? Jack.State.LIFTED : Jack.State.DOWN;
@@ -339,6 +342,12 @@ public final class JackManager {
                             "<red>Nu poți coborî mașina cât timp cineva se află în ea!</red>");
                     return true;
                 }
+                // Plasa de siguranta: startY corupt/absent (ex. save vechi) nu are
+                // voie sa trimita masina sub lume - revenim la repausul cricului.
+                if (!Double.isFinite(jack.startY) || jack.startY < jack.location.getY() - 0.05D
+                        || jack.startY > jack.location.getY() + 1.75D) {
+                    jack.startY = restY(jack);
+                }
                 jack.state = Jack.State.LOWERING;
                 target.ifPresent(vehicle -> vehicle.setJackState(LandVehicle.JackState.LOWERING));
                 playSound(jack, HEAD_DOWN, 0.9F, 1.0F);
@@ -424,9 +433,14 @@ public final class JackManager {
     /** Montarea din mod: vehiculul ingheata si e tras exact la centrul placii
      *  (x+0.5, z+0.5, yaw pastrat). Y-ul de stat = REST_OFFSET peste blocul cricului:
      *  masina sta PE elevator (jos = pe slab, sus = pe capul ridicat), nu in el. */
+    /** Y-ul de repaus al masinii pe cric (deasupra slab-ului jos = bloc + 0.5). */
+    private static double restY(Jack jack) {
+        return jack.location.getY() + REST_OFFSET;
+    }
+
     private void beginSnap(Jack jack, LandVehicle vehicle) {
         jack.vehicleId = vehicle.id();
-        jack.startY = jack.location.getY() + REST_OFFSET;
+        jack.startY = restY(jack);
         jack.snapTicks = 0;
         jack.state = Jack.State.SNAPPING;
         vehicle.setJackState(LandVehicle.JackState.LIFTING);

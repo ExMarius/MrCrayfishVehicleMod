@@ -26,8 +26,8 @@ import java.util.UUID;
  *  - STANGA, vertical: slot MOTOR (sus) + slot ROTI (sub) - pui piesa noua pe
  *    cursor si click = schimb (cursorul pastreaza piesa veche, ca in mod);
  *  - CENTRU: fereastra mare de previzualizare cu vehiculul (icon + date);
- *  - JOS: butonul nostru extra cerut - VOPSESTE (paleta celor 16 culori,
- *    gratuita) + REPARA (rezerva; daunele sunt dezactivate momentan).
+ *  - JOS: UNICUL extras fata de mod, cerut de tine - butonul VOPSESTE
+ *    (paleta celor 16 culori, gratuita). Atat, restul e 1:1.
  * Inventarul jucatorului ramane jos, ca in mod.
  */
 public final class MechanicGui {
@@ -63,8 +63,7 @@ public final class MechanicGui {
     public static final int ENGINE_SLOT = 9;   // rand 1, col 0
     public static final int WHEEL_SLOT = 18;   // rand 2, col 0
     public static final int INFO_SLOT = 22;    // centrul ferestrei de previzualizare
-    public static final int PAINT_SLOT = 47;   // buton EXTRA cerut (nu exista in mod)
-    public static final int REPAIR_SLOT = 51;  // rezerva noastra (in mod nu exista)
+    public static final int PAINT_SLOT = 47;   // UNICUL buton extra cerut (nu exista in mod)
 
     private final MechanicManager mechanic;
 
@@ -96,8 +95,7 @@ public final class MechanicGui {
             boolean isWindow = row >= 1 && row <= 4 && col >= 1;
             if (isWindow) {
                 inventory.setItem(slot, window);
-            } else if (slot != ENGINE_SLOT && slot != WHEEL_SLOT
-                    && slot != PAINT_SLOT && slot != REPAIR_SLOT) {
+            } else if (slot != ENGINE_SLOT && slot != WHEEL_SLOT && slot != PAINT_SLOT) {
                 inventory.setItem(slot, frame);
             }
         }
@@ -121,22 +119,6 @@ public final class MechanicGui {
                 Component.text("ROTI", NamedTextColor.AQUA),
                 List.of(Component.text("Tine rotile NOI pe cursor si click aici = schimb.",
                         NamedTextColor.GRAY))), "wheel_slot"));
-
-        List<Component> repairLore = new ArrayList<>();
-        repairLore.add(Component.text(String.format(Locale.ROOT, "Stare: %.0f/100", vehicle.health()),
-                vehicle.health() < 30.0D ? NamedTextColor.RED : NamedTextColor.GREEN));
-        if (!mechanic.damageEnabled()) {
-            repairLore.add(Component.text("Masinile nu se uzeaza momentan - nu ai ce repara.",
-                    NamedTextColor.DARK_GRAY));
-        }
-        mechanic.repairItems().forEach(entry -> repairLore.add(Component.text(
-                "Consuma: " + entry.getValue() + "x " + entry.getKey().name().toLowerCase(Locale.ROOT),
-                NamedTextColor.YELLOW)));
-        repairLore.add(Component.text("Fara bani - pretul il negociezi cu mecanicul (RP).",
-                NamedTextColor.DARK_GRAY));
-        inventory.setItem(REPAIR_SLOT, tag(make(Material.ANVIL,
-                Component.text("REPARA COMPLET", NamedTextColor.GREEN, TextDecoration.BOLD),
-                repairLore), "repair"));
 
         // Butonul EXTRA cerut de tine (in mod nu exista aici): paleta noastra de vopsea.
         inventory.setItem(PAINT_SLOT, tag(entry(

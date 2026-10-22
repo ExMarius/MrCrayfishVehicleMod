@@ -817,6 +817,19 @@ public final class VehicleManager {
             return;
         }
         Location location = new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F);
+        // Salvare (bug-ul „masina dispare la coborare", cric startY nesetat dupa
+        // restart): vehiculele ramase sub lume sau INGROPATE in stanca reapar la
+        // suprafata la primul restore, nu pierdute definitiv. Peșterile cu aer
+        // si parcarile normale nu sunt atinse (ambele blocuri trebuie sa fie opace).
+        org.bukkit.block.Block at = location.getBlock();
+        boolean buried = location.getY() < world.getMinHeight() + 2
+                || (at.getType().isOccluding()
+                        && at.getRelative(org.bukkit.block.BlockFace.UP).getType().isOccluding());
+        if (buried) {
+            location.setY(world.getHighestBlockYAt(location) + 1.0D);
+            plugin.getLogger().warning("[Salvare] Vehiculul " + stored.id()
+                    + " era sub lume/in stanca - a fost adus inapoi la suprafata.");
+        }
         LandVehicle vehicle = spawn(stored.id(), spec, location);
         vehicle.refreshGroundState();
         vehicle.setFuel(stored.fuel());
