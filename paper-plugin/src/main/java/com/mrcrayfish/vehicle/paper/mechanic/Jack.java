@@ -1,23 +1,21 @@
 package com.mrcrayfish.vehicle.paper.mechanic;
 
 import org.bukkit.Location;
-import org.bukkit.entity.Interaction;
-import org.bukkit.entity.ItemDisplay;
+import org.bukkit.block.Block;
 
 import java.util.UUID;
 
-/** Starea runtime a unui cric pus in lume: pozitia, rig-ul (baza + cap + interaction),
- *  animatia si vehiculul atasat. Echivalentul Paper pentru EntityJack + JackTileEntity. */
+/** Starea runtime a unui cric pus in lume: pozitia BLOCULUI solid (zero entitati -
+ * misiunea anti-lag), animatia si vehiculul atasat. Echivalentul Paper pentru
+ * EntityJack + JackTileEntity din mod. */
 final class Jack {
     enum State {
         DOWN, LIFTING, LIFTED, LOWERING
     }
 
     final UUID id;
+    /** Centrul blocului solid al cricului (x+0.5, y, z+0.5). */
     final Location location;
-    final ItemDisplay base;
-    final ItemDisplay head;
-    final Interaction interaction;
     State state = State.DOWN;
     /** 0.0 = jos, 1.0 = complet ridicat. */
     double progress;
@@ -25,12 +23,13 @@ final class Jack {
     /** Cine a pus cricul: pentru pickup (doar el sau un operator, si doar gol). */
     UUID ownerId;
 
-    Jack(UUID id, Location location, ItemDisplay base, ItemDisplay head, Interaction interaction) {
+    Jack(UUID id, Location location) {
         this.id = id;
         this.location = location;
-        this.base = base;
-        this.head = head;
-        this.interaction = interaction;
+    }
+
+    Block block() {
+        return location.getBlock();
     }
 
     boolean raised() {

@@ -428,21 +428,9 @@ public final class MechanicManager {
 
     /* ======================== routing entitati / pauza ======================== */
 
-    /** Click dreapta pe entitatile sistemului (interactions ale statiilor). */
+    /** Click dreapta pe entitatile sistemului (interactions ale statiilor inca
+     *  pe entitati: mixer/props; cricul si bancul sunt BLOCURI solide acum). */
     public boolean handleEntityInteraction(Player player, Entity entity, ItemStack held) {
-        Optional<Jack> jack = jacks.byInteraction(entity);
-        if (jack.isPresent()) {
-            if (MechanicItems.kindOf(held) == MechanicItems.Kind.WRENCH) {
-                return jacks.handleWrenchClick(player, jack.get());
-            }
-            if (held != null && !held.getType().isAir()) {
-                player.sendRichMessage("<gray>Foloseste <gold>cheia de mecanic</gold> pe cric.</gray>");
-                return true;
-            }
-            player.sendRichMessage("<gray>Cricul se actioneaza cu <gold>cheia de mecanic</gold> "
-                    + "(de la bancul de lucru).</gray>");
-            return true;
-        }
         if (mixers.handleClick(player, entity, held)) {
             return true;
         }
@@ -460,7 +448,23 @@ public final class MechanicManager {
         if (workstations.isStationBlock(block)) {
             return workstations.handleBlockClick(player, block, held);
         }
-        // JACK_BASE/JACK_HEAD: ciclul 2 (cricul devine si el bloc solid).
+        if (jacks.isJackBlock(block)) {
+            return jacks.handleBlockClick(player, block, held);
+        }
         return true;
+    }
+
+    /** Blocurile-statie se SPARG ca blocuri normale (cerinta user): si da itemul
+     *  inapoi. Exceptie: cricul ridicat/cu masina nu se poate sparge. */
+    public void handleStationBlockBreak(org.bukkit.event.block.BlockBreakEvent event) {
+        StationBlocks.Kind kind = StationBlocks.kindOf(event.getBlock());
+        if (kind == null) {
+            return;
+        }
+        switch (kind) {
+            case WORKSTATION -> workstations.handleBlockBreak(event);
+            case JACK_DOWN, JACK_UP ->
+                    jacks.handleBlockBreak(event, jacks.findByBlock(event.getBlock()).orElse(null));
+        }
     }
 }

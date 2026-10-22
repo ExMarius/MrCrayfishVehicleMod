@@ -305,6 +305,23 @@ public final class WorkstationManager {
         stations.remove(station.id);
     }
 
+    /** Spart manual ca un bloc normal (cerinta user): iti DA itemul inapoi si statia
+     *  iese din registru. Cheile emise de el sunt stranse la urmatorul lez (2 sec),
+     *  pentru ca bancul de origine a disparut. Dropul vanilla de note_block nu exista. */
+    public void handleBlockBreak(org.bukkit.event.block.BlockBreakEvent event) {
+        Optional<Station> found = findByBlock(event.getBlock());
+        event.setDropItems(false);
+        if (found.isEmpty()) {
+            return;
+        }
+        Station station = found.get();
+        stations.remove(station.id);
+        event.getBlock().getWorld().dropItemNaturally(
+                event.getBlock().getLocation().add(0.5D, 0.5D, 0.5D),
+                MechanicItems.workstation());
+        event.getPlayer().sendRichMessage("<gray>Banc strans - ai primit itemul inapoi.</gray>");
+    }
+
     public boolean handleJackRemoved(UUID jackId) {
         boolean changed = false;
         for (Station station : stations.values()) {

@@ -172,13 +172,14 @@ public final class MechanicListener implements Listener {
         }
     }
 
-    /** Blocurile-statie NU se sparg - se strang cu ghemuit + click dreapta (owner/op). */
+    /** Blocurile-statie se SPARG ca blocuri normale (cerinta user): iti dau itemul
+     *  inapoi. Exceptiile (cric ridicat/cu masina) le decide managerul. Pickup-ul
+     *  cu ghemuit + click dreapta ramane valabil. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onStationBlockBreak(org.bukkit.event.block.BlockBreakEvent event) {
         if (StationBlocks.kindOf(event.getBlock()) != null) {
-            event.setCancelled(true);
-            event.getPlayer().sendRichMessage(
-                    "<yellow>Statia se strange cu ghemuit + click dreapta (proprietar/op).</yellow>");
+            mechanic.handleStationBlockBreak(event);
+            mechanic.save();
         }
     }
 

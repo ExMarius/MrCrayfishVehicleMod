@@ -19,7 +19,7 @@ import org.bukkit.block.data.type.NoteBlock;
  * ambele variante powered pe acelasi model.
  */
 public final class StationBlocks {
-    public enum Kind { WORKSTATION, JACK_BASE, JACK_HEAD }
+    public enum Kind { WORKSTATION, JACK_DOWN, JACK_UP }
 
     /** Nota fixa comuna tuturor statiilor noastre (distinctiva si greu de nimicit accidental). */
     private static final int STATION_NOTE = 17;
@@ -36,8 +36,9 @@ public final class StationBlocks {
     }
 
     public static final BlockData WORKSTATION = noteData(Instrument.WITHER_SKELETON);
-    public static final BlockData JACK_BASE = noteData(Instrument.ZOMBIE);
-    public static final BlockData JACK_HEAD = noteData(Instrument.SKELETON);
+    /** Cricul ca in mod: UN bloc - jos = cap impaturit in model, sus = cap ridicat +0.5. */
+    public static final BlockData JACK_DOWN = noteData(Instrument.ZOMBIE);
+    public static final BlockData JACK_UP = noteData(Instrument.CREEPER);
 
     /** Identifica statiile noastre dupa instrument+nota, ignorand powered (puls redstone). */
     public static Kind kindOf(Block block) {
@@ -48,8 +49,8 @@ public final class StationBlocks {
         }
         return switch (noteBlock.getInstrument()) {
             case WITHER_SKELETON -> Kind.WORKSTATION;
-            case ZOMBIE -> Kind.JACK_BASE;
-            case SKELETON -> Kind.JACK_HEAD;
+            case ZOMBIE -> Kind.JACK_DOWN;
+            case CREEPER -> Kind.JACK_UP;
             default -> null;
         };
     }

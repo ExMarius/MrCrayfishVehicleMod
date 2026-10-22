@@ -1180,22 +1180,60 @@ def build(output: Path) -> tuple[Path, str]:
         # zero tick): suprascriem in pack cateva stari instrument+nota=17 cu
         # modelele statiilor. Interactiunea e anulata server-side (nu se retuneaza),
         # pling-ul de redstone se suprima prin NotePlayEvent, iar powered=true
-        # arata identic - cele doua variante powered duc la acelasi model.
-        for _solid, _src in (("mcv_workstation", "workstation"),
-                             ("mcv_jack", "jack"),
-                             ("mcv_jack_head", "jack_head")):
+        # arata identic - regulile multipart de mai jos ignora powered.
+        for _solid, _src in (("mcv_workstation", "workstation"),):
             mechanic_convert(ASSETS / f"models/block/{_src}.json",
                              namespace / f"models/block/{_solid}.json")
+        # Cricul = UN bloc cu model compozit bazie+cap, ca in mod: JOS (cap impaturit
+        # in bloc) vs SUS (cap ridicat cu 8 unitati = 0.5 blocuri, exact lift-height
+        # implicit; capul trade vizual peste spatiul blocului, ca modelul modului).
+        mechanic_convert(ASSETS / "models/block/jack.json",
+                         namespace / "models/block/mcv_jack_down.json")
+        mechanic_convert(ASSETS / "models/block/jack_head.json",
+                         namespace / "models/block/mcv_jack_head_parts.json")
+        _jack_down = json.loads((namespace / "models/block/mcv_jack_down.json").read_text(encoding="utf-8"))
+        _jack_head = json.loads((namespace / "models/block/mcv_jack_head_parts.json").read_text(encoding="utf-8"))
+
+        def _jack_composite(down: dict, head: dict, lift_units: float) -> dict:
+            merged = {"textures": {**head.get("textures", {}), **down.get("textures", {})},
+                      "elements": list(down.get("elements", []))}
+            for _el in head.get("elements", []):
+                _copy_el = json.loads(json.dumps(_el))
+                for _vec in ("from", "to"):
+                    if _vec in _copy_el:
+                        _copy_el[_vec][1] += lift_units
+                if "rotation" in _copy_el and "origin" in _copy_el["rotation"]:
+                    _copy_el["rotation"]["origin"][1] += lift_units
+                merged["elements"].append(_copy_el)
+            return merged
+        write_json(namespace / "models/block/mcv_jack_down.json",
+                   _jack_composite(_jack_down, _jack_head, 0.0))
+        write_json(namespace / "models/block/mcv_jack_up.json",
+                   _jack_composite(_jack_down, _jack_head, 8.0))
         _mc_namespace = namespace.parent / "minecraft"
-        _nb_variants = {"": {"model": "minecraft:block/note_block"}}
-        for _instr, _solid in (("wither_skeleton", "mcv_workstation"),
-                               ("zombie", "mcv_jack"),
-                               ("skeleton", "mcv_jack_head")):
-            for _powered in ("false", "true"):
-                _nb_variants[f"instrument={_instr},note=17,powered={_powered}"] = {
-                    "model": f"vehicle:block/{_solid}"}
+        # MULTIPART blindat (nu ne bazam pe fallback-ul "" din variants): TOATE
+        # combinatiile vanilla raman note_block normal; doar instrumentele noastre
+        # la nota 17 arata ca statiile. Acoperire 100% - niciun bloc nu dispare.
+        _STATION_INSTRUMENTS = ("wither_skeleton", "zombie", "creeper")
+        _VANILLA_INSTRUMENTS = ("harp", "basedrum", "snare", "hat", "bass", "flute",
+                                "bell", "guitar", "chime", "xylophone", "iron_xylophone",
+                                "cow_bell", "didgeridoo", "bit", "banjo", "pling",
+                                "dragon", "piglin", "custom_head", "skeleton")
+        _NOTES_EXCEPT_17 = "|".join(str(_n) for _n in range(25) if _n != 17)
+        _nb_multipart = [
+            {"when": {"instrument": "|".join(_VANILLA_INSTRUMENTS)},
+             "apply": {"model": "minecraft:block/note_block"}},
+            {"when": {"instrument": "|".join(_STATION_INSTRUMENTS), "note": _NOTES_EXCEPT_17},
+             "apply": {"model": "minecraft:block/note_block"}},
+            {"when": {"instrument": "wither_skeleton", "note": "17"},
+             "apply": {"model": "vehicle:block/mcv_workstation"}},
+            {"when": {"instrument": "zombie", "note": "17"},
+             "apply": {"model": "vehicle:block/mcv_jack_down"}},
+            {"when": {"instrument": "creeper", "note": "17"},
+             "apply": {"model": "vehicle:block/mcv_jack_up"}},
+        ]
         write_json(_mc_namespace / "blockstates/note_block.json",
-                   {"variants": _nb_variants})
+                   {"multipart": _nb_multipart})
         copy(ASSETS / "textures/item/wrench.png", namespace / "textures/item/wrench.png")
         copy(ASSETS / "textures/item/hammer.png", namespace / "textures/item/hammer.png")
         copy(ASSETS / "textures/item/key.png", namespace / "textures/item/key.png")
