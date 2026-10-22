@@ -41,6 +41,7 @@ public final class MechanicItems {
     private static final NamespacedKey WRENCH_STATION = new NamespacedKey("vehicle", "wrench_station");
     private static final NamespacedKey SPRAY_REMAINING = new NamespacedKey("vehicle", "spray_remaining");
     private static final NamespacedKey BUCKET_FLUID = new NamespacedKey("vehicle", "bucket_fluid");
+    private static final NamespacedKey HAMMER_USES = new NamespacedKey("vehicle", "hammer_uses");
 
     private MechanicItems() {
     }
