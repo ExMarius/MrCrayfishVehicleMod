@@ -1,0 +1,9 @@
+# WHEELS_PRESET - preset OFFLINE (nu se citeste la runtime); cheile sunt CASE-INSENSITIVE.
+# Sursa de adevar offline pentru tipurile de roti din plugin: model + pret de baza + grupa,
+# sincronizata cu paper-plugin/src/main/resources/config.yml -> mechanic.parts.prices (wheel_*)
+# si cu enum-ul WheelType (fizica 1-la-1 cu modul: road/dirt/snow + tractiune).
+# Coloane: cheie, eticheta_ro, model_pack, pret_baza, grupa_pret
+key,label,model,pret_baza,grupa
+standard,Roti standard,standard_wheel,1500,ieftin
+sports,Roti sport,sports_wheel,6000,premium
+off_road,Roti off-road,off_road_wheel,4500,mediu

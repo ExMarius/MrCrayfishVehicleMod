@@ -84,6 +84,12 @@ public final class MechanicListener implements Listener {
                 mechanic.props().place("fluid_pipe", face, yaw);
                 consumeIfNotCreative(held, creative);
             }
+            case FLUID_MIXER -> {
+                event.setCancelled(true);
+                if (mechanic.mixers().place(player, face, yaw)) {
+                    consumeIfNotCreative(held, creative);
+                }
+            }
             case VEHICLE_CRATE -> {
                 event.setCancelled(true);
                 placeCrate(player, held, face, yaw);

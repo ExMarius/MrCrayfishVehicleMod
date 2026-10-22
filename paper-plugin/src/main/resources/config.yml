@@ -93,6 +93,13 @@ mechanic:
   spray-capacity: 20
   # Cat toarna o galetusa cu fluid in rezervor (mB echivalent).
   fluid-bucket-amount: 1000
+  # Mixerul de fluide (FluidMixerBlock din mod): Blaze Juice + Ender Sap = Fuellium.
+  # input-amount + input-amount (cate o galeata din fiecare) = output-amount Fuellium.
+  fluid-mixer:
+    input-amount: 1000
+    output-amount: 1000
+    input-capacity: 5000
+    output-capacity: 5000
   # Reparatiile cer masina ridicata pe cric (recomandat pentre RP de service).
   require-lift: true
   # Itemele consumate la o reparatie completa (format MATERIAL:cantitate).

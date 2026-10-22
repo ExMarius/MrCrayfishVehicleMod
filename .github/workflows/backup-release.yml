@@ -35,7 +35,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v5
 
       - name: Test resource-pack build and server synchronization
-        run: python3 -m unittest tools.test_build_resource_pack tools.test_configure_server_resource_pack
+        run: python3 -m unittest tools.test_build_resource_pack tools.test_configure_server_resource_pack tools.test_wheels_preset
 
       - name: Build JAR and mandatory resource pack
         run: ./paper-plugin/gradlew -p paper-plugin clean build resourcePack

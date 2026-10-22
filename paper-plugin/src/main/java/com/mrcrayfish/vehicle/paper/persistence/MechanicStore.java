@@ -26,6 +26,11 @@ public final class MechanicStore {
                                 UUID jackId, UUID ownerId, List<UUID> recipients) {
     }
 
+    /** Mixer de fluide pus jos: coordonate + proprietar + stocurile celor 3 fluide. */
+    public record StoredMixer(UUID id, UUID worldId, double x, double y, double z, float yaw,
+                              UUID ownerId, double blazeSap, double enderSap, double fuelium) {
+    }
+
     private final JavaPlugin plugin;
     private final File file;
 
@@ -99,6 +104,33 @@ public final class MechanicStore {
         return stations;
     }
 
+    public List<StoredMixer> loadMixers() {
+        List<StoredMixer> mixers = new ArrayList<>();
+        ConfigurationSection root = section("mixers");
+        if (root == null) {
+            return mixers;
+        }
+        for (String key : root.getKeys(false)) {
+            try {
+                ConfigurationSection entry = root.getConfigurationSection(key);
+                if (entry == null) {
+                    continue;
+                }
+                mixers.add(new StoredMixer(
+                        UUID.fromString(key),
+                        UUID.fromString(entry.getString("world")),
+                        entry.getDouble("x"), entry.getDouble("y"), entry.getDouble("z"),
+                        (float) entry.getDouble("yaw"),
+                        uuidOrNull(entry.getString("owner")),
+                        entry.getDouble("blaze-sap"), entry.getDouble("ender-sap"),
+                        entry.getDouble("fuelium")));
+            } catch (RuntimeException exception) {
+                plugin.getLogger().log(Level.WARNING, "Skipping invalid mixer entry " + key, exception);
+            }
+        }
+        return mixers;
+    }
+
     public void saveAll(Iterable<? extends Object> mixed) {
         YamlConfiguration yaml = new YamlConfiguration();
         for (Object entry : mixed) {
@@ -129,6 +161,13 @@ public final class MechanicStore {
                     }
                     yaml.set(stationPath + ".recipients", raw);
                 }
+            } else if (entry instanceof StoredMixer mixer) {
+                String path = "mixers." + mixer.id();
+                writeStation(yaml, path, mixer.worldId(), mixer.x(), mixer.y(), mixer.z(), mixer.yaw());
+                yaml.set(path + ".owner", mixer.ownerId() == null ? null : mixer.ownerId().toString());
+                yaml.set(path + ".blaze-sap", mixer.blazeSap());
+                yaml.set(path + ".ender-sap", mixer.enderSap());
+                yaml.set(path + ".fuelium", mixer.fuelium());
             }
         }
         try {

@@ -27,7 +27,7 @@ public final class MechanicItems {
     public enum Kind {
         ENGINE, WHEEL, WRENCH, HAMMER, KEY, SPRAY_CAN,
         JACK, WORKSTATION, TRAFFIC_CONE, BOOST_PAD, FLUID_PIPE, VEHICLE_CRATE,
-        PANEL, FLUID_BUCKET
+        PANEL, FLUID_BUCKET, FLUID_MIXER
     }
 
     private static final NamespacedKey KIND = new NamespacedKey("vehicle", "mechanic_kind");
@@ -418,6 +418,15 @@ public final class MechanicItems {
     }
 
     /* ================================ plasabile ============================= */
+
+    /** Mixerul de fluide (FluidMixerBlock din mod): Blaze Juice + Ender Sap = Fuellium. */
+    public static ItemStack fluidMixer() {
+        ItemStack item = base(Kind.FLUID_MIXER, "fluid_mixer");
+        finish(item, Component.text("Mixer de fluide", NamedTextColor.GOLD), List.of(
+                Component.text("Blaze Juice + Ender Sap = Fuellium.", NamedTextColor.GRAY),
+                Component.text("Aseaza-l pe fata de SUS a unui bloc.", NamedTextColor.GRAY)));
+        return item;
+    }
 
     public static ItemStack jack() {
         ItemStack item = base(Kind.JACK, "jack");

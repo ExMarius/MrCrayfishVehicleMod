@@ -122,6 +122,7 @@ public final class CreativeGui {
                 inventory.setItem(11, give(GasPumpItem.create()));
                 inventory.setItem(13, give(MechanicItems.jack()));
                 inventory.setItem(15, give(MechanicItems.workstation()));
+                inventory.setItem(29, give(MechanicItems.fluidMixer()));
                 inventory.setItem(31, give(MechanicItems.trafficCone()));
                 inventory.setItem(33, give(MechanicItems.boostPad()));
                 inventory.setItem(35, give(MechanicItems.fluidPipe()));

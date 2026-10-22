@@ -45,6 +45,7 @@ public final class MechanicManager {
     private final JackManager jacks;
     private final WorkstationManager workstations;
     private final PropManager props;
+    private final FluidMixerManager mixers;
     private final MechanicGui mechanicGui;
     private BukkitTask saveTask;
 
@@ -56,6 +57,7 @@ public final class MechanicManager {
         this.workstations = new WorkstationManager(plugin, store, jacks);
         this.jacks.setRemovedHook(this.workstations::handleJackRemoved);
         this.props = new PropManager(plugin, vehicles, store);
+        this.mixers = new FluidMixerManager(plugin, store);
         this.mechanicGui = new MechanicGui(this);
     }
 
@@ -63,6 +65,7 @@ public final class MechanicManager {
         jacks.start();
         workstations.start();
         props.start();
+        mixers.start();
         long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
         saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
     }
@@ -75,6 +78,7 @@ public final class MechanicManager {
         props.stop();
         workstations.stop();
         jacks.stop();
+        mixers.stop();
     }
 
     public void save() {
@@ -82,6 +86,7 @@ public final class MechanicManager {
         mixed.addAll(jacks.snapshot());
         mixed.addAll(workstations.snapshot());
         mixed.addAll(props.snapshot());
+        mixed.addAll(mixers.snapshot());
         store.saveAll(mixed);
     }
 
@@ -95,6 +100,10 @@ public final class MechanicManager {
 
     public PropManager props() {
         return props;
+    }
+
+    public FluidMixerManager mixers() {
+        return mixers;
     }
 
     public MechanicGui gui() {
@@ -418,6 +427,9 @@ public final class MechanicManager {
             return true;
         }
         if (workstations.handleClick(player, entity, held)) {
+            return true;
+        }
+        if (mixers.handleClick(player, entity, held)) {
             return true;
         }
         if (props.byEntityPublic(entity).isPresent()) {
