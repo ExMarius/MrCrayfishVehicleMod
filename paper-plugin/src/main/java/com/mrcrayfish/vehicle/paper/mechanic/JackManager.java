@@ -216,10 +216,13 @@ public final class JackManager {
 
     private static ItemStack model(String name) {
         // PAPER + item_model nu mai randeaza pe server (regresie live). LEATHER_HORSE_ARMOR
-        // e calea dovedita-vizibila; fara culoare => default-ul definitiei (aspect identic).
+        // + alb explicit (dyed_color pe stack => tint opac pe orice client).
         ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setColor(org.bukkit.Color.fromRGB(0xF9FFFE));
+        }
         item.setItemMeta(meta);
         return item;
     }

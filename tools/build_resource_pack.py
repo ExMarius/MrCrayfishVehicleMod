@@ -1220,7 +1220,7 @@ def build(output: Path) -> tuple[Path, str]:
                     "model": {
                         "type": "minecraft:model",
                         "model": f"vehicle:item/{_body_name}",
-                        "tints": [{"type": "minecraft:dye", "default": 16383998}],
+                        "tints": [{"type": "minecraft:dye", "default": -1}],
                     }
                 })
         # Vopsea pe PARTILE caroseriei (capota, usi, acoperis, aripi...): modul
@@ -1275,7 +1275,7 @@ def build(output: Path) -> tuple[Path, str]:
                     "model": {
                         "type": "minecraft:model",
                         "model": f"vehicle:item/{_part_name}",
-                        "tints": [{"type": "minecraft:dye", "default": 16383998}],
+                        "tints": [{"type": "minecraft:dye", "default": -1}],
                     }
                 })
         # Sunetele originale ale jack-ului si spray can-ului din mod.

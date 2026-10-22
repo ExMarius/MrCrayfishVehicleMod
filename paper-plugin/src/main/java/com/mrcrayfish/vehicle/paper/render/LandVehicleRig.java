@@ -278,11 +278,16 @@ public final class LandVehicleRig {
         // Regresie dovedita live: stack-ul PAPER cu item_model nu mai randeaza pe
         // acest server (vehiculele nevopsite erau invizibile; vopsitele - carefolosesc
         // LEATHER_HORSE_ARMOR via coloredStack - apareau). Unificam pe materialul
-        // dovedit-vizibil: fara culoare setata clientul aplica default-ul definitiei
-        // item (~alb 0xF9FFFE), deci aspectul ramane exact cel din backup.
+        // dovedit-vizibil. Culoarea ALBA explicita pune dyed_color pe stack: clientul
+        // tine din stack (calea dovedita la vopsire) si nu mai cade pe default-ul
+        // definitiei, pe care clientii noi il interpreteaza ARGB cu alpha 0 (fetele
+        // cu tintindex deveneau transparente - "gol la interior" la roti, body invizibil).
         ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setColor(org.bukkit.Color.fromRGB(0xF9FFFE));
+        }
         item.setItemMeta(meta);
         return item;
     }
