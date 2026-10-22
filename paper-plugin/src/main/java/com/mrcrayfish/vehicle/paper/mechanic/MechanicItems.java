@@ -474,7 +474,7 @@ public final class MechanicItems {
     }
 
     public static ItemStack vehicleCrate(String specId, String displayName, String payload) {
-        ItemStack item = base(Kind.VEHICLE_CRATE, "vehicle_icon/" + specId);
+        ItemStack item = base(Kind.VEHICLE_CRATE, "vehicle_crate");
         ItemMeta meta = item.getItemMeta();
         meta.getPersistentDataContainer().set(CRATE_PAYLOAD, PersistentDataType.STRING, payload);
         item.setItemMeta(meta);
