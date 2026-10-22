@@ -275,7 +275,12 @@ public final class LandVehicleRig {
     }
 
     private static ItemStack model(String name) {
-        ItemStack item = new ItemStack(Material.PAPER);
+        // Regresie dovedita live: stack-ul PAPER cu item_model nu mai randeaza pe
+        // acest server (vehiculele nevopsite erau invizibile; vopsitele - carefolosesc
+        // LEATHER_HORSE_ARMOR via coloredStack - apareau). Unificam pe materialul
+        // dovedit-vizibil: fara culoare setata clientul aplica default-ul definitiei
+        // item (~alb 0xF9FFFE), deci aspectul ramane exact cel din backup.
+        ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
         item.setItemMeta(meta);

@@ -167,7 +167,10 @@ public final class TrailerRig {
     }
 
     private static ItemStack model(String name) {
-        ItemStack item = new ItemStack(Material.PAPER);
+        // PAPER + item_model nu mai randeaza pe server (regresie live - vehicule
+        // nevopsite invizibile). LEATHER_HORSE_ARMOR fara culoare = aceeasi cale
+        // dovedita ca in coloredStack; default-ul definitiei pastreaza albul din backup.
+        ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
         item.setItemMeta(meta);

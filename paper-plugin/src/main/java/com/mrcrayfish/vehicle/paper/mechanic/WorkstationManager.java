@@ -187,7 +187,9 @@ public final class WorkstationManager {
         spawnAt.setYaw(snapped);
         spawnAt.setPitch(0.0F);
         ItemDisplay display = world.spawn(spawnAt, ItemDisplay.class, spawned -> {
-            ItemStack stack = new ItemStack(Material.PAPER);
+            // LEATHER_HORSE_ARMOR in loc de PAPER: PAPER + item_model nu mai randeaza
+            // pe server (regresie live); fara culoare => default-ul definitiei.
+            ItemStack stack = new ItemStack(Material.LEATHER_HORSE_ARMOR);
             ItemMeta meta = stack.getItemMeta();
             meta.setItemModel(new NamespacedKey("vehicle", "mechanic_workstation"));
             stack.setItemMeta(meta);

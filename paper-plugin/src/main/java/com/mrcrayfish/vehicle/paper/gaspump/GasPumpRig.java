@@ -306,7 +306,9 @@ public final class GasPumpRig {
     }
 
     private static ItemStack model(String name) {
-        ItemStack item = new ItemStack(Material.PAPER);
+        // PAPER + item_model nu mai randeaza pe server (regresie live). Unificat cu
+        // LandVehicleRig+coloredStack: LEATHER_HORSE_ARMOR, default alb din definitie.
+        ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
         item.setItemMeta(meta);

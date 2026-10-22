@@ -215,7 +215,9 @@ public final class JackManager {
     }
 
     private static ItemStack model(String name) {
-        ItemStack item = new ItemStack(Material.PAPER);
+        // PAPER + item_model nu mai randeaza pe server (regresie live). LEATHER_HORSE_ARMOR
+        // e calea dovedita-vizibila; fara culoare => default-ul definitiei (aspect identic).
+        ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
         item.setItemMeta(meta);
