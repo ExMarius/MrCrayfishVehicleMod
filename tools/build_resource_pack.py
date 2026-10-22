@@ -1596,7 +1596,8 @@ MODELUNIT = 1.0 / 16.0
 
 
 def _parse_java_args(text: str, start: int) -> tuple:
-    """Top-level comma-separated args of the call whose '(' is right before `start`."""
+    """Top-level comma-separated args of the call whose '(' is right before `start`.
+    Keeps NESTED parentheses intact (we need `new Point(...)` contents)."""
     depth = 1
     i = start
     args, cur = [], []
@@ -1604,12 +1605,14 @@ def _parse_java_args(text: str, start: int) -> tuple:
         ch = text[i]
         if ch == '(':
             depth += 1
+            cur.append(ch)
         elif ch == ')':
             depth -= 1
             if depth == 0:
                 if cur:
                     args.append(''.join(cur))
                 return [a.strip() for a in args], i + 1
+            cur.append(ch)
         elif ch == ',' and depth == 1:
             args.append(''.join(cur))
             cur = []
@@ -1633,14 +1636,53 @@ def _parse_float_args(text: str, start: int) -> tuple:
     return out, end
 
 
-def parse_preview_wheels() -> dict:
-    """Per-vehicle [(side, front, ox, oy, oz, sx, sy, sz, bs, ax, wo)] from every
-    wheel(...) helper call in LandVehicleSpec.java, keyed by the spec id declared
-    above them (same source of truth as the live world rig)."""
+def _eval_num(expr: str, mu: float) -> float:
+    """Evaluate a pure-arithmetic Java constant expression (MODEL_UNIT/RIDER_
+    HEIGHT_CORRECTION known); rejects anything with identifiers/method calls."""
+    import re as _re
+    text = expr.strip().replace('RIDER_HEIGHT_CORRECTION', repr(4.0 * mu)) \
+        .replace('MODEL_UNIT', repr(mu))
+    text = _re.sub(r'([0-9.])F\b', r'\1', text)
+    if not _re.fullmatch(r'[0-9eE._+\-*/() ]+', text):
+        raise ValueError(f'unsupported expression: {expr!r}')
+    return float(eval(text, {'__builtins__': {}}))
+
+
+def _corrections(text: str) -> dict:
+    """modelScaleCorrection values per model (case lists in the switch)."""
+    import re as _re
+    out = {}
+    for match in _re.finditer(
+            r'case\s+((?:\s*"[^"]+"\s*,)*\s*"[^"]+")\s*->\s*([0-9.]+)F', text):
+        for name in _re.findall(r'"([^"]+)"', match.group(1)):
+            out[name] = float(match.group(2))
+    return out
+
+
+def parse_preview_spec() -> tuple:
+    """Per-vehicle preview data from LandVehicleSpec.java - the SAME source of
+    truth as the live world rig:
+      wheels: [(side, front, ox, oy, oz, sx, sy, sz, bodyScale, ax, wheelOffset)]
+      parts:  [{model, center(world), scale, rot}] - engines/steering/handles,
+              i.e. every literal `new Part("model", new Point(...), s, rx, ry, rz)`
+              with pure numeric expressions (motorcycle/spec-field refs skipped).
+    Returns (specs, corrections)."""
     import re as _re
     text = (ROOT / 'paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/vehicle/'
             'LandVehicleSpec.java').read_text(encoding='utf-8')
-    result: dict = {}
+    decls = [(m.start(), m.group(1))
+             for m in _re.finditer(r'new LandVehicleSpec\(\s*"([a-z_0-9]+)"', text)]
+
+    def owner(pos: int):
+        vid = None
+        for start, name in decls:
+            if start < pos:
+                vid = name
+            else:
+                break
+        return vid
+
+    specs: dict = {}
     for match in _re.finditer(r'\bwheel\(', text):
         try:
             values, _ = _parse_float_args(text, match.end())
@@ -1648,13 +1690,32 @@ def parse_preview_wheels() -> dict:
             continue  # helper DEFINITION (typed params), not a data call
         if len(values) != 11:
             continue
-        spec_id = None
-        for decl in _re.finditer(r'new LandVehicleSpec\(\s*"([a-z_0-9]+)"', text[:match.start()]):
-            spec_id = decl.group(1)
-        if spec_id is None:
+        vid = owner(match.start())
+        if vid is not None:
+            specs.setdefault(vid, {'wheels': [], 'parts': []})['wheels'].append(values)
+    for match in _re.finditer(r'\bnew Part\(', text):
+        try:
+            args, _ = _parse_java_args(text, match.end())
+        except RuntimeError:
             continue
-        result.setdefault(spec_id, []).append(values)
-    return result
+        if len(args) < 6 or not args[0].strip().startswith('"') or 'new Point(' not in args[1]:
+            continue
+        try:
+            coords, _ = _parse_java_args(
+                args[1], args[1].index('new Point(') + len('new Point('))
+            center = tuple(_eval_num(c, MODELUNIT) for c in coords)
+            scale = _eval_num(args[2], MODELUNIT)
+            rot = tuple(_eval_num(a, MODELUNIT) for a in args[3:6])
+        except (ValueError, RuntimeError):
+            continue  # references spec fields / motorcycle helpers - skip gracefully
+        if len(center) != 3 or len(rot) != 3:
+            continue
+        vid = owner(match.start())
+        if vid is not None:
+            specs.setdefault(vid, {'wheels': [], 'parts': []})['parts'].append(
+                {'model': args[0].strip().strip('"'), 'center': center,
+                 'scale': scale, 'rot': rot})
+    return specs, _corrections(text)
 
 
 def _bbox(elements: list) -> tuple:
@@ -1688,61 +1749,148 @@ def _transformed_element(element: dict, scale: tuple, offset: tuple, mirrored: b
     return out
 
 
-def compose_preview_model(namespace: Path, vehicle_id: str, wheels: list) -> dict:
-    """Body (already-converted pack model: textures rezolvate) + roata standard
-    scalata/pozitionata per LandVehicleSpec, aliniata sub caroserie prin centrul
-    grupului de roti pe centrul bbox-ului caroseriei (aceeasi translatie globala
-    ca in rig; distantele relative sunt EXACT cele din spec)."""
+def _flip_element_y(element: dict) -> dict:
+    """Rotate an element 180° around Y about the model origin (0,0,0) - the exact
+    rotationY=180 the mod renderer applies to most engines."""
+    out = json.loads(json.dumps(element))
+    for corner in ('from', 'to'):
+        out[corner][0] = -float(element[corner][0])
+        out[corner][2] = -float(element[corner][2])
+    if out['from'][0] > out['to'][0]:
+        out['from'][0], out['to'][0] = out['to'][0], out['from'][0]
+    if out['from'][2] > out['to'][2]:
+        out['from'][2], out['to'][2] = out['to'][2], out['from'][2]
+    return out
+
+
+def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
+                          corrections: dict) -> dict:
+    """FULL 1:1 montaj ca fereastra din mod: caroserie + roti (formula
+    LandVehicleSpec.wheel, oglinda dreapta, grup aliniat sub caroserie) + TOATE
+    piesele (motor/volan/manere) pozitionate cu aceeasi matematica ca rig-ul live:
+    distanta piesa->grupul de roti din lume e pastrata EXACT; maparea in pixeli
+    model foloseste bodyScale si modelScaleCorrection. Ancorare la colt ca place()
+    din rig: punctul (0,0,0) al piesei = part.center()."""
     body = json.loads((namespace / f'models/item/{vehicle_id}_body.json').read_text(encoding='utf-8'))
     wheel = json.loads((namespace / 'models/item/standard_wheel.json').read_text(encoding='utf-8'))
-    elements = list(body.get('elements', []))
     textures = dict(body.get('textures', {}))
-    if not elements or not wheels:
+    elements = list(body.get('elements', []))
+    wheels = spec.get('wheels', [])
+    if not elements:
         return {'textures': textures, 'elements': elements}
-    (lo_x, _, lo_z), (hi_x, _, hi_z) = _bbox(elements)
-    raw = [(side * ox, wo + oy, oz) for side, _f, ox, oy, oz, sx, sy, sz, _bs, _ax, wo in wheels]
-    mean_x = sum(p[0] for p in raw) / len(raw)
-    mean_z = sum(p[2] for p in raw) / len(raw)
-    fit_x = (lo_x + hi_x) / 2.0 - mean_x
-    fit_z = (lo_z + hi_z) / 2.0 - mean_z
-    # texturile rotii se muta sub chei prefixate ca sa nu se ciocneasca de ale caroseriei
-    wheel_tex = dict(wheel.get('textures', {}))
-    remap = {}
-    for key, value in wheel_tex.items():
-        new_key = f'w_{key}'
-        remap[key] = new_key
-        textures.setdefault(new_key, value)
-    for (side, _f, ox, oy, oz, sx, sy, sz, _bs, _ax, wo) in wheels:
-        centre = (side * ox + fit_x, wo + oy, oz + fit_z)
-        for element in wheel.get('elements', []):
-            transformed = _transformed_element(element, (sx, sy, sz),
-                                               (centre[0] - 8.0, centre[1] - 8.0, centre[2] - 8.0),
-                                               side > 0)
-            for face in transformed.get('faces', {}).values():
-                tex = face.get('texture', '')
-                if tex.startswith('#'):
-                    face['texture'] = '#' + remap.get(tex[1:], tex[1:])
-            elements.append(transformed)
+
+    tex_counter = [0]
+
+    def merge_model(model: dict) -> dict:
+        prefix = f'm{tex_counter[0]}_'
+        tex_counter[0] += 1
+        remap = {}
+        for key, value in model.get('textures', {}).items():
+            new_key = prefix + key
+            remap[key] = new_key
+            textures.setdefault(new_key, value)
+        return remap
+
+    def remap_faces(element: dict, remap: dict) -> None:
+        for face in element.get('faces', {}).values():
+            tex = face.get('texture', '')
+            if tex.startswith('#'):
+                face['texture'] = '#' + remap.get(tex[1:], tex[1:])
+
+    menu_centers: list = []
+    world_centers: list = []
+    if wheels:
+        (lo_x, _ly, lo_z), (hi_x, _hy, hi_z) = _bbox(elements)
+        for side, _f, ox, oy, oz, _sx, _sy, _sz, bs, _ax, wo in wheels:
+            world_centers.append((side * ox * MODELUNIT * bs,
+                                  (wo + oy) * MODELUNIT * bs,
+                                  oz * MODELUNIT * bs))
+        raw = [(side * ox, wo + oy, oz) for side, _f, ox, oy, oz, *_rest in wheels]
+        fit_x = (lo_x + hi_x) / 2.0 - sum(p[0] for p in raw) / len(raw)
+        fit_z = (lo_z + hi_z) / 2.0 - sum(p[2] for p in raw) / len(raw)
+        wheel_remap = merge_model(wheel)
+        for side, _f, ox, oy, oz, sx, sy, sz, _bs, _ax, wo in wheels:
+            centre = (side * ox + fit_x, wo + oy, oz + fit_z)
+            menu_centers.append(centre)
+            for element in wheel.get('elements', []):
+                transformed = _transformed_element(
+                    element, (sx, sy, sz),
+                    (centre[0] - 8.0, centre[1] - 8.0, centre[2] - 8.0), side > 0)
+                remap_faces(transformed, wheel_remap)
+                elements.append(transformed)
+
+    if wheels and menu_centers:
+        body_scale = float(wheels[0][8])
+        correction = corrections.get(f'{vehicle_id}_body', 1.0)
+        world_anchor = tuple(sum(c[i] for c in world_centers) / len(world_centers)
+                             for i in range(3))
+        menu_anchor = tuple(sum(c[i] for c in menu_centers) / len(menu_centers)
+                            for i in range(3))
+        vanilla_rotations = {-45.0, -22.5, 0.0, 22.5, 45.0}
+        for part in spec.get('parts', []):
+            part_path = namespace / f"models/item/{part['model']}.json"
+            if not part_path.exists():
+                continue
+            part_model = json.loads(part_path.read_text(encoding='utf-8'))
+            if not part_model.get('elements'):
+                continue
+            position = [menu_anchor[i]
+                        + (part['center'][i] - world_anchor[i])
+                        / (MODELUNIT * body_scale * correction)
+                        for i in range(3)]
+            p_scale = part['scale'] / (body_scale * correction)
+            raw_rx, raw_ry, raw_rz = (round(a % 360.0, 3) for a in part['rot'])
+            flip_y180 = raw_ry == 180.0
+            rx = 0.0 if raw_rx == 180.0 else raw_rx
+            ry = 0.0 if raw_ry == 180.0 else raw_ry
+            rz = 0.0 if raw_rz == 180.0 else raw_rz
+            axes = [a for a in (rx, ry, rz) if a != 0.0]
+            element_rotation = None
+            if len(axes) == 1:
+                axis_name = 'x' if rx != 0.0 else ('y' if ry != 0.0 else 'z')
+                angle = axes[0] if axes[0] <= 180.0 else axes[0] - 360.0
+                if angle in vanilla_rotations:
+                    element_rotation = {'origin': [round(v, 3) for v in position],
+                                        'axis': axis_name, 'angle': angle, 'rescale': False}
+            part_remap = merge_model(part_model)
+            for element in part_model.get('elements', []):
+                if flip_y180:
+                    element = _flip_element_y(element)
+                flat = {
+                    'from': [round(position[0] + float(element['from'][0]) * p_scale, 3),
+                             round(position[1] + float(element['from'][1]) * p_scale, 3),
+                             round(position[2] + float(element['from'][2]) * p_scale, 3)],
+                    'to': [round(position[0] + float(element['to'][0]) * p_scale, 3),
+                           round(position[1] + float(element['to'][1]) * p_scale, 3),
+                           round(position[2] + float(element['to'][2]) * p_scale, 3)],
+                    'faces': element['faces'],
+                }
+                if element_rotation is not None:
+                    flat['rotation'] = element_rotation
+                remap_faces(flat, part_remap)
+                elements.append(flat)
     return {'textures': textures, 'elements': elements}
 
 
 def emit_vehicle_previews(namespace: Path) -> None:
     """8 rotation frames per vehicle for the jack-service GUI window (server-side
-    animation), composed of the REAL mod models: body + wheels."""
+    animation), FULL montaj ca in mod: body + wheels + motor + volan/manere."""
     try:
-        wheels_by_id = parse_preview_wheels()
+        specs, corrections = parse_preview_spec()
     except (OSError, RuntimeError) as exc:
         print(f'[preview] LandVehicleSpec parse skipped: {exc}')
-        wheels_by_id = {}
+        specs, corrections = {}, {}
     frames = 8
     for body_path in sorted((namespace / 'models/item').glob('*_body.json')):
         vehicle_id = body_path.stem.removesuffix('_body')
-        composed = compose_preview_model(namespace, vehicle_id, wheels_by_id.get(vehicle_id, []))
+        composed = compose_preview_model(
+            namespace, vehicle_id, specs.get(vehicle_id, {'wheels': [], 'parts': []}),
+            corrections)
         elements = composed.get('elements', [])
         if not elements:
             continue
-        # Vanilla refuza elementele in afara [-16, 32] (model intreg = missing):
-        # micsoram uniform in jurul (8,8,8) si recentram pana incapem in cubul legal.
+        # Vanilla refuza elementele in afara [-16, 32]: micsoram uniform in jurul
+        # (8,8,8) si recentram pana incapem in cubul legal.
         lo, hi = _bbox(elements)
         biggest = max(hi[i] - lo[i] for i in range(3))
         if biggest > 47.9:

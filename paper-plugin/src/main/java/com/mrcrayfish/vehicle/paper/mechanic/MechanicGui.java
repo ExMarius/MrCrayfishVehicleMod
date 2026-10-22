@@ -73,7 +73,7 @@ public final class MechanicGui {
     public static final int ENGINE_SLOT = 0;   // pozitia exacta din mod (8,17)
     public static final int WHEEL_SLOT = 9;    // pozitia exacta din mod (8,35)
     public static final int INFO_SLOT = 13;    // centrul ferestrei desenate de mod
-    public static final int PAINT_SLOT = 40;   // buton extra, banda de sub fereastra
+    public static final int PAINT_SLOT = 18;   // spray-ul: SUB slotul de roti (8,53), cerut explicit
     /** Fontul-backdrop din pack: deseneaza textura edit_vehicle.png in spatele meniului. */
     private static final net.kyori.adventure.key.Key GUI_FONT =
             net.kyori.adventure.key.Key.key("vehicle", "jack_gui");
