@@ -140,7 +140,7 @@ public final class MechanicGui {
             inventory.setItem(WHEEL_SLOT, tag(make(Material.BARRIER,
                     Component.text("FARA ROTI", NamedTextColor.RED),
                     List.of(Component.text("Acest vehicul nu primeste roti.",
-                            NamedTextColor.GRAY))), "none")));
+                            NamedTextColor.GRAY))), "none"));
         } else if (!vehicle.wheelsInstalled()) {
             // Slot functional dar GOL - rotile au fost scoase (masina nu porneste
             // si nu poate fi coborata de pe cric pana la re-montare).
@@ -149,7 +149,7 @@ public final class MechanicGui {
                     List.of(Component.text("Vehiculul ramane fara roti montate.",
                             NamedTextColor.DARK_GRAY),
                             Component.text("Tine rotile pe cursor si click aici = instalare.",
-                            NamedTextColor.GRAY))), "wheel_slot")));
+                            NamedTextColor.GRAY))), "wheel_slot"));
         } else {
             inventory.setItem(WHEEL_SLOT, tag(entry(
                     MechanicItems.wheel(vehicle.wheelType()),
@@ -157,7 +157,7 @@ public final class MechanicGui {
                     List.of(Component.text("Tine rotile NOI pe cursor si click aici = schimb.",
                             NamedTextColor.GRAY),
                             Component.text("Cursor gol + click = scoti rotile (dispar si de pe model).",
-                            NamedTextColor.DARK_GRAY))), "wheel_slot")));
+                            NamedTextColor.DARK_GRAY))), "wheel_slot"));
         }
 
         // Butonul EXTRA cerut de tine (in mod nu exista aici): paleta noastra de vopsea.
