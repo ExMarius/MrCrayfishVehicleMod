@@ -119,7 +119,8 @@ public final class JackManager {
                             ? LandVehicle.JackState.LIFTED : LandVehicle.JackState.NONE);
                     found.setJackId(jack.id);
                     if (stored.raised()) {
-                        found.setLiftedY(jack.location.getY() + REST_OFFSET + liftHeight());
+                        found.setLiftedY(jack.location.getY() + REST_OFFSET + liftHeight()
+                                + LIFT_VISUAL_CORRECTION);
                     } else {
                         found.setLiftedY(jack.location.getY() + REST_OFFSET);
                     }
@@ -342,6 +343,13 @@ public final class JackManager {
                             "<red>Nu poți coborî mașina cât timp cineva se află în ea!</red>");
                     return true;
                 }
+                if (target.isPresent() && !target.get().wheelsInstalled()) {
+                    // Brief: fara roti NU se coboara de pe cric - rotile montate
+                    // sunt necesare si pentru rulare, si pentru coborâre.
+                    player.sendRichMessage(
+                            "<red>Mașina nu are roți montate! Montează-le înapoi înainte de coborâre.</red>");
+                    return true;
+                }
                 // Plasa de siguranta: startY corupt/absent (ex. save vechi) nu are
                 // voie sa trimita masina sub lume - revenim la repausul cricului.
                 if (!Double.isFinite(jack.startY) || jack.startY < jack.location.getY() - 0.05D
@@ -368,6 +376,9 @@ public final class JackManager {
      *  In mod vehiculul stationeaza ca pasager la ~11px deasupra blocului; ale noastre
      *  0.5 = exact suprafata superioara a elevatorului jos (nu intra in model). */
     private static final double REST_OFFSET = 0.5D;
+    /** Corectie din playtesting (brief 2026-10-24): ridicarea era cu 2 model-pixeli
+     *  prea SUS (anvelopele pluteau deasupra capului cricului) => -0.125 blocuri. */
+    private static final double LIFT_VISUAL_CORRECTION = -2.0D / 16.0D;
 
     private void tick() {
         int ticks = liftTicks();
@@ -463,7 +474,8 @@ public final class JackManager {
                     ? StationBlocks.JACK_UP : StationBlocks.JACK_DOWN, false);
         }
         linked(jack).ifPresent(vehicle ->
-                vehicle.setLiftedY(jack.startY + jack.progress * liftHeight()));
+                vehicle.setLiftedY(jack.startY
+                        + jack.progress * (liftHeight() + LIFT_VISUAL_CORRECTION)));
         // Sunetul de pneumatic la intervale regulate in timpul miscarii.
         if ((int) (jack.progress * liftTicks()) % 14 == 0) {
             playSound(jack, AIR_WRENCH, 0.35F, jack.state == Jack.State.LIFTING ? 1.2F : 0.8F);

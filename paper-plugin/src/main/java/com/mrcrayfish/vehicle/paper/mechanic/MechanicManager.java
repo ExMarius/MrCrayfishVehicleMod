@@ -371,6 +371,25 @@ public final class MechanicManager {
         return true;
     }
 
+    /** Scoate rotile din vehicul si le pune pe cursor (fluxul din mod). Fara roti
+     *  montate masina nu porneste si nu poate fi coborata de pe cric. */
+    public boolean uninstallWheels(Player player, LandVehicle vehicle) {
+        if (!has(player, "mcv.mechanic.wheel")) {
+            player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.wheel.</red>");
+            return true;
+        }
+        if (!vehicle.spec().hasWheels() || !vehicle.wheelsInstalled()) {
+            return true; // slot gol deja / vehicul fara slot de roti
+        }
+        player.setItemOnCursor(MechanicItems.wheel(vehicle.wheelType()));
+        vehicle.setWheelsInstalled(false);
+        vehicles.save();
+        player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.6F, 0.9F);
+        player.sendRichMessage("<gray>Roti scoase - masina ramane fara ele (nu porneste "
+                + "si nici nu o poti cobori de pe cric).</gray>");
+        return true;
+    }
+
     /** Roti noi: modelul vizual se schimba, iar fizica preia tractiunea tipului. */
     private boolean handleWheelSwap(Player player, LandVehicle vehicle, ItemStack wheelItem) {
         if (!has(player, "mcv.mechanic.wheel")) {
@@ -383,19 +402,28 @@ public final class MechanicManager {
             return true;
         }
         WheelType previous = vehicle.wheelType();
-        if (previous == wanted) {
+        boolean wasInstalled = vehicle.wheelsInstalled();
+        if (wasInstalled && previous == wanted) {
             player.sendRichMessage("<yellow>Are deja " + wanted.label().toLowerCase() + ".</yellow>");
             return true;
         }
+        vehicle.setWheelsInstalled(true);
         vehicle.setWheelType(wanted);
         if (player.getGameMode() != GameMode.CREATIVE) {
             wheelItem.setAmount(wheelItem.getAmount() - 1);
         }
-        player.getInventory().addItem(MechanicItems.wheel(previous));
+        if (wasInstalled) {
+            player.getInventory().addItem(MechanicItems.wheel(previous));
+        }
         vehicles.save();
         player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.7F, 1.0F);
-        player.sendRichMessage("<gray>Roti schimbate: <gold>" + wanted.label()
-                + "</gold>. Vechile " + previous.label().toLowerCase() + " le-ai primit inapoi.</gray>");
+        if (wasInstalled) {
+            player.sendRichMessage("<gray>Roti schimbate: <gold>" + wanted.label()
+                    + "</gold>. Vechile " + previous.label().toLowerCase() + " le-ai primit inapoi.</gray>");
+        } else {
+            player.sendRichMessage("<gray>Roti INSTALATE: <gold>" + wanted.label()
+                    + "</gold>. Masina poate porni si cobori de pe cric din nou.</gray>");
+        }
         return true;
     }
 

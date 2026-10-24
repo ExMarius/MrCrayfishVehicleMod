@@ -262,3 +262,25 @@ SARCINA CURENTĂ: [completează aici ce dorești — ex.: „ajustează unghiul 
 al preview-ului după screenshot-ul meu comparativ" / „meniul nu arată ca în mod,
 am atașat comparația — găsește decalajele"].
 ```
+
+## Ciclul C + D (2026-10-24) — piese 1:1 cu modul + corectii vizuale lume
+
+- **Motor la spawn:** toate vehiculele cu tip de motor pornesc cu tierul IRON montat
+  si functional (ATV/Dune Buggy au motorul explicit `SMALL_MOTOR` dar FARA montura
+  vizuala, ca in mod - `LandVehicleSpec.factoryInstalledEngine() = defaultEngineType() != NONE`).
+- **Roti demontabile:** slotul de roti are aceeasi logica cu cel de motor (cursor gol +
+  click = demontare pe cursor; roti noi pe slot gol = instalare, fara refund fantoma).
+  Fara roti: `mechanicallyDrivable() = false` (masina nu porneste) SI coborarea de pe
+  cric este refuzata (JackManager, cazul LIFTED). Persistare `.mechanic.wheels-installed`
+  (scrisa doar cand false, zero migrare), simetric cu `.mechanic.engine-installed`.
+- **Poarta de motor:** `enginePowered` (toate cele 4 ramuri: sol/apa/aer/elicopter)
+  trece acum prin `mechanicallyDrivable()` - fara motor fizic masina nu pleaca.
+- **GUI:** butonul VOPSEA are aceeasi casuta vizuala ca sloturile motor/roti (sprite
+  copiat 1:1 din chenarul modului in builder); preview-ul info s-a mutat din slotul
+  13 in 14 (centrat pe fereastra); preview LIVE are si starea "none" de roti pentru
+  vehiculele CU roti (`quad_bike/none/eng` etc. — caroserie + motor, fara geometrie de roti).
+- **Vizual lume:** ridicarea pe cric cu 2 model-pixeli mai JOS (`LIFT_VISUAL_CORRECTION
+  = -0.125` blocuri, aplicat pe targetul final si pe interpolare); statiile (cric +
+  banc) nu mai au planul opac full-bloc la baza => stone-ul/betonul de sub ele ramane
+  vizibil ca in mod, iar picioarele au pierdut fetele "down" coplanare cu podeaua;
+  rafturile bancului decalate 0.05 px spre exterior (z-fighting eliminat).

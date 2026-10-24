@@ -109,6 +109,9 @@ public final class LandVehicle {
      *  pana la instalarea unui motor - regula brief 2026-10-24 (ATV/Dune Buggy
      *  pornesc fara motor "din fabrica"). */
     private boolean engineInstalled = true;
+    /** Rotile sunt MONTE fizic? false = vehiculul ramane fara roti (nu porneste
+     *  si nu poate fi coborat de pe cric) - fluxul din mod dupa brief 2026-10-24. */
+    private boolean wheelsInstalled = true;
     private JackState jackState = JackState.NONE;
     private java.util.UUID jackId;
     /** Cate tick-uri mai lasam fara a reaplica damage de coliziune (anti-spam per impact). */
@@ -241,7 +244,8 @@ public final class LandVehicle {
         }
 
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         updateInput(driver);
         updateCharging(enginePowered);
         float targetRenderAngle = !charging && isSliding(forward(location.getYaw()))
@@ -375,7 +379,8 @@ public final class LandVehicle {
         waterState = status.state();
 
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         updateInput(driver);
         renderWheelAngle += (steeringAngle - renderWheelAngle) * 0.3F;
         if (Math.abs(renderWheelAngle) < 0.001F) {
@@ -476,7 +481,8 @@ public final class LandVehicle {
         }
         Player driver = driver().orElse(null);
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         boolean operating = driver != null && enginePowered;
         VehicleInput input = driver == null ? VehicleInput.idle()
                 : VehicleInput.from(driver.getCurrentInput());
@@ -689,7 +695,8 @@ public final class LandVehicle {
         }
         Player driver = driver().orElse(null);
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = (creativeDriver || fuel > 0.0F) && !engineBroken();
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         VehicleInput input = driver == null ? VehicleInput.idle()
                 : VehicleInput.from(driver.getCurrentInput());
 
@@ -2100,6 +2107,29 @@ public final class LandVehicle {
         return engineInstalled;
     }
 
+    public boolean wheelsInstalled() {
+        return !spec.hasWheels() || wheelsInstalled;
+    }
+
+    /** Masina se misca doar CU motorul si rotile MONTE (brief: scoti una din ele,
+     *  masina nu mai porneste; fara roti nici coborârea de pe cric nu merge). */
+    public boolean mechanicallyDrivable() {
+        return (spec.defaultEngineType()
+                    == com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE || engineInstalled)
+                && wheelsInstalled();
+    }
+
+    /** Demontare/montare roți: world-sync urmeaza aceeasi regula ca motorul -
+     *  rotile dispar din rig (stack gol) pana la re-montare. */
+    public void setWheelsInstalled(boolean installed) {
+        this.wheelsInstalled = installed;
+        if (!installed) {
+            rig.hideWheels();
+        } else {
+            rig.setWheelModel(wheelType.model());
+        }
+    }
+
     /** Demontare/montare: ascunde instant piesa in lume (stack gol pe display);
      *  la montare se re-aplica modelul tier-ului curent (ca la setEngineTier). */
     public void setEngineInstalled(boolean installed) {
@@ -2188,7 +2218,7 @@ public final class LandVehicle {
      *  fie deja corect (spec final, bug 2a). */
     public void settleVisualState() {
         rig.applyColor(paintColor < 0 ? null : paintColor);
-        rig.setWheelModel(wheelType.model());
+        if (!wheelsInstalled) { rig.hideWheels(); } else { rig.setWheelModel(wheelType.model()); }
         if (!engineInstalled) {
             rig.hideEngine();
         } else if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {

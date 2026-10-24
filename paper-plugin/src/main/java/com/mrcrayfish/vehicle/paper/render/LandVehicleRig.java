@@ -914,6 +914,21 @@ public final class LandVehicleRig {
         }
     }
 
+    /** La fel ca motorul: rotile scoase din slot NU mai au voie sa apara pe model
+     *  (nici in lume, nici in GUI) pana la re-montare. Inversul = setWheelModel. */
+    public void hideWheels() {
+        if (removed) {
+            return;
+        }
+        org.bukkit.inventory.ItemStack empty =
+                new org.bukkit.inventory.ItemStack(org.bukkit.Material.AIR);
+        for (WheelDisplay wheel : wheels) {
+            if (wheel.entity != null && wheel.entity.isValid()) {
+                wheel.entity.setItemStack(empty);
+            }
+        }
+    }
+
     /** Schimba si PART-ul vizual al motorului la upgrade (ex. iron_small_engine ->
      *  diamond_small_engine), exact ca in mod, la schimbarea tier-ului. */
     public void setEngineModel(String modelName) {

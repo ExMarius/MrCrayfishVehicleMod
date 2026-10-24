@@ -149,10 +149,7 @@ public record LandVehicleSpec(
             10.0F, 35.0F, 5.3F * MODEL_UNIT * 1.3F, -5.7F * MODEL_UNIT * 1.3F, 5.0F,
             5_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.bumper_car.engine",
             false, new Point(0.0F, 0.0F, 0.0F),
-            /* La fel ca ATV/Quad: buggy-ul are motor mic montat; fara el slotul
-             * MOTOR din meniul cricului ramanea blocat pe "FARA MOTOR". */
-            new Part("iron_small_engine", new Point(0.0F, 0.611875F, -0.06875F),
-                    0.55F, 0.0F, 180.0F, 0.0F),
+            null,
             new Part("dune_buggy_handles", new Point(0.0F, 0.66625F, -0.00609375F),
                     1.3F, 0.0F, 0.0F, 0.0F),
             itemPart("fuel_door_closed", 0.0F, 3.0F, -7.0F,
@@ -677,11 +674,7 @@ public record LandVehicleSpec(
             1.25F, -1.5F, 4.624F,
             15.0F, 35.0F, 10.5F * MODEL_UNIT * 1.25F, -10.5F * MODEL_UNIT * 1.25F, 5.0F,
             20_000.0F, 0.25F, 0.5F, 1.2F, "vehicle:entity.atv.engine",
-            false, new Point(0.0F, 0.0F, 0.0F),
-            /* Acelasi motor mic ca la Quad Bike (aceeasi clasa de vehicul);
-             * fara el slotul MOTOR din meniul cricului era inutilizabil pentru ATV. */
-            new Part("iron_small_engine", new Point(0.0F, 0.611875F, -0.06875F),
-                    0.55F, 0.0F, 180.0F, 0.0F),
+            false, new Point(0.0F, 0.0F, 0.0F), null,
             new Part("atv_handles", new Point(0.0F, 1.2688404F, 0.3345971F),
                     1.25F, -45.0F, 0.0F, 0.0F),
             itemPart("small_fuel_door_closed", 0.0F, 6.55F, 5.0F,
@@ -968,16 +961,22 @@ public record LandVehicleSpec(
         };
     }
 
-    /** Porneste vehiculul cu motorul montat? Regula brief 2026-10-24: ATV si
-     *  Dune Buggy NU primesc motor fizic din fabrica - au doar slotul functional,
-     *  iar piesa apare pe model abia dupa instalarea de catre jucator. */
+    /** Orice vehicul cu tip de motor porneste CU motorul cel mai slab montat
+     *  (functional, ca in mod: "spawn-ul ti-l da pe cel mai prost"). Piesa se vede
+     *  doar acolo unde exista si MONTURA vizuala (vezi engine()). */
     public boolean factoryInstalledEngine() {
-        return engine() != null && !("atv".equals(id) || "dune_buggy".equals(id));
+        return defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE;
     }
 
     /** Ce familie de motor accepta vehiculul (derivat din part-ul de motor montat
      *  la fabrica in spec; NONE = vehicul fara motor, nu primeste upgrade-uri). */
     public com.mrcrayfish.vehicle.paper.mechanic.EngineType defaultEngineType() {
+        /* ATV si Dune Buggy au motorul functional din nastere chiar daca NU au
+         *  montura vizuala de motor pe model (brief: "motorul exista deja" - tipul
+         *  e trecut explicit aici, nu derivat dintr-un Part lipsa intentionat). */
+        if ("atv".equals(id) || "dune_buggy".equals(id)) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR;
+        }
         Part part = engine();
         if (part == null || part.model() == null) {
             return com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE;

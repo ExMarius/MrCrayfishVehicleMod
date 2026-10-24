@@ -200,7 +200,7 @@ public final class VehicleManager {
                 0.0F, 0.0F, 0.0F, 0.0F, false, java.util.Map.of(), java.util.Map.of(),
                 player.getUniqueId().toString(), "",
                 "IRON", "STANDARD", 100.0D, -1, false, "NONE", null,
-                spec.factoryInstalledEngine());
+                spec.factoryInstalledEngine(), spec.hasWheels());
         garage.put(stored.id(), stored);
         save();
         return stored.id();
@@ -770,6 +770,9 @@ public final class VehicleManager {
         if (!stored.engineInstalled()) {
             data.set(path + ".mechanic.engine-installed", false);
         }
+        if (!stored.wheelsInstalled()) {
+            data.set(path + ".mechanic.wheels-installed", false);
+        }
     }
 
     private void load() {
@@ -1203,7 +1206,8 @@ public final class VehicleManager {
                                  Map<String, List<ItemStack>> storageContents,
                                  Map<String, Boolean> openPartStates, String owner, String trusted,
                                  String engineTier, String wheelType, double health, int paintColor,
-                                 boolean locked, String jackState, String jackId, boolean engineInstalled) {
+                                 boolean locked, String jackState, String jackId, boolean engineInstalled,
+                                 boolean wheelsInstalled) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
@@ -1222,7 +1226,8 @@ public final class VehicleManager {
                     vehicle.engineTier().name(), vehicle.wheelType().name(), vehicle.health(),
                     vehicle.paintColor(), vehicle.locked(), vehicle.jackState().name(),
                     vehicle.jackId() == null ? null : vehicle.jackId().toString(),
-                    vehicle.engineInstalled());
+                    vehicle.engineInstalled(),
+                    vehicle.wheelsInstalled());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -1259,7 +1264,8 @@ public final class VehicleManager {
                     data.getBoolean(path + ".mechanic.locked", false),
                     data.getString(path + ".mechanic.jack-state"),
                     data.getString(path + ".mechanic.jack-id"),
-                    data.getBoolean(path + ".mechanic.engine-installed", true));
+                    data.getBoolean(path + ".mechanic.engine-installed", true),
+                    data.getBoolean(path + ".mechanic.wheels-installed", true));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

@@ -337,6 +337,11 @@ public final class MechanicListener implements Listener {
                 if (MechanicItems.kindOf(cursor) == MechanicItems.Kind.WHEEL
                         && mechanicOnVehiclePart(player, target, cursor)) {
                     // idem
+                } else if ((cursor == null || cursor.getType().isAir())
+                        && target.spec().hasWheels() && target.wheelsInstalled()) {
+                    // Cursor gol pe rotile montate = DEMONTARE (rotile trec pe
+                    // cursor si dispar de pe model) - simetric cu motorul.
+                    mechanic.uninstallWheels(player, target);
                 }
                 mechanic.gui().open(player, target);
             }

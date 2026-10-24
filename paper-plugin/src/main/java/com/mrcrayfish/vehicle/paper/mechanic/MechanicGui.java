@@ -72,7 +72,8 @@ public final class MechanicGui {
     //  - butonul VOPSESTE (extrasul cerut) sta pe banda goala de sub fereastra.
     public static final int ENGINE_SLOT = 0;   // pozitia exacta din mod (8,17)
     public static final int WHEEL_SLOT = 9;    // pozitia exacta din mod (8,35)
-    public static final int INFO_SLOT = 13;    // centrul ferestrei desenate de mod
+    public static final int INFO_SLOT = 14;    // preview ULTRACENTRAT pe fereastra
+                                              // modului (brief: mutat un slot la dreapta)
     public static final int PAINT_SLOT = 18;   // spray-ul: SUB slotul de roti (8,53), cerut explicit
     /** Fontul-backdrop din pack: deseneaza textura edit_vehicle.png in spatele meniului. */
     private static final net.kyori.adventure.key.Key GUI_FONT =
@@ -135,11 +136,29 @@ public final class MechanicGui {
                             Component.text("Cursor gol + click = scoti motorul (piesa dispare de pe model).",
                             NamedTextColor.DARK_GRAY))), "engine_slot"));
         }
-        inventory.setItem(WHEEL_SLOT, tag(entry(
-                MechanicItems.wheel(vehicle.wheelType()),
-                Component.text("ROTI", NamedTextColor.AQUA),
-                List.of(Component.text("Tine rotile NOI pe cursor si click aici = schimb.",
-                        NamedTextColor.GRAY))), "wheel_slot"));
+        if (!vehicle.spec().hasWheels()) {
+            inventory.setItem(WHEEL_SLOT, tag(make(Material.BARRIER,
+                    Component.text("FARA ROTI", NamedTextColor.RED),
+                    List.of(Component.text("Acest vehicul nu primeste roti.",
+                            NamedTextColor.GRAY))), "none")));
+        } else if (!vehicle.wheelsInstalled()) {
+            // Slot functional dar GOL - rotile au fost scoase (masina nu porneste
+            // si nu poate fi coborata de pe cric pana la re-montare).
+            inventory.setItem(WHEEL_SLOT, tag(make(Material.PAPER,
+                    Component.text("ROTI (slot gol)", NamedTextColor.GRAY),
+                    List.of(Component.text("Vehiculul ramane fara roti montate.",
+                            NamedTextColor.DARK_GRAY),
+                            Component.text("Tine rotile pe cursor si click aici = instalare.",
+                            NamedTextColor.GRAY))), "wheel_slot")));
+        } else {
+            inventory.setItem(WHEEL_SLOT, tag(entry(
+                    MechanicItems.wheel(vehicle.wheelType()),
+                    Component.text("ROTI", NamedTextColor.AQUA),
+                    List.of(Component.text("Tine rotile NOI pe cursor si click aici = schimb.",
+                            NamedTextColor.GRAY),
+                            Component.text("Cursor gol + click = scoti rotile (dispar si de pe model).",
+                            NamedTextColor.DARK_GRAY))), "wheel_slot")));
+        }
 
         // Butonul EXTRA cerut de tine (in mod nu exista aici): paleta noastra de vopsea.
         inventory.setItem(PAINT_SLOT, tag(entry(
@@ -190,7 +209,7 @@ public final class MechanicGui {
      *  roti curente x motor instalat? x vopsea curenta = exact masina de pe cric.
      *  Orice schimbare (roti/motor/vopsea) se reflecta IMEDIAT si in monitor. */
     private static NamespacedKey previewStateKey(LandVehicle vehicle) {
-        String wheel = vehicle.spec().hasWheels()
+        String wheel = vehicle.spec().hasWheels() && vehicle.wheelsInstalled()
                 ? vehicle.wheelType().model().replace("_wheel", "")
                 : "none";
         String engine = vehicle.spec().engine() != null && vehicle.engineInstalled()
@@ -245,7 +264,11 @@ public final class MechanicGui {
                         + vehicle.spec().defaultEngineType().label().toLowerCase(Locale.ROOT)
                         : "Motor: neinstalat (slot gol)",
                 NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Roti: " + vehicle.wheelType().label(),
+        lore.add(Component.text(vehicle.spec().hasWheels()
+                        ? (vehicle.wheelsInstalled()
+                            ? "Roti: " + vehicle.wheelType().label()
+                            : "Roti: neinstalate (slot gol)")
+                        : "Roti: n/a",
                 NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.text("Vopsea: " + (vehicle.painted()
                         ? String.format(Locale.ROOT, "#%06X", vehicle.paintColor()) : "nevopsita"),

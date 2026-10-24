@@ -1212,28 +1212,30 @@ def build(output: Path) -> tuple[Path, str]:
         write_json(namespace / "models/block/mcv_jack_up.json",
                    _jack_composite(_jack_down, _jack_head, 8.0))
 
-        # Fata de JOS mereu randata (fix definitiv pentru „gaura de sub statii"):
-        # fata de sus a blocului de dedesubt e oricum taiata de orice bloc care il
-        # acopera (si slab, si composter), deci STATIA trebuie sa-si deseneze SINGURA
-        # fundul. Quad subtire la y=0, fara cullface (nu exista risc de z-fight:
-        # fata blocului de dedesubt este deja cull-ata de station-block).
-        # Textura „oglinda a podelei": neteda de beton/piatra (smooth_stone) - neutra
-        # pe orice podea de garaj; oglindirea REALA a blocului de dedesubt e
-        # imposibila cu modele statice (slab-ul nu are stari libere, composterul
-        # are un singur nivel legitim), asa ca alegem aspectul de „umbra de contact".
-        def _add_bottom_face(model_path: Path) -> None:
+        # BRIEF 2026-10-24 (vizual lume): statiile NU mai au plan opac full-bloc
+        # la baza - blocul de sub ele (stone etc.) ramane vizibil, exact ca in mod.
+        # Picioarele/elementele care stau PE podea pierd si fata "down" (altfel
+        # se suprapune coplanar cu fata de sus a blocului de dedesubt => flicker).
+        def _unfloor_bottom_faces(model_path: Path) -> None:
             _model = json.loads(model_path.read_text(encoding="utf-8"))
-            _model.setdefault("elements", []).append({
-                "from": [0, 0, 0], "to": [16, 0.01, 16],
-                "faces": {
-                    "up": {"uv": [0, 0, 16, 16], "texture": "minecraft:block/smooth_stone"},
-                    "down": {"uv": [0, 0, 16, 16], "texture": "minecraft:block/smooth_stone"},
-                },
-            })
+            for _el in _model.get("elements", []):
+                if _el.get("from", [1])[1] <= 0.0:
+                    _el.get("faces", {}).pop("down", None)
             write_json(model_path, _model)
-        _add_bottom_face(namespace / "models/block/mcv_workstation.json")
-        _add_bottom_face(namespace / "models/block/mcv_jack_down.json")
-        _add_bottom_face(namespace / "models/block/mcv_jack_up.json")
+        _unfloor_bottom_faces(namespace / "models/block/mcv_workstation.json")
+        _unfloor_bottom_faces(namespace / "models/block/mcv_jack_down.json")
+        _unfloor_bottom_faces(namespace / "models/block/mcv_jack_up.json")
+        # Rafturile din spatele bancului (z=15..16) stau coplanar cu fata SUD a
+        # corpului principal => z-fighting vizibil; le decalajam 0.05 px spre
+        # exterior (nesesizabil la ochi liber, elimina complet flicker-ul).
+        _ws = json.loads((namespace / "models/block/mcv_workstation.json").read_text(
+            encoding="utf-8"))
+        for _el in _ws.get("elements", []):
+            if _el.get("from") and _el["from"][2] >= 15.0:
+                for _vec in ("from", "to"):
+                    _el[_vec][2] = round(_el[_vec][2] + 0.05, 3)
+        write_json(namespace / "models/block/mcv_workstation.json", _ws)
+
         # Blockstates: gazde NEOPACE peste tot (niciun culling pe nicio parte):
         #  - elevator: petrified_oak_slab bottom=JOS, top=SUS (platforma la +0.5),
         #    double = tamplarie vanilla (oak_planks), neatins
@@ -1765,7 +1767,8 @@ def _flip_element_y(element: dict) -> dict:
 
 def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
                           corrections: dict, wheel_model: str = 'standard_wheel',
-                          include_engine: bool = True) -> dict:
+                          include_engine: bool = True,
+                          include_wheels: bool = True) -> dict:
     """FULL 1:1 montaj ca fereastra din mod: caroserie + roti (formula
     LandVehicleSpec.wheel, oglinda dreapta, grup aliniat sub caroserie) + TOATE
     piesele (motor/volan/manere) pozitionate cu aceeasi matematica ca rig-ul live:
@@ -1773,7 +1776,10 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
     model foloseste bodyScale si modelScaleCorrection. Ancorare la colt ca place()
     din rig: punctul (0,0,0) al piesei = part.center()."""
     body = json.loads((namespace / f'models/item/{vehicle_id}_body.json').read_text(encoding='utf-8'))
-    wheel = json.loads((namespace / f'models/item/{wheel_model}.json').read_text(encoding='utf-8'))
+    # include_wheels=False => stare "fara roti" (demontate): pozitiile/anclarea
+    # din spec se pastreaza pentru motor, dar geometria rotilor nu se compune.
+    wheel = json.loads((namespace / f'models/item/{wheel_model}.json').read_text(
+        encoding='utf-8')) if include_wheels else None
     textures = dict(body.get('textures', {}))
     elements = list(body.get('elements', []))
     wheels = spec.get('wheels', [])
@@ -1813,11 +1819,13 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
         raw = [(side * ox, wo + oy, oz) for side, _f, ox, oy, oz, *_rest in wheels]
         fit_x = (lo_x + hi_x) / 2.0 - sum(p[0] for p in raw) / len(raw)
         fit_z = (lo_z + hi_z) / 2.0 - sum(p[2] for p in raw) / len(raw)
-        wheel_remap = merge_model(wheel)
+        wheel_remap = merge_model(wheel) if wheel else {}
         for side, _f, ox, oy, oz, sx, sy, sz, _bs, _ax, wo in wheels:
+            # centrele de meniu se calculeaza INTOTDEAUNA (motorul se ancoreaza pe
+            # ele chiar si cand rotile sunt demontate); doar geometria dispare.
             centre = (side * ox + fit_x, wo + oy, oz + fit_z)
             menu_centers.append(centre)
-            for element in wheel.get('elements', []):
+            for element in wheel.get('elements', []) if wheel else []:
                 transformed = _transformed_element(
                     element, (sx, sy, sz),
                     (centre[0] - 8.0, centre[1] - 8.0, centre[2] - 8.0), side > 0)
@@ -1936,7 +1944,7 @@ def emit_vehicle_previews(namespace: Path) -> None:
     for body_path in sorted((namespace / 'models/item').glob('*_body.json')):
         vehicle_id = body_path.stem.removesuffix('_body')
         spec = specs.get(vehicle_id, {'wheels': [], 'parts': []})
-        wheels = WHEEL_STATES if spec.get('wheels') else ("none",)
+        wheels = WHEEL_STATES + ("none",) if spec.get('wheels') else ("none",)
         has_engine_mount = any('engine' in part.get('model', '')
                                for part in spec.get('parts', []))
         engines = ("eng", "noe") if has_engine_mount else ("noe",)
@@ -1944,9 +1952,9 @@ def emit_vehicle_previews(namespace: Path) -> None:
             for engine_state in engines:
                 composed = compose_preview_model(
                     namespace, vehicle_id, spec, corrections,
-                    wheel_model=(wheel_state + "_wheel") if wheel_state != "none"
-                    else "standard_wheel",
-                    include_engine=engine_state == "eng")
+                    wheel_model=wheel_state + "_wheel",
+                    include_engine=engine_state == "eng",
+                    include_wheels=wheel_state != "none")
                 elements = composed.get('elements', [])
                 if not elements:
                     continue
@@ -2113,12 +2121,14 @@ def emit_jack_gui_backdrop(namespace: Path) -> None:
         s_off = (183 * src_w + x) * 4
         d_off = (221 * width + x) * 4
         canvas[d_off:d_off + 4] = src[s_off:s_off + 4]
-    # sub slotul de roti: in mod e BUTON (vopseste), NU casuta de inventar:
-    # stergem chenarul acelui slot din textura (8,53), ramane panoul plat.
-    for y in range(52, 72):
-        for x in range(7, 26):
-            d_off = (y * width + x) * 4
-            canvas[d_off:d_off + 4] = b'\xc6\xc6\xc6\xff'
+    # sub slotul de roti: BRIEF 2026-10-24 => butonul VOPSEA primeste ACEEASI
+    # casuta vizuala ca sloturile de motor/roti (copie 1:1 a sprite-ului slotului,
+    # sursa = chenarul desenat de mod la coordonatele (7..25, 16..34)).
+    slot_w, slot_h = 19, 19
+    for row in range(slot_h):
+        s_off = ((16 + row) * width + 7) * 4
+        d_off = ((52 + row) * width + 7) * 4
+        canvas[d_off:d_off + slot_w * 4] = canvas[s_off:s_off + slot_w * 4]
     # fereastra de preview: in mod framebuffer-ul 3D acopera tot interiorul;
     # noi desenam modelul compus - curatam panourile ajutatoare ale texturii
     # pe fundalul intunecat al ferestrei (bordurile raman).
