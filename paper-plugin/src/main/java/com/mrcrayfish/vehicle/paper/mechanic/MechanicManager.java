@@ -315,18 +315,51 @@ public final class MechanicManager {
             return true;
         }
         EngineTier previous = vehicle.engineTier();
+        boolean wasInstalled = vehicle.engineInstalled();
         vehicle.setEngineTier(tier);
+        // La vehiculele cu slot gol (ATV/Dune Buggy) asta e INSTALARE: piesa apare
+        // imediat pe model, in lume si in GUI - cerinta brief 2026-10-24.
+        vehicle.setEngineInstalled(true);
         if (player.getGameMode() != GameMode.CREATIVE) {
             engineItem.setAmount(engineItem.getAmount() - 1);
         }
-        if (previous != tier) {
+        if (wasInstalled && previous != tier) {
             player.getInventory().addItem(MechanicItems.engine(fits, previous));
         }
         vehicles.save();
         player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.7F, 1.3F);
-        player.sendRichMessage("<gray>Motor schimbat: <gold>" + tier.label() + " " + fits.label().toLowerCase()
-                + "</gold> (x" + String.format(java.util.Locale.ROOT, "%.1f", tier.powerMultiplier())
-                + "). Cel vechi l-ai primit inapoi.</gray>");
+        if (wasInstalled) {
+            player.sendRichMessage("<gray>Motor schimbat: <gold>" + tier.label() + " " + fits.label().toLowerCase()
+                    + "</gold> (x" + String.format(java.util.Locale.ROOT, "%.1f", tier.powerMultiplier())
+                    + "). Cel vechi l-ai primit inapoi.</gray>");
+        } else {
+            player.sendRichMessage("<gray>Motor INSTALAT: <gold>" + tier.label() + " " + fits.label().toLowerCase()
+                    + "</gold> - piesa a aparut acum si pe model.</gray>");
+        }
+        return true;
+    }
+
+    /** Demontare motor (cursor gol pe slotul de motor): motorul trece pe cursorul
+     *  jucatorului, slotul ramane functional dar gol, iar piesa dispare de pe
+     *  model (in lume si in GUI) - regula brief 2026-10-24. */
+    public boolean uninstallEngine(Player player, LandVehicle vehicle) {
+        if (!has(player, "mcv.mechanic.engine")) {
+            player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.engine.</red>");
+            return true;
+        }
+        if (!vehicle.engineInstalled()) {
+            return true; // slotul e deja gol - nimic de scos
+        }
+        EngineType fits = vehicle.spec().defaultEngineType();
+        if (fits == EngineType.NONE) {
+            return true;
+        }
+        player.setItemOnCursor(MechanicItems.engine(fits, vehicle.engineTier()));
+        vehicle.setEngineInstalled(false);
+        vehicles.save();
+        player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.6F, 0.9F);
+        player.sendRichMessage("<gray>Motor scos - slotul ramane functional, "
+                + "dar piesa nu se mai vede pe model.</gray>");
         return true;
     }
 

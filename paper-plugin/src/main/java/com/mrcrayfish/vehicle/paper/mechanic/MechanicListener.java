@@ -323,9 +323,13 @@ public final class MechanicListener implements Listener {
         }
         switch (action) {
             case "engine_slot" -> {
-                if (MechanicItems.kindOf(cursor) == MechanicItems.Kind.ENGINE
-                        && mechanicOnVehiclePart(player, target, cursor)) {
-                    // cursorul ramane cu itemul vechi schimbat de manager (daca exista)
+                if (MechanicItems.kindOf(cursor) == MechanicItems.Kind.ENGINE) {
+                    mechanicOnVehiclePart(player, target, cursor);
+                } else if ((cursor == null || cursor.getType().isAir())
+                        && target.engineInstalled()) {
+                    // Cursor gol pe motorul instalat = DEMONTARE (motorul trece pe
+                    // cursor, piesa dispare de pe model) - fluxul din mod.
+                    mechanic.uninstallEngine(player, target);
                 }
                 mechanic.gui().open(player, target);
             }

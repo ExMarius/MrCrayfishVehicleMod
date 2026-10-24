@@ -905,6 +905,15 @@ public final class LandVehicleRig {
 
     /* ===== Sistem mecanic: schimbare model roti + vopsea caroserie ============= */
 
+    /** Cand slotul de motor e gol, piesa NU trebuie sa apara pe model (brief
+     *  2026-10-24): stack gol = ItemDisplay complet invizibil. Re-montarea se face
+     *  prin setEngineModel(...), care inlocuieste stack-ul - nu e nevoie de "show". */
+    public void hideEngine() {
+        if (!removed && engine != null && engine.isValid()) {
+            engine.setItemStack(new org.bukkit.inventory.ItemStack(org.bukkit.Material.AIR));
+        }
+    }
+
     /** Schimba si PART-ul vizual al motorului la upgrade (ex. iron_small_engine ->
      *  diamond_small_engine), exact ca in mod, la schimbarea tier-ului. */
     public void setEngineModel(String modelName) {

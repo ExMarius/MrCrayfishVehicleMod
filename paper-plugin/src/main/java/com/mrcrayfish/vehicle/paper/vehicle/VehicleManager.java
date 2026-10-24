@@ -199,7 +199,8 @@ public final class VehicleManager {
                 0.0D, 0.0D, 0.0D, LandVehicleSpec.STANDARD_TRACTION, 0.0D,
                 0.0F, 0.0F, 0.0F, 0.0F, false, java.util.Map.of(), java.util.Map.of(),
                 player.getUniqueId().toString(), "",
-                "IRON", "STANDARD", 100.0D, -1, false, "NONE", null);
+                "IRON", "STANDARD", 100.0D, -1, false, "NONE", null,
+                spec.factoryInstalledEngine());
         garage.put(stored.id(), stored);
         save();
         return stored.id();
@@ -766,6 +767,9 @@ public final class VehicleManager {
         if (stored.jackId() != null && !stored.jackId().isEmpty()) {
             data.set(path + ".mechanic.jack-id", stored.jackId());
         }
+        if (!stored.engineInstalled()) {
+            data.set(path + ".mechanic.engine-installed", false);
+        }
     }
 
     private void load() {
@@ -846,6 +850,7 @@ public final class VehicleManager {
         vehicle.restoreTrustedDrivers(parseTrusted(stored.trusted()));
         // Starea mecanica (motoare/roti/daune/vopsea/incuiere/cric) - persistata 1-la-1.
         vehicle.setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier.fromName(stored.engineTier()));
+        vehicle.setEngineInstalled(stored.engineInstalled());
         vehicle.setWheelType(com.mrcrayfish.vehicle.paper.mechanic.WheelType.fromName(stored.wheelType()));
         if (stored.health() < 100.0D) {
             vehicle.applyDamage(100.0D - stored.health(), null);
@@ -1198,7 +1203,7 @@ public final class VehicleManager {
                                  Map<String, List<ItemStack>> storageContents,
                                  Map<String, Boolean> openPartStates, String owner, String trusted,
                                  String engineTier, String wheelType, double health, int paintColor,
-                                 boolean locked, String jackState, String jackId) {
+                                 boolean locked, String jackState, String jackId, boolean engineInstalled) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
@@ -1216,7 +1221,8 @@ public final class VehicleManager {
                     vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle),
                     vehicle.engineTier().name(), vehicle.wheelType().name(), vehicle.health(),
                     vehicle.paintColor(), vehicle.locked(), vehicle.jackState().name(),
-                    vehicle.jackId() == null ? null : vehicle.jackId().toString());
+                    vehicle.jackId() == null ? null : vehicle.jackId().toString(),
+                    vehicle.engineInstalled());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -1252,7 +1258,8 @@ public final class VehicleManager {
                     data.getInt(path + ".mechanic.paint-color", -1),
                     data.getBoolean(path + ".mechanic.locked", false),
                     data.getString(path + ".mechanic.jack-state"),
-                    data.getString(path + ".mechanic.jack-id"));
+                    data.getString(path + ".mechanic.jack-id"),
+                    data.getBoolean(path + ".mechanic.engine-installed", true));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

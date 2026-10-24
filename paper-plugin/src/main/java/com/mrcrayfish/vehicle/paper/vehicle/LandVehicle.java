@@ -104,6 +104,11 @@ public final class LandVehicle {
     /** -1 = nevopsit; altfel RGB 0xRRGGBB din spray can (persistent). */
     private int paintColor = -1;
     private boolean locked;
+    /** Piesa de motor este MONTATA fizic? false -> slotul de motor ramane functional
+     *  (virtual), dar piesa NU apare pe model (nici in lume, nici in GUI-ul cricului)
+     *  pana la instalarea unui motor - regula brief 2026-10-24 (ATV/Dune Buggy
+     *  pornesc fara motor "din fabrica"). */
+    private boolean engineInstalled = true;
     private JackState jackState = JackState.NONE;
     private java.util.UUID jackId;
     /** Cate tick-uri mai lasam fara a reaplica damage de coliziune (anti-spam per impact). */
@@ -144,6 +149,7 @@ public final class LandVehicle {
                     compartment.size(), Component.text(compartment.title())));
         }
         this.fuel = spec.energyCapacity();
+        this.engineInstalled = spec.factoryInstalledEngine();
     }
 
     public static LandVehicle spawn(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
@@ -2088,13 +2094,35 @@ public final class LandVehicle {
         return engineTier;
     }
 
+    /** True = motorul e montat si piesa se vede pe model; false = slot gol, vizual
+     *  curat (exact comportamentul din mod: piesa apare doar cu motor instalat). */
+    public boolean engineInstalled() {
+        return engineInstalled;
+    }
+
+    /** Demontare/montare: ascunde instant piesa in lume (stack gol pe display);
+     *  la montare se re-aplica modelul tier-ului curent (ca la setEngineTier). */
+    public void setEngineInstalled(boolean installed) {
+        this.engineInstalled = installed;
+        if (!installed) {
+            rig.hideEngine();
+            return;
+        }
+        if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+            rig.setEngineModel(engineTier.name().toLowerCase(java.util.Locale.ROOT)
+                    + "_" + spec.defaultEngineType().folder() + "_engine");
+        }
+    }
+
     /** Tier NOU de motor (acelasi EngineType ca la spec - validarea tipului e in
      *  MechanicManager). Fizica preia multiplicatorul chiar din urmatorul tick. */
     public void setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier engineTier) {
         this.engineTier = engineTier == null
                 ? com.mrcrayfish.vehicle.paper.mechanic.EngineTier.IRON : engineTier;
-        // part-ul vizual urmeaza tier-ul (iron_small_engine -> gold_small_engine etc.)
-        if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+        // part-ul vizual urmeaza tier-ul (iron_small_engine -> gold_small_engine etc.),
+        // DOAR daca motorul e montat - pe slot gol piesa ramane ascunsa.
+        if (engineInstalled
+                && spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
             rig.setEngineModel(this.engineTier.name().toLowerCase(java.util.Locale.ROOT)
                     + "_" + spec.defaultEngineType().folder() + "_engine");
         }
@@ -2161,7 +2189,9 @@ public final class LandVehicle {
     public void settleVisualState() {
         rig.applyColor(paintColor < 0 ? null : paintColor);
         rig.setWheelModel(wheelType.model());
-        if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+        if (!engineInstalled) {
+            rig.hideEngine();
+        } else if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
             rig.setEngineModel(engineTier.name().toLowerCase(java.util.Locale.ROOT)
                     + "_" + spec.defaultEngineType().folder() + "_engine");
         }

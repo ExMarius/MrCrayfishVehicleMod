@@ -114,12 +114,24 @@ public final class MechanicGui {
                     Component.text("FARA MOTOR", NamedTextColor.RED),
                     List.of(Component.text("Acest vehicul nu primeste upgrade de motor.",
                             NamedTextColor.GRAY))), "none"));
+        } else if (!vehicle.engineInstalled()) {
+            // Slot functional (virtual) dar GOL: piesa apare pe model abia dupa
+            // instalare - exact comportamentul din mod la vehiculele fara motor
+            // "din fabrica" (ATV, Dune Buggy).
+            inventory.setItem(ENGINE_SLOT, tag(make(Material.PAPER,
+                    Component.text("MOTOR (slot gol)", NamedTextColor.GRAY),
+                    List.of(Component.text("Vehiculul nu are motor montat inca.",
+                            NamedTextColor.DARK_GRAY),
+                            Component.text("Tine motorul potrivit pe cursor si click aici = instalare.",
+                            NamedTextColor.GRAY))), "engine_slot"));
         } else {
             inventory.setItem(ENGINE_SLOT, tag(entry(
                     MechanicItems.engine(vehicle.spec().defaultEngineType(), vehicle.engineTier()),
                     Component.text("MOTOR", NamedTextColor.AQUA),
                     List.of(Component.text("Tine motorul NOU pe cursor si click aici = schimb.",
-                            NamedTextColor.GRAY))), "engine_slot"));
+                            NamedTextColor.GRAY),
+                            Component.text("Cursor gol + click = scoti motorul (piesa dispare de pe model).",
+                            NamedTextColor.DARK_GRAY))), "engine_slot"));
         }
         inventory.setItem(WHEEL_SLOT, tag(entry(
                 MechanicItems.wheel(vehicle.wheelType()),
@@ -183,8 +195,10 @@ public final class MechanicGui {
         List<Component> lore = new ArrayList<>();
         lore.add(Component.text(String.format(Locale.ROOT, "Sanatate: %.0f/100", vehicle.health()),
                 NamedTextColor.YELLOW).decoration(TextDecoration.ITALIC, false));
-        lore.add(Component.text("Motor: " + vehicle.engineTier().label() + " "
-                + vehicle.spec().defaultEngineType().label().toLowerCase(Locale.ROOT),
+        lore.add(Component.text(vehicle.engineInstalled()
+                        ? "Motor: " + vehicle.engineTier().label() + " "
+                        + vehicle.spec().defaultEngineType().label().toLowerCase(Locale.ROOT)
+                        : "Motor: neinstalat (slot gol)",
                 NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));
         lore.add(Component.text("Roti: " + vehicle.wheelType().label(),
                 NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false));

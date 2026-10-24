@@ -968,6 +968,13 @@ public record LandVehicleSpec(
         };
     }
 
+    /** Porneste vehiculul cu motorul montat? Regula brief 2026-10-24: ATV si
+     *  Dune Buggy NU primesc motor fizic din fabrica - au doar slotul functional,
+     *  iar piesa apare pe model abia dupa instalarea de catre jucator. */
+    public boolean factoryInstalledEngine() {
+        return engine() != null && !("atv".equals(id) || "dune_buggy".equals(id));
+    }
+
     /** Ce familie de motor accepta vehiculul (derivat din part-ul de motor montat
      *  la fabrica in spec; NONE = vehicul fara motor, nu primeste upgrade-uri). */
     public com.mrcrayfish.vehicle.paper.mechanic.EngineType defaultEngineType() {
