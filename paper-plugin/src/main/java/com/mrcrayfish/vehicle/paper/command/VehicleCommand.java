@@ -167,10 +167,18 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
             return;
         }
-        LandVehicle vehicle = vehicles.nearest(player.getLocation(), 6.0D).orElse(null);
+        // Masinile de podium sunt DOAR de vizual: nu pot fi tinta /vehicle remove.
+        LandVehicle vehicle = vehicles.nearest(player.getLocation(), 6.0D, false).orElse(null);
         PaperTrailer trailer = vehicles.trailers().nearest(player.getLocation(), 6.0D).orElse(null);
         if (vehicle == null && trailer == null) {
-            player.sendRichMessage("<red>Nu există niciun vehicul sau remorcă la mai puțin de 6 blocuri.</red>");
+            LandVehicle any = vehicles.nearest(player.getLocation(), 6.0D).orElse(null);
+            if (any != null && any.showcase()) {
+                player.sendRichMessage("<red>Masina de pe podium e doar de <gold>VIZUAL</gold> "
+                        + "- nu se sterge cu /vehicle remove. Sterge tot podiumul cu "
+                        + "<gold>/vehicle podium remove</gold> langa el.</red>");
+            } else {
+                player.sendRichMessage("<red>Nu există niciun vehicul sau remorcă la mai puțin de 6 blocuri.</red>");
+            }
         } else if (trailer != null && (vehicle == null
                 || trailer.location().distanceSquared(player.getLocation())
                 < vehicle.location().distanceSquared(player.getLocation()))) {

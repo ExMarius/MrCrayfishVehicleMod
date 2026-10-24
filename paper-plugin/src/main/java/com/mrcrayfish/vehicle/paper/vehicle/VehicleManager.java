@@ -426,12 +426,22 @@ public final class VehicleManager {
     }
 
     public Optional<LandVehicle> nearest(Location origin, double maximumDistance) {
+        return nearest(origin, maximumDistance, true);
+    }
+
+    /** includeShowcase=false: masinile de podium (decorative) nu pot fi tinta
+     *  comenzilor destructive (/vehicle remove le sare complet). */
+    public Optional<LandVehicle> nearest(Location origin, double maximumDistance,
+                                         boolean includeShowcase) {
         if (origin.getWorld() == null) {
             return Optional.empty();
         }
         LandVehicle nearest = null;
         double nearestDistance = maximumDistance * maximumDistance;
         for (LandVehicle vehicle : vehicles.values()) {
+            if (!includeShowcase && vehicle.showcase()) {
+                continue;
+            }
             Location location = vehicle.location();
             if (location.getWorld() == null || !location.getWorld().equals(origin.getWorld())) {
                 continue;

@@ -374,3 +374,11 @@ am atașat comparația — găsește decalajele"].
 - **GC chunk-load**: orice entitate rig taguita al carei vehicul lipseste din registry
   SI din pendingWorlds e orfana si se sterge la incarcarea chunkului (curata si resturile
   lasate de versiunile/bug-urile vechi).
+
+## Ciclul J.1 (2026-10-24) — masinile de podium nu cad pe /vehicle remove
+
+- `VehicleManager.nearest(loc, r, includeShowcase=false)` noua varianta cu filtru;
+  `/vehicle remove` o foloseste: podiumurile sunt DOAR de vizual si li se ignora
+  complet (masina normala aflata putin mai departe tot se sterge corect).
+- Daca in raza exista DOAR masina de podium, adminul primeste mesaj explicit:
+  remove nu merge pe vizualuri; stergerea completa = /vehicle podium remove langa podium.
