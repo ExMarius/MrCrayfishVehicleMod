@@ -212,6 +212,12 @@ public final class WorkstationManager {
                     + (int) limit + " blocuri - pune intai cricul, apoi masa de lucru.</red>");
             return false;
         }
+        // Regula (brief): UN SINGUR banc de lucru per elevator (1:1 strict).
+        if (jackHasBench(nearestJack)) {
+            player.sendRichMessage("<red>Acest elevator are deja un banc de lucru "
+                    + "asociat - un cric = un singur banc.</red>");
+            return false;
+        }
         Station station = placeBlockRig(UUID.randomUUID(), target.getLocation());
         station.jackId = nearestJack;
         station.ownerId = player.getUniqueId();
@@ -436,7 +442,8 @@ public final class WorkstationManager {
     private void handleLiftToggle(Player player, Station station) {
         Optional<Jack> jack = resolveJack(station);
         if (jack.isEmpty()) {
-            player.sendRichMessage("<red>Bancul nu mai are cric in zona - pune unul langa el.</red>");
+            player.sendRichMessage("<red>Bancul nu mai are cric liber in zona - pune unul "
+                    + "langa el (cricurile din zona au deja bancuri asociate).</red>");
             return;
         }
         jacks.toggleLift(player, jack.get());
@@ -448,8 +455,18 @@ public final class WorkstationManager {
         byJackId(jackId).ifPresent(station -> refreshTools(station.id));
     }
 
+    /** Cricul are deja un banc asociat? (regula 1:1 - un singur banc pe elevator) */
+    private boolean jackHasBench(UUID jackId) {
+        for (Station station : stations.values()) {
+            if (jackId.equals(station.jackId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** Cricul legat de banc; daca a disparut, bancul se re-lega la cel mai
-     *  apropiat din raza maxima (metoda comuna pt. cheie si butonul din meniu). */
+     *  apropiat cric LIBER din raza maxima (1:1: niciodata la unul cu banc deja). */
     private Optional<Jack> resolveJack(Station station) {
         Optional<Jack> jack = station.jackId == null ? Optional.empty() : jacks.byId(station.jackId);
         if (jack.isPresent()) {
@@ -460,6 +477,9 @@ public final class WorkstationManager {
         for (Jack candidate : jacks.jacks()) {
             if (candidate.location.getWorld() != station.location.getWorld()) {
                 continue;
+            }
+            if (jackHasBench(candidate.id)) {
+                continue; // 1 cric = 1 banc, nu furam bancul altuia
             }
             double distance = candidate.location.distance(station.location);
             if (distance < nearest) {

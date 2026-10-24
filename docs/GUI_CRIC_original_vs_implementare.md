@@ -350,3 +350,12 @@ am atașat comparația — găsește decalajele"].
   meniurile bancului legat se reimprospateaza singure (RIDICA/COBOARA reapare imediat).
 - **Unealta luata = BARRIER in slot** („LUATA DE TINE" rosu / „OCUPATA de <nume>"),
   fara click in meniu; returnarea e exclusiv automata (zona/quit/spargere banc).
+
+## Ciclul I (2026-10-24) — reguli de plasament: spatiere cric + 1 banc per cric
+
+- **Minim 10 blocuri intre doua cricuri** (`jack.min-distance`, default 10.0):
+  plasarea e refuzata cu mesaj RO daca zona s-ar suprapune cu alt cric (cricurile
+  existente mai apropiate raman - regula opreste doar plasarile noi).
+- **UN SINGUR banc de lucru per cric (1:1 strict)**: plasarea bancului refuza cricul
+  care are deja banc asociat; re-legarea automata (cric disparut sau adaugat ulterior)
+  alege intotdeauna doar cricuri LIBERE (nu fura bancul altui banc).

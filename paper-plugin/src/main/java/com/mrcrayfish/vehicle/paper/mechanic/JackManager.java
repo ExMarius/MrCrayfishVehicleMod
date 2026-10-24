@@ -162,6 +162,21 @@ public final class JackManager {
             player.sendRichMessage("<red>Aici nu e loc liber pentru cric.</red>");
             return false;
         }
+        // Regula (brief): minim 10 blocuri intre doua cricuri, ca sa nu se
+        // intersecteze zonele de service.
+        double minDistance = minJackDistance();
+        double minSquared = minDistance * minDistance;
+        for (Jack other : jacks.values()) {
+            if (other.location.getWorld() != target.getWorld()) {
+                continue;
+            }
+            if (other.location.distanceSquared(target.getLocation()) < minSquared) {
+                player.sendRichMessage("<red>Elevatorul trebuie pus la minim <gold>"
+                        + (int) minDistance + " blocuri</gold> de alt elevator, ca sa nu "
+                        + "se suprapuna zonele de service.</red>");
+                return false;
+            }
+        }
         UUID id = UUID.randomUUID();
         Jack jack = placeBlockRig(id, target.getLocation(), false);
         jack.ownerId = player.getUniqueId();
@@ -305,6 +320,11 @@ public final class JackManager {
         jack.block().setType(Material.AIR, false);
         jacks.remove(jack.id);
         removedHook.accept(jack.id);
+    }
+
+    /** Distanta minima intre doua cricuri (zonele de service nu se intersecteaza). */
+    private double minJackDistance() {
+        return Math.max(2.0D, plugin.getConfig().getDouble("jack.min-distance", 10.0D));
     }
 
     /** Ridicare / coborare (animat pe jack.lift-speed-ticks) - cu cheia, direct pe
