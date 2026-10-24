@@ -1111,7 +1111,8 @@ public final class VehicleManager {
             org.bukkit.World world = location.getWorld();
             if (world != null && world.equals(chunk.getWorld())
                     && (location.getBlockX() >> 4) == chunk.getX()
-                    && (location.getBlockZ() >> 4) == chunk.getZ()) {
+                    && (location.getBlockZ() >> 4) == chunk.getZ()
+                    && !vehicle.showcase()) {
                 hibernate(vehicle);
                 hibernated++;
             }
@@ -1130,6 +1131,12 @@ public final class VehicleManager {
     }
 
     private void hibernate(LandVehicle vehicle) {
+        // MASINILE DE PODIUM nu se hiberneaza NICIODATA: sunt display-only, trebuie
+        // sa ramana vizibile mereu, iar StoredVehicle NU are camp showcase - daca ar
+        // ajunge in pendingWorlds/arhiva, ar reveni ca masina NORMALA (furabila).
+        if (vehicle.showcase()) {
+            return;
+        }
         if (vehicles.remove(vehicle.id()) == null) {
             return;
         }

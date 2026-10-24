@@ -382,3 +382,16 @@ am atașat comparația — găsește decalajele"].
   complet (masina normala aflata putin mai departe tot se sterge corect).
 - Daca in raza exista DOAR masina de podium, adminul primeste mesaj explicit:
   remove nu merge pe vizualuri; stergerea completa = /vehicle podium remove langa podium.
+
+## Ciclul J.2 (2026-10-24) — BACKUP total + intarirea finala a podiumurilor
+
+- Backup: tag git `backup-2026-10-24-c9ef3e6` (pe GitHub) + arhiva ZIP a intregului
+  repo la starea c9ef3e6 (`backup_MrCrayfishVehicleMod_c9ef3e6_20261024.zip`).
+- BUG CRITIC rezolvat: hibernate la chunkUnload punea si masinile de podium in
+  pendingWorlds -> collectYaml le persista in vehicles.yml -> la revenire/restart
+  reveneau ca masini NORMALE (StoredVehicle nu are camp showcase) => podium furabil +
+  duplicare. Acum `hibernate()` si `hibernateInChunk()` refuza orice showcase:
+  masinile de expozitie nu parasesc niciodata lumea si nu intra in arhiva.
+- HEAL legacy in ensureShowcase: masina normala a acelasi model, lasata de bug-urile
+  vechi in raza podiumului, e re-adoptata ca showcase (nu se mai spawneaza peste ea).
+- plugin.yml: usage /vehicle actualizat cu toate subcomenzile reale.

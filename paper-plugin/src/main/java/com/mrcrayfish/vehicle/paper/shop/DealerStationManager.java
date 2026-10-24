@@ -188,7 +188,21 @@ public final class DealerStationManager {
                 return;
             }
         }
-        // (2) adoptare pe loc + repararea duplicatelor
+        // (2a) HEAL legacy: o masina NORMALA a aceluiasi model a punctului (ramasita
+        // din versiuni unde podiumul ajungea in vehicles.yml sau dupa furaje) devine
+        // iar showcase - cheltain cerul, fara spawn suplimentar.
+        for (LandVehicle near : vehicles.vehiclesWithin(spot, 2.0D)) {
+            if (!near.showcase() && near.spec() != null
+                    && station.specId().equals(near.spec().id())) {
+                near.setShowcase(true);
+                int healIndex = stations.indexOf(station);
+                stations.set(healIndex, new Station(station.anchor(), station.specId(),
+                        near.id(), station.hologramId(), station.price()));
+                respawnHologram(stations.get(healIndex));
+                return;
+            }
+        }
+        // (2b) adoptare pe loc + repararea duplicatelor
         java.util.List<LandVehicle> found = vehicles.showcasesWithin(spot, 2.0D);
         if (!found.isEmpty()) {
             LandVehicle adopted = found.get(0);
