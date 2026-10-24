@@ -1764,7 +1764,8 @@ def _flip_element_y(element: dict) -> dict:
 
 
 def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
-                          corrections: dict) -> dict:
+                          corrections: dict, wheel_model: str = 'standard_wheel',
+                          include_engine: bool = True) -> dict:
     """FULL 1:1 montaj ca fereastra din mod: caroserie + roti (formula
     LandVehicleSpec.wheel, oglinda dreapta, grup aliniat sub caroserie) + TOATE
     piesele (motor/volan/manere) pozitionate cu aceeasi matematica ca rig-ul live:
@@ -1772,7 +1773,7 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
     model foloseste bodyScale si modelScaleCorrection. Ancorare la colt ca place()
     din rig: punctul (0,0,0) al piesei = part.center()."""
     body = json.loads((namespace / f'models/item/{vehicle_id}_body.json').read_text(encoding='utf-8'))
-    wheel = json.loads((namespace / 'models/item/standard_wheel.json').read_text(encoding='utf-8'))
+    wheel = json.loads((namespace / f'models/item/{wheel_model}.json').read_text(encoding='utf-8'))
     textures = dict(body.get('textures', {}))
     elements = list(body.get('elements', []))
     wheels = spec.get('wheels', [])
@@ -1791,11 +1792,15 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
             textures.setdefault(new_key, value)
         return remap
 
-    def remap_faces(element: dict, remap: dict) -> None:
+    def remap_faces(element: dict, remap: dict, strip_tint: bool = False) -> None:
+        # modelele lipite (roti/motor/volan) NU se vopsesc odata cu caroseria:
+        # fara tintindex pe fetele lor tint-ul din definitia de item nu le atinge.
         for face in element.get('faces', {}).values():
             tex = face.get('texture', '')
             if tex.startswith('#'):
                 face['texture'] = '#' + remap.get(tex[1:], tex[1:])
+            if strip_tint:
+                face.pop('tintindex', None)
 
     menu_centers: list = []
     world_centers: list = []
@@ -1816,7 +1821,7 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
                 transformed = _transformed_element(
                     element, (sx, sy, sz),
                     (centre[0] - 8.0, centre[1] - 8.0, centre[2] - 8.0), side > 0)
-                remap_faces(transformed, wheel_remap)
+                remap_faces(transformed, wheel_remap, strip_tint=True)
                 elements.append(transformed)
 
     if wheels and menu_centers:
@@ -1828,6 +1833,10 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
                             for i in range(3))
         vanilla_rotations = {-45.0, -22.5, 0.0, 22.5, 45.0}
         for part in spec.get('parts', []):
+            # motorul participa la montaj DOAR cand e instalat (brief 2026-10-24:
+            # slot gol = piesa nu apare pe model, nici in lume, nici in GUI)
+            if not include_engine and 'engine' in part['model']:
+                continue
             part_path = namespace / f"models/item/{part['model']}.json"
             if not part_path.exists():
                 continue
@@ -1867,15 +1876,58 @@ def compose_preview_model(namespace: Path, vehicle_id: str, spec: dict,
                 }
                 if element_rotation is not None:
                     flat['rotation'] = element_rotation
-                remap_faces(flat, part_remap)
+                remap_faces(flat, part_remap, strip_tint=True)
                 elements.append(flat)
     return {'textures': textures, 'elements': elements}
 
 
+# --- Preview GUI: SINCRONIZARE LIVE 1:1 (roti x motor x vopsea) + rotatie lina.
+# Matrice de stari per vehicul:
+#   roti:   standard/sports/off_road (sau "none" la vehiculele fara roti)
+#   motor:  eng (instalat) / noe (slot gol) - doar acolo unde spec are montura
+#   vopsea: default (alb) + cele 16 culori din PaintColors
+# Geometrie: models/item/vehicle_preview/<id>/<roti>/<motor>/base.json
+# Cadre rotatie: frame_0..PREVIEW_FRAMES-1 (parent=base, doar display.gui.rotaie)
+# Definitii item cu range_dispatch pe custom_model_data (cadru = numar intreg):
+#   items/vehicle_preview/<id>/<roti>/<motor>/<culoare>.json -> tint fix per culoare.
+PREVIEW_FRAMES = 24
+WHEEL_STATES = ("standard", "sports", "off_road")
+PAINT_STATES = {
+    "default": 0xFFFFFF,
+    "white": 0xF9FFFE, "light_gray": 0x9D9D97, "gray": 0x474F52, "black": 0x1D1D21,
+    "brown": 0x835432, "red": 0xB02E26, "orange": 0xF9801D, "yellow": 0xFED83D,
+    "lime": 0x80C71F, "green": 0x5E7C16, "cyan": 0x169C9C, "light_blue": 0x3AB3DA,
+    "blue": 0x3C44AA, "purple": 0x8932B8, "magenta": 0xC74EBD, "pink": 0xF38BAA,
+}
+
+
+def preview_range_def(vehicle_id: str, wheel: str, engine: str, tint: int) -> dict:
+    """Item model definition: cadru de rotatie ales prin custom_model_data
+    (floats[0] = setCustomModelData(int) de pe server), tint constant per culoare."""
+    entries = []
+    for frame in range(PREVIEW_FRAMES):
+        entries.append({
+            "threshold": float(frame),
+            "model": {
+                "type": "minecraft:model",
+                "model": f"vehicle:item/vehicle_preview/{vehicle_id}/{wheel}/{engine}/frame_{frame}",
+                "tints": [{"type": "minecraft:constant", "value": tint}],
+            },
+        })
+    return {
+        "model": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:custom_model_data",
+            "entries": entries,
+            "fallback": entries[0]["model"],
+        }
+    }
+
+
 def emit_vehicle_previews(namespace: Path) -> None:
-    """Cadrul STATIC al ferestrei din meniul cricului (unghiul initial din
-    EditVehicleScreen; rotatia dinamica ar cere client modat), montaj FULL ca
-    in mod: body + wheels + motor + volan/manere."""
+    """Preview-ul din monitorul GUI: matrice completa (roti x motor x vopsea) cu
+    rotatie lina - serverul schimba doar custom_model_data, deci modelul urmareste
+    LIVE starea reala a masinii de pe cric (brief 2026-10-24)."""
     try:
         specs, corrections = parse_preview_spec()
     except (OSError, RuntimeError) as exc:
@@ -1883,49 +1935,67 @@ def emit_vehicle_previews(namespace: Path) -> None:
         specs, corrections = {}, {}
     for body_path in sorted((namespace / 'models/item').glob('*_body.json')):
         vehicle_id = body_path.stem.removesuffix('_body')
-        composed = compose_preview_model(
-            namespace, vehicle_id, specs.get(vehicle_id, {'wheels': [], 'parts': []}),
-            corrections)
-        elements = composed.get('elements', [])
-        if not elements:
-            continue
-        # Vanilla refuza elementele in afara [-16, 32]: micsoram uniform in jurul
-        # (8,8,8) si recentram pana incapem in cubul legal.
-        lo, hi = _bbox(elements)
-        biggest = max(hi[i] - lo[i] for i in range(3))
-        if biggest > 47.9:
-            factor = 47.9 / biggest
-            for element in elements:
-                for corner in ('from', 'to'):
-                    for i in range(3):
-                        element[corner][i] = round(8.0 + (element[corner][i] - 8.0) * factor, 3)
-            lo, hi = _bbox(elements)
-        shift = [max(-16.0 - lo[i] + 0.05, 0.0) - max(hi[i] - 31.95, 0.0) for i in range(3)]
-        if any(abs(s) > 1.0E-9 for s in shift):
-            for element in elements:
-                for corner in ('from', 'to'):
-                    for i in range(3):
-                        element[corner][i] = round(element[corner][i] + shift[i], 3)
-            lo, hi = _bbox(elements)
-        center = [-(a + b) / 2.0 for a, b in zip(lo, hi)]
-        size = max(b - a for a, b in zip(lo, hi))
-        scale = 52.0 / size if size > 0 else 1.0  # ~3.7x slot: umple fereastra de 4 randuri
-        # Cadrul este STATIC 1:1 cu EditVehicleScreen: modul NU roteste singur
-        # (rotatia cu mouse-ul cere client modat); acesta e unghiul initial
-        # al ferestrei din mod: tilt X ~20, yaw -135.
-        model = dict(composed)
-        model['display'] = {
-            'gui': {
-                'rotation': [20.0, -135.0, 0.0],
-                'translation': [round(v, 3) for v in center],
-                'scale': [round(scale, 4)] * 3,
-            }
-        }
-        write_json(namespace / f'models/item/vehicle_preview/{vehicle_id}/frame_0.json', model)
-        write_json(
-            namespace / f'items/vehicle_preview/{vehicle_id}/frame_0.json',
-            item_definition(f'vehicle:item/vehicle_preview/{vehicle_id}/frame_0', 16383998),
-        )
+        spec = specs.get(vehicle_id, {'wheels': [], 'parts': []})
+        wheels = WHEEL_STATES if spec.get('wheels') else ("none",)
+        has_engine_mount = any('engine' in part.get('model', '')
+                               for part in spec.get('parts', []))
+        engines = ("eng", "noe") if has_engine_mount else ("noe",)
+        for wheel_state in wheels:
+            for engine_state in engines:
+                composed = compose_preview_model(
+                    namespace, vehicle_id, spec, corrections,
+                    wheel_model=(wheel_state + "_wheel") if wheel_state != "none"
+                    else "standard_wheel",
+                    include_engine=engine_state == "eng")
+                elements = composed.get('elements', [])
+                if not elements:
+                    continue
+                # Vanilla refuza elementele in afara [-16, 32]: micsoram uniform in
+                # jurul (8,8,8) si recentram pana incapem in cubul legal.
+                lo, hi = _bbox(elements)
+                biggest = max(hi[i] - lo[i] for i in range(3))
+                if biggest > 47.9:
+                    factor = 47.9 / biggest
+                    for element in elements:
+                        for corner in ('from', 'to'):
+                            for i in range(3):
+                                element[corner][i] = round(
+                                    8.0 + (element[corner][i] - 8.0) * factor, 3)
+                    lo, hi = _bbox(elements)
+                shift = [max(-16.0 - lo[i] + 0.05, 0.0) - max(hi[i] - 31.95, 0.0)
+                         for i in range(3)]
+                if any(abs(s) > 1.0E-9 for s in shift):
+                    for element in elements:
+                        for corner in ('from', 'to'):
+                            for i in range(3):
+                                element[corner][i] = round(element[corner][i] + shift[i], 3)
+                    lo, hi = _bbox(elements)
+                center = [-(a + b) / 2.0 for a, b in zip(lo, hi)]
+                size = max(b - a for a, b in zip(lo, hi))
+                scale = 52.0 / size if size > 0 else 1.0
+                base_dir = f'vehicle_preview/{vehicle_id}/{wheel_state}/{engine_state}'
+                write_json(namespace / f'models/item/{base_dir}/base.json', {
+                    'textures': composed.get('textures', {}),
+                    'elements': elements,
+                })
+                for frame in range(PREVIEW_FRAMES):
+                    yaw = -135.0 + frame * (360.0 / PREVIEW_FRAMES)
+                    write_json(namespace / f'models/item/{base_dir}/frame_{frame}.json', {
+                        'parent': f'vehicle:item/{base_dir}/base',
+                        'display': {
+                            'gui': {
+                                # acelasi unghi initial ca in EditVehicleScreen din mod
+                                'rotation': [20.0, round(yaw, 3), 0.0],
+                                'translation': [round(v, 3) for v in center],
+                                'scale': [round(scale, 4)] * 3,
+                            }
+                        },
+                    })
+                for color_name, rgb in PAINT_STATES.items():
+                    write_json(
+                        namespace / f'items/{base_dir}/{color_name}.json',
+                        preview_range_def(vehicle_id, wheel_state, engine_state, rgb),
+                    )
 
 
 # =====================================================================

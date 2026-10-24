@@ -38,23 +38,40 @@ class ResourcePackBuildTest(unittest.TestCase):
         for entry in sorted(path for path in self.entries
                             if path.startswith("assets/vehicle/items/") and path.endswith(".json")):
             item = self.read_json(entry)
-            model = item["model"]["model"]
-            namespace, model_path = model.split(":", 1)
-            # Galetile cu fluid refolosesc modelul vanilie (minecraft:item/bucket +
-            # tints constante generate), asa cum face modul (parent forge:item/bucket).
-            if model == "minecraft:item/bucket":
-                self.assertTrue(entry.endswith("_bucket.json"), entry)
-                continue
-            self.assertEqual("vehicle", namespace, entry)
-            model_entry = f"assets/vehicle/models/{model_path}.json"
-            self.assertIn(model_entry, self.entries, entry)
-            model_json = self.read_json(model_entry)
-            for texture in model_json.get("textures", {}).values():
-                if not texture.startswith("vehicle:"):
+            # Preview-ul live foloseste range_dispatch (cadru = custom_model_data);
+            # aceleasi reguli de rezolvare se aplica fiecarei intrari + fallback-ului.
+            variants = []
+            if item["model"].get("type") == "minecraft:range_dispatch":
+                if item["model"].get("fallback") is not None:
+                    variants.append(item["model"]["fallback"])
+                variants.extend(variant["model"] for variant in item["model"]["entries"])
+            else:
+                variants.append(item["model"])
+            for variant in variants:
+                model = variant["model"]
+                namespace, model_path = model.split(":", 1)
+                # Galetile cu fluid refolosesc modelul vanilie (minecraft:item/bucket +
+                # tints constante generate), asa cum face modul (parent forge:item/bucket).
+                if model == "minecraft:item/bucket":
+                    self.assertTrue(entry.endswith("_bucket.json"), entry)
                     continue
-                _, texture_path = texture.split(":", 1)
-                self.assertIn(f"assets/vehicle/textures/{texture_path}.png", self.entries,
-                              f"{model_entry}: {texture}")
+                self.assertEqual("vehicle", namespace, entry)
+                model_entry = f"assets/vehicle/models/{model_path}.json"
+                self.assertIn(model_entry, self.entries, entry)
+                model_json = self.read_json(model_entry)
+                # Cadrele wrapper au doar parent+display; geometria+texturile stau in parinte.
+                textures = model_json.get("textures", {})
+                if not textures and "parent" in model_json:
+                    parent_ns, parent_path = model_json["parent"].split(":", 1)
+                    parent_entry = f"assets/{parent_ns}/models/{parent_path}.json"
+                    self.assertIn(parent_entry, self.entries, model_entry)
+                    textures = self.read_json(parent_entry).get("textures", {})
+                for texture in textures.values():
+                    if not texture.startswith("vehicle:"):
+                        continue
+                    _, texture_path = texture.split(":", 1)
+                    self.assertIn(f"assets/vehicle/textures/{texture_path}.png", self.entries,
+                                  f"{model_entry}: {texture}")
 
     def test_every_generated_element_stays_inside_vanilla_model_bounds(self):
         for entry in sorted(path for path in self.entries

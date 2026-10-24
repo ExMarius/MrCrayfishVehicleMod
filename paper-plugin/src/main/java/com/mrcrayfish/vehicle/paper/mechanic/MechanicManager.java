@@ -49,6 +49,7 @@ public final class MechanicManager {
     private final FluidMixerManager mixers;
     private final MechanicGui mechanicGui;
     private BukkitTask saveTask;
+    private BukkitTask previewTask;
 
     public MechanicManager(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -69,11 +70,18 @@ public final class MechanicManager {
         mixers.start();
         long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
         saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
+        // Rotatia automata in monitorul cricului (brief): un cadru la 5 tick-uri =>
+        // o rotatie completa FOARTE lina si lenta la ~6s; si sincronizarea live
+        // roti/motor/vopsea cat timp meniul e deschis (reconstruie itemul din stare).
+        previewTask = Bukkit.getScheduler().runTaskTimer(plugin, mechanicGui::advancePreviewFrames, 5L, 5L);
     }
 
     public void stop() {
         if (saveTask != null) {
             saveTask.cancel();
+        }
+        if (previewTask != null) {
+            previewTask.cancel();
         }
         save();
         props.stop();

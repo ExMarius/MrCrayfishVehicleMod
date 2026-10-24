@@ -39,8 +39,9 @@ public final class MechanicGui {
         private Inventory inventory;
         private final UUID vehicleId;
         private final boolean paintPage;
-        /** Preview-ul static: id-ul modelului compus din pack. */
+        /** Preview-ul live: id-ul spec-ului + cadrul de rotatie curent (0..FRAMES-1). */
         private String previewId;
+        private int frame;
 
         public Holder(UUID vehicleId, boolean paintPage) {
             this.vehicleId = vehicleId;
@@ -107,7 +108,8 @@ public final class MechanicGui {
         // Centrul ferestrei: vehiculul MARE (modelul 3D compus complet din mod) +
         // datele complete; preview-ul e STATIC, unghiul initial din mod.
         holder.previewId = vehicle.spec().id();
-        inventory.setItem(INFO_SLOT, info(vehicle, previewModelKey(holder)));
+        holder.frame = 0;
+        inventory.setItem(INFO_SLOT, info(vehicle, previewStateKey(vehicle), holder.frame));
 
         if (vehicle.spec().defaultEngineType() == EngineType.NONE) {
             inventory.setItem(ENGINE_SLOT, tag(make(Material.BARRIER,
@@ -180,16 +182,59 @@ public final class MechanicGui {
         player.openInventory(inventory);
     }
 
-    /** Preview-ul e un SINGUR cadru static (unghiul initial al ferestrei din mod). */
-    private static NamespacedKey previewModelKey(Holder holder) {
-        return new NamespacedKey("vehicle",
-                "vehicle_preview/" + holder.previewId + "/frame_0");
+    /** 24 de cadre de rotatie lina lenta (5 tick-uri/cadru => 6s pe rotatie),
+     *  alese prin custom_model_data - monitorul arata masina din toate unghiurile. */
+    public static final int FRAMES = 24;
+
+    /** Cheia de stare LIVE a preview-ului (brief 2026-10-24, sincronizare 1:1):
+     *  roti curente x motor instalat? x vopsea curenta = exact masina de pe cric.
+     *  Orice schimbare (roti/motor/vopsea) se reflecta IMEDIAT si in monitor. */
+    private static NamespacedKey previewStateKey(LandVehicle vehicle) {
+        String wheel = vehicle.spec().hasWheels()
+                ? vehicle.wheelType().model().replace("_wheel", "")
+                : "none";
+        String engine = vehicle.spec().engine() != null && vehicle.engineInstalled()
+                ? "eng" : "noe";
+        String color = "default";
+        if (vehicle.painted()) {
+            for (PaintColors paint : PaintColors.values()) {
+                if (paint.rgb() == vehicle.paintColor()) {
+                    color = paint.name().toLowerCase(Locale.ROOT);
+                    break;
+                }
+            }
+        }
+        return new NamespacedKey("vehicle", "vehicle_preview/" + vehicle.spec().id()
+                + "/" + wheel + "/" + engine + "/" + color);
     }
 
-    private static ItemStack info(LandVehicle vehicle, NamespacedKey modelKey) {
+    /** Rotația automata FOARTE lenta si lina (brief: vizualizare 3D din toate
+     *  unghiurile, pentru ca drag-ul cu mouse-ul nu exista pe chest vanilla).
+     *  La fiecare avans reconstruim itemul din starea LIVE a vehiculului:
+     *  schimbarile de roti/motor/vopsea se vad instant, fara re-intrare in meniu. */
+    public void advancePreviewFrames() {
+        for (Player player : Bukkit.getOnlinePlayers()) {
+            Inventory top = player.getOpenInventory().getTopInventory();
+            if (!(top.getHolder() instanceof Holder holder)
+                    || holder.paintPage() || top.getSize() != SIZE || holder.previewId == null) {
+                continue;
+            }
+            java.util.Optional<LandVehicle> vehicle = mechanic.vehicles().byId(holder.vehicleId());
+            if (vehicle.isEmpty()) {
+                player.closeInventory();
+                continue;
+            }
+            holder.frame = (holder.frame + 1) % FRAMES;
+            top.setItem(INFO_SLOT, info(vehicle.get(), previewStateKey(vehicle.get()), holder.frame));
+        }
+    }
+
+    private static ItemStack info(LandVehicle vehicle, NamespacedKey modelKey, int frame) {
         ItemStack stack = new ItemStack(Material.PAPER);
         ItemMeta meta = stack.getItemMeta();
         meta.setItemModel(modelKey);
+        // cadrul de rotatie: range_dispatch pe custom_model_data (vezi builderul pack-ului)
+        meta.setCustomModelData(Integer.valueOf(frame));
         meta.displayName(Component.text(vehicle.spec().displayName(), NamedTextColor.WHITE,
                 TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false));
         List<Component> lore = new ArrayList<>();
