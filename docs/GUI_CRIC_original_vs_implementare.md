@@ -284,3 +284,20 @@ am atașat comparația — găsește decalajele"].
   banc) nu mai au planul opac full-bloc la baza => stone-ul/betonul de sub ele ramane
   vizibil ca in mod, iar picioarele au pierdut fetele "down" coplanare cu podeaua;
   rafturile bancului decalate 0.05 px spre exterior (z-fighting eliminat).
+
+## Ciclul E (2026-10-24) — rack-ul uneltelor (binding) + vopsit pe capsule + porti cric
+
+- **Renuntam la perfectarea vizuala (momentan)**; starea LIVE ramane cea din ciclurile A-D.
+- **Binding unelte**: cheie + ciocan + pistol de vopsea, legate de banc (PDC cu id-ul bancului),
+  STRICT in RAM. Returnare automata la: quit (PlayerQuitEvent), iesire din raza de service
+  (leash la 2s, doar pt. jucatorii cu unelte), spargerea bancului. Wipe la join (PlayerJoinEvent):
+  uneltele nu supravietuiesc relog-ului/restart-ului (anti-dupe). Returnare manuala din meniu.
+- **GUI sincron**: meniul bancului (click simplu pe banc) arata fiecare unealta cu stare live:
+  libera / la tine (click=return) / OCUPATA de <nume> (barieră rosie, niciun click); refresh
+  instant pentru toti vizitatorii aceluiasi banc (event-driven, zero task-uri suplimentare).
+- **Spray exclusiv pe capsule**: pistolul de banc NU are rezervor - consuma prima capsula reala
+  din inventar (culoare + 1 pulverizare); capsula directa ramane ca in mod (consum si in creative).
+- **Vopsitul NU mai e gratuit**: paleta din banc consuma 1 pulverizare din capsula de ACEA
+  culoare (reversare cerinta veche „gratuit"); creative = bypass.
+- **Porti cric**: motor/roti (montare+demontare, GUI si click direct) si vopsirea (capsula,
+  pistol, paleta) cer JackState.LIFTED. Refuzul e mesaj rosu in romana.

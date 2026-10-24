@@ -43,9 +43,17 @@ public final class MechanicGui {
         private String previewId;
         private int frame;
 
+        /** Pagina rack-ului de unelte: vehicleId carra id-ul BANCULUI (nu al masinii). */
+        private final boolean toolsPage;
+
         public Holder(UUID vehicleId, boolean paintPage) {
+            this(vehicleId, paintPage, false);
+        }
+
+        public Holder(UUID vehicleId, boolean paintPage, boolean toolsPage) {
             this.vehicleId = vehicleId;
             this.paintPage = paintPage;
+            this.toolsPage = toolsPage;
         }
 
         public UUID vehicleId() {
@@ -54,6 +62,10 @@ public final class MechanicGui {
 
         public boolean paintPage() {
             return paintPage;
+        }
+
+        public boolean toolsPage() {
+            return toolsPage;
         }
 
         @Override
@@ -199,6 +211,83 @@ public final class MechanicGui {
         inventory.setItem(22, tag(make(Material.ARROW,
                 Component.text("« Inapoi la banc", NamedTextColor.GRAY), List.of()), "back"));
         player.openInventory(inventory);
+    }
+
+    /* ==================== Rack-ul uneltelor bancului (binding, GUI sincron) ==================== */
+
+    private static final int TOOLS_WRENCH_SLOT = 11;
+    private static final int TOOLS_HAMMER_SLOT = 13;
+    private static final int TOOLS_SPRAY_SLOT = 15;
+
+    /** Meniul bancului: uneltele cu stare ocupare LIVE (brief 2026-10-24). Ocupata
+     *  = rosie, nume detinator, niciun click posibil; libera/a ta = interactionabila. */
+    public void openToolsMenu(Player player, UUID stationId) {
+        Holder holder = new Holder(stationId, false, true);
+        Inventory inventory = Bukkit.createInventory(holder, 27,
+                Component.text("Banc de lucru - Unelte", NamedTextColor.DARK_GRAY));
+        holder.inventory = inventory;
+        mechanic.workstations().stationOf(stationId).ifPresentOrElse(station -> {
+            // CHEIE: pana la maxWrenches instante simultan (config), stoc generic.
+            boolean iHaveWrench = false;
+            for (ItemStack stack : player.getInventory().getContents()) {
+                java.util.UUID origin = MechanicItems.wrenchStationOf(stack);
+                if (origin != null && origin.equals(stationId)) { iHaveWrench = true; break; }
+            }
+            String wrenchState = iHaveWrench
+                    ? "return_wrench"
+                    : "take_wrench";
+            inventory.setItem(TOOLS_WRENCH_SLOT, tag(entry(
+                    MechanicItems.wrench(null), Component.text("CHEIE DE MECANIC", NamedTextColor.GOLD),
+                    List.of(Component.text(iHaveWrench
+                                    ? "O ai deja - click = o returnezi la banc."
+                                    : "Libera - click = o iei (ramai in zona de service!).",
+                            NamedTextColor.GRAY))), wrenchState));
+            toolEntry(inventory, TOOLS_HAMMER_SLOT, "hammer",
+                    MechanicItems.hammer(null, mechanic.workstations().hammerUsedOf(station)),
+                    mechanic.workstations().hammerHolderOf(station), player, stationId);
+            toolEntry(inventory, TOOLS_SPRAY_SLOT, "spray",
+                    MechanicItems.sprayGun(stationId),
+                    mechanic.workstations().sprayHolderOf(station), player, stationId);
+        }, () -> inventory.setItem(13, make(Material.BARRIER,
+                Component.text("BANC INEXISTENT", NamedTextColor.RED), List.of())));
+        player.openInventory(inventory);
+    }
+
+    private void toolEntry(Inventory inventory, int slot, String tool, ItemStack icon,
+                           UUID holderUuid, Player viewer, UUID stationId) {
+        if (holderUuid == null) {
+            inventory.setItem(slot, tag(entry(icon,
+                    Component.text("hammer".equals(tool) ? "CIOCAN DE LACATUS" : "PISTOL DE VOPSEA",
+                            NamedTextColor.GOLD),
+                    List.of(Component.text("Libera - click = o iei (se intoarce singura la banc).",
+                            NamedTextColor.GRAY))), "take_" + tool));
+            return;
+        }
+        if (holderUuid.equals(viewer.getUniqueId())) {
+            inventory.setItem(slot, tag(entry(icon,
+                    Component.text("LA TINE (" + ("hammer".equals(tool) ? "ciocan" : "pistol") + ")",
+                            NamedTextColor.GREEN),
+                    List.of(Component.text("Click = o returnezi la banc.", NamedTextColor.GRAY))),
+                    "return_" + tool));
+            return;
+        }
+        String who = Bukkit.getOfflinePlayer(holderUuid).getName();
+        inventory.setItem(slot, make(Material.BARRIER,
+                Component.text("OCUPATA - " + (who == null ? "cineva" : who), NamedTextColor.RED),
+                List.of(Component.text("Unealta e folosita de alt mecanic - asteapta sa o intoarca.",
+                        NamedTextColor.GRAY))));
+    }
+
+    /** Refresh live al meniurilor de unelte deschise pt. acelasi banc (brief:
+     *  blocarea dinamica in GUI cand altcineva ia/returneaza o unealta). */
+    public void refreshToolsMenus(UUID stationId) {
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            Inventory top = online.getOpenInventory().getTopInventory();
+            if (top.getHolder() instanceof Holder holder && holder.toolsPage
+                    && stationId.equals(holder.vehicleId())) {
+                openToolsMenu(online, stationId);
+            }
+        }
     }
 
     /** 24 de cadre de rotatie lina lenta (5 tick-uri/cadru => 6s pe rotatie),

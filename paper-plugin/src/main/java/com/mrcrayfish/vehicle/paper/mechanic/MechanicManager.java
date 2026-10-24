@@ -57,6 +57,9 @@ public final class MechanicManager {
         this.store = new MechanicStore(plugin);
         this.jacks = new JackManager(plugin, vehicles, store);
         this.workstations = new WorkstationManager(plugin, store, jacks);
+        // Rack-ul uneltelor: bancul deschide meniul sau si se sincronizeaza cu GUI.
+        this.workstations.setToolsOpener((who, stationId) -> gui().openToolsMenu(who, stationId));
+        this.workstations.setToolsRefresher(stationId -> gui().refreshToolsMenus(stationId));
         this.jacks.setRemovedHook(this.workstations::handleJackRemoved);
         this.props = new PropManager(plugin, vehicles, store);
         this.mixers = new FluidMixerManager(plugin, store);
@@ -262,24 +265,42 @@ public final class MechanicManager {
         return true;
     }
 
-    /** Spray can pe vehicul, 1-la-1 cu VehicleEntity.interact din mod:
-     *  - vopseste instant pe click (fara cric);
-     *  - RemainingSprays > 0 cerut TUTUROR (si in creative, ca in mod);
-     *  - aceeasi culoare = silent no-op (fara consum, fara sunet, ca in mod);
-     *  - consum 1 pulverizare la fiecare aplicare (si in creative, ca in mod);
-     *  - modul nu trimite mesaje in chat; la noi confirmarea e pe action bar. */
+    /** Spray pe vehicul (brief 2026-10-24, "rotile/motor/vopsea doar pe elevator"):
+     *  - DOAR cu masina ridicata pe cric aliniaz (JackState.LIFTED);
+     *  - capsula reala: culoarea ei, consum 1 din RemainingSprays (ca in mod);
+     *  - pistolul de banc (binding, fara rezervor): ia culoarea + consumul din
+     *    PRIMA capsula reala din inventar; fara capsula = refuz cu mesaj;
+     *  - aceeasi culoare = silent no-op (ca in mod); consum si in creative. */
     private boolean handleSpray(Player player, LandVehicle vehicle, ItemStack can) {
-        Integer rgb = MechanicItems.sprayColorOf(can);
-        if (rgb == null) {
-            return false;
-        }
         if (!has(player, "mcv.mechanic.paint")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.paint.</red>");
             return true;
         }
-        if (MechanicItems.spraysRemainingOf(can) <= 0) {
-            player.sendRichMessage("<red>Spray-ul s-a golit - reumple-l cumparand alta "
-                    + "vopsea (shop > Piese).</red>");
+        if (vehicle.jackState() != LandVehicle.JackState.LIFTED) {
+            player.sendRichMessage("<red>Vopsesti doar masina ridicata pe cric - "
+                    + "ridica-o mai intai cu cheia.</red>");
+            return true;
+        }
+        ItemStack capsule = can;
+        if (MechanicItems.isBenchTool(can)) {
+            capsule = findCapsule(player);
+            if (capsule == null) {
+                player.sendRichMessage("<yellow>Pistolul de banc nu are rezervor propriu - "
+                        + "tine o capsula de vopsea in inventar.</yellow>");
+                return true;
+            }
+        } else {
+            Integer direct = MechanicItems.sprayColorOf(can);
+            if (direct == null) {
+                return false;
+            }
+        }
+        Integer rgb = MechanicItems.sprayColorOf(capsule);
+        if (rgb == null) {
+            return false;
+        }
+        if (MechanicItems.spraysRemainingOf(capsule) <= 0) {
+            player.sendRichMessage("<red>Capsula de vopsea s-a golit - ia alta.</red>");
             return true;
         }
         if (vehicle.paintColor() == rgb) {
@@ -288,7 +309,7 @@ public final class MechanicManager {
         vehicle.setPaintColor(rgb);
         vehicles.save();
         String colorName = Objects.requireNonNullElse(
-                MechanicItems.sprayColorNameOf(can), "culoare");
+                MechanicItems.sprayColorNameOf(capsule), "culoare");
         Location at = vehicle.location();
         for (Player nearby : player.getWorld().getPlayers()) {
             if (nearby.getLocation().distanceSquared(at) <= 20.0D * 20.0D) {
@@ -296,16 +317,33 @@ public final class MechanicManager {
                         at.getX(), at.getY(), at.getZ());
             }
         }
-        int remaining = MechanicItems.useSpray(can, sprayCapacity());
+        int remaining = MechanicItems.useSpray(capsule, sprayCapacity());
         player.sendActionBar(net.kyori.adventure.text.Component.text(
                 "Vopsea " + colorName + " (ramas: " + remaining + "/" + sprayCapacity() + ")",
                 net.kyori.adventure.text.format.NamedTextColor.GOLD));
         return true;
     }
 
+    /** Prima capsula de vopsea REALA (far marcaj de banc, cu continut) din inventar. */
+    private static ItemStack findCapsule(Player player) {
+        for (ItemStack stack : player.getInventory().getContents()) {
+            if (stack != null
+                    && MechanicItems.kindOf(stack) == MechanicItems.Kind.SPRAY_CAN
+                    && !MechanicItems.isBenchTool(stack)
+                    && MechanicItems.spraysRemainingOf(stack) > 0) {
+                return stack;
+            }
+        }
+        return null;
+    }
+
     /** Motor nou pe vehicul (click cu itemul): tier nou intra imediat in fizica;
      *  motorul vechi, de acelasi rebut de tip, revine in inventar. */
     private boolean handleEngineSwap(Player player, LandVehicle vehicle, ItemStack engineItem) {
+        if (vehicle.jackState() != LandVehicle.JackState.LIFTED) {
+            player.sendRichMessage("<red>Motorul se monteaza/demonteaza doar cu masina ridicata pe cric.</red>");
+            return true;
+        }
         if (!has(player, "mcv.mechanic.engine")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.engine.</red>");
             return true;
@@ -351,6 +389,10 @@ public final class MechanicManager {
      *  jucatorului, slotul ramane functional dar gol, iar piesa dispare de pe
      *  model (in lume si in GUI) - regula brief 2026-10-24. */
     public boolean uninstallEngine(Player player, LandVehicle vehicle) {
+        if (vehicle.jackState() != LandVehicle.JackState.LIFTED) {
+            player.sendRichMessage("<red>Motorul se monteaza/demonteaza doar cu masina ridicata pe cric.</red>");
+            return true;
+        }
         if (!has(player, "mcv.mechanic.engine")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.engine.</red>");
             return true;
@@ -374,6 +416,10 @@ public final class MechanicManager {
     /** Scoate rotile din vehicul si le pune pe cursor (fluxul din mod). Fara roti
      *  montate masina nu porneste si nu poate fi coborata de pe cric. */
     public boolean uninstallWheels(Player player, LandVehicle vehicle) {
+        if (vehicle.jackState() != LandVehicle.JackState.LIFTED) {
+            player.sendRichMessage("<red>Rotile se monteaza/demonteaza doar cu masina ridicata pe cric.</red>");
+            return true;
+        }
         if (!has(player, "mcv.mechanic.wheel")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.wheel.</red>");
             return true;
@@ -392,6 +438,10 @@ public final class MechanicManager {
 
     /** Roti noi: modelul vizual se schimba, iar fizica preia tractiunea tipului. */
     private boolean handleWheelSwap(Player player, LandVehicle vehicle, ItemStack wheelItem) {
+        if (vehicle.jackState() != LandVehicle.JackState.LIFTED) {
+            player.sendRichMessage("<red>Rotile se monteaza/demonteaza doar cu masina ridicata pe cric.</red>");
+            return true;
+        }
         if (!has(player, "mcv.mechanic.wheel")) {
             player.sendRichMessage("<red>Nu ai permisiunea mcv.mechanic.wheel.</red>");
             return true;

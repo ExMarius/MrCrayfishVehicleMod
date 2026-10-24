@@ -298,6 +298,23 @@ public final class MechanicListener implements Listener {
             player.closeInventory();
             return;
         }
+        if (holder.toolsPage()) {
+            // Rack-ul uneltelor: sloturile sunt doar vizuale/functionale; inventarul
+            // jucatorului ramane al lui. Take/return trec prin WorkstationManager,
+            // care refresh-uieste toate meniurile deschise pe acelasi banc.
+            String toolAction = MechanicGui.actionOf(event.getCurrentItem());
+            if (toolAction == null) {
+                return;
+            }
+            if (toolAction.startsWith("take_")) {
+                mechanic.workstations().takeTool(player, holder.vehicleId(),
+                        toolAction.substring(5));
+            } else if (toolAction.startsWith("return_")) {
+                mechanic.workstations().returnTool(player, holder.vehicleId(),
+                        toolAction.substring(7));
+            }
+            return;
+        }
         LandVehicle target = vehicle.get();
         if (holder.paintPage()) {
             String action = MechanicGui.actionOf(event.getCurrentItem());
@@ -361,13 +378,18 @@ public final class MechanicListener implements Listener {
         return mechanic.handleToolClick(player, vehicle, cursor);
     }
 
-    /** Paleta noastra de vopsea: GRATUITA, fara consum de iteme (sistem propriu).
-     *  Accesul il guverneaza proprietarul - poate vopsi cine poate si conduce
-     *  masina (el + cei trusted via /vehicle trust). Aceeasi culoare = no-op. */
+    /** Paleta de vopsea (brief 2026-10-24): NU mai e gratuita - fiecare aplicare
+     *  consuma o pulverizare dintr-o capsula DE ACEA CULOARE din inventar si merge
+     *  DOAR cu masina ridicata pe cric. Accesul il guverneaza proprietarul (el +
+     *  cei trusted via /vehicle trust). Aceeasi culoare = no-op. */
     private void handlePaintChoice(Player player, LandVehicle vehicle, PaintColors color) {
         if (!vehicle.canDrive(player)) {
             player.sendRichMessage("<red>Doar proprietarul si jucatorii autorizati "
                     + "(trust) pot vopsi aceasta masina.</red>");
+            return;
+        }
+        if (vehicle.jackState() != LandVehicle.JackState.LIFTED) {
+            player.sendRichMessage("<red>Vopsesti doar masina ridicata pe cric.</red>");
             return;
         }
         long now = System.currentTimeMillis();
@@ -380,8 +402,33 @@ public final class MechanicListener implements Listener {
             // Ca in mod: aceeasi culoare = fara efect si fara sunet.
             return;
         }
+        // Consum EXCLUSIV din capsulele existente (brief: fara injectare de resurse).
+        ItemStack capsule = null;
+        if (player.getGameMode() != org.bukkit.GameMode.CREATIVE) {
+            for (ItemStack stack : player.getInventory().getContents()) {
+                if (stack == null
+                        || MechanicItems.kindOf(stack) != MechanicItems.Kind.SPRAY_CAN
+                        || MechanicItems.isBenchTool(stack)) {
+                    continue;
+                }
+                Integer rgb = MechanicItems.sprayColorOf(stack);
+                if (rgb != null && rgb.intValue() == color.rgb()
+                        && MechanicItems.spraysRemainingOf(stack) > 0) {
+                    capsule = stack;
+                    break;
+                }
+            }
+            if (capsule == null) {
+                player.sendRichMessage("<yellow>Nu ai o capsula de vopsea <gold>"
+                        + color.label() + "</gold> (cu continut) in inventar.</yellow>");
+                return;
+            }
+        }
         vehicle.setPaintColor(color.rgb());
         vehicles.save();
+        if (capsule != null) {
+            MechanicItems.useSpray(capsule, mechanic.sprayCapacity());
+        }
         Location at = vehicle.location();
         for (Player nearby : player.getWorld().getPlayers()) {
             if (nearby.getLocation().distanceSquared(at) <= 20.0D * 20.0D) {
@@ -392,7 +439,21 @@ public final class MechanicListener implements Listener {
             }
         }
         player.sendRichMessage("<gray>Ai vopsit masina in <gold>" + color.label()
-                + "</gold> - gratuit, fara consum.</gray>");
+                + "</gold> (consum: 1 pulverizare din capsula).</gray>");
+    }
+
+    /* ==================== Binding unelte: quit/join (brief 2026-10-24) ==================== */
+
+    /** Returnare automata la deconectare: toate uneltele jucatorului revin la banc. */
+    @EventHandler
+    public void onQuit(org.bukkit.event.player.PlayerQuitEvent event) {
+        mechanic.workstations().handleQuit(event.getPlayer());
+    }
+
+    /** Wipe la join: uneltele legate nu supravietuiesc relog-ului/restart-ului. */
+    @EventHandler
+    public void onJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+        mechanic.workstations().handleJoin(event.getPlayer());
     }
 
     private void onCreativeGuiClick(InventoryClickEvent event, CreativeGui.Holder holder) {

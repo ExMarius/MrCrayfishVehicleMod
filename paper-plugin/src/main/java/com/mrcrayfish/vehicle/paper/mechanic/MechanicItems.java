@@ -39,6 +39,9 @@ public final class MechanicItems {
     private static final NamespacedKey SPRAY_NAME = new NamespacedKey("vehicle", "spray_color_name");
     private static final NamespacedKey CRATE_PAYLOAD = new NamespacedKey("vehicle", "crate_payload");
     private static final NamespacedKey WRENCH_STATION = new NamespacedKey("vehicle", "wrench_station");
+    /** Marcaj generic unealta-de-banc (ciocan/pistol de vopsea): id-ul bancului
+     *  proprietar, pt. sistemul de binding (returnare automata, GUI blocat). */
+    private static final NamespacedKey BENCH_STATION = new NamespacedKey("vehicle", "bench_tool_station");
     private static final NamespacedKey SPRAY_REMAINING = new NamespacedKey("vehicle", "spray_remaining");
     private static final NamespacedKey BUCKET_FLUID = new NamespacedKey("vehicle", "bucket_fluid");
     private static final NamespacedKey HAMMER_USES = new NamespacedKey("vehicle", "hammer_uses");
@@ -205,6 +208,69 @@ public final class MechanicItems {
         ItemStack item = base(Kind.HAMMER, "hammer");
         updateHammerLore(item, 0);
         return item;
+    }
+
+    /** Ciocanul legat de un banc (binding): uzura curenta = used. */
+    public static ItemStack hammer(UUID stationId, int used) {
+        ItemStack item = base(Kind.HAMMER, "hammer");
+        ItemMeta meta = item.getItemMeta();
+        if (stationId != null) {
+            meta.getPersistentDataContainer().set(BENCH_STATION, PersistentDataType.STRING,
+                    stationId.toString());
+        }
+        meta.getPersistentDataContainer().set(HAMMER_USES, PersistentDataType.INTEGER,
+                Math.max(0, used));
+        item.setItemMeta(meta);
+        updateHammerLore(item, Math.max(0, used));
+        return item;
+    }
+
+    /** Pistolul de vopsea legat de un banc: e DOAR aplicatorul - consuma capsulele
+     *  reale din inventar (SPRAY_CAN fara acest marcaj), si numai pe masina ridicata. */
+    public static ItemStack sprayGun(UUID stationId) {
+        ItemStack item = sprayCan(0x606060, "aplicator");
+        ItemMeta meta = item.getItemMeta();
+        meta.getPersistentDataContainer().set(BENCH_STATION, PersistentDataType.STRING,
+                stationId.toString());
+        // fara rezervor propriu: aplicatorul cere intotdeauna o capsula in inventar
+        meta.getPersistentDataContainer().set(SPRAY_REMAINING, PersistentDataType.INTEGER, 0);
+        item.setItemMeta(meta);
+        finish(item, Component.text("Pistol de vopsea (banc)", NamedTextColor.GOLD), List.of(
+                Component.text("Click pe masina ridicata pe cric = vopsesti cu o capsula din inventar.",
+                        NamedTextColor.GRAY),
+                Component.text("Se intoarce automat la banc daca iesi din zona.", NamedTextColor.DARK_GRAY)));
+        antiStack(item);
+        return item;
+    }
+
+    /** Id-ul bancului proprietar al uneltei (cheie/ciocan/pistol), null = libera. */
+    public static UUID benchToolStationOf(ItemStack stack) {
+        if (stack == null) {
+            return null;
+        }
+        UUID wrench = wrenchStationOf(stack);
+        if (wrench != null) {
+            return wrench;
+        }
+        Kind kind = kindOf(stack);
+        if (kind != Kind.HAMMER && kind != Kind.SPRAY_CAN) {
+            return null;
+        }
+        String raw = stack.getItemMeta().getPersistentDataContainer()
+                .get(BENCH_STATION, PersistentDataType.STRING);
+        if (raw == null || raw.isEmpty()) {
+            return null;
+        }
+        try {
+            return UUID.fromString(raw);
+        } catch (IllegalArgumentException exception) {
+            return null;
+        }
+    }
+
+    /** Unealta legata de banc (oricare) - nu se confunda cu capsulele de spray. */
+    public static boolean isBenchTool(ItemStack stack) {
+        return benchToolStationOf(stack) != null;
     }
 
     /** Cate demontari mai rezista ciocanul (0 = erodat complet). */

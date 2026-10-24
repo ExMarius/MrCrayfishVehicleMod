@@ -52,6 +52,12 @@ public final class WorkstationManager {
         UUID ownerId;
         /** Jucatorii care au primit cheie de la banc (max workstations.max-wrenches). */
         final Set<UUID> recipients = new LinkedHashSet<>();
+        /** Binding (brief 2026-10-24): cine are ciocanul / pistolul de vopsea ale
+         *  bancului (o singura instanta fiecare). STRICT RAM - revin liberi la
+         *  restart/quit/wipe (vezi handleQuit/handleJoin/leashTools). */
+        UUID hammerHolder;
+        int hammerUsed;
+        UUID sprayHolder;
 
         Station(UUID id, Location location, UUID jackId, UUID ownerId) {
             this.id = id;
@@ -84,6 +90,24 @@ public final class WorkstationManager {
 
     private int maxWrenches() {
         return Math.max(1, plugin.getConfig().getInt("workstation.max-wrenches", 2));
+    }
+
+    /** Deschide meniul uneltelor unui banc; refresh pentru ceilalti vizitatori. */
+    private java.util.function.BiConsumer<Player, UUID> toolsOpener;
+    private java.util.function.Consumer<UUID> toolsRefresher;
+
+    public void setToolsOpener(java.util.function.BiConsumer<Player, UUID> opener) {
+        this.toolsOpener = opener;
+    }
+
+    public void setToolsRefresher(java.util.function.Consumer<UUID> refresher) {
+        this.toolsRefresher = refresher;
+    }
+
+    private void refreshTools(UUID stationId) {
+        if (toolsRefresher != null) {
+            toolsRefresher.accept(stationId);
+        }
     }
 
     private double serviceRadius() {
@@ -122,7 +146,6 @@ public final class WorkstationManager {
                     stored.x(), stored.y(), stored.z()));
             station.jackId = stored.jackId();
             station.ownerId = stored.ownerId();
-            station.recipients.addAll(stored.recipients());
             stations.put(station.id, station);
         }
     }
@@ -134,7 +157,7 @@ public final class WorkstationManager {
             stored.add(new MechanicStore.StoredStation(station.id, "workstation",
                     location.getWorld().getUID(), location.getX(), location.getY(),
                     location.getZ(), 0.0F, station.jackId, station.ownerId,
-                    new ArrayList<>(station.recipients)));
+                    java.util.List.of()));
         }
         return stored;
     }
@@ -245,32 +268,197 @@ public final class WorkstationManager {
             return true;
         }
         cooldowns.put(player.getUniqueId(), now);
-        // Regula #2: o singura cheie DE LA ACEST banc per jucator, la orice moment.
-        for (ItemStack contents : player.getInventory().getContents()) {
-            if (contents == null) {
+        // Rack-ul uneltelor (brief 2026-10-24): clickul simplu DESCHIDE meniul
+        // bancului; uneltele se iau/se returneaza de acolo, cu stare de ocupare.
+        if (toolsOpener != null) {
+            toolsOpener.accept(player, station.id);
+        }
+        return true;
+    }
+
+    /* ==================== rack-ul uneltelor (binding, RAM-only) ==================== */
+
+    /** Viitoare unelte ale bancului care sunt libere chiar acum (pt. GUI/API). */
+    public UUID wrenchHolderOf(Station station, int index) {
+        return station.recipients.size() > index
+                ? (UUID) station.recipients.toArray()[index] : null;
+    }
+
+    public UUID hammerHolderOf(Station station) {
+        return station.hammerHolder;
+    }
+
+    public UUID sprayHolderOf(Station station) {
+        return station.sprayHolder;
+    }
+
+    public int hammerUsedOf(Station station) {
+        return station.hammerUsed;
+    }
+
+    /** Parcurge toate bancurile (pt. meniul uneltelor, ce identifica station). */
+    public Optional<Station> stationOf(UUID id) {
+        return byId(id);
+    }
+
+    /** Luați o unealta din rack. tool = "wrench"|"hammer"|"spray". */
+    public void takeTool(Player player, UUID stationId, String tool) {
+        Optional<Station> found = byId(stationId);
+        if (found.isEmpty()) {
+            player.sendRichMessage("<red>Acest banc nu mai exista.</red>");
+            return;
+        }
+        Station station = found.get();
+        if (!MechanicManager.has(player, "mcv.workstation.use")) {
+            player.sendRichMessage("<red>Nu ai permisiunea mcv.workstation.use.</red>");
+            return;
+        }
+        switch (tool) {
+            case "wrench" -> {
+                // Regula: o singura cheie DE LA ACEST banc per jucator.
+                for (ItemStack contents : player.getInventory().getContents()) {
+                    UUID origin = MechanicItems.wrenchStationOf(contents);
+                    if (origin != null && origin.equals(station.id)) {
+                        player.sendRichMessage("<yellow>Ai deja cheia acestui banc in inventar.</yellow>");
+                        return;
+                    }
+                }
+                boolean isRecipient = station.recipients.contains(player.getUniqueId());
+                if (!isRecipient) {
+                    if (station.recipients.size() >= maxWrenches()) {
+                        player.sendRichMessage("<red>Acest banc si-a dat deja toate cheile ("
+                                + maxWrenches() + " mecanici). Asteapta sa le intoarca cineva.</red>");
+                        return;
+                    }
+                    station.recipients.add(player.getUniqueId());
+                }
+                player.getInventory().addItem(MechanicItems.wrench(station.id));
+                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.8F, 1.0F);
+                player.sendRichMessage("<gray>Ai luat <gold>cheia de mecanic</gold>. "
+                        + "Ramai in zona de service!</gray>");
+            }
+            case "hammer" -> {
+                if (station.hammerHolder != null) {
+                    String who = holderName(station.hammerHolder);
+                    player.sendRichMessage("<red>Ciocanul e ocupat de <gold>" + who + "</gold>.</red>");
+                    return;
+                }
+                station.hammerHolder = player.getUniqueId();
+                player.getInventory().addItem(MechanicItems.hammer(station.id, station.hammerUsed));
+                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.8F, 1.0F);
+                player.sendRichMessage("<gray>Ai luat <gold>ciocanul de lacatus</gold>. "
+                        + "Ramai in zona de service!</gray>");
+            }
+            case "spray" -> {
+                if (station.sprayHolder != null) {
+                    String who = holderName(station.sprayHolder);
+                    player.sendRichMessage("<red>Pistolul de vopsea e ocupat de <gold>" + who + "</gold>.</red>");
+                    return;
+                }
+                station.sprayHolder = player.getUniqueId();
+                player.getInventory().addItem(MechanicItems.sprayGun(station.id));
+                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.8F, 1.0F);
+                player.sendRichMessage("<gray>Ai luat <gold>pistolul de vopsea</gold> - consuma "
+                        + "capsule reale din inventar si vopseste doar pe cric.</gray>");
+            }
+            default -> {
+                return;
+            }
+        }
+        refreshTools(station.id);
+    }
+
+    /** Returnezi manual unealta tinuta de tine (click pe slotul tau ocupat in GUI). */
+    public void returnTool(Player player, UUID stationId, String tool) {
+        Optional<Station> found = byId(stationId);
+        if (found.isEmpty()) {
+            return;
+        }
+        Station station = found.get();
+        ItemStack[] contents = player.getInventory().getContents();
+        boolean removed = false;
+        for (int slot = 0; slot < contents.length; slot++) {
+            ItemStack stack = contents[slot];
+            if (stack == null || !station.id.equals(MechanicItems.benchToolStationOf(stack))) {
                 continue;
             }
-            UUID origin = MechanicItems.wrenchStationOf(contents);
-            if (origin != null && origin.equals(station.id)) {
-                player.sendRichMessage("<yellow>Ai deja cheia acestui banc in inventar.</yellow>");
-                return true;
+            MechanicItems.Kind kind = MechanicItems.kindOf(stack);
+            boolean matches = ("wrench".equals(tool) && kind == MechanicItems.Kind.WRENCH)
+                    || ("hammer".equals(tool) && kind == MechanicItems.Kind.HAMMER)
+                    || ("spray".equals(tool) && kind == MechanicItems.Kind.SPRAY_CAN);
+            if (!matches) {
+                continue;
+            }
+            if ("hammer".equals(tool)) {
+                station.hammerUsed = MechanicItems.HAMMER_MAX_DAMAGE
+                        - MechanicItems.hammerUsesLeft(stack);
+            }
+            player.getInventory().clear(slot);
+            removed = true;
+            break;
+        }
+        if (!removed) {
+            player.sendRichMessage("<yellow>Nu ai aceasta unealta in inventar.</yellow>");
+            return;
+        }
+        switch (tool) {
+            case "wrench" -> station.recipients.remove(player.getUniqueId());
+            case "hammer" -> station.hammerHolder = null;
+            case "spray" -> station.sprayHolder = null;
+            default -> {
+                return;
             }
         }
-        // Regula #3: nu mai mult de maxWrenches jucatori de la acelasi banc.
-        boolean isRecipient = station.recipients.contains(player.getUniqueId());
-        if (!isRecipient) {
-            if (station.recipients.size() >= maxWrenches()) {
-                player.sendRichMessage("<red>Acest banc si-a dat deja toate cheile "
-                        + "(" + maxWrenches() + " mecanici). Asteapta sa le intoarca cineva.</red>");
-                return true;
+        player.sendRichMessage("<gray>Ai intors unealta la banc.</gray>");
+        refreshTools(station.id);
+    }
+
+    private static String holderName(UUID holder) {
+        String name = Bukkit.getOfflinePlayer(holder).getName();
+        return name == null ? "altcineva" : name;
+    }
+
+    /** Quit: unealta revine la banc IMEDIAT (brief: returnare automata la deconectare).
+     *  Itemul in sine dispare cu jucatorul; la relog e sters de handleJoin (wipe). */
+    public void handleQuit(Player player) {
+        for (Station station : stations.values()) {
+            boolean changed = station.recipients.remove(player.getUniqueId());
+            if (player.getUniqueId().equals(station.hammerHolder)) {
+                for (ItemStack stack : player.getInventory().getContents()) {
+                    if (stack != null && station.id.equals(MechanicItems.benchToolStationOf(stack))
+                            && MechanicItems.kindOf(stack) == MechanicItems.Kind.HAMMER) {
+                        station.hammerUsed = MechanicItems.HAMMER_MAX_DAMAGE
+                                - MechanicItems.hammerUsesLeft(stack);
+                    }
+                }
+                station.hammerHolder = null;
+                changed = true;
             }
-            station.recipients.add(player.getUniqueId());
+            if (player.getUniqueId().equals(station.sprayHolder)) {
+                station.sprayHolder = null;
+                changed = true;
+            }
+            if (changed) {
+                refreshTools(station.id);
+            }
         }
-        player.getInventory().addItem(MechanicItems.wrench(station.id));
-        player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.8F, 1.0F);
-        player.sendRichMessage("<gray>Ai primit <gold>cheia de mecanic</gold> de la bancul de lucru. "
-                + "Ramai in zona de service!</gray>");
-        return true;
+    }
+
+    /** Wipe la join: uneltele legate NU supravietuiesc relog-ului/restart-ului
+     *  (brief: strict RAM; altfel ar putea exista duplicate fantoma). */
+    public void handleJoin(Player player) {
+        ItemStack[] contents = player.getInventory().getContents();
+        int removed = 0;
+        for (int slot = 0; slot < contents.length; slot++) {
+            if (MechanicItems.benchToolStationOf(contents[slot]) != null) {
+                player.getInventory().clear(slot);
+                removed++;
+            }
+        }
+        if (removed > 0) {
+            player.sendRichMessage("<yellow>Uneltele de banc s-au intors la bancurile lor "
+                    + "(nu pot fi pastrate intre sesiuni).</yellow>");
+        }
     }
 
     /** Cheia pe banc: ridici/cobori masina aflata deasupra cricului legat. */
@@ -316,6 +504,21 @@ public final class WorkstationManager {
         }
         Station station = found.get();
         stations.remove(station.id);
+        // Uneltele legate ale bancului desfiintat dispar din mainile oricui.
+        for (Player online : Bukkit.getOnlinePlayers()) {
+            ItemStack[] contents = online.getInventory().getContents();
+            boolean cleaned = false;
+            for (int slot = 0; slot < contents.length; slot++) {
+                if (station.id.equals(MechanicItems.benchToolStationOf(contents[slot]))) {
+                    online.getInventory().clear(slot);
+                    cleaned = true;
+                }
+            }
+            if (cleaned) {
+                online.sendRichMessage("<yellow>Bancul a fost strans - uneltele lui au disparut.</yellow>");
+            }
+        }
+        refreshTools(station.id);
         event.getBlock().getWorld().dropItemNaturally(
                 event.getBlock().getLocation().add(0.5D, 0.5D, 0.5D),
                 MechanicItems.workstation());
@@ -340,20 +543,20 @@ public final class WorkstationManager {
         double radiusSquared = radius * radius;
         for (Player player : Bukkit.getOnlinePlayers()) {
             ItemStack[] contents = player.getInventory().getContents();
-            boolean anyWrench = false;
+            boolean anyTool = false;
             for (ItemStack contents1 : contents) {
-                if (contents1 != null && MechanicItems.kindOf(contents1) == MechanicItems.Kind.WRENCH) {
-                    anyWrench = true;
+                if (MechanicItems.benchToolStationOf(contents1) != null) {
+                    anyTool = true;
                     break;
                 }
             }
-            if (!anyWrench) {
+            if (!anyTool) {
                 continue;
             }
             boolean removed = false;
             for (int slot = 0; slot < contents.length; slot++) {
                 ItemStack stack = contents[slot];
-                UUID origin = stack == null ? null : MechanicItems.wrenchStationOf(stack);
+                UUID origin = MechanicItems.benchToolStationOf(stack);
                 if (origin == null) {
                     continue;
                 }
@@ -363,12 +566,29 @@ public final class WorkstationManager {
                         && station.get().location.distanceSquared(player.getLocation()) <= radiusSquared) {
                     continue;
                 }
+                // Iesit din raza: unealta REVINE la banc si slotul se elibereaza.
+                MechanicItems.Kind kind = MechanicItems.kindOf(stack);
+                if (station.isPresent()) {
+                    Station st = station.get();
+                    if (kind == MechanicItems.Kind.WRENCH) {
+                        st.recipients.remove(player.getUniqueId());
+                    } else if (kind == MechanicItems.Kind.HAMMER
+                            && player.getUniqueId().equals(st.hammerHolder)) {
+                        st.hammerUsed = MechanicItems.HAMMER_MAX_DAMAGE
+                                - MechanicItems.hammerUsesLeft(stack);
+                        st.hammerHolder = null;
+                    } else if (kind == MechanicItems.Kind.SPRAY_CAN
+                            && player.getUniqueId().equals(st.sprayHolder)) {
+                        st.sprayHolder = null;
+                    }
+                    refreshTools(st.id);
+                }
                 player.getInventory().clear(slot);
                 removed = true;
             }
             if (removed) {
-                player.sendRichMessage("<yellow>Ai iesit din zona de service - cheia de "
-                        + "mecanic s-a intors la bancul ei.</yellow>");
+                player.sendRichMessage("<yellow>Ai iesit din zona de service - unealta "
+                        + "de banc s-a intors la bancul ei.</yellow>");
             }
         }
     }
