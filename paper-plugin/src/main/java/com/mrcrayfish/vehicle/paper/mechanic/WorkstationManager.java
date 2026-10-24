@@ -243,15 +243,8 @@ public final class WorkstationManager {
         }
         Station station = found.get();
         if (player.isSneaking()) {
-            boolean allowed = player.isOp()
-                    || (station.ownerId != null && station.ownerId.equals(player.getUniqueId()));
-            if (!allowed) {
-                player.sendRichMessage("<red>Doar cel care a pus bancul (sau un operator) il poate ridica.</red>");
-                return true;
-            }
-            pickup(station);
-            player.getInventory().addItem(MechanicItems.workstation());
-            player.sendRichMessage("<gray>Ai ridicat bancul de lucru.</gray>");
+            // Brief: ghemuit + click dreapta pe banc = NIMIC (bancul se ia doar
+            // prin spargerea normala a blocului, ca orice bloc - vezi handleBlockBreak).
             return true;
         }
         if (MechanicItems.kindOf(held) == MechanicItems.Kind.WRENCH) {
@@ -447,6 +440,12 @@ public final class WorkstationManager {
             return;
         }
         jacks.toggleLift(player, jack.get());
+    }
+
+    /** Apelat de hook-ul cricurilor: la orice schimbare de stare a cricului legat
+     *  reimprospatam meniurile bancului (butonul RIDICA/COBOARA isi revine singur). */
+    public void refreshByJack(UUID jackId) {
+        byJackId(jackId).ifPresent(station -> refreshTools(station.id));
     }
 
     /** Cricul legat de banc; daca a disparut, bancul se re-lega la cel mai

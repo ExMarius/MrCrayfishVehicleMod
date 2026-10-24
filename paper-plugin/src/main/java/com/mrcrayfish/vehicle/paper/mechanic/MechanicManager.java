@@ -59,6 +59,8 @@ public final class MechanicManager {
         // Rack-ul uneltelor: bancul deschide meniul sau si se sincronizeaza cu GUI.
         this.workstations.setToolsOpener((who, stationId) -> gui().openToolsMenu(who, stationId));
         this.workstations.setToolsRefresher(stationId -> gui().refreshToolsMenus(stationId));
+        // Butonul RIDICA/COBOARA isi revine singur in meniu la finalul animatiei.
+        this.jacks.setStateChangedHook(jackId -> workstations.refreshByJack(jackId));
         this.jacks.setRemovedHook(this.workstations::handleJackRemoved);
         this.props = new PropManager(plugin, vehicles, store);
         this.mixers = new FluidMixerManager(plugin, store);
@@ -203,9 +205,17 @@ public final class MechanicManager {
         }
         switch (kind) {
             case WRENCH -> {
-                // Refacere 2026-10-24: GUI-ul vechi a fost STERS complet. Cheia pe
-                // masina deschide meniul UNIC al bancului (cel care leaga cricul pe
-                // care sta masina; altfel cel mai apropiat banc din zona de service).
+                // Brief 2026-10-24: pe masina RIDICATA, cheia demonteaza ROTILE
+                // (nu din GUI!); in rest deschide meniul unic al bancului din zona.
+                if (vehicle.jackState() == LandVehicle.JackState.LIFTED) {
+                    if (vehicle.spec().hasWheels() && vehicle.wheelsInstalled()) {
+                        return uninstallWheels(player, vehicle);
+                    }
+                    player.sendRichMessage(vehicle.spec().hasWheels()
+                            ? "<yellow>Rotile sunt deja demontate.</yellow>"
+                            : "<yellow>Acest vehicul nu are roti de demontat.</yellow>");
+                    return true;
+                }
                 if (vehicle.jackId() != null) {
                     var linked = workstations.byJackId(vehicle.jackId());
                     if (linked.isPresent()) {

@@ -56,9 +56,7 @@ public final class MechanicGui {
     private static final int LIFT_SLOT = 4;      // sus central: ridica/coboara cricul legat
     private static final int WRENCH_SLOT = 12;   // cheia de mecanic (o singura instanta)
     private static final int HAMMER_SLOT = 14;   // ciocanul de lacatus (o singura instanta)
-    private static final int ENGINE_SLOT = 20;   // jos stanga: motor (doar masina ridicata)
     private static final int VEHICLE_SLOT = 22;  // jos centru: datele masinii / cartea de ajutor
-    private static final int WHEEL_SLOT = 24;    // jos dreapta: roti (doar masina ridicata)
 
     private final MechanicManager mechanic;
 
@@ -85,9 +83,6 @@ public final class MechanicGui {
                     MechanicItems.hammer(null, mechanic.workstations().hammerUsedOf(station)),
                     mechanic.workstations().hammerHolderOf(station), player);
             LandVehicle lifted = liftedVehicle(stationId).orElse(null);
-            if (lifted != null) {
-                partsSection(inventory, lifted);
-            }
             inventory.setItem(VEHICLE_SLOT, make(Material.BOOK,
                     Component.text(lifted == null ? "CUM FUNCTIONEAZA"
                             : lifted.spec().displayName(), NamedTextColor.YELLOW),
@@ -178,11 +173,14 @@ public final class MechanicGui {
             }
         }
         if (iHaveWrench) {
-            inventory.setItem(WRENCH_SLOT, tag(entry(
-                    MechanicItems.wrench(null),
-                    Component.text("LA TINE (cheie)", NamedTextColor.GREEN),
-                    List.of(Component.text("Click = o returnezi la banc.",
-                            NamedTextColor.GRAY))), "return_wrench"));
+            // Brief: unealta luata de TINE apare tot ca BARRIER (X) - o intoarce
+            // singura la banc (zona/quit/spargere), nu e nevoie de click aici.
+            inventory.setItem(WRENCH_SLOT, make(Material.BARRIER,
+                    Component.text("LUATA DE TINE", NamedTextColor.RED),
+                    List.of(Component.text("Cheia e in inventarul tau - se intoarce singura",
+                                    NamedTextColor.GRAY),
+                            Component.text("cand iesi din zona sau te deconectezi.",
+                                    NamedTextColor.DARK_GRAY))));
             return;
         }
         UUID holderUuid = mechanic.workstations().wrenchHolderOf(station, 0);
@@ -211,10 +209,12 @@ public final class MechanicGui {
             return;
         }
         if (holderUuid.equals(viewer.getUniqueId())) {
-            inventory.setItem(slot, tag(entry(icon,
-                    Component.text("LA TINE (ciocan)", NamedTextColor.GREEN),
-                    List.of(Component.text("Click = il returnezi la banc.", NamedTextColor.GRAY))),
-                    "return_" + tool));
+            inventory.setItem(slot, make(Material.BARRIER,
+                    Component.text("LUAT DE TINE", NamedTextColor.RED),
+                    List.of(Component.text("Ciocanul e in inventarul tau - se intoarce singur",
+                                    NamedTextColor.GRAY),
+                            Component.text("cand iesi din zona sau te deconectezi.",
+                                    NamedTextColor.DARK_GRAY))));
             return;
         }
         String who = Bukkit.getOfflinePlayer(holderUuid).getName();
@@ -222,53 +222,6 @@ public final class MechanicGui {
                 Component.text("OCUPATA - " + (who == null ? "cineva" : who), NamedTextColor.RED),
                 List.of(Component.text("Unealta e folosita de alt mecanic - asteapta sa o intoarca.",
                         NamedTextColor.GRAY))));
-    }
-
-    /* ==================== piesele masinii ridicate ==================== */
-
-    private void partsSection(Inventory inventory, LandVehicle vehicle) {
-        if (vehicle.spec().defaultEngineType() == EngineType.NONE) {
-            inventory.setItem(ENGINE_SLOT, tag(make(Material.BARRIER,
-                    Component.text("FARA MOTOR", NamedTextColor.RED),
-                    List.of(Component.text("Acest vehicul nu primeste motor.", NamedTextColor.GRAY))),
-                    "none"));
-        } else if (!vehicle.engineInstalled()) {
-            inventory.setItem(ENGINE_SLOT, tag(make(Material.PAPER,
-                    Component.text("MOTOR (slot gol)", NamedTextColor.GRAY),
-                    List.of(Component.text("Vehiculul nu are motor montat inca.",
-                            NamedTextColor.DARK_GRAY),
-                            Component.text("Tine motorul potrivit pe cursor si click aici = instalare.",
-                            NamedTextColor.GRAY))), "engine_slot"));
-        } else {
-            inventory.setItem(ENGINE_SLOT, tag(entry(
-                    MechanicItems.engine(vehicle.spec().defaultEngineType(), vehicle.engineTier()),
-                    Component.text("MOTOR", NamedTextColor.AQUA),
-                    List.of(Component.text("Tine motorul NOU pe cursor si click aici = schimb.",
-                            NamedTextColor.GRAY),
-                            Component.text("Cursor gol + click = scoti motorul (dispare si de pe model).",
-                            NamedTextColor.DARK_GRAY))), "engine_slot"));
-        }
-        if (!vehicle.spec().hasWheels()) {
-            inventory.setItem(WHEEL_SLOT, tag(make(Material.BARRIER,
-                    Component.text("FARA ROTI", NamedTextColor.RED),
-                    List.of(Component.text("Acest vehicul nu primeste roti.", NamedTextColor.GRAY))),
-                    "none"));
-        } else if (!vehicle.wheelsInstalled()) {
-            inventory.setItem(WHEEL_SLOT, tag(make(Material.PAPER,
-                    Component.text("ROTI (slot gol)", NamedTextColor.GRAY),
-                    List.of(Component.text("Vehiculul ramane fara roti montate.",
-                            NamedTextColor.DARK_GRAY),
-                            Component.text("Tine rotile pe cursor si click aici = instalare.",
-                            NamedTextColor.GRAY))), "wheel_slot"));
-        } else {
-            inventory.setItem(WHEEL_SLOT, tag(entry(
-                    MechanicItems.wheel(vehicle.wheelType()),
-                    Component.text("ROTI", NamedTextColor.AQUA),
-                    List.of(Component.text("Tine rotile NOI pe cursor si click aici = schimb.",
-                            NamedTextColor.GRAY),
-                            Component.text("Cursor gol + click = scoti rotile (dispar si de pe model).",
-                            NamedTextColor.DARK_GRAY))), "wheel_slot"));
-        }
     }
 
     /* ==================== refresh live pentru toti vizitatorii ==================== */

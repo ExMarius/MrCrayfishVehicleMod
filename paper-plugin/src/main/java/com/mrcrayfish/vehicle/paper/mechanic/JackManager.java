@@ -56,6 +56,19 @@ public final class JackManager {
     private final VehicleManager vehicles;
     private final MechanicStore store;
     private final Map<UUID, Jack> jacks = new ConcurrentHashMap<>();
+    /** Notifica sistemul la ORICE schimbare de stare a cricului (meniul bancului
+     *  isi reimprospateaza butonul RIDICA/COBOARA fara sa il re-deschizi - bug
+     *  raportat: ceasul ramanea pe ecran pana reintrai in meniu). */
+    private java.util.function.Consumer<UUID> stateChangedHook = jackId -> { };
+
+    public void setStateChangedHook(java.util.function.Consumer<UUID> hook) {
+        this.stateChangedHook = hook;
+    }
+
+    private void stateChanged(Jack jack) {
+        stateChangedHook.accept(jack.id);
+    }
+
     /** Notifica sistemul cand un cric dispare (bancurile legate de el se dezleaga). */
     private java.util.function.Consumer<UUID> removedHook = id -> { };
     private BukkitTask tickTask;
@@ -249,6 +262,11 @@ public final class JackManager {
             return false;
         }
         Jack jack = found.get();
+        if (player.isSneaking()) {
+            // Brief: ghemuit + click dreapta pe elevator = NIMIC (cricul se ia doar
+            // prin spargerea normala a blocului, ca orice bloc).
+            return true;
+        }
         if (MechanicItems.kindOf(held) == MechanicItems.Kind.WRENCH) {
             return toggleLift(player, jack);
         }
@@ -311,6 +329,7 @@ public final class JackManager {
                     player.sendRichMessage("<gray>Aliniez si ridic masina pe cric... nu o misca.</gray>");
                 } else {
                     jack.state = Jack.State.LIFTING;
+                    stateChanged(jack);
                     playSound(jack, HEAD_UP, 0.9F, 1.0F);
                     player.sendRichMessage("<gray>Ridici cricul gol...</gray>");
                 }
@@ -338,6 +357,7 @@ public final class JackManager {
                     jack.startY = restY(jack);
                 }
                 jack.state = Jack.State.LOWERING;
+                    stateChanged(jack);
                 target.ifPresent(vehicle -> vehicle.setJackState(LandVehicle.JackState.LOWERING));
                 playSound(jack, HEAD_DOWN, 0.9F, 1.0F);
                 player.sendRichMessage("<gray>Cobor masina de pe cric...</gray>");
@@ -374,6 +394,7 @@ public final class JackManager {
                     if (vehicle == null) {
                         // Masina a disparut intre timp - revenim jos linistiti.
                         jack.state = Jack.State.DOWN;
+                        stateChanged(jack);
                         jack.vehicleId = null;
                         break;
                     }
@@ -385,6 +406,8 @@ public final class JackManager {
                             || jack.snapTicks >= SNAP_MAX_TICKS) {
                         // Aliniat (sau timeout): incepe ridicarea ca in mod.
                         jack.state = Jack.State.LIFTING;
+                        stateChanged(jack);
+                    stateChanged(jack);
                         playSound(jack, HEAD_UP, 0.9F, 1.0F);
                     }
                 }
@@ -393,6 +416,7 @@ public final class JackManager {
                     if (jack.progress >= 1.0D) {
                         jack.progress = 1.0D;
                         jack.state = Jack.State.LIFTED;
+                        stateChanged(jack);
                         linked(jack).ifPresent(vehicle -> vehicle.setJackState(LandVehicle.JackState.LIFTED));
                         playSound(jack, AIR_WRENCH, 0.7F, 1.1F);
                     }
@@ -402,6 +426,7 @@ public final class JackManager {
                     if (jack.progress <= 0.0D) {
                         jack.progress = 0.0D;
                         jack.state = Jack.State.DOWN;
+                        stateChanged(jack);
                         linked(jack).ifPresent(vehicle -> {
                             vehicle.setJackState(LandVehicle.JackState.NONE);
                             vehicle.setJackId(null);
@@ -435,6 +460,7 @@ public final class JackManager {
         jack.startY = restY(jack);
         jack.snapTicks = 0;
         jack.state = Jack.State.SNAPPING;
+        stateChanged(jack);
         vehicle.setJackState(LandVehicle.JackState.LIFTING);
         vehicle.setJackId(jack.id);
     }

@@ -241,7 +241,25 @@ public final class MechanicListener implements Listener {
             return;
         }
         LandVehicle target = vehicle.get();
-        if (target.showcase() || target.onJack()) {
+        if (target.onJack()) {
+            // Brief 2026-10-24: pe masina RIDICATA, ciocanul demonteaza MOTORUL
+            // (nu din GUI!). Demontarea intregii masini in cufar cere masina jos.
+            if (target.jackState() == com.mrcrayfish.vehicle.paper.vehicle
+                    .LandVehicle.JackState.LIFTED) {
+                if (target.spec().defaultEngineType()
+                        != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE
+                        && target.engineInstalled()) {
+                    mechanic.uninstallEngine(player, target);
+                } else {
+                    player.sendRichMessage("<yellow>Nu exista motor de demontat aici.</yellow>");
+                }
+            } else {
+                player.sendRichMessage("<yellow>Ridica masina pe cric ca sa scoti "
+                        + "motorul cu ciocanul (sau cobor-o si demonteaz-o intreaga).</yellow>");
+            }
+            return;
+        }
+        if (target.showcase()) {
             player.sendRichMessage("<red>Nu poti demonta aceasta masina acum.</red>");
             return;
         }
@@ -314,46 +332,9 @@ public final class MechanicListener implements Listener {
             mechanic.workstations().toggleLiftFromMenu(player, stationId);
             return;
         }
-        // Sloturile de piese: target = masina de pe cricul legat, complet ridicata.
-        LandVehicle target = mechanic.workstations().menuJack(stationId)
-                .filter(jack -> jack.state == Jack.State.LIFTED && jack.vehicleId != null)
-                .flatMap(jack -> mechanic.vehicles().byId(jack.vehicleId))
-                .orElse(null);
-        ItemStack cursor = event.getCursor();
-        switch (action) {
-            case "engine_slot" -> {
-                if (target == null) {
-                    player.sendRichMessage("<yellow>Ridica mai intai masina pe cric "
-                            + "(butonul de sus din acest meniu).</yellow>");
-                    return;
-                }
-                if (MechanicItems.kindOf(cursor) == MechanicItems.Kind.ENGINE) {
-                    mechanic.handleToolClick(player, target, cursor);
-                    mechanic.save();
-                } else if ((cursor == null || cursor.getType().isAir())
-                        && target.engineInstalled()) {
-                    mechanic.uninstallEngine(player, target);
-                }
-                mechanic.gui().openToolsMenu(player, stationId);
-            }
-            case "wheel_slot" -> {
-                if (target == null) {
-                    player.sendRichMessage("<yellow>Ridica mai intai masina pe cric "
-                            + "(butonul de sus din acest meniu).</yellow>");
-                    return;
-                }
-                if (MechanicItems.kindOf(cursor) == MechanicItems.Kind.WHEEL) {
-                    mechanic.handleToolClick(player, target, cursor);
-                    mechanic.save();
-                } else if ((cursor == null || cursor.getType().isAir())
-                        && target.wheelsInstalled()) {
-                    mechanic.uninstallWheels(player, target);
-                }
-                mechanic.gui().openToolsMenu(player, stationId);
-            }
-            default -> {
-            }
-        }
+        // Sloturile MOTOR/ROTI din meniu au fost scoase (brief 2026-10-24):
+        // demontarea se face DOAR cu unelte pe masina ridicata (cheia=roti,
+        // ciocanul=motor); montarea = click cu piesa direct pe masina.
     }
 
     private void onCreativeGuiClick(InventoryClickEvent event, CreativeGui.Holder holder) {

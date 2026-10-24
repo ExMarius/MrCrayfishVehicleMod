@@ -335,3 +335,18 @@ am atașat comparația — găsește decalajele"].
 - **Cheia pe masina** deschide acum acelasi meniu unic: bancul legat cricului de sub
   masina, altfel cel mai apropiat banc din raza de service; fara banc => indrumare.
 - Spray-ul = exclusiv capsula din mana, pe masina ridicata (mesaj "du-te la mecanic").
+
+## Ciclul H (2026-10-24) — piese scoase doar cu unelte; sneak=nicht; fix ceas; barrier la luare
+
+- **Demontarea NU se mai face din GUI** (sloturile MOTOR/ROTI din meniu au disparut):
+  - cheia + click pe masina RIDICATA = scoti ROTILE (pe cursor, dispar de pe model);
+  - ciocanul (click stanga) pe masina RIDICATA = scoti MOTORUL; incontinuare jos,
+    ciocan = demontarea intregii masini in cufar (neatins);
+  - montarea = click cu piesa (motor/roti) direct pe masina ridicata (porti LIFTED pastrate).
+- **ghemuit + click dreapta pe elevator SI pe banc = absolut nimic** (consumat
+  silent); ambele blocuri se iau DOAR prin spargerea normala (drop item).
+- **Fix ceas blocat**: butonul RIDICA/COBOARA ramanea CLOCK pana redeschideai meniul.
+  JackManager are acum hook de schimbare de stare => la finalul oricarei animatii
+  meniurile bancului legat se reimprospateaza singure (RIDICA/COBOARA reapare imediat).
+- **Unealta luata = BARRIER in slot** („LUATA DE TINE" rosu / „OCUPATA de <nume>"),
+  fara click in meniu; returnarea e exclusiv automata (zona/quit/spargere banc).
