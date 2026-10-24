@@ -278,7 +278,7 @@ public final class MechanicGui {
 
     /** Butonul RIDICA/COBOARA: starea cricului legat + masina de deasupra, live. */
     private void liftButton(Inventory inventory, UUID stationId) {
-        java.util.Optional<JackManager.Jack> jack = mechanic.workstations().menuJack(stationId);
+        java.util.Optional<Jack> jack = mechanic.workstations().menuJack(stationId);
         if (jack.isEmpty()) {
             inventory.setItem(TOOLS_LIFT_SLOT, make(Material.BARRIER,
                     Component.text("FARA CRIC IN ZONA", NamedTextColor.RED),
@@ -286,7 +286,7 @@ public final class MechanicGui {
                             NamedTextColor.GRAY))));
             return;
         }
-        JackManager.Jack j = jack.get();
+        Jack j = jack.get();
         String vehicleName = j.vehicleId == null ? null
                 : mechanic.vehicles().byId(j.vehicleId)
                         .map(vehicle -> vehicle.spec().displayName()).orElse(null);
