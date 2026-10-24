@@ -215,42 +215,101 @@ public final class MechanicGui {
 
     /* ==================== Rack-ul uneltelor bancului (binding, GUI sincron) ==================== */
 
-    private static final int TOOLS_WRENCH_SLOT = 11;
-    private static final int TOOLS_HAMMER_SLOT = 13;
-    private static final int TOOLS_SPRAY_SLOT = 15;
+    private static final int TOOLS_LIFT_SLOT = 4;   // sus, central: ridica/coboara
+    private static final int TOOLS_WRENCH_SLOT = 12;
+    private static final int TOOLS_HAMMER_SLOT = 14;
 
-    /** Meniul bancului: uneltele cu stare ocupare LIVE (brief 2026-10-24). Ocupata
-     *  = rosie, nume detinator, niciun click posibil; libera/a ta = interactionabila. */
+    /** Meniul bancului (refacere 2026-10-24): EXACT o cheie + un ciocan disponibile;
+     *  spray-ul NU exista ca unealta aici (se aplica doar din capsula tinuta in mana,
+     *  si numai pe masina ridicata). Ridicarea/coborarea cricului = butonul de sus. */
     public void openToolsMenu(Player player, UUID stationId) {
         Holder holder = new Holder(stationId, false, true);
         Inventory inventory = Bukkit.createInventory(holder, 27,
-                Component.text("Banc de lucru - Unelte", NamedTextColor.DARK_GRAY));
+                Component.text("Banc de lucru", NamedTextColor.DARK_GRAY));
         holder.inventory = inventory;
         mechanic.workstations().stationOf(stationId).ifPresentOrElse(station -> {
-            // CHEIE: pana la maxWrenches instante simultan (config), stoc generic.
+            liftButton(inventory, stationId);
+            // CHEIE: o singura instanta; ocupata de altul = bariera cu nume + niciun
+            // click; a ta = returnare; libera = poti s-o iei.
             boolean iHaveWrench = false;
             for (ItemStack stack : player.getInventory().getContents()) {
                 java.util.UUID origin = MechanicItems.wrenchStationOf(stack);
                 if (origin != null && origin.equals(stationId)) { iHaveWrench = true; break; }
             }
-            String wrenchState = iHaveWrench
-                    ? "return_wrench"
-                    : "take_wrench";
-            inventory.setItem(TOOLS_WRENCH_SLOT, tag(entry(
-                    MechanicItems.wrench(null), Component.text("CHEIE DE MECANIC", NamedTextColor.GOLD),
-                    List.of(Component.text(iHaveWrench
-                                    ? "O ai deja - click = o returnezi la banc."
-                                    : "Libera - click = o iei (ramai in zona de service!).",
-                            NamedTextColor.GRAY))), wrenchState));
+            if (iHaveWrench) {
+                inventory.setItem(TOOLS_WRENCH_SLOT, tag(entry(
+                        MechanicItems.wrench(null),
+                        Component.text("LA TINE (cheie)", NamedTextColor.GREEN),
+                        List.of(Component.text("Click = o returnezi la banc.",
+                                NamedTextColor.GRAY))), "return_wrench"));
+            } else {
+                java.util.UUID holderUuid = mechanic.workstations().wrenchHolderOf(station, 0);
+                if (holderUuid == null) {
+                    inventory.setItem(TOOLS_WRENCH_SLOT, tag(entry(
+                            MechanicItems.wrench(null),
+                            Component.text("CHEIE DE MECANIC", NamedTextColor.GOLD),
+                            List.of(Component.text("Libera - click = o iei (ramai in zona de service!).",
+                                    NamedTextColor.GRAY))), "take_wrench"));
+                } else {
+                    String who = Bukkit.getOfflinePlayer(holderUuid).getName();
+                    inventory.setItem(TOOLS_WRENCH_SLOT, make(Material.BARRIER,
+                            Component.text("OCUPATA - " + (who == null ? "cineva" : who), NamedTextColor.RED),
+                            List.of(Component.text("Cheia e luata de alt mecanic - asteapta sa o intoarca.",
+                                    NamedTextColor.GRAY))));
+                }
+            }
             toolEntry(inventory, TOOLS_HAMMER_SLOT, "hammer",
                     MechanicItems.hammer(null, mechanic.workstations().hammerUsedOf(station)),
                     mechanic.workstations().hammerHolderOf(station), player, stationId);
-            toolEntry(inventory, TOOLS_SPRAY_SLOT, "spray",
-                    MechanicItems.sprayGun(stationId),
-                    mechanic.workstations().sprayHolderOf(station), player, stationId);
+            inventory.setItem(22, make(Material.BOOK,
+                    Component.text("CUM FUNCTIONEAZA", NamedTextColor.YELLOW), List.of(
+                            Component.text("Iei cheia/ciocanul de aici; se intorc singure la banc",
+                                    NamedTextColor.GRAY),
+                            Component.text("cand iesi din zona, te deconectezi sau spargi bancul.",
+                                    NamedTextColor.GRAY),
+                            Component.text("Vopsirea: doar cu capsula de spray din mana,",
+                                    NamedTextColor.GRAY),
+                            Component.text("si numai cu masina ridicata pe cric.",
+                                    NamedTextColor.GRAY))));
         }, () -> inventory.setItem(13, make(Material.BARRIER,
                 Component.text("BANC INEXISTENT", NamedTextColor.RED), List.of())));
         player.openInventory(inventory);
+    }
+
+    /** Butonul RIDICA/COBOARA: starea cricului legat + masina de deasupra, live. */
+    private void liftButton(Inventory inventory, UUID stationId) {
+        java.util.Optional<JackManager.Jack> jack = mechanic.workstations().menuJack(stationId);
+        if (jack.isEmpty()) {
+            inventory.setItem(TOOLS_LIFT_SLOT, make(Material.BARRIER,
+                    Component.text("FARA CRIC IN ZONA", NamedTextColor.RED),
+                    List.of(Component.text("Pune un cric langa banc (max cateva blocuri).",
+                            NamedTextColor.GRAY))));
+            return;
+        }
+        JackManager.Jack j = jack.get();
+        String vehicleName = j.vehicleId == null ? null
+                : mechanic.vehicles().byId(j.vehicleId)
+                        .map(vehicle -> vehicle.spec().displayName()).orElse(null);
+        switch (j.state) {
+            case DOWN -> inventory.setItem(TOOLS_LIFT_SLOT, tag(entry(
+                    new ItemStack(Material.LIME_DYE),
+                    Component.text("RIDICA pe cric", NamedTextColor.GREEN),
+                    List.of(Component.text(vehicleName == null
+                                    ? "Cricul e gol - click = ridici capul (test)."
+                                    : "Click = aliniez si ridic: " + vehicleName,
+                            NamedTextColor.GRAY))), "lift_toggle"));
+            case LIFTED -> inventory.setItem(TOOLS_LIFT_SLOT, tag(entry(
+                    new ItemStack(Material.GRAY_DYE),
+                    Component.text("COBOARA de pe cric", NamedTextColor.YELLOW),
+                    List.of(Component.text(vehicleName == null
+                                    ? "Click = cobori capul."
+                                    : "Click = cobori: " + vehicleName
+                                    + " (trebuie sa aiba roti montate).",
+                            NamedTextColor.GRAY))), "lift_toggle"));
+            default -> inventory.setItem(TOOLS_LIFT_SLOT, make(Material.CLOCK,
+                    Component.text("CRICUL SE MISCA...", NamedTextColor.AQUA),
+                    List.of(Component.text("Stai departe pana termina.", NamedTextColor.GRAY))));
+        }
     }
 
     private void toolEntry(Inventory inventory, int slot, String tool, ItemStack icon,

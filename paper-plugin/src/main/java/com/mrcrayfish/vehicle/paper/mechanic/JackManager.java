@@ -249,36 +249,17 @@ public final class JackManager {
             return false;
         }
         Jack jack = found.get();
-        if (player.isSneaking()) {
-            return tryPickup(player, jack);
-        }
         if (MechanicItems.kindOf(held) == MechanicItems.Kind.WRENCH) {
             return toggleLift(player, jack);
         }
-        player.sendRichMessage("<gray>Parcheaza masina deasupra, apoi da cu "
-                + "<gold>cheia de mecanic</gold> pe cric: se aliniaza si se ridica (ca in mod). "
-                + "Ghemuit + click = strangi cricul gol.</gray>");
+        // Brief 2026-10-24 (refacere): NU mai exista pickup cu ghemuit+click; cricul
+        // se colecteaza spargandu-l ca pe un bloc normal (vezi handleBlockBreak).
+        player.sendRichMessage("<gray>Parcheaza masina deasupra, apoi ridica-o din "
+                + "meniul bancului sau cu <gold>cheia de mecanic</gold> pe cric. "
+                + "Sparge blocul (jos si gol) ca sa il iei inapoi.</gray>");
         return true;
     }
 
-    /** Shift + click = ridici cricul inapoi: DOAR cel care l-a pus sau un operator,
-     *  si DOAR cand e gol (fara masina) si complet jos. Nimeni altcineva nu-l ia. */
-    public boolean tryPickup(Player player, Jack jack) {
-        if (jack.vehicleId != null || jack.state != Jack.State.DOWN) {
-            player.sendRichMessage("<red>Cricul e in uz - mai intai coboara si da jos masina.</red>");
-            return true;
-        }
-        boolean allowed = player.isOp()
-                || (jack.ownerId != null && jack.ownerId.equals(player.getUniqueId()));
-        if (!allowed) {
-            player.sendRichMessage("<red>Doar cel care a pus cricul (sau un operator) il poate ridica.</red>");
-            return true;
-        }
-        removeJack(jack);
-        player.getInventory().addItem(MechanicItems.jack());
-        player.sendRichMessage("<gray>Ai ridicat cricul.</gray>");
-        return true;
-    }
 
     /** Spart manual (BlockBreakEvent): ca un bloc normal - iti DA itemul inapoi,
      *  dar NU se poate sparge cat e ridicat sau cu masina pe el. */

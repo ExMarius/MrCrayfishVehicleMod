@@ -277,8 +277,8 @@ public final class MechanicManager {
             return true;
         }
         if (vehicle.jackState() != LandVehicle.JackState.LIFTED) {
-            player.sendRichMessage("<red>Vopsesti doar masina ridicata pe cric - "
-                    + "ridica-o mai intai cu cheia.</red>");
+            player.sendRichMessage("<red>Nu poti vopsi aici! Du masina la mecanic: "
+                    + "o ridici pe cric (din meniul bancului) si apoi dai cu spray-ul.</red>");
             return true;
         }
         ItemStack capsule = can;

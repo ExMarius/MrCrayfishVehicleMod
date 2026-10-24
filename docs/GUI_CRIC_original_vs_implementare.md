@@ -301,3 +301,20 @@ am atașat comparația — găsește decalajele"].
   culoare (reversare cerinta veche „gratuit"); creative = bypass.
 - **Porti cric**: motor/roti (montare+demontare, GUI si click direct) si vopsirea (capsula,
   pistol, paleta) cer JackState.LIFTED. Refuzul e mesaj rosu in romana.
+
+## Ciclul F (2026-10-24) — refacere rack + fix vizual void
+
+- **FIX BUG (raportat din joc): void sub cric/banc.** Aparea dupa eliminarea fetelor
+  de jos din Ciclul D. Placa de fund noua: full-footprint, 0.01 grosime, TEXTURA
+  MODULUI (nu smooth_stone), la 0.005 deasupra lui y=0 => acopera golul, fara z-fight,
+  iar blocul de sub statie ramane vizibil (host neopac). Pack/sha nou.
+- **Meniul bancului refacut**: EXACT 1 cheie + 1 ciocan disponibile (spray-ul a fost
+  ELIMINAT din rack); ocupata = bariera rosie cu nume + niciun click; a ta = click,
+  returnare; ridicarea/coborarea masinii pe cric = BUTON in acelasi meniu (stare live:
+  RIDICA / COBOARA cu numele masinii / IN MISCARE / FARA CRIC), cu re-legare automata
+  a bancului la cricul din zona.
+- **Spray**: se aplica DOAR din capsula tinuta in mana (cumparata / din creative);
+  daca masina nu e pe cric => mesaj „du-te la mecanic" + refuz.
+- **Cricul**: NU mai exista pickup cu ghemuit+clickdreapta; se ia prin spargerea
+  normala a blocului (drop item), ca orice bloc (blocat cat e ridicat/cu masina).
+- Raza de service si restul regulelor de binding raman neschimbate.

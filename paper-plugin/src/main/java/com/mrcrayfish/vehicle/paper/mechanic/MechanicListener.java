@@ -312,6 +312,9 @@ public final class MechanicListener implements Listener {
             } else if (toolAction.startsWith("return_")) {
                 mechanic.workstations().returnTool(player, holder.vehicleId(),
                         toolAction.substring(7));
+            } else if ("lift_toggle".equals(toolAction)) {
+                // Ridicarea/coborarea masinii din acelasi meniu (brief F).
+                mechanic.workstations().toggleLiftFromMenu(player, holder.vehicleId());
             }
             return;
         }

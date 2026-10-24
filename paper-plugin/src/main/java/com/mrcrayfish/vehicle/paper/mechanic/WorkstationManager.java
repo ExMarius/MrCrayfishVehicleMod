@@ -57,7 +57,6 @@ public final class WorkstationManager {
          *  restart/quit/wipe (vezi handleQuit/handleJoin/leashTools). */
         UUID hammerHolder;
         int hammerUsed;
-        UUID sprayHolder;
 
         Station(UUID id, Location location, UUID jackId, UUID ownerId) {
             this.id = id;
@@ -89,7 +88,8 @@ public final class WorkstationManager {
     }
 
     private int maxWrenches() {
-        return Math.max(1, plugin.getConfig().getInt("workstation.max-wrenches", 2));
+        // Brief 2026-10-24 (refacere): EXACT O cheie per banc, in orice moment.
+        return 1;
     }
 
     /** Deschide meniul uneltelor unui banc; refresh pentru ceilalti vizitatori. */
@@ -288,10 +288,6 @@ public final class WorkstationManager {
         return station.hammerHolder;
     }
 
-    public UUID sprayHolderOf(Station station) {
-        return station.sprayHolder;
-    }
-
     public int hammerUsedOf(Station station) {
         return station.hammerUsed;
     }
@@ -349,18 +345,6 @@ public final class WorkstationManager {
                 player.sendRichMessage("<gray>Ai luat <gold>ciocanul de lacatus</gold>. "
                         + "Ramai in zona de service!</gray>");
             }
-            case "spray" -> {
-                if (station.sprayHolder != null) {
-                    String who = holderName(station.sprayHolder);
-                    player.sendRichMessage("<red>Pistolul de vopsea e ocupat de <gold>" + who + "</gold>.</red>");
-                    return;
-                }
-                station.sprayHolder = player.getUniqueId();
-                player.getInventory().addItem(MechanicItems.sprayGun(station.id));
-                player.playSound(player.getLocation(), Sound.ENTITY_ITEM_PICKUP, 0.8F, 1.0F);
-                player.sendRichMessage("<gray>Ai luat <gold>pistolul de vopsea</gold> - consuma "
-                        + "capsule reale din inventar si vopseste doar pe cric.</gray>");
-            }
             default -> {
                 return;
             }
@@ -384,8 +368,7 @@ public final class WorkstationManager {
             }
             MechanicItems.Kind kind = MechanicItems.kindOf(stack);
             boolean matches = ("wrench".equals(tool) && kind == MechanicItems.Kind.WRENCH)
-                    || ("hammer".equals(tool) && kind == MechanicItems.Kind.HAMMER)
-                    || ("spray".equals(tool) && kind == MechanicItems.Kind.SPRAY_CAN);
+                    || ("hammer".equals(tool) && kind == MechanicItems.Kind.HAMMER);
             if (!matches) {
                 continue;
             }
@@ -404,7 +387,6 @@ public final class WorkstationManager {
         switch (tool) {
             case "wrench" -> station.recipients.remove(player.getUniqueId());
             case "hammer" -> station.hammerHolder = null;
-            case "spray" -> station.sprayHolder = null;
             default -> {
                 return;
             }
@@ -434,10 +416,6 @@ public final class WorkstationManager {
                 station.hammerHolder = null;
                 changed = true;
             }
-            if (player.getUniqueId().equals(station.sprayHolder)) {
-                station.sprayHolder = null;
-                changed = true;
-            }
             if (changed) {
                 refreshTools(station.id);
             }
@@ -463,29 +441,55 @@ public final class WorkstationManager {
 
     /** Cheia pe banc: ridici/cobori masina aflata deasupra cricului legat. */
     private void handleLiftToggle(Player player, Station station) {
-        Optional<Jack> jack = station.jackId == null ? Optional.empty() : jacks.byId(station.jackId);
+        Optional<Jack> jack = resolveJack(station);
         if (jack.isEmpty()) {
-            // Cricul legat a disparut: incercam sa relegam la cel mai apropiat din zona.
-            double nearest = Double.MAX_VALUE;
-            Jack found = null;
-            for (Jack candidate : jacks.jacks()) {
-                if (candidate.location.getWorld() != station.location.getWorld()) {
-                    continue;
-                }
-                double distance = candidate.location.distance(station.location);
-                if (distance < nearest) {
-                    nearest = distance;
-                    found = candidate;
-                }
-            }
-            if (found == null || nearest > maxJackDistance()) {
-                player.sendRichMessage("<red>Bancul nu mai are cric in zona - pune unul langa el.</red>");
-                return;
-            }
-            station.jackId = found.id;
-            jack = Optional.of(found);
+            player.sendRichMessage("<red>Bancul nu mai are cric in zona - pune unul langa el.</red>");
+            return;
         }
         jacks.toggleLift(player, jack.get());
+    }
+
+    /** Cricul legat de banc; daca a disparut, bancul se re-lega la cel mai
+     *  apropiat din raza maxima (metoda comuna pt. cheie si butonul din meniu). */
+    private Optional<Jack> resolveJack(Station station) {
+        Optional<Jack> jack = station.jackId == null ? Optional.empty() : jacks.byId(station.jackId);
+        if (jack.isPresent()) {
+            return jack;
+        }
+        double nearest = Double.MAX_VALUE;
+        Jack found = null;
+        for (Jack candidate : jacks.jacks()) {
+            if (candidate.location.getWorld() != station.location.getWorld()) {
+                continue;
+            }
+            double distance = candidate.location.distance(station.location);
+            if (distance < nearest) {
+                nearest = distance;
+                found = candidate;
+            }
+        }
+        if (found == null || nearest > maxJackDistance()) {
+            return Optional.empty();
+        }
+        station.jackId = found.id;
+        return Optional.of(found);
+    }
+
+    /** Butonul RIDICA/COBOARA din meniul uneltelor (brief F: ridicarea se face din
+     *  acelasi GUI din care iei ciocanul si cheia, nu doar cu cheia pe cric). */
+    public void toggleLiftFromMenu(Player player, UUID stationId) {
+        Optional<Station> found = byId(stationId);
+        if (found.isEmpty()) {
+            player.sendRichMessage("<red>Acest banc nu mai exista.</red>");
+            return;
+        }
+        handleLiftToggle(player, found.get());
+        refreshTools(found.get().id);
+    }
+
+    /** Informatii pentru butonul de cric din meniu (stare + masina, daca e). */
+    public Optional<Jack> menuJack(UUID stationId) {
+        return byId(stationId).flatMap(this::resolveJack);
     }
 
     private void pickup(Station station) {
@@ -577,9 +581,6 @@ public final class WorkstationManager {
                         st.hammerUsed = MechanicItems.HAMMER_MAX_DAMAGE
                                 - MechanicItems.hammerUsesLeft(stack);
                         st.hammerHolder = null;
-                    } else if (kind == MechanicItems.Kind.SPRAY_CAN
-                            && player.getUniqueId().equals(st.sprayHolder)) {
-                        st.sprayHolder = null;
                     }
                     refreshTools(st.id);
                 }

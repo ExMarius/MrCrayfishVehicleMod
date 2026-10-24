@@ -1225,6 +1225,30 @@ def build(output: Path) -> tuple[Path, str]:
         _unfloor_bottom_faces(namespace / "models/block/mcv_workstation.json")
         _unfloor_bottom_faces(namespace / "models/block/mcv_jack_down.json")
         _unfloor_bottom_faces(namespace / "models/block/mcv_jack_up.json")
+
+        def _add_foundation_plate(model_path: Path) -> None:
+            # Placa de fund (1/100 bloc grosime) cu textura proprie a statiei:
+            #  - acopera golul (vedere din lateral/dedesubt => fara void, raporteaza
+            #    userul dupa Ciclul D);
+            #  - 0.005 deasupra lui y=0 => NU e coplanara cu blocul de dedesubt
+            #    (stone-ul ramane vizibil si nu se bat fetele).
+            _model = json.loads(model_path.read_text(encoding="utf-8"))
+            _textures = _model.get("textures", {}) or {}
+            _tex = next(iter(_textures.values()), "vehicle:item/hammer")
+            _key = "foundation"
+            _textures[_key] = _tex
+            _model["textures"] = _textures
+            _model.setdefault("elements", []).append({
+                "from": [0, 0.005, 0], "to": [16, 0.015, 16],
+                "faces": {
+                    "up": {"uv": [0, 0, 16, 16], "texture": "#" + _key},
+                    "down": {"uv": [0, 0, 16, 16], "texture": "#" + _key},
+                },
+            })
+            write_json(model_path, _model)
+        _add_foundation_plate(namespace / "models/block/mcv_workstation.json")
+        _add_foundation_plate(namespace / "models/block/mcv_jack_down.json")
+        _add_foundation_plate(namespace / "models/block/mcv_jack_up.json")
         # Rafturile din spatele bancului (z=15..16) stau coplanar cu fata SUD a
         # corpului principal => z-fighting vizibil; le decalajam 0.05 px spre
         # exterior (nesesizabil la ochi liber, elimina complet flicker-ul).

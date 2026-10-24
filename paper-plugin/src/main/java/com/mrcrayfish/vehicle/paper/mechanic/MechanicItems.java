@@ -225,24 +225,6 @@ public final class MechanicItems {
         return item;
     }
 
-    /** Pistolul de vopsea legat de un banc: e DOAR aplicatorul - consuma capsulele
-     *  reale din inventar (SPRAY_CAN fara acest marcaj), si numai pe masina ridicata. */
-    public static ItemStack sprayGun(UUID stationId) {
-        ItemStack item = sprayCan(0x606060, "aplicator");
-        ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(BENCH_STATION, PersistentDataType.STRING,
-                stationId.toString());
-        // fara rezervor propriu: aplicatorul cere intotdeauna o capsula in inventar
-        meta.getPersistentDataContainer().set(SPRAY_REMAINING, PersistentDataType.INTEGER, 0);
-        item.setItemMeta(meta);
-        finish(item, Component.text("Pistol de vopsea (banc)", NamedTextColor.GOLD), List.of(
-                Component.text("Click pe masina ridicata pe cric = vopsesti cu o capsula din inventar.",
-                        NamedTextColor.GRAY),
-                Component.text("Se intoarce automat la banc daca iesi din zona.", NamedTextColor.DARK_GRAY)));
-        antiStack(item);
-        return item;
-    }
-
     /** Id-ul bancului proprietar al uneltei (cheie/ciocan/pistol), null = libera. */
     public static UUID benchToolStationOf(ItemStack stack) {
         if (stack == null) {
