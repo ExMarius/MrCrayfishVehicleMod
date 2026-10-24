@@ -121,7 +121,11 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                     + "mai putin de " + (int) radius + " blocuri - stai langa masina ta.</red>");
             return;
         }
-        plugin.mechanic().gui().openPaintPage(player, best);
+        // Paleta a fost eliminata (refacere 2026-10-24): vopsirea = capsula de spray
+        // din mana, pe masina ridicata la mecanic. Comanda doar indruma jucatorul.
+        player.sendRichMessage("<gray>Vopseste cu o <gold>capsula de spray</gold> in mana, "
+                + "direct pe masina <gold>ridicata pe cric</gold> (la mecanic). "
+                + "Apropie-te de bancul de lucru pentru cric si unelte.</gray>");
     }
 
     private void spawn(CommandSender sender, String[] args) {

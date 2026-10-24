@@ -49,7 +49,6 @@ public final class MechanicManager {
     private final FluidMixerManager mixers;
     private final MechanicGui mechanicGui;
     private BukkitTask saveTask;
-    private BukkitTask previewTask;
 
     public MechanicManager(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -76,15 +75,11 @@ public final class MechanicManager {
         // Rotatia automata in monitorul cricului (brief): un cadru la 5 tick-uri =>
         // o rotatie completa FOARTE lina si lenta la ~6s; si sincronizarea live
         // roti/motor/vopsea cat timp meniul e deschis (reconstruie itemul din stare).
-        previewTask = Bukkit.getScheduler().runTaskTimer(plugin, mechanicGui::advancePreviewFrames, 5L, 5L);
     }
 
     public void stop() {
         if (saveTask != null) {
             saveTask.cancel();
-        }
-        if (previewTask != null) {
-            previewTask.cancel();
         }
         save();
         props.stop();
@@ -208,14 +203,24 @@ public final class MechanicManager {
         }
         switch (kind) {
             case WRENCH -> {
-                if (vehicle.onJack()
-                        && vehicle.jackState() == LandVehicle.JackState.LIFTED) {
-                    mechanicGui.open(player, vehicle);
+                // Refacere 2026-10-24: GUI-ul vechi a fost STERS complet. Cheia pe
+                // masina deschide meniul UNIC al bancului (cel care leaga cricul pe
+                // care sta masina; altfel cel mai apropiat banc din zona de service).
+                if (vehicle.jackId() != null) {
+                    var linked = workstations.byJackId(vehicle.jackId());
+                    if (linked.isPresent()) {
+                        gui().openToolsMenu(player, linked.get().id);
+                        return true;
+                    }
+                }
+                var near = workstations.nearestStation(player.getLocation(),
+                        workstations.serviceRadiusPublic());
+                if (near.isPresent()) {
+                    gui().openToolsMenu(player, near.get().id);
                     return true;
                 }
-                player.sendRichMessage(vehicle.onJack()
-                        ? "<yellow>Masina e in miscare pe cric - asteapta sa se opreasca.</yellow>"
-                        : "<gray>Ridica masina pe un <gold>cric</gold> si apoi deschide bancul cu cheia.</gray>");
+                player.sendRichMessage("<gray>Niciun banc de lucru in zona - du-te la "
+                        + "mecanic si da click dreapta pe bancul lui.</gray>");
                 return true;
             }
             case KEY -> {

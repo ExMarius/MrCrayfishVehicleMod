@@ -492,6 +492,41 @@ public final class WorkstationManager {
         return byId(stationId).flatMap(this::resolveJack);
     }
 
+    /** Bancul legat de un anumit cric (pt. cheia pe masina ridicata). */
+    public Optional<Station> byJackId(UUID jackId) {
+        if (jackId == null) {
+            return Optional.empty();
+        }
+        for (Station station : stations.values()) {
+            if (jackId.equals(station.jackId)) {
+                return Optional.of(station);
+            }
+        }
+        return Optional.empty();
+    }
+
+    /** Cel mai apropiat banc de o locatie, in raza data (sau gol). */
+    public Optional<Station> nearestStation(Location origin, double radius) {
+        Station found = null;
+        double nearest = radius * radius;
+        for (Station station : stations.values()) {
+            if (station.location.getWorld() != origin.getWorld()) {
+                continue;
+            }
+            double distance = station.location.distanceSquared(origin);
+            if (distance <= nearest) {
+                nearest = distance;
+                found = station;
+            }
+        }
+        return Optional.ofNullable(found);
+    }
+
+    /** Raza de service expusa public (pt. fluxul cheii pe masina). */
+    public double serviceRadiusPublic() {
+        return serviceRadius();
+    }
+
     private void pickup(Station station) {
         station.block().setType(Material.AIR, false);
         stations.remove(station.id);

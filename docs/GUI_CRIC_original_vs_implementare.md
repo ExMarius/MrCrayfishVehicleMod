@@ -318,3 +318,20 @@ am atașat comparația — găsește decalajele"].
 - **Cricul**: NU mai exista pickup cu ghemuit+clickdreapta; se ia prin spargerea
   normala a blocului (drop item), ca orice bloc (blocat cat e ridicat/cu masina).
 - Raza de service si restul regulelor de binding raman neschimbate.
+
+## Ciclul G (2026-10-24) — GUI-ul vechi STERS complet; meniul unic al bancului
+
+- **Bug fix (raportat din joc): meniul uneltelor se inchidea la orice click si nu
+  dadea nimic.** Cauza: handlerul verifica mai intai `vehicles.byId(holder.vehicleId())`,
+  dar holder-ul cara id-ul BANCULUI => "masina inexistenta" => closeInventory instant.
+  Dispatch-ul uneltelor/cricului nu ajungea niciodata la logica lor.
+- **GUI-ul vechi de tip EditVehicleScreen (backdrop textura mod, preview rotativ,
+  paleta de culori) a fost STERS integral** (clasa rescrisa, fara
+  open/openPaintPage/info/preview; previewTask sters; /vehicle paint devine indrumare).
+- **Meniul UNIC al mecanicii = meniul bancului**: sus butonul RIDICA/COBOARA cricul
+  legat, mijloc rack-ul (1 cheie + 1 ciocan, ocupare live), jos - doar cand masina e
+  complet RIDICATA - sloturile MOTOR si ROTI + cartea cu datele masinii. Flux piese
+  identic cu modul (piesa pe cursor = instaleaza/schimba; cursor gol = scoate).
+- **Cheia pe masina** deschide acum acelasi meniu unic: bancul legat cricului de sub
+  masina, altfel cel mai apropiat banc din raza de service; fara banc => indrumare.
+- Spray-ul = exclusiv capsula din mana, pe masina ridicata (mesaj "du-te la mecanic").
