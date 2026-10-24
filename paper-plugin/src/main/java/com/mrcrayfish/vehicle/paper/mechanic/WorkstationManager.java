@@ -43,7 +43,7 @@ public final class WorkstationManager {
     private static final long CLICK_COOLDOWN_MS = 2_000L;
 
     /** Starea runtime a unui banc pus in lume: positions.goian <=> bloc solid. */
-    private static final class Station {
+    static final class Station {
         final UUID id;
         final Location location; // centrul blocului (x+0.5, y, z+0.5)
         /** Cricul/elevatorul de care bancul e legat 1:1 (null = orfan). */
