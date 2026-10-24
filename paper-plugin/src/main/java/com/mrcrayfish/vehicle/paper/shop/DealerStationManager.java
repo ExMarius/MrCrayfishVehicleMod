@@ -51,20 +51,28 @@ public final class DealerStationManager {
 
     public void start() {
         load();
+        // FIX (bug restart-dublare): pas IDEMPOTENT per podium. Niciodata nu
+        // respawnam orb o masina noua; mai intai ADOPTAM ce e deja acolo (dupa id
+        // persistat, altfel showcase-ul gasit pe podium) si REPARAM duplicatele
+        // lasate de versiunile vechi (orice showcase suplimentar din jur e sters).
         for (Station station : new ArrayList<>(stations)) {
             buildPlatform(station.anchor());
             killStaleTextDisplays(station.anchor());
-            rebuild(station);
+            ensureShowcase(station);
         }
+        save(); // id-urile (re)adoptate intra imediat pe disc
     }
 
     public void stop() {
+        // Oprire curata: hologramele se sterg (vizual); masinile podiumurilor sunt
+        // scoase explicit DUPA ID-ul persistat (nu din memorie volatila).
         for (Station station : stations) {
             killHologram(station);
             if (station.vehicleId() != null) {
                 vehicles.byId(station.vehicleId()).ifPresent(vehicles::remove);
             }
         }
+        save();
         stations.clear();
     }
 
@@ -160,6 +168,58 @@ public final class DealerStationManager {
 
     private void rebuild(Station station) {
         sweepLeftovers(station.anchor());
+        killStaleTextDisplays(station.anchor());
+        ensureShowcase(station);
+    }
+
+    /** Garanteaza EXACT O masina showcase pe podium, idempotent (nucleul fixului):
+     *  1) daca id-ul persistat e inca incarcat in lume -> nu facem nimic;
+     *  2) altfel adoptam showcase-ul aflat pe podium (self-heal dupa crash/kill
+     *     fara onDisable), STERGAND orice duplicate suplimentare din jur;
+     *  3) altfel spawnam exact una noua. Cost: zero task-uri, zero tick. */
+    private void ensureShowcase(Station station) {
+        Location spot = station.anchor().clone().add(0.5D, 1.05D, 0.5D);
+        // (1) adoptare dupa id persistat
+        if (station.vehicleId() != null) {
+            java.util.Optional<LandVehicle> known = vehicles.byId(station.vehicleId());
+            if (known.isPresent()) {
+                known.get().setShowcase(true);
+                respawnHologram(station);
+                return;
+            }
+        }
+        // (2) adoptare pe loc + repararea duplicatelor
+        java.util.List<LandVehicle> found = vehicles.showcasesWithin(spot, 2.0D);
+        if (!found.isEmpty()) {
+            LandVehicle adopted = found.get(0);
+            adopted.setShowcase(true);
+            int index = stations.indexOf(station);
+            stations.set(index, new Station(station.anchor(), station.specId(),
+                    adopted.id(), station.hologramId(), station.price()));
+            for (int i = 1; i < found.size(); i++) {
+                vehicles.remove(found.get(i)); // duplicatele moarte ale bug-ului vechi
+            }
+            respawnHologram(stations.get(index));
+            return;
+        }
+        // (3) spawn unic
+        spawnFresh(station);
+    }
+
+    private void respawnHologram(Station station) {
+        LandVehicleSpec spec = LandVehicleSpec.byId(station.specId());
+        if (spec == null) {
+            spec = LandVehicleSpec.byId("sports_car");
+        }
+        killHologram(station);
+        UUID hologramId = spawnHologram(station.anchor().clone().add(0.5D, 2.6D, 0.5D),
+                spec, station.price());
+        int index = stations.indexOf(station);
+        stations.set(index, new Station(station.anchor(), station.specId(),
+                station.vehicleId(), hologramId, station.price()));
+    }
+
+    private void spawnFresh(Station station) {
         LandVehicleSpec spec = LandVehicleSpec.byId(station.specId());
         if (spec == null) {
             spec = LandVehicleSpec.byId("sports_car");
@@ -168,7 +228,7 @@ public final class DealerStationManager {
         Location spot = anchor.clone().add(0.5D, 1.05D, 0.5D);
         spot.setYaw(0.0F);
         LandVehicle showcase = vehicles.spawn(spec, spot);
-        // ANTI-FURT: showcase refortat LA FIECARE rebuild (inclusiv la boot dupa restart).
+        // ANTI-FURT: showcase refortat la orice (re)creere.
         showcase.setShowcase(true);
         UUID hologramId = spawnHologram(anchor.clone().add(0.5D, 2.6D, 0.5D), spec,
                 station.price());
@@ -279,7 +339,8 @@ public final class DealerStationManager {
         for (Station station : stations) {
             Location a = station.anchor();
             list.add(a.getWorld().getName() + "," + a.getBlockX() + "," + a.getBlockY() + ","
-                    + a.getBlockZ() + "," + station.specId() + "," + station.price());
+                    + a.getBlockZ() + "," + station.specId() + "," + station.price() + ","
+                    + (station.vehicleId() == null ? "" : station.vehicleId()));
         }
         data.set("stations", list);
         try {
@@ -318,7 +379,11 @@ public final class DealerStationManager {
                 if (!duplicate) {
                     double price = parts.length >= 6 ? Double.parseDouble(parts[5].trim())
                             : shop.priceOf(specId);
-                    stations.add(new Station(anchor, specId, null, null, price));
+                    UUID knownVehicle = null;
+                    if (parts.length >= 7 && !parts[6].trim().isEmpty()) {
+                        knownVehicle = UUID.fromString(parts[6].trim());
+                    }
+                    stations.add(new Station(anchor, specId, knownVehicle, null, price));
                 }
             } catch (NumberFormatException ignored) {
                 // Corrupt line: skip it, keep loading the rest.

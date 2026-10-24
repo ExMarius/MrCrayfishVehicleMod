@@ -332,6 +332,27 @@ public final class VehicleManager {
         return result;
     }
 
+    /** Ca vehiclesWithin, DAR include si vehiculele showcase (podium dealer) -
+     *  folosit de adoptarea/repararea podiumurilor la boot (bug: podiile vechi
+     *  duplicau masina dupa restart pentru ca sweep-ul ignora showcase-urile). */
+    public List<LandVehicle> showcasesWithin(Location centre, double radius) {
+        List<LandVehicle> result = new ArrayList<>();
+        World world = centre.getWorld();
+        for (LandVehicle vehicle : vehicles.values()) {
+            if (!vehicle.showcase()) {
+                continue;
+            }
+            Location location = vehicle.location();
+            if (world != null && world != location.getWorld()) {
+                continue;
+            }
+            if (location.distance(centre) <= radius) {
+                result.add(vehicle);
+            }
+        }
+        return result;
+    }
+
     /** All of our live vehicles within the radius (station auto-park yard sweep). */
     public List<LandVehicle> vehiclesWithin(Location centre, double radius) {
         List<LandVehicle> result = new ArrayList<>();

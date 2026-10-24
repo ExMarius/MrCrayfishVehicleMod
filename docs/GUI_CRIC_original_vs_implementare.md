@@ -359,3 +359,18 @@ am atașat comparația — găsește decalajele"].
 - **UN SINGUR banc de lucru per cric (1:1 strict)**: plasarea bancului refuza cricul
   care are deja banc asociat; re-legarea automata (cric disparut sau adaugat ulterior)
   alege intotdeauna doar cricuri LIBERE (nu fura bancul altui banc).
+
+## Ciclul J (2026-10-24) — FIX podium: fara dublare la restart (sistem idempotent)
+
+- **Cauzele gasite**: (1) sweep-ul din jurul podiumului cerea `vehiclesWithin`, care
+  SARE peste vehiculele showcase => masina veche nu era niciodata curatata; (2) id-ul
+  masinii de expozitie NU era persistat in dealer.yml => la boot se respawna Orb;
+  (3) entitatile rig ramase in lume dupa crash/kill fara onDisable nu erau curatate.
+- **Sistemul nou (consum ~0, fara task-uri)**: podiumul = singura sursa de adevar.
+  `ensureShowcase` idempotent per podium: (1) adopta dupa id persistat; (2) altfel
+  adopta showcase-ul gasit pe podium STERGAND duplicatele vechi (self-heal); (3) altfel
+  spawneaza EXACT una noua. vehicleId se salveaza in dealer.yml; holograma se recreeaza.
+- **stop()**: sterge masinile podiumurilor DUPA id-ul persistat (nu din memorie).
+- **GC chunk-load**: orice entitate rig taguita al carei vehicul lipseste din registry
+  SI din pendingWorlds e orfana si se sterge la incarcarea chunkului (curata si resturile
+  lasate de versiunile/bug-urile vechi).
