@@ -395,3 +395,18 @@ am atașat comparația — găsește decalajele"].
 - HEAL legacy in ensureShowcase: masina normala a acelasi model, lasata de bug-urile
   vechi in raza podiumului, e re-adoptata ca showcase (nu se mai spawneaza peste ea).
 - plugin.yml: usage /vehicle actualizat cu toate subcomenzile reale.
+
+## Ciclul N (2026-10-25) — pachet pilot-automat: roate-cioane-km
+
+- **Roti „Set 4x"**: itemul de roti poarta numele `Set roti 4x - <tip>` + linie lore
+  „contine toate cele 4 roti" (detectia ramane pe PDC - instalarea nu e afectata).
+- **Ciocan functional si cu CLICK DREAPTA**: nou `case HAMMER` in handleToolClick -
+  masina ridicata => scoti motorul (acelasi uninstallEngine ca lovitura); jos => mesaj.
+- **Elevator fara plutire**: LIFT_VISUAL_CORRECTION intarita la -3/16 (-2/16 inca
+  lasa masina cu ~1px deasupra capului cricului); aplicat peste tot consecvent.
+- **Anti meniu-instant la plasare**: WorkstationManager.wasJustPlaced (850ms dupa
+  place) => al doilea click rapid din animatia de punere nu mai deschide meniul.
+  Curatare la cerere, zero task-uri.
+- **Kilometraj (odometru)**: LandVehicle acumuleaza metrii per tick (hypot(motion.x,z));
+  persistat in vehicles.yml ca mechanic.odometer; overlay-ul de combustibil din
+  actiune arata acum „combustibil | 248 m / 1,3 km". Restaurari complete + NaN-safe.

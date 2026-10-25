@@ -397,9 +397,10 @@ public final class JackManager {
      *  In mod vehiculul stationeaza ca pasager la ~11px deasupra blocului; ale noastre
      *  0.5 = exact suprafata superioara a elevatorului jos (nu intra in model). */
     private static final double REST_OFFSET = 0.5D;
-    /** Corectie din playtesting (brief 2026-10-24): ridicarea era cu 2 model-pixeli
-     *  prea SUS (anvelopele pluteau deasupra capului cricului) => -0.125 blocuri. */
-    private static final double LIFT_VISUAL_CORRECTION = -2.0D / 16.0D;
+    /** Corectie din playtesting: inaltimea finala ridicata statea cu 1 model-pixel
+     *  PREA SUS (masina parea ca pluteste deasupra capului cricului). Istoric:
+     *  -2/16 (2026-10-24) inca plutea cu ~2px -> acum -3/16 = contact vizual exact. */
+    private static final double LIFT_VISUAL_CORRECTION = -3.0D / 16.0D;
 
     private void tick() {
         int ticks = liftTicks();

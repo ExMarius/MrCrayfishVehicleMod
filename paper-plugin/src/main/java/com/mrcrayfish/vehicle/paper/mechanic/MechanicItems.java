@@ -135,8 +135,9 @@ public final class MechanicItems {
                 + " / zapada x" + trim(type.surfaceModifier(
                         com.mrcrayfish.vehicle.paper.physics.SurfaceProfile.Category.SNOW)),
                 NamedTextColor.YELLOW));
+        lore.add(Component.text("Set complet: contine toate cele 4 roti (4x).", NamedTextColor.AQUA));
         lore.add(Component.text("Monteaza-le cu click dreapta pe vehicul.", NamedTextColor.GRAY));
-        finish(item, Component.text(type.label(), NamedTextColor.GOLD), lore);
+        finish(item, Component.text("Set roti 4x - " + type.label(), NamedTextColor.GOLD), lore);
         return item;
     }
 

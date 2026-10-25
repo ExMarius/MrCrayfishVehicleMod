@@ -187,6 +187,29 @@ public final class WorkstationManager {
     /* ============================ plasare / rig ============================ */
 
     /** Regula de zona #1: fara cric in raza de max-distance-to-jack, bancul NU se pune. */
+    /** Anti meniu-instant (ciclul N): bancul abia pus ignora click-urile 850ms.
+     *  Fara task-uri: intrarile se curata la cerere (map e minuscula oricum). */
+    private final java.util.Map<String, Long> recentPlaces = new java.util.HashMap<>();
+    private static final long PLACE_DEBOUNCE_MS = 850L;
+
+    private static String placeKey(org.bukkit.block.Block block) {
+        return block.getWorld().getName() + ":" + block.getX() + ","
+                + block.getY() + "," + block.getZ();
+    }
+
+    /** True daca blocul a fost pus acum <850ms - click-ul curent nu deschide meniul. */
+    public boolean wasJustPlaced(org.bukkit.block.Block block) {
+        Long at = recentPlaces.get(placeKey(block));
+        if (at == null) {
+            return false;
+        }
+        if (System.currentTimeMillis() - at > PLACE_DEBOUNCE_MS) {
+            recentPlaces.remove(placeKey(block));
+            return false;
+        }
+        return true;
+    }
+
     public boolean place(Player player, Location clickedFace, float yaw) {
         Block target = clickedFace.getBlock();
         if (!target.getType().isAir() && !target.isReplaceable()) {
@@ -222,6 +245,7 @@ public final class WorkstationManager {
         station.jackId = nearestJack;
         station.ownerId = player.getUniqueId();
         stations.put(station.id, station);
+        recentPlaces.put(placeKey(station.block()), System.currentTimeMillis());
         player.sendRichMessage("<gray>Banc de lucru pus jos (<gold>legat</gold> de cricul de langa). "
                 + "Click pe el = cheia de mecanic.</gray>");
         return true;

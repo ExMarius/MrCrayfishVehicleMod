@@ -248,6 +248,17 @@ public final class MechanicManager {
             case WHEEL -> {
                 return handleWheelSwap(player, vehicle, held);
             }
+            case HAMMER -> {
+                // Ciclul N: ciocanul e functional si cu CLICK DREAPTA (nu doar
+                // lovitura): masina ridicata = scoti motorul; jos = explicatie.
+                if (vehicle.jackState() == LandVehicle.JackState.LIFTED) {
+                    return uninstallEngine(player, vehicle);
+                }
+                player.sendRichMessage(vehicle.onJack()
+                        ? "<yellow>Ridica intai masina pe cric (din meniul bancului), apoi dai cu ciocanul.</yellow>"
+                        : "<yellow>Motorul se scoate doar la mecanic: masina trebuie ridicata pe cric.</yellow>");
+                return true;
+            }
             default -> {
                 return false;
             }
@@ -586,6 +597,11 @@ public final class MechanicManager {
      *  retunare a notei). Returneaza true mereu (blocul e al sistemului). */
     public boolean handleStationBlockClick(Player player, Block block, ItemStack held) {
         if (workstations.isStationBlock(block)) {
+            // Anti meniu-instant: al doilea click rapid din animatia de plasare nu
+            // mai deschide meniul (fereastra scurta dupa place, in WorkstationManager).
+            if (workstations.wasJustPlaced(block)) {
+                return true;
+            }
             return workstations.handleBlockClick(player, block, held);
         }
         if (jacks.isJackBlock(block)) {

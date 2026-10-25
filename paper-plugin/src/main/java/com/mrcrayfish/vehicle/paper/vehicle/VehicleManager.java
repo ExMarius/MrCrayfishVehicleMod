@@ -804,6 +804,9 @@ public final class VehicleManager {
         if (!stored.wheelsInstalled()) {
             data.set(path + ".mechanic.wheels-installed", false);
         }
+        if (stored.odometer() > 0.0D) {
+            data.set(path + ".mechanic.odometer", stored.odometer());
+        }
     }
 
     private void load() {
@@ -885,6 +888,7 @@ public final class VehicleManager {
         // Starea mecanica (motoare/roti/daune/vopsea/incuiere/cric) - persistata 1-la-1.
         vehicle.setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier.fromName(stored.engineTier()));
         vehicle.setEngineInstalled(stored.engineInstalled());
+        vehicle.restoreOdometer(stored.odometer());
         vehicle.setWheelType(com.mrcrayfish.vehicle.paper.mechanic.WheelType.fromName(stored.wheelType()));
         if (stored.health() < 100.0D) {
             vehicle.applyDamage(100.0D - stored.health(), null);
@@ -1245,7 +1249,7 @@ public final class VehicleManager {
                                  Map<String, Boolean> openPartStates, String owner, String trusted,
                                  String engineTier, String wheelType, double health, int paintColor,
                                  boolean locked, String jackState, String jackId, boolean engineInstalled,
-                                 boolean wheelsInstalled) {
+                                 boolean wheelsInstalled, double odometer) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
@@ -1265,7 +1269,7 @@ public final class VehicleManager {
                     vehicle.paintColor(), vehicle.locked(), vehicle.jackState().name(),
                     vehicle.jackId() == null ? null : vehicle.jackId().toString(),
                     vehicle.engineInstalled(),
-                    vehicle.wheelsInstalled());
+                    vehicle.wheelsInstalled(), vehicle.odometerMeters());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -1303,7 +1307,8 @@ public final class VehicleManager {
                     data.getString(path + ".mechanic.jack-state"),
                     data.getString(path + ".mechanic.jack-id"),
                     data.getBoolean(path + ".mechanic.engine-installed", true),
-                    data.getBoolean(path + ".mechanic.wheels-installed", true));
+                    data.getBoolean(path + ".mechanic.wheels-installed", true),
+                    data.getDouble(path + ".mechanic.odometer", 0.0D));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

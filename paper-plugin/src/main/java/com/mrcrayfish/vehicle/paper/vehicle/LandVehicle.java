@@ -79,6 +79,8 @@ public final class LandVehicle {
     private float boostStrength;
     private float chargingAmount;
     private double verticalVelocity;
+    /** Odometru: metrii (blocuri) parcursi cumulativ - persistat in vehicles.yml. */
+    private double odometerMeters;
     private boolean onGround = true;
     private boolean handbraking;
     private boolean charging;
@@ -257,6 +259,8 @@ public final class LandVehicle {
             updateWheelPositions();
         }
         updateVehicleMotion(globalSpeedLimit, enginePowered);
+        // Kilometraj: distanta REALA parcursa (blocuri/tick ~ metri), acumulata ieftin.
+        odometerMeters += Math.hypot(motion.getX(), motion.getZ());
 
         verticalVelocity -= 0.08D;
         Vector requestedMovement = new Vector(motion.getX(), verticalVelocity + motion.getY(), motion.getZ());
@@ -1196,6 +1200,27 @@ public final class LandVehicle {
         return Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
     }
 
+    /** Kilometraj (odometru): metri parcursi cumulat de la prima miscare. */
+    public double odometerMeters() {
+        return odometerMeters;
+    }
+
+    public void restoreOdometer(double meters) {
+        if (Double.isFinite(meters) && meters >= 0.0D) {
+            odometerMeters = meters;
+        }
+    }
+
+    /** Eticheta scurta pentru overlay: „248 m" sub 1 km, apoi „1,3 km". */
+    private String odometerLabel() {
+        if (odometerMeters < 1000.0D) {
+            return (int) Math.round(odometerMeters) + " m";
+        }
+        String text = String.format(java.util.Locale.forLanguageTag("ro-RO"),
+                "%.1f", odometerMeters / 1000.0D);
+        return text + " km";
+    }
+
     /** True when the vehicle stands still on the ground with no drive demand this
      * tick: no throttle, no handbrake, no charging, horizontal speed ~0. In this
      * state the friction value cannot influence anything (motion is already zero),
@@ -1727,7 +1752,8 @@ public final class LandVehicle {
 
     /** Vanilla replacement for the original mod's continuously updated fuel overlay. */
     private void showFuelOverlay() {
-        Component overlay = Component.text(FuelGauge.overlay(fuel, spec.energyCapacity()), NamedTextColor.GOLD);
+        Component overlay = Component.text(FuelGauge.overlay(fuel, spec.energyCapacity())
+                + "  |  " + odometerLabel(), NamedTextColor.GOLD);
         for (Entity carrier : rig.seatCarriers()) {
             for (Entity passenger : carrier.getPassengers()) {
                 if (passenger instanceof Player player) {
