@@ -81,10 +81,11 @@ workstation:
   service-radius: 10
 
 jack:
-  # Inaltimea la care cricul ridica masina (2.5 = mergi pe sub ea, ca la service real).
-  # Cricul ridica masina exact ca in mod: maxim +0.5 bloc deasupra solului.
-  # (SHAPE 10/16 + 0.5 * progress in JackBlock; capul cricului urca cu acelasi 0.5.)
-  lift-height: 0.5
+  # Inaltimea ABSOLUTA a masinii RIDICATE, peste blocul cricului (calibrat pe
+  # off_roader: 0.75 = capul ridicat intra exact sub roti, fara sa atinga caroseria
+  # si fara plutire). Mai aproape de mod nu conteaza - masinile joase raman ok la
+  # aceeasi valoare pentru ca originea tuturor e contactul roata-sol.
+  lifted-offset: 0.75
   # Timpul urcarii/coborarii, in tick-uri (20 = 1 secunda).
   lift-speed-ticks: 50
   # Distanta minima intre doua cricuri - zonele de service nu se intersecteaza.
@@ -92,9 +93,8 @@ jack:
   # Cat sta masina peste blocul cricului cand e JOS (1/16 = rotile ating pamantul,
   # placa impaturita e aproape de sol). Era 0.5 - masina plutea dupa coborare.
   rest-offset: 0.0625
-  # Corectie vizuala la ridicarea completa (negativ = mai jos). -0.25 = contact
-  # exact intre roti si capul ridicat, fara efect de plutire (calibrat pe off_roader).
-  lift-visual-correction: -0.25
+  # (vechiul lift-visual-correction a fost inlocuit de modelul absolut lifted-offset:
+  #  reglezi o singura valoare si primesti EXACT inaltimea finala de sus)
 
 mechanic:
   # Capacitatea spray-ului (Config.SERVER.sprayCanCapacity din mod: 20 pulverizari).

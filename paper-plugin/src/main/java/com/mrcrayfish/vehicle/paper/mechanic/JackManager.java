@@ -33,7 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
  * Cricul/elevatorul ca BLOC SOLID real (misiunea anti-lag: 200+ vehicule) - zero
  * entitati per statie; doar blocurile lumii + UN task global 1-tick care misca
  * cricele active (idle = cost zero, fara scanari automate). Ca in mod: blocul are
- * doua fete vizuale, JOS (cap impaturit) si SUS (cap ridicat +0.5 = lift-height
+ * doua fete vizuale, JOS (cap impaturit) si SUS (cap ridicat = jack.lifted-offset (0.75 implicit)
  * implicit), schimbate la jumatatea animatiei; masina urca/coboara fin pe
  * jack.lift-speed-ticks si intra in starea „pe elevator" (fizica inghetata).
  * Pozitiile de stat SUNT cele din mod (vehicul montat pe capul cricului):
@@ -79,9 +79,12 @@ public final class JackManager {
         this.store = store;
     }
 
-    private double liftHeight() {
-        // Inaltimea maxima: jack.lift-height (implicit 0.5 blocuri, ca in mod).
-        return Math.max(0.1D, plugin.getConfig().getDouble("jack.lift-height", 0.5D));
+    /** Model ABSOLUT (ciclul Q, calibrat pe off_roader ridicat/platea jos):
+     *  Y-ul masinii RIDICATE = bloc_cric + lifted-offset (default 0.75 = capul cricului
+     *  ridicat exact sub roti - nu intra in caroserie, nu pluteste). Se regleaza live
+     *  din config.yml fara rebuild; valoarea inventata corect: rest 0.5+lift 0.5-3/16. */
+    private double liftedOffset() {
+        return Math.max(0.1D, plugin.getConfig().getDouble("jack.lifted-offset", 0.75D));
     }
 
     private int liftTicks() {
@@ -132,8 +135,7 @@ public final class JackManager {
                             ? LandVehicle.JackState.LIFTED : LandVehicle.JackState.NONE);
                     found.setJackId(jack.id);
                     if (stored.raised()) {
-                        found.setLiftedY(jack.location.getY() + restOffset() + liftHeight()
-                                + liftVisualCorrection());
+                        found.setLiftedY(jack.location.getY() + liftedOffset());
                     } else {
                         found.setLiftedY(jack.location.getY() + restOffset());
                     }
@@ -406,9 +408,6 @@ public final class JackManager {
         return plugin.getConfig().getDouble("jack.rest-offset", 0.0625D);
     }
 
-    private double liftVisualCorrection() {
-        return plugin.getConfig().getDouble("jack.lift-visual-correction", -0.25D);
-    }
 
     private void tick() {
         int ticks = liftTicks();
@@ -510,8 +509,8 @@ public final class JackManager {
                     ? StationBlocks.JACK_UP : StationBlocks.JACK_DOWN, false);
         }
         linked(jack).ifPresent(vehicle ->
-                vehicle.setLiftedY(jack.startY
-                        + jack.progress * (liftHeight() + liftVisualCorrection())));
+                vehicle.setLiftedY(jack.location.getY() + restOffset()
+                        + jack.progress * (liftedOffset() - restOffset())));
         // Sunetul de pneumatic la intervale regulate in timpul miscarii.
         if ((int) (jack.progress * liftTicks()) % 14 == 0) {
             playSound(jack, AIR_WRENCH, 0.35F, jack.state == Jack.State.LIFTING ? 1.2F : 0.8F);

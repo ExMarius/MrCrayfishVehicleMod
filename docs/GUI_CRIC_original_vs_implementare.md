@@ -433,3 +433,12 @@ am atașat comparația — găsește decalajele"].
   subcomanda nu exista in dispatch! Acum `/vehicle garaj|garage|parcari` = acelasi
   flow cu `/garaj` (hybrid): gratis in cercul personal, taxa doar in cele publice.
 - Tab-complete + plugin.yml usage actualizate.
+
+## Ciclul Q (2026-10-25) — elevatorul: model ABSOLUT de inaltime (calibrat pe off_roader)
+
+- Simptome: dupa O jos = OK insa la ridicat cricul intra IN caroserie (0.3125 < cap
+  ridicat), iar marimea era absoluta amestecata cu formula relativa. Modelul nou:
+  ridicare = interpolare directa `rest-offset (0.0625) -> lifted-offset (0.75)];
+  lifted-offset e o valoare unica config, reglaj live; rest si load(raised) folosesc
+  IDENTICE cleme => niciun dis continuue. Calibrare finala inca deschisa: daca pe un
+  vehicul specific pluteste/clupeaza, se dozoneaza din config (0? / +1/16 pas).
