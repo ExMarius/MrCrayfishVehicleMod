@@ -48,9 +48,6 @@ permissions:
   mcv.mechanic.paint:
     description: Vopsirea vehiculelor cu spray can.
     default: op
-  mcv.vehicle.lock:
-    description: Inchiderea/deschiderea masinii cu cheia.
-    default: op
   mcv.vehicle.dismantle:
     description: Demontarea vehiculului propriu cu ciocanul.
     default: op

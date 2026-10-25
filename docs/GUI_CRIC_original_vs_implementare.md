@@ -526,3 +526,27 @@ Audit total (vezi docs/AUDIT_TOTAL.md pt raportul complet). Gase gasite si repar
 3. Recuperare garaj public: taxa strict pe livrare reusita (+refund pe esec),
    fara retrageri tacute ignorate.
 Persistenta/ciclul/podiu/mecanici/garaj/alimentare = VERDE in audit.
+
+## Ciclul Z (2026-10-25) — FARA CHEI de masina: acces = proprietar la volan + trust
+
+User: "nu avem nevoie de chei; avem doar acces proprietar la volan si trust ca sa
+dei unui prieten (sau mai multi)". Cheia (Kind.KEY, legata de UUID la cumparare)
+era REDUNDANTA cu sistemul trust deja functional -> eliminata complet:
+
+- Itemul "cheie de masina" eliminat (MechanicItems.key/blankKey/keyTargetOf,
+  Kind.KEY, KEY_TARGET); cheile vechi din lume/inventare devin inofensive
+  (kindOf -> null), nu mai consuma clickul pe masini.
+- Magazinul nu mai da cheie la cumparare; mesajul de succes invata jucatorul
+  despre /vehicle trust <nume>.
+- Incuiala (locked) eliminata complet: LandVehicle.locked + setLocked, poarta
+  din VehicleManager.handleInteraction, executorul MechanicManager.handleKey +
+  permisiunea mcv.vehicle.lock din plugin.yml. StoredVehicle nu mai are campul
+  locked; vehiculele salvate cu .mechanic.locked: true se incarca NORMAL deschise
+  (cheia disparuta nu le putea mai descuia vreodata).
+- CreativeGui: slotul cheii goale eliminat.
+- Cufarul de transport: slotul 6 din payload ramane in FORMAT ca sa se deschida
+  cufarele vechi, dar se scrie mereu "false" si se ignora la deschidere.
+- REMAS: sistemul trust este singurul filtru de acces la volan (owner + trusted,
+  /vehicle trust|untrust|trusted, persistat); pasagerii urca liber.
+- "Cheia de mecanic" (WRENCH-ul bancului) ramane NESCHIMBATA - e unealta de
+  service, nu de acces.

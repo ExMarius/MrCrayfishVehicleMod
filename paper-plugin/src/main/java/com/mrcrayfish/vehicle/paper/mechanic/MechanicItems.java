@@ -19,13 +19,13 @@ import java.util.UUID;
 
 /**
  * Fabrica unica a itemelor sistemului mecanic: motoare (3 tipuri x 4 tier), roti (3),
- * wrench/hammer/key/spray can, itemele plasabile (jack/workstation/con/pad/țeavă)
+ * wrench/hammer/spray can, itemele plasabile (jack/workstation/con/pad/țeavă)
  * si "cufărul de vehicul" dat de hammer la demontare.
  * Acelasți mecanism ca JerryCanItem: PAPER + item_model din pack + identitate in PDC.
  */
 public final class MechanicItems {
     public enum Kind {
-        ENGINE, WHEEL, WRENCH, HAMMER, KEY, SPRAY_CAN,
+        ENGINE, WHEEL, WRENCH, HAMMER, SPRAY_CAN,
         JACK, WORKSTATION, TRAFFIC_CONE, BOOST_PAD, FLUID_PIPE, VEHICLE_CRATE,
         PANEL, FLUID_BUCKET, FLUID_MIXER
     }
@@ -34,7 +34,6 @@ public final class MechanicItems {
     private static final NamespacedKey ENGINE_TYPE = new NamespacedKey("vehicle", "engine_type");
     private static final NamespacedKey ENGINE_TIER = new NamespacedKey("vehicle", "engine_tier");
     private static final NamespacedKey WHEEL_TYPE = new NamespacedKey("vehicle", "wheel_type");
-    private static final NamespacedKey KEY_TARGET = new NamespacedKey("vehicle", "key_vehicle");
     private static final NamespacedKey SPRAY_COLOR = new NamespacedKey("vehicle", "spray_color");
     private static final NamespacedKey SPRAY_NAME = new NamespacedKey("vehicle", "spray_color_name");
     private static final NamespacedKey CRATE_PAYLOAD = new NamespacedKey("vehicle", "crate_payload");
@@ -290,39 +289,9 @@ public final class MechanicItems {
                         left <= 20 ? NamedTextColor.RED : NamedTextColor.AQUA)));
     }
 
-    /** Cheia masinii: legata de vehicul la cumparare; click pe masina = incui/deschide. */
-    public static ItemStack key(UUID vehicleId, String vehicleName) {
-        ItemStack item = base(Kind.KEY, "key");
-        ItemMeta meta = item.getItemMeta();
-        meta.getPersistentDataContainer().set(KEY_TARGET, PersistentDataType.STRING,
-                vehicleId.toString());
-        item.setItemMeta(meta);
-        antiStack(item);
-        finish(item, Component.text("Cheie: " + vehicleName, NamedTextColor.GOLD), List.of(
-                Component.text("Click dreapta pe masina = incui/deschide.", NamedTextColor.GRAY)));
-        return item;
-    }
-
-    public static ItemStack blankKey() {
-        ItemStack item = base(Kind.KEY, "key");
-        finish(item, Component.text("Cheie de masina", NamedTextColor.GOLD), List.of(
-                Component.text("Nelegata - primesti cheia legata la cumpararea masinii.",
-                        NamedTextColor.GRAY)));
-        return item;
-    }
-
-    public static UUID keyTargetOf(ItemStack stack) {
-        if (kindOf(stack) != Kind.KEY) {
-            return null;
-        }
-        String raw = stack.getItemMeta().getPersistentDataContainer()
-                .get(KEY_TARGET, PersistentDataType.STRING);
-        try {
-            return raw == null ? null : UUID.fromString(raw);
-        } catch (IllegalArgumentException exception) {
-            return null;
-        }
-    }
+    /* Ciclul Z: CHEILE de masina au fost eliminate - accesul e doar proprietarul
+     *  la volan + /vehicle trust. Itemele Kind.KEY vechi (din lume/inventare) sunt
+     *  inofensive: kindOf() le intoarce ca null. */
 
     /* ================================ spray can ============================= */
 

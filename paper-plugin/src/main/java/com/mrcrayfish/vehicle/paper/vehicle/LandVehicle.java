@@ -105,7 +105,6 @@ public final class LandVehicle {
     private double health = 100.0D;
     /** -1 = nevopsit; altfel RGB 0xRRGGBB din spray can (persistent). */
     private int paintColor = -1;
-    private boolean locked;
     /** Piesa de motor este MONTATA fizic? false -> slotul de motor ramane functional
      *  (virtual), dar piesa NU apare pe model (nici in lume, nici in GUI-ul cricului)
      *  pana la instalarea unui motor - regula brief 2026-10-24 (ATV/Dune Buggy
@@ -2282,14 +2281,6 @@ public final class LandVehicle {
 
     public void clearPaint() {
         setPaintColor(-1);
-    }
-
-    public boolean locked() {
-        return locked;
-    }
-
-    public void setLocked(boolean locked) {
-        this.locked = locked;
     }
 
     public JackState jackState() {

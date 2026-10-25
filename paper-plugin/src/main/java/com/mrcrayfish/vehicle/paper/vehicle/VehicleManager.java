@@ -199,7 +199,7 @@ public final class VehicleManager {
                 0.0D, 0.0D, 0.0D, LandVehicleSpec.STANDARD_TRACTION, 0.0D,
                 0.0F, 0.0F, 0.0F, 0.0F, false, java.util.Map.of(), java.util.Map.of(),
                 player.getUniqueId().toString(), "",
-                "IRON", "STANDARD", 100.0D, -1, false, "NONE", null,
+                "IRON", "STANDARD", 100.0D, -1, "NONE", null,
                 spec.factoryInstalledEngine(), spec.hasWheels(), 0.0D,
                 spec.factoryInstalledEngine()); // motorul de fabrica e VIRTUAL la cumparare
         garage.put(stored.id(), stored);
@@ -481,7 +481,7 @@ public final class VehicleManager {
         if (vehicle.showcase()) {
             return; // podium cars: never pushed, carried, attached or driven (buy = right-click)
         }
-        // Sistemul mecanic: uneltele (cheie de mecanic/cheie masinii/spray/motor/roti)
+        // Sistemul mecanic: uneltele (cheie de mecanic/spray/motor/roti)
         // consuma interactiunea - jucatorul NU urca in masina.
         if (plugin.mechanic() != null && plugin.mechanic().handleToolClick(player, vehicle,
                 player.getInventory().getItemInMainHand())) {
@@ -493,13 +493,8 @@ public final class VehicleManager {
             player.sendRichMessage("<yellow>Masina e pe cric in service - nu poti urca in ea.</yellow>");
             return;
         }
-        // Incuierea cu cheia: pasagerii simpli nu intra deloc, conducatorul neautorizat e
-        // oricum impiedicat de sistemul de trust deja existent.
-        if (vehicle.locked() && !vehicle.canDrive(player)) {
-            player.sendRichMessage("<red>Masina este <gold>INCHISA</gold> - doar proprietarul "
-                    + "si cei autorizati au cheia.</red>");
-            return;
-        }
+        // Ciclul Z: nu mai exista chei / incuiere - accesul la volan e filtrat
+        // exclusiv de trust (canDrive: proprietar + cei autorizati), pasagerii urca liber.
         if (vehicle.handleSpecialInteraction(player, clicked)) {
             save();
             return;
@@ -579,7 +574,7 @@ public final class VehicleManager {
         String payload = com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.cratePayload(
                 vehicle.spec().id(), (int) vehicle.fuel(), vehicle.engineTier().name(),
                 vehicle.wheelType().name(), (int) Math.round(vehicle.health()),
-                vehicle.paintColor(), vehicle.locked(),
+                vehicle.paintColor(), false, // slot 6 = legacy "locked" (scos in ciclul Z)
                 vehicle.owner().map(UUID::toString).orElse(""));
         player.getInventory().addItem(com.mrcrayfish.vehicle.paper.mechanic.MechanicItems
                 .vehicleCrate(vehicle.spec().id(), vehicle.spec().displayName(), payload));
@@ -630,7 +625,8 @@ public final class VehicleManager {
             if (color >= 0) {
                 vehicle.setPaintColor(color);
             }
-            vehicle.setLocked(Boolean.parseBoolean(data[6]));
+            // data[6] = legacy "locked" din cufar - concept scos in ciclul Z; il ignoram,
+            // dar slotul ramane in format ca cufarele vechi sa se deschida corect.
             if (!data[7].isEmpty()) {
                 vehicle.setOwner(UUID.fromString(data[7]));
             }
@@ -795,9 +791,6 @@ public final class VehicleManager {
         if (stored.paintColor() >= 0) {
             data.set(path + ".mechanic.paint-color", stored.paintColor());
         }
-        if (stored.locked()) {
-            data.set(path + ".mechanic.locked", true);
-        }
         if (stored.jackState() != null && !"NONE".equals(stored.jackState())) {
             data.set(path + ".mechanic.jack-state", stored.jackState());
         }
@@ -904,7 +897,6 @@ public final class VehicleManager {
         if (stored.paintColor() >= 0) {
             vehicle.setPaintColor(stored.paintColor());
         }
-        vehicle.setLocked(stored.locked());
         if (stored.jackState() != null) {
             try {
                 vehicle.setJackState(LandVehicle.JackState.valueOf(stored.jackState()));
@@ -1256,7 +1248,7 @@ public final class VehicleManager {
                                  Map<String, List<ItemStack>> storageContents,
                                  Map<String, Boolean> openPartStates, String owner, String trusted,
                                  String engineTier, String wheelType, double health, int paintColor,
-                                 boolean locked, String jackState, String jackId, boolean engineInstalled,
+                                 String jackState, String jackId, boolean engineInstalled,
                                  boolean wheelsInstalled, double odometer, boolean engineVirtual) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
@@ -1274,7 +1266,7 @@ public final class VehicleManager {
                     vehicle.storageContents(), vehicle.openPartStates(),
                     vehicle.owner().map(UUID::toString).orElse(null), trustedCsv(vehicle),
                     vehicle.engineTier().name(), vehicle.wheelType().name(), vehicle.health(),
-                    vehicle.paintColor(), vehicle.locked(), vehicle.jackState().name(),
+                    vehicle.paintColor(), vehicle.jackState().name(),
                     vehicle.jackId() == null ? null : vehicle.jackId().toString(),
                     vehicle.engineInstalled(),
                     vehicle.wheelsInstalled(), vehicle.odometerMeters(), vehicle.engineVirtual());
@@ -1311,7 +1303,6 @@ public final class VehicleManager {
                     data.getString(path + ".mechanic.wheel-type"),
                     data.getDouble(path + ".mechanic.health", 100.0D),
                     data.getInt(path + ".mechanic.paint-color", -1),
-                    data.getBoolean(path + ".mechanic.locked", false),
                     data.getString(path + ".mechanic.jack-state"),
                     data.getString(path + ".mechanic.jack-id"),
                     data.getBoolean(path + ".mechanic.engine-installed", true),

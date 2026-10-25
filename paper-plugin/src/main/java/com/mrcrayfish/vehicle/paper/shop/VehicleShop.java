@@ -151,9 +151,8 @@ public final class VehicleShop {
         // LIVRAREA: nu mai apare pe strada - intra DIRECT in garajul global al jucatorului
         // (garage.<uuid>.*), de unde il ridica GRATUIT de acasa sau cu taxa de la public (/garaj).
         // Audit Y: livrare esuata (exceptie) => RAMBURS COMPLET, nu pierzi banii.
-        java.util.UUID vehicleId;
         try {
-            vehicleId = vehicles.storeNewVehicle(player, spec);
+            vehicles.storeNewVehicle(player, spec);
         } catch (RuntimeException boom) {
             ShopEconomy.deposit(player, price);
             org.bukkit.Bukkit.getLogger().severe("[Magazin] Livrarea catre " + player.getName()
@@ -162,12 +161,8 @@ public final class VehicleShop {
                     + "returnati integral. Spune unui admin.</red>");
             return;
         }
-        // CHEIA masinii: legata de vehicul la cumparare; click pe masina = incui/deschide.
-        if (vehicleId != null) {
-            giveOrDrop(player,
-                    com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.key(
-                            vehicleId, spec.displayName()));
-        }
+        // Ciclul Z: fara chei de masina - accesul e proprietarul la volan +
+        // /vehicle trust pentru prieteni.
         player.sendMessage(net.kyori.adventure.text.Component
                 .text("[Magazin Auto] ", net.kyori.adventure.text.format.NamedTextColor.GOLD)
                 .append(net.kyori.adventure.text.Component.text("Vehiculul a fost achizi\u021bionat! ",
@@ -180,6 +175,8 @@ public final class VehicleShop {
                 .append(net.kyori.adventure.text.Component.text("sau de la o parcare public\u0103 "
                         + "pl\u0103tind taxa de transport.",
                         net.kyori.adventure.text.format.NamedTextColor.YELLOW)));
+        player.sendRichMessage("<gray>Vrei sa conduca si un prieten? "
+                + "<yellow>/vehicle trust <nume></yellow> langa masina.</gray>");
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8F, 1.2F);
     }
 }

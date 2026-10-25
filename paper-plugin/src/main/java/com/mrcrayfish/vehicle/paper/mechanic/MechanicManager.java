@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Fata sistemului mecanic: unelte pe vehicul (wrench/CIEL/hammer/spray/motor/roti),
@@ -233,9 +232,6 @@ public final class MechanicManager {
                         + "mecanic si da click dreapta pe bancul lui.</gray>");
                 return true;
             }
-            case KEY -> {
-                return handleKey(player, vehicle, held);
-            }
             case SPRAY_CAN -> {
                 return handleSpray(player, vehicle, held);
             }
@@ -263,32 +259,6 @@ public final class MechanicManager {
                 return false;
             }
         }
-    }
-
-    /** Cheia: click pe masina ei = incui/deschide (perm mcv.vehicle.lock, doar proprietarul). */
-    private boolean handleKey(Player player, LandVehicle vehicle, ItemStack key) {
-        UUID target = MechanicItems.keyTargetOf(key);
-        if (!vehicle.id().equals(target)) {
-            return false; // cheia altei masini - comportament normal
-        }
-        if (!has(player, "mcv.vehicle.lock")) {
-            player.sendRichMessage("<red>Nu ai permisiunea mcv.vehicle.lock.</red>");
-            return true;
-        }
-        if (!vehicle.canDrive(player)) {
-            player.sendRichMessage("<red>Nu poti incuia masina altcuiva.</red>");
-            return true;
-        }
-        boolean nowLocked = !vehicle.locked();
-        vehicle.setLocked(nowLocked);
-        vehicles.save();
-        player.playSound(player.getLocation(),
-                nowLocked ? org.bukkit.Sound.BLOCK_CHEST_LOCKED : org.bukkit.Sound.BLOCK_IRON_DOOR_OPEN,
-                0.8F, 1.2F);
-        player.sendRichMessage(nowLocked
-                ? "<gray>Ai <yellow>INCHIS</yellow> masina. Doar tu si cei autorizati pot conduce.</gray>"
-                : "<gray>Ai <green>DESCHIS</green> masina.</gray>");
-        return true;
     }
 
     /** Spray pe vehicul (brief 2026-10-24, "rotile/motor/vopsea doar pe elevator"):

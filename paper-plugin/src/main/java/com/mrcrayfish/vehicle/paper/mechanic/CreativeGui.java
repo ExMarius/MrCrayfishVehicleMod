@@ -102,7 +102,6 @@ public final class CreativeGui {
             case TOOLS -> {
                 inventory.setItem(10, give(MechanicItems.wrench()));
                 inventory.setItem(11, give(MechanicItems.hammer()));
-                inventory.setItem(12, give(MechanicItems.blankKey()));
                 inventory.setItem(13, give(JerryCanItem.create(JerryCanItem.Type.NORMAL)));
                 inventory.setItem(14, give(MechanicItems.industrialJerryCan()));
                 inventory.setItem(15, give(MechanicItems.panel()));

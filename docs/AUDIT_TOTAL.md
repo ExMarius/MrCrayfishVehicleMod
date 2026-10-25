@@ -76,3 +76,13 @@ Niciodata nu apare niciun ban creat in sistem (zero mint) - indifferent de buy.
 
 ## RAPORT DE ACOPERIRE FUNCIONALA: 100% feature-gates declansate si
 ci-cd verde; diagnoza finala: pluginul e pregatit de productie pe serverul dvs.
+
+---
+
+## Addendum — Ciclul Z (2026-10-25): cheile au fost ELIMINATE
+
+La cererea utilizatorului, sistemul de chei de masina (fix-ul ④ de mai sus il
+proteja) a fost scos complet: accesul la volan ramane DOAR proprietarul +
+/vehicle trust. Cheia/cheia legata, incuiala (locked + mcv.vehicle.lock) sunt
+istorie; fix-urile ①-③ si ⑤ raman valabile, ④ devine inaplicabil (nu mai exista
+cheie data la cumparare). Economia ramane integrala dupa schimbare.
