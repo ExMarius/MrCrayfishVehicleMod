@@ -277,7 +277,9 @@ public final class WorkstationManager {
             // prin spargerea normala a blocului, ca orice bloc - vezi handleBlockBreak).
             return true;
         }
-        if (MechanicItems.kindOf(held) == MechanicItems.Kind.WRENCH) {
+        MechanicItems.Kind heldKind = MechanicItems.kindOf(held);
+        // Cheie SAU ciocan pe banc = ridici/cobori cricul (rapid, fara meniu).
+        if (heldKind == MechanicItems.Kind.WRENCH || heldKind == MechanicItems.Kind.HAMMER) {
             handleLiftToggle(player, station);
             return true;
         }

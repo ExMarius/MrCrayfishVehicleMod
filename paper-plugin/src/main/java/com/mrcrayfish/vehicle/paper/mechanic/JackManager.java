@@ -87,6 +87,18 @@ public final class JackManager {
         return Math.max(0.1D, plugin.getConfig().getDouble("jack.lifted-offset", 0.75D));
     }
 
+    /** Calibrare PER VEHICUL (ciclul T): jack.offsets.<spec>.rest / .lifted depasesc
+     *  globalul cand un anumit model sta prost pe cric. Lipsa = global multiversal. */
+    private double restOffset(LandVehicle vehicle) {
+        return plugin.getConfig().getDouble("jack.offsets." + vehicle.spec().id() + ".rest",
+                restOffset());
+    }
+
+    private double liftedOffset(LandVehicle vehicle) {
+        return plugin.getConfig().getDouble("jack.offsets." + vehicle.spec().id() + ".lifted",
+                liftedOffset());
+    }
+
     private int liftTicks() {
         return Math.max(5, plugin.getConfig().getInt("jack.lift-speed-ticks", 50));
     }
@@ -135,9 +147,9 @@ public final class JackManager {
                             ? LandVehicle.JackState.LIFTED : LandVehicle.JackState.NONE);
                     found.setJackId(jack.id);
                     if (stored.raised()) {
-                        found.setLiftedY(jack.location.getY() + liftedOffset());
+                        found.setLiftedY(jack.location.getY() + liftedOffset(found));
                     } else {
-                        found.setLiftedY(jack.location.getY() + restOffset());
+                        found.setLiftedY(jack.location.getY() + restOffset(found));
                     }
                 });
             }
@@ -483,9 +495,13 @@ public final class JackManager {
         return jack.location.getY() + restOffset();
     }
 
+    private double restY(Jack jack, LandVehicle vehicle) {
+        return jack.location.getY() + restOffset(vehicle);
+    }
+
     private void beginSnap(Jack jack, LandVehicle vehicle) {
         jack.vehicleId = vehicle.id();
-        jack.startY = restY(jack);
+        jack.startY = restY(jack, vehicle);
         jack.snapTicks = 0;
         jack.state = Jack.State.SNAPPING;
         stateChanged(jack);
@@ -509,8 +525,8 @@ public final class JackManager {
                     ? StationBlocks.JACK_UP : StationBlocks.JACK_DOWN, false);
         }
         linked(jack).ifPresent(vehicle ->
-                vehicle.setLiftedY(jack.location.getY() + restOffset()
-                        + jack.progress * (liftedOffset() - restOffset())));
+                vehicle.setLiftedY(jack.location.getY() + restOffset(vehicle)
+                        + jack.progress * (liftedOffset(vehicle) - restOffset(vehicle))));
         // Sunetul de pneumatic la intervale regulate in timpul miscarii.
         if ((int) (jack.progress * liftTicks()) % 14 == 0) {
             playSound(jack, AIR_WRENCH, 0.35F, jack.state == Jack.State.LIFTING ? 1.2F : 0.8F);

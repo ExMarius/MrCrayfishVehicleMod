@@ -465,3 +465,15 @@ am atașat comparația — găsește decalajele"].
   SMALL_MOTOR; SINGURA exceptie = shopping_cart (in mod NU are motor - gluma care
   se rostogoleste). Consecinta: factoryInstalledEngine() = true aproape peste tot,
   engineInstalled=true + virtual (Ciclul R), pornesc toate.
+
+## Ciclul T (2026-10-25) — offset pe cric PER VEHICUL + piese direct in inventar + ciocan-lift
+
+- **Offsets per spec**: `jack.offsets.<spec>.rest / .lifted` in config (exemplu
+  comentat inclus); fara sectiune = globalu. Toate caile (snap/load/animatie)
+  au devenit constiente de vehicul -> OFFSETURI per ride, nu derive.
+- **Piesele nu mai mor pe cursor**: motorul si rotile (set 4x) se dau DIRECT in
+  inventar (addItem; overflow cade la picioare, explicit). Cursorul risca sa le
+  inghita daca dadeai click pe altceva intre timp.
+- **Ciocanul**: redenumit „Ciocan de service", lore actualizat (motor pe ridicat /
+  lift pe banc / demontare pe jos), plus click cu ciocanul PE BANC = toggle-urca.
+  Cheia: lore acurat (roti pe ridicat / meniu din zona service).

@@ -95,6 +95,11 @@ jack:
   rest-offset: 0.0625
   # (vechiul lift-visual-correction a fost inlocuit de modelul absolut lifted-offset:
   #  reglezi o singura valoare si primesti EXACT inaltimea finala de sus)
+  # Calibrare PER VEHICUL cand un model sta prost pe cric fata de global
+  # (1 pixel = 0.0625). Exemplu dezactivat:
+  #offsets:
+  #  off_roader: { rest: 0.0625, lifted: 0.75 }
+  #  sports_car: { rest: 0.0625, lifted: 0.75 }
 
 mechanic:
   # Capacitatea spray-ului (Config.SERVER.sprayCanCapacity din mod: 20 pulverizari).

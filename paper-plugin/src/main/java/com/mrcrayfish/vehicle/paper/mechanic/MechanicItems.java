@@ -178,8 +178,11 @@ public final class MechanicItems {
             item.setItemMeta(meta);
         }
         finish(item, Component.text("Cheie de mecanic", NamedTextColor.GOLD), List.of(
-                Component.text("Click cu cheia pe banc = ridici/cobori masina.", NamedTextColor.GRAY),
-                Component.text("Click pe masina ridicata = meniul de mecanic.", NamedTextColor.GRAY)));
+                Component.text("Click pe banc = ridici/cobori masina.", NamedTextColor.GRAY),
+                Component.text("Click pe masina RIDICATA = scoti rotile (set 4x).",
+                        NamedTextColor.GRAY),
+                Component.text("Click pe masina din zona de service = meniul bancului.",
+                        NamedTextColor.GRAY)));
         antiStack(item);
         return item;
     }
@@ -278,8 +281,10 @@ public final class MechanicItems {
 
     private static void updateHammerLore(ItemStack stack, int used) {
         int left = Math.max(0, HAMMER_MAX_DAMAGE - used);
-        finish(stack, Component.text("Ciocan de lacatus", NamedTextColor.GOLD), List.of(
-                Component.text("Loveste masina TA: o demontezi in cufar de transport.",
+        finish(stack, Component.text("Ciocan de service", NamedTextColor.GOLD), List.of(
+                Component.text("Click pe masina RIDICATA = scoti motorul.", NamedTextColor.GRAY),
+                Component.text("Click pe banc = ridici/cobori cricul.", NamedTextColor.GRAY),
+                Component.text("Loveste masina JOS = demontare completa in cufar.",
                         NamedTextColor.GRAY),
                 Component.text("Folosiri ramase: " + left + "/" + HAMMER_MAX_DAMAGE,
                         left <= 20 ? NamedTextColor.RED : NamedTextColor.AQUA)));

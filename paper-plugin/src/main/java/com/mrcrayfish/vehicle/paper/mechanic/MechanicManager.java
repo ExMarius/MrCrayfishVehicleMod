@@ -412,6 +412,15 @@ public final class MechanicManager {
         return true;
     }
 
+    /** Da piesa DIRECT in inventar (nu pe cursor - acolo se pierdea daca jucatorul
+     *  selecta altceva peste). La inventar plin cade la picioare, visibil. */
+    private static void giveOrDrop(Player player, ItemStack item) {
+        java.util.Map<Integer, ItemStack> leftovers = player.getInventory().addItem(item);
+        for (ItemStack left : leftovers.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), left);
+        }
+    }
+
     /** Demontare motor (cursor gol pe slotul de motor): motorul trece pe cursorul
      *  jucatorului, slotul ramane functional dar gol, iar piesa dispare de pe
      *  model (in lume si in GUI) - regula brief 2026-10-24. */
@@ -438,9 +447,9 @@ public final class MechanicManager {
             player.sendRichMessage("<gray>Motorul de fabrica (Iron, virtual) a disparut "
                     + "- nu se transforma in item. Slotul ramane functional.</gray>");
         } else {
-            player.setItemOnCursor(MechanicItems.engine(fits, vehicle.engineTier()));
-            player.sendRichMessage("<gray>Motor scos - slotul ramane functional, "
-                    + "dar piesa nu se mai vede pe model.</gray>");
+            giveOrDrop(player, MechanicItems.engine(fits, vehicle.engineTier()));
+            player.sendRichMessage("<gray>Motor scos - l-ai primit in inventar; "
+                    + "slotul ramane functional.</gray>");
         }
         vehicle.setEngineInstalled(false);
         vehicle.setEngineVirtual(false);
@@ -463,7 +472,8 @@ public final class MechanicManager {
         if (!vehicle.spec().hasWheels() || !vehicle.wheelsInstalled()) {
             return true; // slot gol deja / vehicul fara slot de roti
         }
-        player.setItemOnCursor(MechanicItems.wheel(vehicle.wheelType()));
+        giveOrDrop(player, MechanicItems.wheel(vehicle.wheelType()));
+        player.sendRichMessage("<gray>Rotile (set 4x) sunt in inventarul tau.</gray>");
         vehicle.setWheelsInstalled(false);
         vehicles.save();
         player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.6F, 0.9F);
