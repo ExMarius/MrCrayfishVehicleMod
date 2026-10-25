@@ -454,3 +454,14 @@ am atașat comparația — găsește decalajele"].
   instalare din item real devine fizic si se returneaza la demontare.
 - Persistent in vehicles.yml ca mechanic.engine-virtual; default legacy: virtual
   dupa engine-installed (iron = fabrica = virtual).
+
+## Ciclul S (2026-10-25) — mod-paritate motor: TOATE vehiculele condusibile au motor
+
+- Simptom: pe unele masini (off_roader & co.) era „Acest vehicul nu are motor
+  schimbabil" + nu primeau motor din fabrica => stateau near-mobile. Cauza:
+  LandVehicleSpec.defaultEngineType() returna NONE cand part-ul de motor nu era
+  parsat din datele modului (off_roader are engine=null in spec).
+- FIX: fallback defaultEngineType dupa familie - mari= LARGE_MOTOR, restul=
+  SMALL_MOTOR; SINGURA exceptie = shopping_cart (in mod NU are motor - gluma care
+  se rostogoleste). Consecinta: factoryInstalledEngine() = true aproape peste tot,
+  engineInstalled=true + virtual (Ciclul R), pornesc toate.

@@ -979,7 +979,22 @@ public record LandVehicleSpec(
         }
         Part part = engine();
         if (part == null || part.model() == null) {
-            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE;
+            /* Mod-paritate (ciclul S): orice vehicul condusibil are motor din fabrica,
+             *  chiar daca montura vizuala nu e definita in spec - tipul default se
+             *  atribuie dupa familie. Exceptie: shopping_cart (in mod nu are motor,
+             *  e vehiculul-gluma care se rostogoleste), ramane fara. */
+            if ("shopping_cart".equals(id)) {
+                return com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE;
+            }
+            switch (id) {
+                // Grele/mari = LARGE_MOTOR (off_roader, sporturile, utilitarele):
+                case "off_roader", "sports_car", "mini_bus", "tractor", "speed_boat",
+                        "sports_plane", "compact_helicopter" -> {
+                    return com.mrcrayfish.vehicle.paper.mechanic.EngineType.LARGE_MOTOR;
+                }
+                // Restul (kart/moped/scooter/barci mici/utilitare usoare) = SMALL.
+                default -> { return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR; }
+            }
         }
         String model = part.model();
         if (model.contains("small_engine")) {
