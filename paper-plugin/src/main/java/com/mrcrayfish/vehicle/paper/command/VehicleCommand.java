@@ -70,6 +70,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             }
             case "pack" -> pack(sender);
             case "creative" -> creative(sender);
+            // /vehicle garaj = aceeasi logica hibrida cu /garaj (hintul de la join
+            // trimitea la o subcomanda INEXISTENTA - masinile parea ca „dispar").
+            case "garaj", "garage", "parcari" -> garaj(sender, command, label);
             case "paint", "vopsea", "vopseste" -> paint(sender);
             default -> help(sender, label);
         }
@@ -156,6 +159,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             player.sendRichMessage("<green>" + trailerSpec.displayName() + " creat.</green> <gray>ID: "
                     + trailer.id() + "</gray>");
         }
+    }
+
+    /** Forward spre comanda /garaj (aceeasi instanta de logica, fara duplicare). */
+    private void garaj(CommandSender sender, org.bukkit.command.Command command, String label) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        new GarajCommand(plugin, vehicles).onCommand(player, command, label, new String[0]);
     }
 
     private void remove(CommandSender sender) {
@@ -457,7 +469,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

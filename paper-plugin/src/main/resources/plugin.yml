@@ -14,7 +14,7 @@ commands:
     aliases: [garage, parcare]
   vehicle:
     description: Manage server-side vehicles.
-    usage: /vehicle <spawn|remove|refuel|list|save|pack|trust|untrust|trusted|paint|podium|creative|gaspump|jerrycan|magazin>
+    usage: /vehicle <spawn|remove|refuel|list|save|pack|trust|untrust|trusted|paint|podium|creative|gaspump|jerrycan|magazin|garaj>
     permission: vehicle.use
     aliases: [veh, car]
 permissions:

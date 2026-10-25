@@ -423,3 +423,13 @@ am atașat comparația — găsește decalajele"].
   `jack.rest-offset: 0.0625` (rotile ating pamantul la coborare) si
   `jack.lift-visual-correction: -0.25` (contact exact la ridicat) - reglaj din
   config.yml + /vehicle save + restart, fara rebuild.
+
+## Ciclul P (2026-10-25) — „masinile dispar la update" = GARAJUL, plus hint reparat
+
+- NU e pierdere de date: la restart/logout toate masinile cu proprietar intra in
+  GARAJUL GLOBAL (design anti-lag: nimic nu ramane in lume cat esti offline;
+  podiumurile revin singure via ensureShowcase). Le recuperezi de la orice cerc.
+- BUG latent descoperit: mesajul de la login te trimitea la `/vehicle garaj`, dar
+  subcomanda nu exista in dispatch! Acum `/vehicle garaj|garage|parcari` = acelasi
+  flow cu `/garaj` (hybrid): gratis in cercul personal, taxa doar in cele publice.
+- Tab-complete + plugin.yml usage actualizate.
