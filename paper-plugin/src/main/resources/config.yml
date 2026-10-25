@@ -100,6 +100,9 @@ jack:
   # vehiculelor (garda mare: off_roader etc.) au rotile pe pamant (globalul 0.0625).
   # Ridicat = acelasi 0.75 pentru toate (capul ridicat e fata unica).
   # (1 pixel = 0.0625 ; reglaj live fara rebuild.)
+  # NOTA (ciclul X): clasele default (joase = PE PLACA 0.5, garda mare = pe pamant)
+  #  sunt HARDCODATE in cod - liniile de sub offsets: sunt OVERRIDE-uri explicite
+  #  si au intaietate; le poti edita indiferent ca configu e vechi sau nu.
   offsets:
     go_kart: { rest: 0.5, lifted: 0.75 }
     bumper_car: { rest: 0.5, lifted: 0.75 }
