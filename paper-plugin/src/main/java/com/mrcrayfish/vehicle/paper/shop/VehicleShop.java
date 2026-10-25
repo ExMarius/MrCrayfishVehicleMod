@@ -52,6 +52,8 @@ public final class VehicleShop {
     private final VehicleManager vehicles;
     private final FileConfiguration config;
 
+    /** Audit Y: inv-plin NU mai inghite piesa/cheia cumparate - cad la picioare. */
+
     public VehicleShop(VehicleManager vehicles, FileConfiguration config) {
         this.vehicles = vehicles;
         this.config = config;
@@ -97,10 +99,17 @@ public final class VehicleShop {
             player.sendRichMessage("<red>Plata a esuat (banca a refuzat). Incearca din nou.</red>");
             return;
         }
-        player.getInventory().addItem(stack);
+        giveOrDrop(player, stack);
         player.sendRichMessage("<gray>[Magazin Piese] Ai cumparat piesa! "
                 + "Monteaza-o cu click dreapta pe vehicul.</gray>");
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8F, 1.2F);
+    }
+
+    private static void giveOrDrop(org.bukkit.entity.Player player,
+            org.bukkit.inventory.ItemStack item) {
+        var leftovers = player.getInventory().addItem(item);
+        leftovers.values().forEach(left ->
+                player.getWorld().dropItemNaturally(player.getLocation(), left));
     }
 
     public static String priceText(double value) {
@@ -141,10 +150,21 @@ public final class VehicleShop {
         }
         // LIVRAREA: nu mai apare pe strada - intra DIRECT in garajul global al jucatorului
         // (garage.<uuid>.*), de unde il ridica GRATUIT de acasa sau cu taxa de la public (/garaj).
-        java.util.UUID vehicleId = vehicles.storeNewVehicle(player, spec);
+        // Audit Y: livrare esuata (exceptie) => RAMBURS COMPLET, nu pierzi banii.
+        java.util.UUID vehicleId;
+        try {
+            vehicleId = vehicles.storeNewVehicle(player, spec);
+        } catch (RuntimeException boom) {
+            ShopEconomy.deposit(player, price);
+            org.bukkit.Bukkit.getLogger().severe("[Magazin] Livrarea catre " + player.getName()
+                    + " a crapat: " + boom.getMessage() + " - banii returnati automat.");
+            player.sendRichMessage("<red>Livrarea a esuat tehnic - banii ti-au fost "
+                    + "returnati integral. Spune unui admin.</red>");
+            return;
+        }
         // CHEIA masinii: legata de vehicul la cumparare; click pe masina = incui/deschide.
         if (vehicleId != null) {
-            player.getInventory().addItem(
+            giveOrDrop(player,
                     com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.key(
                             vehicleId, spec.displayName()));
         }

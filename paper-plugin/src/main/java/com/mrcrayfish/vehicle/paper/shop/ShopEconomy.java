@@ -41,4 +41,9 @@ public final class ShopEconomy {
     public static boolean withdraw(Player player, double amount) {
         return economy.withdrawPlayer(player, amount).transactionSuccess();
     }
+
+    /** Ramburs: banii inapoi dupa o livrare esuata (audit ciclul Y). */
+    public static boolean deposit(Player player, double amount) {
+        return economy.depositPlayer(player, amount).transactionSuccess();
+    }
 }

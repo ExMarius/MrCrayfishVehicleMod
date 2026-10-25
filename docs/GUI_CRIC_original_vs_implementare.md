@@ -517,3 +517,12 @@ am atașat comparația — găsește decalajele"].
 
 - sports_car scoasa din setul joaselor: fiind foarte lata (user), coborarea o lasa
   cu rotile pe pamant ca off_roaderul (global 0.0625), ridicate = 0.75 universal.
+
+## Ciclul Y (2026-10-25) — AUDIT TOTAL + 4 probleme de LOGISTICA fixate
+
+Audit total (vezi docs/AUDIT_TOTAL.md pt raportul complet). Gase gasite si reparate:
+1. Piesa/cheia cumparata cu invetar plin se PIERDEA -> acum cad la picioare.
+2. Livrarea vehiculului: pe exceptie -> suma returnata integral (deposit nou).
+3. Recuperare garaj public: taxa strict pe livrare reusita (+refund pe esec),
+   fara retrageri tacute ignorate.
+Persistenta/ciclul/podiu/mecanici/garaj/alimentare = VERDE in audit.

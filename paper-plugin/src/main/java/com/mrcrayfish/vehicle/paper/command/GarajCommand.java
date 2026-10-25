@@ -254,11 +254,18 @@ public final class GarajCommand implements CommandExecutor, TabCompleter {
             return;
         }
         Location spot = plugin.garageStations().location(spotId).orElse(player.getLocation());
-        if (!vehicles.retrieve(player, vehicleId, spot)) {
-            player.sendRichMessage("<red>Mașina aceasta nu e a ta (sau nu e în garaj).</red>");
+        // Audit Y: incasare STRICT pe livrare reusita. Se plateste intai, iar daca
+        // livrarea esueaza banii se returneaza (nu ramane nici sperietura, nici gratisul).
+        if (!com.mrcrayfish.vehicle.paper.shop.ShopEconomy.withdraw(player, fee)) {
+            player.sendRichMessage("<red>Plata taxei a esuat - incearca din nou.</red>");
             return;
         }
-        com.mrcrayfish.vehicle.paper.shop.ShopEconomy.withdraw(player, fee);
+        if (!vehicles.retrieve(player, vehicleId, spot)) {
+            com.mrcrayfish.vehicle.paper.shop.ShopEconomy.deposit(player, fee);
+            player.sendRichMessage("<red>Mașina aceasta nu e a ta (sau nu e în garaj). "
+                    + "Taxa ti-a fost returnata.</red>");
+            return;
+        }
         player.sendMessage(Component.text("[Garaj] ", NamedTextColor.GOLD)
                 .append(Component.text("Ai recuperat mașina pentru ", NamedTextColor.GREEN))
                 .append(Component.text(fee + "$", NamedTextColor.GOLD))
