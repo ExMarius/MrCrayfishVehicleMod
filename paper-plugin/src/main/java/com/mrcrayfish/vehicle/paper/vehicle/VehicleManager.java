@@ -200,7 +200,7 @@ public final class VehicleManager {
                 0.0F, 0.0F, 0.0F, 0.0F, false, java.util.Map.of(), java.util.Map.of(),
                 player.getUniqueId().toString(), "",
                 "IRON", "STANDARD", 100.0D, -1, false, "NONE", null,
-                spec.factoryInstalledEngine(), spec.hasWheels());
+                spec.factoryInstalledEngine(), spec.hasWheels(), 0.0D); // odometru: 0 la cumparare
         garage.put(stored.id(), stored);
         save();
         return stored.id();
