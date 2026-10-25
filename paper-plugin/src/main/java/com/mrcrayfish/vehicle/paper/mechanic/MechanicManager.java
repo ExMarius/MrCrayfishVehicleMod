@@ -440,21 +440,16 @@ public final class MechanicManager {
         if (fits == EngineType.NONE) {
             return true;
         }
-        if (vehicle.engineVirtual()) {
-            // Ciclul R („baga putina logistica"): motorul de fabrica IRON e VIRTUAL -
-            // nu a fost niciodata un item fizic. Demontat, pur si simplu dispare
-            // (altfel orice masina ieftina would printa motoare de iron la infinit).
-            player.sendRichMessage("<gray>Motorul de fabrica (Iron, virtual) a disparut "
-                    + "- nu se transforma in item. Slotul ramane functional.</gray>");
-        } else {
-            giveOrDrop(player, MechanicItems.engine(fits, vehicle.engineTier()));
-            player.sendRichMessage("<gray>Motor scos - l-ai primit in inventar; "
-                    + "slotul ramane functional.</gray>");
-        }
+        // REVERS ciclul R (cerere user 2026-10-25): la demontare primesti INTOTDEAUNA
+        //  itemul real in inventar - si motorul de fabrica Iron. Mod-paritate: scoti
+        //  cea ce e montat, ai piesa in mana la fel ca acolo.
+        giveOrDrop(player, MechanicItems.engine(fits, vehicle.engineTier()));
         vehicle.setEngineInstalled(false);
         vehicle.setEngineVirtual(false);
         vehicles.save();
         player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.6F, 0.9F);
+        player.sendRichMessage("<gray>Motor scos - l-ai primit in inventar; "
+                + "slotul ramane functional si iti apar piesele lui pe model.</gray>");
         return true;
     }
 

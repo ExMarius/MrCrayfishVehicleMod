@@ -487,3 +487,11 @@ am atașat comparația — găsește decalajele"].
   dirt_bike. Ridicat = 0.75 pentru toate (capul ridicat e fata unica).
 - Vehiculele cu garda mare (off_roader etc. - orice lipseste din lista) = globalul,
   asa cum li semnalizat anterior: rotile pe pamant cand jos.
+
+## Ciclul V (2026-10-25) — demontarea motorului da MEREU itemul real in inventar
+
+- Cerere user: „spawnez masina, o pun pe elevator, dau cu ciocanul sa dau motorul
+  jos, dar nu primesc nimic" - cauza: decizia ciclul R (motor de fabrica virtual).
+- REVERS/imbunatatire: orice demontare (si cea a motorului de fabrica) da itemul
+  real prin giveOrDrop (direct in inventar, nu pe cursor - nu se pierde).
+- Slotel gol: un al doilea demontare pe slot gol nu printeaza nimic (guard vechi).
