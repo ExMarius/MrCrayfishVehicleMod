@@ -188,9 +188,15 @@ public final class LandVehicle {
         if (age % 10 == 0) {
             showFuelOverlay();
         }
-        // Pe cric: aceeasi inghetare ca la 'transported' (sunet idle + rig refresh);
-        // pozitia verticala e dictata de JackManager - vezi JackState.
-        if (jackState != JackState.NONE) {
+        // Resting pe placa JOS (ciclul W): masina coborata asta PINUITA pe cric ca
+        // pe un slab (exact ca la inceput/mod). Cand SOFERUL urca, se desprinde si
+        // pleaca normal - JackManager isi curata legatura singur la tick-ul lui.
+        if (jackId != null && jackState == JackState.NONE && driver().isPresent()) {
+            setJackId(null);
+        }
+        // Pe cric (sau pinuit pe placa jos): aceeasi inghetare ca la 'transported'
+        // (sunet idle + rig refresh); pozitia verticala dicteaza JackManager.
+        if (jackState != JackState.NONE || jackId != null) {
             soundController.tick(location, false, spec.minEnginePitch(), List.of());
             rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
                     0.0F, spec.bodyRoll(steeringAngle, 0.0F), false, age);

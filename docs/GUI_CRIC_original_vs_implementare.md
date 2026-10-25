@@ -495,3 +495,12 @@ am atașat comparația — găsește decalajele"].
 - REVERS/imbunatatire: orice demontare (si cea a motorului de fabrica) da itemul
   real prin giveOrDrop (direct in inventar, nu pe cursor - nu se pierde).
 - Slotel gol: un al doilea demontare pe slot gol nu printeaza nimic (guard vechi).
+
+## Ciclul W (2026-10-25) — coborat = masina STA PE cric ca pe un slab (ca la inceput)
+
+- Regression: la finalul coborarii rupeam legatura si gravitaia infigea masina IN
+  cric in loc sa stea pe el. FIX: legatura se PASTRAZA (jackId + vehicleId), masina
+  ingheata pe rest-Y per-vehicul (masini joase: 0.5 = pe placa; garda mare: 0.0625
+  = roti pe pamant). Release natural: cand SOFERUL urca, se desprinde automat in
+  mers; cricul detecteaza si se elibereaza (check la 20 tick-uri).
+- snapCandidate nu mai rapeste masini resting de pe ALTE cricuri (jackId filtru).
