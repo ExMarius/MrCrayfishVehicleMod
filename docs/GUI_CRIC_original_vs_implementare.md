@@ -410,3 +410,16 @@ am atașat comparația — găsește decalajele"].
 - **Kilometraj (odometru)**: LandVehicle acumuleaza metrii per tick (hypot(motion.x,z));
   persistat in vehicles.yml ca mechanic.odometer; overlay-ul de combustibil din
   actiune arata acum „combustibil | 248 m / 1,3 km". Restaurari complete + NaN-safe.
+
+## Ciclul O (2026-10-25) — elevator calibrat pe masura + ciocanul PRINS pentru adevarat
+
+- **Ciocan mort la lovire**: entitatile rig sunt invulnerabile; Bukkit auto-anuleaza
+  damage-eventul, iar onAttack avea ignoreCancelled=true => nu vedea nimic. FIX:
+  fara ignoreCancelled + anulam noi doar cand recunoastem vehiculul nostru (respecta
+  celelalte pluginuri). Click-dreapta (case HAMMER) ramane functional in paralel.
+- **Elevator (off_roader)**: masina plutea cu ~1px sus si dupa coborare ramanea
+  deasupra pamantului. Cauza: REST_OFFSET hardcodat 0.5 (sus-placii), iar corectia
+  lift puternic insuficienta. FIX: ambele inaltimi CONFIGURABILE live:
+  `jack.rest-offset: 0.0625` (rotile ating pamantul la coborare) si
+  `jack.lift-visual-correction: -0.25` (contact exact la ridicat) - reglaj din
+  config.yml + /vehicle save + restart, fara rebuild.

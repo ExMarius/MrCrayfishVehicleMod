@@ -132,10 +132,10 @@ public final class JackManager {
                             ? LandVehicle.JackState.LIFTED : LandVehicle.JackState.NONE);
                     found.setJackId(jack.id);
                     if (stored.raised()) {
-                        found.setLiftedY(jack.location.getY() + REST_OFFSET + liftHeight()
-                                + LIFT_VISUAL_CORRECTION);
+                        found.setLiftedY(jack.location.getY() + restOffset() + liftHeight()
+                                + liftVisualCorrection());
                     } else {
-                        found.setLiftedY(jack.location.getY() + REST_OFFSET);
+                        found.setLiftedY(jack.location.getY() + restOffset());
                     }
                 });
             }
@@ -396,11 +396,19 @@ public final class JackManager {
     /** Cat sta masina PESTE cric in repaus (fata de sus a slab-ului jos = 0.5).
      *  In mod vehiculul stationeaza ca pasager la ~11px deasupra blocului; ale noastre
      *  0.5 = exact suprafata superioara a elevatorului jos (nu intra in model). */
-    private static final double REST_OFFSET = 0.5D;
-    /** Corectie din playtesting: inaltimea finala ridicata statea cu 1 model-pixel
-     *  PREA SUS (masina parea ca pluteste deasupra capului cricului). Istoric:
-     *  -2/16 (2026-10-24) inca plutea cu ~2px -> acum -3/16 = contact vizual exact. */
-    private static final double LIFT_VISUAL_CORRECTION = -3.0D / 16.0D;
+
+
+
+    /** Inaltimile cricului sunt configurabile (playtest calibrat, ciclul O):
+     *  jos = rotile ATING pamantul (placa impaturita e aproape de sol), sus = capul
+     *  ridicat cu corectia de contact. Se regleaza live din config.yml fara rebuild. */
+    private double restOffset() {
+        return plugin.getConfig().getDouble("jack.rest-offset", 0.0625D);
+    }
+
+    private double liftVisualCorrection() {
+        return plugin.getConfig().getDouble("jack.lift-visual-correction", -0.25D);
+    }
 
     private void tick() {
         int ticks = liftTicks();
@@ -469,11 +477,11 @@ public final class JackManager {
     }
 
     /** Montarea din mod: vehiculul ingheata si e tras exact la centrul placii
-     *  (x+0.5, z+0.5, yaw pastrat). Y-ul de stat = REST_OFFSET peste blocul cricului:
+     *  (x+0.5, z+0.5, yaw pastrat). Y-ul de stat = jack.rest-offset peste blocul cricului:
      *  masina sta PE elevator (jos = pe slab, sus = pe capul ridicat), nu in el. */
-    /** Y-ul de repaus al masinii pe cric (deasupra slab-ului jos = bloc + 0.5). */
-    private static double restY(Jack jack) {
-        return jack.location.getY() + REST_OFFSET;
+    /** Y-ul de repaus al masinii pe cric (deasupra slab-ului jos = bloc + jack.rest-offset). */
+    private double restY(Jack jack) {
+        return jack.location.getY() + restOffset();
     }
 
     private void beginSnap(Jack jack, LandVehicle vehicle) {
@@ -503,7 +511,7 @@ public final class JackManager {
         }
         linked(jack).ifPresent(vehicle ->
                 vehicle.setLiftedY(jack.startY
-                        + jack.progress * (liftHeight() + LIFT_VISUAL_CORRECTION)));
+                        + jack.progress * (liftHeight() + liftVisualCorrection())));
         // Sunetul de pneumatic la intervale regulate in timpul miscarii.
         if ((int) (jack.progress * liftTicks()) % 14 == 0) {
             playSound(jack, AIR_WRENCH, 0.35F, jack.state == Jack.State.LIFTING ? 1.2F : 0.8F);

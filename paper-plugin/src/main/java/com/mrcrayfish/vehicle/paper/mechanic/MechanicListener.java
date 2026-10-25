@@ -214,7 +214,11 @@ public final class MechanicListener implements Listener {
 
     /* ============================ hammer = demontare ============================ */
 
-    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    // FARA ignoreCancelled: entitatile rig ale vehiculului sunt INVULNERABILE, iar
+    // Bukkit auto-anuleaza damage-event-ul pe ele - cu ignoreCancelled ciocanul nu
+    // vedea NICIODATA lovitura. Anulam noi doar cand chiar recunoastem un vehicul;
+    // pentru rest lasam starea evenimentului neatinsa (respecta protectiile altor pluginuri).
+    @EventHandler(priority = EventPriority.HIGH)
     public void onAttack(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player player)) {
             return;

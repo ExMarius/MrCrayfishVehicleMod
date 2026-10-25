@@ -89,6 +89,12 @@ jack:
   lift-speed-ticks: 50
   # Distanta minima intre doua cricuri - zonele de service nu se intersecteaza.
   min-distance: 10.0
+  # Cat sta masina peste blocul cricului cand e JOS (1/16 = rotile ating pamantul,
+  # placa impaturita e aproape de sol). Era 0.5 - masina plutea dupa coborare.
+  rest-offset: 0.0625
+  # Corectie vizuala la ridicarea completa (negativ = mai jos). -0.25 = contact
+  # exact intre roti si capul ridicat, fara efect de plutire (calibrat pe off_roader).
+  lift-visual-correction: -0.25
 
 mechanic:
   # Capacitatea spray-ului (Config.SERVER.sprayCanCapacity din mod: 20 pulverizari).
