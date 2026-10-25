@@ -504,3 +504,11 @@ am atașat comparația — găsește decalajele"].
   = roti pe pamant). Release natural: cand SOFERUL urca, se desprinde automat in
   mers; cricul detecteaza si se elibereaza (check la 20 tick-uri).
 - snapCandidate nu mai rapeste masini resting de pe ALTE cricuri (jackId filtru).
+
+## Ciclul X (2026-10-25) — LOW-REST mutat din config IN COD (regresia „go-kart intra in cric")
+
+- Cauza: in ciclul U am calibrat doar config.yml, dar serverele cu config VECHI nu
+  primesc chei noi la redeploy --> go_kart & co. cadeau la fallbackul global 0.0625
+  = interiorul cricului. MEDICAMENT: default-urile de clasa (joase=PE PLACA 0.5,
+  garda-mare=roti pe pamant 0.0625) sunt acum HARDCODED; jack.offsets ramane doar
+  override pentru exceptii puctuale. Ridicat = 0.75 universal.

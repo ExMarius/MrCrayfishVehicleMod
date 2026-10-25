@@ -87,11 +87,23 @@ public final class JackManager {
         return Math.max(0.1D, plugin.getConfig().getDouble("jack.lifted-offset", 0.75D));
     }
 
-    /** Calibrare PER VEHICUL (ciclul T): jack.offsets.<spec>.rest / .lifted depasesc
-     *  globalul cand un anumit model sta prost pe cric. Lipsa = global multiversal. */
+    /** Masinile cu garda JOASA la sol: pe cricul jos stau DIRECT PE EL (rest 0.5 =
+     *  fata placii, ca pe un slab) - exact comportamentul original (si din mod).
+     *  Celelalte (garda mare) au rotile pe pamant (0.0625) - capul le trece prin
+     *  garda libera, ca si la inceput. */
+    private static final java.util.Set<String> LOW_CLEARANCE = java.util.Set.of(
+            "go_kart", "bumper_car", "shopping_cart", "smart_car", "sports_car",
+            "dune_buggy", "couch", "mini_bike", "moped", "dirt_bike");
+    private static final double LOW_REST = 0.5D;
+
+    /** Resturile sunt in COD (nu in config) - configul vechi de pe server NU primeste
+     *  singur chei noi. ciclul X: jack.offsets.<spec>.rest ramane doar override manual. */
     private double restOffset(LandVehicle vehicle) {
-        return plugin.getConfig().getDouble("jack.offsets." + vehicle.spec().id() + ".rest",
-                restOffset());
+        String path = "jack.offsets." + vehicle.spec().id() + ".rest";
+        if (plugin.getConfig().isSet(path)) {
+            return plugin.getConfig().getDouble(path);
+        }
+        return LOW_CLEARANCE.contains(vehicle.spec().id()) ? LOW_REST : restOffset();
     }
 
     private double liftedOffset(LandVehicle vehicle) {
