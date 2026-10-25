@@ -108,7 +108,6 @@ jack:
     bumper_car: { rest: 0.5, lifted: 0.75 }
     shopping_cart: { rest: 0.5, lifted: 0.75 }
     smart_car: { rest: 0.5, lifted: 0.75 }
-    sports_car: { rest: 0.5, lifted: 0.75 }
     dune_buggy: { rest: 0.5, lifted: 0.75 }
     couch: { rest: 0.5, lifted: 0.75 }
     mini_bike: { rest: 0.5, lifted: 0.75 }

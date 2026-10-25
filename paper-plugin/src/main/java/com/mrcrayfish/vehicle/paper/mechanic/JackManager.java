@@ -92,8 +92,10 @@ public final class JackManager {
      *  Celelalte (garda mare) au rotile pe pamant (0.0625) - capul le trece prin
      *  garda libera, ca si la inceput. */
     private static final java.util.Set<String> LOW_CLEARANCE = java.util.Set.of(
-            "go_kart", "bumper_car", "shopping_cart", "smart_car", "sports_car",
+            "go_kart", "bumper_car", "shopping_cart", "smart_car",
             "dune_buggy", "couch", "mini_bike", "moped", "dirt_bike");
+// sports_car mutat la garda mare (user 2026-10-25: e foarte lata - rotile pe pamant)
+
     private static final double LOW_REST = 0.5D;
 
     /** Resturile sunt in COD (nu in config) - configul vechi de pe server NU primeste

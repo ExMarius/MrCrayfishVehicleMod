@@ -512,3 +512,8 @@ am atașat comparația — găsește decalajele"].
   = interiorul cricului. MEDICAMENT: default-urile de clasa (joase=PE PLACA 0.5,
   garda-mare=roti pe pamant 0.0625) sunt acum HARDCODED; jack.offsets ramane doar
   override pentru exceptii puctuale. Ridicat = 0.75 universal.
+
+## Ciclul X.1 (2026-10-25) — sports_car = garda mare (roti pe pamant, nu pe placa)
+
+- sports_car scoasa din setul joaselor: fiind foarte lata (user), coborarea o lasa
+  cu rotile pe pamant ca off_roaderul (global 0.0625), ridicate = 0.75 universal.
