@@ -442,3 +442,15 @@ am atașat comparația — găsește decalajele"].
   lifted-offset e o valoare unica config, reglaj live; rest si load(raised) folosesc
   IDENTICE cleme => niciun dis continuue. Calibrare finala inca deschisa: daca pe un
   vehicul specific pluteste/clupeaza, se dozoneaza din config (0? / +1/16 pas).
+
+## Ciclul R (2026-10-25) — pe cric nu intra in garaj + motor IRON de fabrica VIRTUAL
+
+- **Masina pe cric nu se mai baga in garaj la logout**: parkAllOwnedBy ignora
+  showcase (deja) + onJack (nou). Service-ul ramane intact peste restart; masina
+  se releaga de cric la boot dupa jack-id persistat.
+- **Motorul de fabrica = IRON VIRTUAL** (cumparat sau spawnat, daca specul cere
+  motor): n-a fost niciodata item fizic; demontat cu ciocanul DISPARA curat (nu
+  devine item => nu printezi motoare dintr-o shopping_cart). Abia dupa prima
+  instalare din item real devine fizic si se returneaza la demontare.
+- Persistent in vehicles.yml ca mechanic.engine-virtual; default legacy: virtual
+  dupa engine-installed (iron = fabrica = virtual).

@@ -111,6 +111,9 @@ public final class LandVehicle {
      *  pana la instalarea unui motor - regula brief 2026-10-24 (ATV/Dune Buggy
      *  pornesc fara motor "din fabrica"). */
     private boolean engineInstalled = true;
+    /** True cat timp motorul e cel din fabrica (virtual - fara item) sau unul
+     *  montat virtual de admini; false dupa prima instalare din item REAL. */
+    private boolean engineVirtual = true;
     /** Rotile sunt MONTE fizic? false = vehiculul ramane fara roti (nu porneste
      *  si nu poate fi coborat de pe cric) - fluxul din mod dupa brief 2026-10-24. */
     private boolean wheelsInstalled = true;
@@ -155,6 +158,9 @@ public final class LandVehicle {
         }
         this.fuel = spec.energyCapacity();
         this.engineInstalled = spec.factoryInstalledEngine();
+        // Motorul din fabrica (IRON de baza) e VIRTUAL: nu a fost niciodata un item
+        // fizic in inventar => la demontare NU devine item (nu printezi motoare).
+        this.engineVirtual = this.engineInstalled;
     }
 
     public static LandVehicle spawn(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
@@ -2158,6 +2164,14 @@ public final class LandVehicle {
 
     /** Demontare/montare: ascunde instant piesa in lume (stack gol pe display);
      *  la montare se re-aplica modelul tier-ului curent (ca la setEngineTier). */
+    public boolean engineVirtual() {
+        return engineVirtual;
+    }
+
+    public void setEngineVirtual(boolean virtual) {
+        this.engineVirtual = virtual;
+    }
+
     public void setEngineInstalled(boolean installed) {
         this.engineInstalled = installed;
         if (!installed) {

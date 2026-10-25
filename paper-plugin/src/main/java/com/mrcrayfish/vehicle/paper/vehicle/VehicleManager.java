@@ -200,7 +200,8 @@ public final class VehicleManager {
                 0.0F, 0.0F, 0.0F, 0.0F, false, java.util.Map.of(), java.util.Map.of(),
                 player.getUniqueId().toString(), "",
                 "IRON", "STANDARD", 100.0D, -1, false, "NONE", null,
-                spec.factoryInstalledEngine(), spec.hasWheels(), 0.0D); // odometru: 0 la cumparare
+                spec.factoryInstalledEngine(), spec.hasWheels(), 0.0D,
+                spec.factoryInstalledEngine()); // motorul de fabrica e VIRTUAL la cumparare
         garage.put(stored.id(), stored);
         save();
         return stored.id();
@@ -221,7 +222,12 @@ public final class VehicleManager {
     public int parkAllOwnedBy(java.util.UUID playerId) {
         int storedCount = 0;
         for (LandVehicle vehicle : new java.util.ArrayList<>(vehicles.values())) {
-            if (vehicle.showcase() || vehicle.owner().map(playerId::equals).orElse(false) == false) {
+            if (!vehicle.owner().map(playerId::equals).orElse(false)) {
+                continue;
+            }
+            if (vehicle.showcase() || vehicle.onJack()) {
+                // showcase = al podiumului; PE CRIC = in service: ramane in lume
+                // peste restart (garajul nu ia masini ridicate la mecanic).
                 continue;
             }
             StoredVehicle stored = StoredVehicle.from(vehicle);
@@ -807,6 +813,7 @@ public final class VehicleManager {
         if (stored.odometer() > 0.0D) {
             data.set(path + ".mechanic.odometer", stored.odometer());
         }
+        data.set(path + ".mechanic.engine-virtual", stored.engineVirtual());
     }
 
     private void load() {
@@ -889,6 +896,7 @@ public final class VehicleManager {
         vehicle.setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier.fromName(stored.engineTier()));
         vehicle.setEngineInstalled(stored.engineInstalled());
         vehicle.restoreOdometer(stored.odometer());
+        vehicle.setEngineVirtual(stored.engineVirtual());
         vehicle.setWheelType(com.mrcrayfish.vehicle.paper.mechanic.WheelType.fromName(stored.wheelType()));
         if (stored.health() < 100.0D) {
             vehicle.applyDamage(100.0D - stored.health(), null);
@@ -1249,7 +1257,7 @@ public final class VehicleManager {
                                  Map<String, Boolean> openPartStates, String owner, String trusted,
                                  String engineTier, String wheelType, double health, int paintColor,
                                  boolean locked, String jackState, String jackId, boolean engineInstalled,
-                                 boolean wheelsInstalled, double odometer) {
+                                 boolean wheelsInstalled, double odometer, boolean engineVirtual) {
 
         private static StoredVehicle from(LandVehicle vehicle) {
             Location location = vehicle.location();
@@ -1269,7 +1277,7 @@ public final class VehicleManager {
                     vehicle.paintColor(), vehicle.locked(), vehicle.jackState().name(),
                     vehicle.jackId() == null ? null : vehicle.jackId().toString(),
                     vehicle.engineInstalled(),
-                    vehicle.wheelsInstalled(), vehicle.odometerMeters());
+                    vehicle.wheelsInstalled(), vehicle.odometerMeters(), vehicle.engineVirtual());
         }
 
         private static StoredVehicle read(YamlConfiguration data, String key) {
@@ -1308,7 +1316,9 @@ public final class VehicleManager {
                     data.getString(path + ".mechanic.jack-id"),
                     data.getBoolean(path + ".mechanic.engine-installed", true),
                     data.getBoolean(path + ".mechanic.wheels-installed", true),
-                    data.getDouble(path + ".mechanic.odometer", 0.0D));
+                    data.getDouble(path + ".mechanic.odometer", 0.0D),
+                    data.getBoolean(path + ".mechanic.engine-virtual",
+                            data.getBoolean(path + ".mechanic.engine-installed", true)));
         }
 
         private static Map<String, List<ItemStack>> readStorage(YamlConfiguration data, String vehiclePath) {

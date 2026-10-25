@@ -392,6 +392,7 @@ public final class MechanicManager {
         // La vehiculele cu slot gol (ATV/Dune Buggy) asta e INSTALARE: piesa apare
         // imediat pe model, in lume si in GUI - cerinta brief 2026-10-24.
         vehicle.setEngineInstalled(true);
+        vehicle.setEngineVirtual(false); // montat din item real - acum e fizic
         if (player.getGameMode() != GameMode.CREATIVE) {
             engineItem.setAmount(engineItem.getAmount() - 1);
         }
@@ -430,12 +431,21 @@ public final class MechanicManager {
         if (fits == EngineType.NONE) {
             return true;
         }
-        player.setItemOnCursor(MechanicItems.engine(fits, vehicle.engineTier()));
+        if (vehicle.engineVirtual()) {
+            // Ciclul R („baga putina logistica"): motorul de fabrica IRON e VIRTUAL -
+            // nu a fost niciodata un item fizic. Demontat, pur si simplu dispare
+            // (altfel orice masina ieftina would printa motoare de iron la infinit).
+            player.sendRichMessage("<gray>Motorul de fabrica (Iron, virtual) a disparut "
+                    + "- nu se transforma in item. Slotul ramane functional.</gray>");
+        } else {
+            player.setItemOnCursor(MechanicItems.engine(fits, vehicle.engineTier()));
+            player.sendRichMessage("<gray>Motor scos - slotul ramane functional, "
+                    + "dar piesa nu se mai vede pe model.</gray>");
+        }
         vehicle.setEngineInstalled(false);
+        vehicle.setEngineVirtual(false);
         vehicles.save();
         player.playSound(player.getLocation(), org.bukkit.Sound.BLOCK_ANVIL_USE, 0.6F, 0.9F);
-        player.sendRichMessage("<gray>Motor scos - slotul ramane functional, "
-                + "dar piesa nu se mai vede pe model.</gray>");
         return true;
     }
 
