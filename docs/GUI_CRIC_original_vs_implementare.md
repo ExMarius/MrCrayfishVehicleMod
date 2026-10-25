@@ -477,3 +477,13 @@ am atașat comparația — găsește decalajele"].
 - **Ciocanul**: redenumit „Ciocan de service", lore actualizat (motor pe ridicat /
   lift pe banc / demontare pe jos), plus click cu ciocanul PE BANC = toggle-urca.
   Cheia: lore acurat (roti pe ridicat / meniu din zona service).
+
+## Ciclul U (2026-10-25) — masinile joase stau iar DIRECT pe elevator
+
+- Regresie de la ciclul O: rest-offset global 0.0625 a coborat si masinile joase,
+  care in mod trebuie sa stea PE PLACA cricului. Revenire tintita: `jack.offsets`
+  (noul sistemul per-vehicul din Ciclul T) da NOW rest=0.5 pt: go_kart, bumper_car,
+  shopping_cart, smart_car, sports_car, dune_buggy, couch, mini_bike, moped,
+  dirt_bike. Ridicat = 0.75 pentru toate (capul ridicat e fata unica).
+- Vehiculele cu garda mare (off_roader etc. - orice lipseste din lista) = globalul,
+  asa cum li semnalizat anterior: rotile pe pamant cand jos.

@@ -95,11 +95,22 @@ jack:
   rest-offset: 0.0625
   # (vechiul lift-visual-correction a fost inlocuit de modelul absolut lifted-offset:
   #  reglezi o singura valoare si primesti EXACT inaltimea finala de sus)
-  # Calibrare PER VEHICUL cand un model sta prost pe cric fata de global
-  # (1 pixel = 0.0625). Exemplu dezactivat:
-  #offsets:
-  #  off_roader: { rest: 0.0625, lifted: 0.75 }
-  #  sports_car: { rest: 0.0625, lifted: 0.75 }
+  # Calibrare PER VEHICUL: masinile JOASE (garda mica la sol) stau direct pe placa
+  # cricului cand cricul e jos (rest 0.5 = fata de sus a placii), ca in mod; restul
+  # vehiculelor (garda mare: off_roader etc.) au rotile pe pamant (globalul 0.0625).
+  # Ridicat = acelasi 0.75 pentru toate (capul ridicat e fata unica).
+  # (1 pixel = 0.0625 ; reglaj live fara rebuild.)
+  offsets:
+    go_kart: { rest: 0.5, lifted: 0.75 }
+    bumper_car: { rest: 0.5, lifted: 0.75 }
+    shopping_cart: { rest: 0.5, lifted: 0.75 }
+    smart_car: { rest: 0.5, lifted: 0.75 }
+    sports_car: { rest: 0.5, lifted: 0.75 }
+    dune_buggy: { rest: 0.5, lifted: 0.75 }
+    couch: { rest: 0.5, lifted: 0.75 }
+    mini_bike: { rest: 0.5, lifted: 0.75 }
+    moped: { rest: 0.5, lifted: 0.75 }
+    dirt_bike: { rest: 0.5, lifted: 0.75 }
 
 mechanic:
   # Capacitatea spray-ului (Config.SERVER.sprayCanCapacity din mod: 20 pulverizari).
