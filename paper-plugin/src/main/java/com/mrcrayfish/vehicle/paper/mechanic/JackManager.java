@@ -56,6 +56,11 @@ public final class JackManager {
     private final VehicleManager vehicles;
     private final MechanicStore store;
     private final Map<UUID, Jack> jacks = new ConcurrentHashMap<>();
+
+    /** Cate cricuri sunt plasate in lume (pentru /vehicle perf, ciclul AB). */
+    public int jackCount() {
+        return jacks.size();
+    }
     /** Notifica sistemul la ORICE schimbare de stare a cricului (meniul bancului
      *  isi reimprospateaza butonul RIDICA/COBOARA fara sa il re-deschizi - bug
      *  raportat: ceasul ramanea pe ecran pana reintrai in meniu). */

@@ -469,6 +469,11 @@ public final class VehicleManager {
         return pendingWorlds.size();
     }
 
+    /** Cate vehicule stau acum in garajul global (pentru /vehicle perf, ciclul AB). */
+    public int garageSize() {
+        return garage.size();
+    }
+
     public void handleInteraction(Player player, Entity clicked) {
         LandVehicle vehicle = entities.get(clicked.getUniqueId());
         if (vehicle == null) {
@@ -964,6 +969,8 @@ public final class VehicleManager {
     private volatile com.mrcrayfish.vehicle.paper.vehicle.DriveTuning driveTuning;
 
     private void tick() {
+        long perfStart = com.mrcrayfish.vehicle.paper.runtime.PerfTracker.begin();
+        try {
         if (++activationTick % 10 == 0) {
             activateNearbyVehicles(null);
         }
@@ -1001,6 +1008,9 @@ public final class VehicleManager {
         }
         trailers.tick();
         handleBumperCarCollisions();
+        } finally {
+            com.mrcrayfish.vehicle.paper.runtime.PerfTracker.end(perfStart);
+        }
     }
 
     /**

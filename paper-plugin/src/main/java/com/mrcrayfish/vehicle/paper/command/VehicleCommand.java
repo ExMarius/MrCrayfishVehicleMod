@@ -53,6 +53,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "trust" -> trust(sender, args);
             case "untrust" -> untrust(sender, args);
             case "trusted" -> trusted(sender);
+            case "perf", "consum", "stats" -> perf(sender);
             case "magazin", "shop", "dealer" -> dealer(sender);
             case "podium" -> podium(sender, args);
             case "list" -> sender.sendRichMessage("<gold>Vehicule:</gold> <white>"
@@ -452,6 +453,94 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 : "<green>Resource pack configurat:</green> <gray>" + url + "</gray>");
     }
 
+
+    /** /vehicle perf (alias consum/stats) - ciclul AB: cat consuma pluginul ACUM.
+     *  Citeste doar contori mentinuti oricum (vl TPS/JVM/JMX + cronometrul de tick
+     *  al pluginului); singura numaratoare one-shot (entitatile mcv_) se face
+     *  strict la invocare, niciodata in fundal. */
+    private void perf(CommandSender sender) {
+        if (!sender.hasPermission("mcv.perf")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea <gold>mcv.perf</gold>.</red>");
+            return;
+        }
+        double[] tps = Bukkit.getTPS();
+        double mspt = -1.0D;
+        try {
+            Object arr = Bukkit.class.getMethod("getAverageTickTime").invoke(null);
+            if (arr instanceof double[] doubles && doubles.length > 0) {
+                mspt = doubles[0];
+            } else if (arr instanceof long[] longs && longs.length > 0) {
+                mspt = longs[0];
+            }
+        } catch (Throwable noPaperApi) {
+            // Paper nu expune MSPT aici - lasam ascuns
+        }
+        double cpu = -1.0D;
+        try {
+            java.lang.management.OperatingSystemMXBean os =
+                    java.lang.management.ManagementFactory.getOperatingSystemMXBean();
+            if (os instanceof com.sun.management.OperatingSystemMXBean sun) {
+                cpu = sun.getProcessCpuLoad() * 100.0D;
+            }
+        } catch (Throwable ignored) {
+            // JVM fara sun MXBean - lasam ascuns
+        }
+        Runtime runtime = Runtime.getRuntime();
+        long usedMb = (runtime.totalMemory() - runtime.freeMemory()) / 1048576L;
+        long maxMb = runtime.maxMemory() / 1048576L;
+        double emaMs = com.mrcrayfish.vehicle.paper.runtime.PerfTracker.emaMillis();
+        double avgMs = com.mrcrayfish.vehicle.paper.runtime.PerfTracker.avgPerTickLastMinuteMillis();
+        double maxMs = com.mrcrayfish.vehicle.paper.runtime.PerfTracker.maxTickLastMinuteMillis();
+        int onJack = 0;
+        for (LandVehicle vehicle : vehicles.vehicles()) {
+            if (vehicle.onJack()) {
+                onJack++;
+            }
+        }
+        int taskCount = 0;
+        for (org.bukkit.scheduler.BukkitTask task : Bukkit.getScheduler().getPendingTasks()) {
+            if (task.getOwner() == plugin) {
+                taskCount++;
+            }
+        }
+        int displays = 0;
+        for (org.bukkit.World world : Bukkit.getWorlds()) {
+            for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                for (String tag : entity.getScoreboardTags()) {
+                    if (tag.startsWith("mcv_")) {
+                        displays++;
+                        break;
+                    }
+                }
+            }
+        }
+        sender.sendRichMessage("<gold>Consum MCV (live)</gold> <gray>- citire de contori, nu adauga sarcina</gray>");
+        sender.sendRichMessage("<gray>Server:</gray> TPS <aqua>" + fmt(tps[0]) + " / " + fmt(tps[1]) + " / " + fmt(tps[2])
+                + "</aqua> <gray>(1m/5m/15m)</gray>"
+                + (mspt >= 0.0D ? " · tick mediu <aqua>" + fmt(mspt) + " ms</aqua> <gray>(buget 50)</gray>" : ""));
+        sender.sendRichMessage("<gray>JVM:</gray> "
+                + (cpu >= 0.0D ? "CPU proces <aqua>" + fmt(cpu) + "%</aqua> · " : "")
+                + "RAM <aqua>" + usedMb + " / " + maxMb + " MB</aqua>");
+        sender.sendRichMessage("<gray>Tick vehicule (pluginul nostru):</gray> instant <yellow>" + fmt(emaMs) + " ms</yellow>"
+                + " · media 60s <yellow>" + fmt(avgMs) + " ms</yellow>"
+                + " · varf 60s <yellow>" + fmt(maxMs) + " ms</yellow>"
+                + " <gray>(= " + fmt(avgMs / 50.0D * 100.0D) + "% din bugetul unui tick)</gray>");
+        sender.sendRichMessage("<gray>Numaratori:</gray> <white>" + vehicles.vehicles().size() + "</white> vehicule active"
+                + " · <white>" + vehicles.pendingVehicleCount() + "</white> in asteptare/hibernate"
+                + " · <white>" + vehicles.garageSize() + "</white> in garaje"
+                + " · <white>" + vehicles.trailers().trailers().size() + "</white> remorci"
+                + " · <white>" + displays + "</white> entitati mcv_");
+        sender.sendRichMessage("<gray>Service:</gray> <white>" + (plugin.mechanic() == null ? 0 : plugin.mechanic().jacks().jackCount())
+                + "</white> cricuri (" + onJack + " cu masina sus)"
+                + " · <white>" + (plugin.mechanic() == null ? 0 : plugin.mechanic().workstations().stationCount())
+                + "</white> banci de lucru · <white>" + gasPumps.pumps().size() + "</white> pompe"
+                + " · <white>" + taskCount + "</white> taskuri in scheduler");
+    }
+
+    private static String fmt(double value) {
+        return String.format(java.util.Locale.US, "%.1f", value);
+    }
+
     private void help(CommandSender sender, String label) {
         sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>vehicule pentru clienți vanilla</gray>");
         sender.sendRichMessage("<yellow>/" + label + " spawn <tip></yellow> <gray>- creează un vehicul sau una dintre cele 5 remorci</gray>");
@@ -462,6 +551,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " paint</yellow> <gray>- paleta noastră de vopsea GRATUITĂ (stai lângă mașina ta)</gray>");
         sender.sendRichMessage("<yellow>/" + label + " podium set <vehicul> <pret></yellow> <gray>- showroom static (admin); remove = șterge podiumul de aici</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " perf</yellow> <gray>- cât consumă pluginul acum (tick/RAM/contoare), fără să consume (op)</gray>");
         sender.sendRichMessage("<yellow>/garaj</yellow> <gray>- garajul global (set/remove, liste în chat; acasă gratuit, public cu taxă)</gray>");
     }
 
@@ -469,7 +559,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

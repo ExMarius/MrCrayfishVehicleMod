@@ -33,6 +33,7 @@ Token-i si chestiile sensibile sunt in secrets GitHub, niciodata in cod.
 | `/vehicle podium set <vehicul> <pret>` / `remove` | vehicle.admin | Podea de showroom (auto-creeaza/reconstruieste) |
 | `/vehicle magazin\|shop\|dealer` | vehicle.use | Deschide ShopGui (catalog+piese) |
 | `/vehicle creative` | mcv.creative | Meniul complet de service in creative |
+| `/vehicle perf\|consum\|stats` | mcv.perf (op) | Cat consuma pluginul ACUM (tick ms/RAM/contoare) - citire gratuita, fara sarcina noua |
 | `/vehicle gaspump` / `jerrycan normal\|industrial` | vehicle.admin | Iti da item-urile speciale |
 | `/garaj [set\|remove]` | vehicle.garage | Cercul personal de parcare (ieșire gratuită de acasa) |
 

@@ -74,6 +74,11 @@ public final class WorkstationManager {
     private final MechanicStore store;
     private final JackManager jacks;
     private final Map<UUID, Station> stations = new ConcurrentHashMap<>();
+
+    /** Cate banci de lucru sunt plasate in lume (pentru /vehicle perf, ciclul AB). */
+    public int stationCount() {
+        return stations.size();
+    }
     private final Map<UUID, Long> cooldowns = new ConcurrentHashMap<>();
     private BukkitTask leashTask;
 

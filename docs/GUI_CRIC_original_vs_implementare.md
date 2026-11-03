@@ -601,3 +601,20 @@ REPARATII (post-ciclul Z):
   (serverul proaspat poate lipsi logs/latest.log) si `&& break` fara trap set -e.
 - Rezultat: deploy SUCCESS; invatatura permanenta: orice modificare de workflow
   se valideaza local cu bash -n pe toate blocurile run inainte de push.
+
+## Ciclul AB (2026-11-03) — /vehicle perf: consumul LIVE al pluginului, fara sa consume
+
+Cerere user: "comanda sa vad cat consuma pluginul in acel moment, dar comanda
+sa nu consume". Implementare:
+- `runtime/PerfTracker` (NOU): cronometru in jurul tick-ului de vehicule —
+  2x nanoTime + o medie exponentiala per tick (~50ns, adica nimic). Fereastra
+  din ultimul minut = inel static de 60 secunde (suma+varf/secunda), zero alocari.
+- `/vehicle perf` (alias `consum`/`stats`, perm NOU `mcv.perf`, default op):
+  citeste DOAR contori deja mentinuti — TPS Bukkit, MSPT Paper (prin REFLECTIE,
+  ca sa compileze si daca API-ul dispare), CPU proces (JMX), RAM JVM, tick
+  plugin instant/medie/varf + % din budgetul de 50ms, numaratori (vehicule
+  active/pending/garaj/remorci/cricuri/banci/pompe/entitati mcv_/taskuri).
+- Singura numaratoare care costa (entitatile mcv_ din lume) se face STRICT la
+  invocarea comenzii, niciodata in fundal -> cost zero cand nu o ruleaza nimeni.
+- Accesorii noi (count-uri O(1)): VehicleManager.garageSize(), JackManager.jackCount(),
+  WorkstationManager.stationCount(). plugin.yml + tab-complete + help actualizate.
