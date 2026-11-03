@@ -4,6 +4,9 @@ name: HidenCloud deploy (build plugin + upload SSH)
 # "workflow file may be broken" pentru ca pe default-branch exista UN ALT set de
 # workflow-uri (epoca Oracle/Falix); rerun-urile se valideaza contra default.
 # Redeploy corect = orice push care atinge path-urile de mai jos.
+# Dupa RECREAREA serverului in panel: porneste-l o data (se genereaza
+# server.properties/logs), apoi face un redeploy -- primul deploy pe server gol
+# sare peste sincronizarea hash-ului resource-pack (nu exista server.properties).
 
 on:
   workflow_dispatch:
