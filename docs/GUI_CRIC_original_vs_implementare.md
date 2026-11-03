@@ -551,7 +551,7 @@ era REDUNDANTA cu sistemul trust deja functional -> eliminata complet:
 - "Cheia de mecanic" (WRENCH-ul bancului) ramane NESCHIMBATA - e unealta de
   service, nu de acces.
 
-## Ciclul AA (2026-10-25) — CURATENIE GENERALA repo + reparatii post-Z
+## Ciclul AA (2026-11-03) — CURATENIE GENERALA repo + reparatii post-Z
 
 STERSE (neutilizate, fara nicio referinta vie; raman in history/tag backup-2026-10-24-c9ef3e6):
 - Untitled.zip (11.7MB model Collada razlet, politie)
@@ -574,3 +574,15 @@ REPARATII (post-ciclul Z):
   clasele de repaus hardcodate), bulletul "Inchidere masina (cheia)" inlocuit cu
   regula trust, binding-ul uneltelor de banc explicat.
 - README: comanda de build corectata la cea folosita in CI.
+
+## Ciclul AA.3 (2026-11-03) — ROTATIE CREDENTIALE SFTP (server recreat pe HidenCloud)
+
+- Simptom: deployurile AA au picat la autentificare: "nici cheia SSH nici parola
+  nu au mers" (anotatia CI - logurile brute nu se pot descarca din sandbox).
+- Cauza: serverul free a fost recreat/reinnoit in panel intre 25.10 si 03.11 ->
+  host/user/parola SFTP noi (nile.a4e04808 -> jacob.d496911d); SERVER_ID urmeaza
+  sufixul userului. Vechiul SSH key nu mai e autorizat - deploy pe PAROLA
+  (fallbackul existent in workflow a facut exact ce trebuie).
+- Actualizat: env din hidencloud-sftp.yml + hc-inspect.yml; brieful agent nou
+  mutat IN REPO (docs/BRIEF_AGENT_NOU.md) - copiile din afara repo-ului nu
+  supravietuiesc reseturilor de sandbox.

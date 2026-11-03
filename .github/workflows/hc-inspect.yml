@@ -12,9 +12,9 @@ permissions:
   contents: read
 
 env:
-  SFTP_HOST: nile.hidencloud.com
+  SFTP_HOST: jacob.hidencloud.com
   SFTP_PORT: "2022"
-  SFTP_USER: mariusuke-184939.a4e04808
+  SFTP_USER: mariusuke-184939.d496911d
 
 jobs:
   inspect:
