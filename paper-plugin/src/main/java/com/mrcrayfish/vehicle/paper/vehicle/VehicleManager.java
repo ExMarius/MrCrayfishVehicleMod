@@ -42,6 +42,11 @@ public final class VehicleManager {
     private final TrailerManager trailers;
     private BukkitTask tickTask;
     private BukkitTask saveTask;
+    private BukkitTask sweepTask;
+    /** CICLUL AF: cate secunde consecutive a stat fiecare vehicul GOAL intr-un cerc
+     *  de parcare. Cheia dispare cand vehiculul pleaca din cerc / se occupa / iese
+     *  din lume (retainAll la inceputul fiecarui sweep). */
+    private final Map<UUID, Integer> parkedInSpotSeconds = new HashMap<>();
     private int activationTick;
     /** Short per-vehicle cooldown after a bumper-car bonk so overlapping cars don't
      * retrigger the jolt and sound every single tick while still touching. */
@@ -61,6 +66,8 @@ public final class VehicleManager {
         tickTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
         long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
         saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
+        // Ciclul AF: parcare-cu-timer, verificat o data pe secunda.
+        sweepTask = Bukkit.getScheduler().runTaskTimer(plugin, this::autoStoreSweep, 20L, 20L);
     }
 
     /** Boot cleanup: rig entity corpses from crashy/ungraceful restarts (tagged mcv_plugin_vehicle
@@ -108,6 +115,9 @@ public final class VehicleManager {
         }
         if (saveTask != null) {
             saveTask.cancel();
+        }
+        if (sweepTask != null) {
+            sweepTask.cancel();
         }
         trailers.returnCarriedVehicles();
         saveNow(); // onDisable: flush SINCRON - un task async ar putea fi pierdut la oprire
@@ -311,6 +321,84 @@ public final class VehicleManager {
         return storedCount;
     }
 
+    /** CICLUL AF: nimeni nu e in niciun scaun/carrier al rig-ului. Scanner complet
+     *  peste toate entitatile (sofer + pasageri + carrieri tehnici). */
+    private static boolean nobodyAboard(LandVehicle vehicle) {
+        for (Entity entity : vehicle.rig().entities()) {
+            if (!entity.getPassengers().isEmpty()) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** CICLUL AF: limita de stationare in cerc, din config (minute -> secunde).
+     *  0 sau negativ = sistemul e oprit complet. Default 5 minute. */
+    private int autoStoreLimitSeconds() {
+        return Math.max(0, (int) (plugin.getConfig().getDouble("garage.auto-store-park-minutes", 5.0D) * 60.0D));
+    }
+
+    /** CICLUL AF: pune vehiculul in garajul proprietarului ACUM (aceeasi ruta de
+     *  serializare ca parkAllOwnedBy / parkDrivenByNonOwner) si anunta proprietarul
+     *  online cu un mesaj de motiv. Returneaza true daca s-a mutat. */
+    private boolean storeVehicleNow(LandVehicle vehicle, String ownerMessageRich) {
+        StoredVehicle stored = StoredVehicle.from(vehicle);
+        String displayName = vehicle.spec().displayName();
+        UUID ownerId = vehicle.owner().orElse(null);
+        unindex(vehicle);
+        releaseChunkTicket(vehicle);
+        trailers.onVehicleRemoved(vehicle.id());
+        vehicles.remove(vehicle.id());
+        pendingWorlds.remove(vehicle.id());
+        parkedInSpotSeconds.remove(vehicle.id());
+        vehicle.remove();
+        garage.put(stored.id(), stored);
+        if (ownerId != null && ownerMessageRich != null && !ownerMessageRich.isEmpty()) {
+            Player ownerOnline = plugin.getServer().getPlayer(ownerId);
+            if (ownerOnline != null) {
+                ownerOnline.sendRichMessage("<gray>[Garaj] Masina ta <gold>" + displayName
+                        + "</gold> " + ownerMessageRich + "</gray>");
+            }
+        }
+        return true;
+    }
+
+    /** CICLUL AF - parcare-cu-timer (ruleaza la 1 secunda): masina GOALA sta intr-un
+     *  cerc marcat (personal sau public) mai mult de limita configurata -> intra
+     *  singura in garajul proprietarului. Podiumul si masina de pe cric sunt exceptate.
+     *  Taxi-urile fara proprietar nu au garaj - raman in lume (cost 0, hibernam). */
+    public void autoStoreSweep() {
+        final int limitSeconds = autoStoreLimitSeconds();
+        if (limitSeconds <= 0) {
+            return;
+        }
+        parkedInSpotSeconds.keySet().retainAll(vehicles.keySet());
+        int storedNow = 0;
+        for (LandVehicle vehicle : new ArrayList<>(vehicles.values())) {
+            boolean eligible = !vehicle.showcase() && !vehicle.onJack()
+                    && nobodyAboard(vehicle)
+                    && vehicle.owner().isPresent()
+                    && plugin.garageStations().insideAnySpot(vehicle.location());
+            if (!eligible) {
+                parkedInSpotSeconds.remove(vehicle.id());
+                continue;
+            }
+            int seconds = parkedInSpotSeconds.merge(vehicle.id(), 1, Integer::sum);
+            if (seconds < limitSeconds) {
+                continue;
+            }
+            if (storeVehicleNow(vehicle, "a intrat la garaj: a stat in parcare peste "
+                    + (limitSeconds / 60) + " minute.")) {
+                storedNow++;
+            }
+        }
+        if (storedNow > 0) {
+            save();
+            plugin.getLogger().info("[Garaj] Auto-store: " + storedNow
+                    + " vehicule mutate in garajul proprietarilor (parcare expirata).");
+        }
+    }
+
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
     public boolean retrieve(Player player, UUID vehicleId) {
         return retrieve(player, vehicleId, null);
@@ -340,6 +428,33 @@ public final class VehicleManager {
         }
         spot.setY(base.getY());
         spot.setYaw(base.getYaw());
+        // CICLUL AF - tow la livrare: punctul de scoatere e blocat de vehicule GOALE
+        // cu proprietar? Fiecare blocant intra SINGUR in garajul PROPRIETARULUI lui
+        // (ridicare automata, fara pierderi), apoi masina ceruta apare liber in centru.
+        // Ignorate: podium, masina pe cric, vehicul OCUPAT (nu furam de sub nimeni),
+        // taxi fara proprietar (nu are garaj in care sa intre).
+        int clearedNow = 0;
+        for (LandVehicle blocker : new ArrayList<>(vehicles.values())) {
+            Location blockerLoc = blocker.location();
+            if (blockerLoc.getWorld() == null || !blockerLoc.getWorld().equals(spot.getWorld())) {
+                continue;
+            }
+            if (blockerLoc.distanceSquared(spot) > 4.0D * 4.0D) {
+                continue;
+            }
+            if (blocker.showcase() || blocker.onJack() || !nobodyAboard(blocker)
+                    || blocker.owner().isEmpty()) {
+                continue;
+            }
+            if (storeVehicleNow(blocker, "a intrat la garaj: ocupa locul de livrare al altui vehicul.")) {
+                clearedNow++;
+            }
+        }
+        if (clearedNow > 0) {
+            save();
+            player.sendRichMessage("<gray>[Garaj] Locul de livrare era ocupat: " + clearedNow
+                    + " mas. mutate automat la garajul proprietarilor.</gray>");
+        }
         LandVehicle vehicle = spawn(stored.id(), spec, spot);
         vehicle.refreshGroundState();
         vehicle.setFuel(stored.fuel());

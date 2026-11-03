@@ -71,6 +71,13 @@ economy:
   # Parking spots are PHYSICAL circles of exactly 2 blocks (the spark ring).
   # On quit every owned vehicle is stored, no flags, no differentiation.
 
+# Ciclul AF - parcare cu timer: masina GOALA sta intr-un cerc marcat mai mult de
+# atatea minute => intra SINGURA in garajul proprietarului (anti-blocare locuri).
+# La scoaterea unei masini, orice blocant gol e mutat la fel (tow automat).
+# 0 = dezactivat complet.
+garage:
+  auto-store-park-minutes: 5.0
+
 # ===== Sistem mecanic (motoare/roti/reparatii/vopsire/cric) ==================
 workstation:
   # Bancul de lucru se pune doar langa un cric (relatie 1:1 cu cel mai apropiat).

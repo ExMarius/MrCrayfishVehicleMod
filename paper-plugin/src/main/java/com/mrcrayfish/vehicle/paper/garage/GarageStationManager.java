@@ -112,6 +112,18 @@ public final class GarageStationManager {
         return false;
     }
 
+    /** CICLUL AF: pozitia asta e acoperita de ORICE cerc marcat (public sau personal,
+     *  indiferent al cui e)? Folosit de sweep-ul de parcare-cu-timer si de tow-ul de
+     *  la livrare - acolo conteaza doar geometria cercului, nu proprietarul lui. */
+    public boolean insideAnySpot(Location anchor) {
+        for (Station station : stations.values()) {
+            if (within(station.location(), anchor, YARD_RADIUS)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     /** The PUBLIC spot covering this position (paid pull-outs only happen inside one). */
     public Optional<UUID> publicSpotAt(Location anchor) {
         for (Map.Entry<UUID, Station> entry : stations.entrySet()) {

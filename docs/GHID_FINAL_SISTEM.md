@@ -54,6 +54,7 @@ Token-i si chestiile sensibile sunt in secrets GitHub, niciodata in cod.
 - Preturi per tip in `config.yml: dealership.prices` (`shopping_cart: 100` pana la `sports_plane: 500000`).
 - Piese consumabile (motor/roti/spray) in `mechanic.parts.prices`.
 - Garaj retrieval: `economy.public-garage-retrieval-fee: 500` in locul public, `0` in locul personal.
+- Parcare cu timer (ciclul AF): masina lasata GOALA intr-un cerc marcat (personal sau public) intra SINGURA in garajul proprietarului dupa `garage.auto-store-park-minutes: 5.0` minute. La scoaterea unei masini, orice blocator gol cu proprietar e mutat automat la garajul LUI (tow anti-blocare); podium + pe-cric + vehicul ocupat + taxi fara proprietar sunt exceptate.
 - Fuellium se fabrica din Blaze Juice + Ender Sap in **FluidMixer** (`mechanic.fluid-mixer` in config).
 
 ## STABILITATE CERTIFICATA (cicluri A→J)

@@ -662,3 +662,32 @@ pozitie exacta pe anchor (centrul cercului marcat de jucator la /garaj set sau
 de admin la parcarea publica); ofsetul de 2.5m ramane doar pentru fallback
 (anchor null = pozitia jucatorului, ca sa nu apara sub el). Orientarea = yaw-ul
 cercului. Ground-snap-ul din ciclul AC ramane activ (y pe asfalt).
+
+## Ciclul AF (2026-11-04) — parcare cu timer + tow anti-blocare la livrare
+
+Cere userul, peste propunerea AI-ului din discutie: locurile de parcare nu se
+blocheaza. Implementare:
+
+1. **Parcare cu timer** (`garage.auto-store-park-minutes: 5.0`, 0 = off):
+   sweep la 1 secunda; masina GOALA (nimeni in niciun scaun/rig) care sta intr-un
+   cerc marcat (personal SAU public - GarageStationManager.insideAnySpot) mai mult
+   de limita => intra singura in garajul PROPRIETARULUI, cu mesaj catre el online.
+   Zero pierderi: aceeasi serializare ca parkAllOwnedBy/parkDrivenByNonOwner.
+   Exceptii: podium (showcase), pe cric (in service), OCUPAT (nu furam de sub
+   nimeni), taxi fara proprietar (nu are garaj; ramane hiberant la cost 0).
+
+2. **Tow automat la scoatere** (in VehicleManager.retrieve): daca punctul de
+   livrare e blocat de vehicule GOALE cu proprietar (raza 4 blocuri de centru),
+   fiecare intra singur in garajul PROPRIETARULUI lui ("a intrat la garaj: ocupa
+   locul de livrare"), apoi masina ceruta apare libera in centru (ciclul AE).
+   Solicitantul vede: „Locul de livrare era ocupat: N mas. mutate automat la
+   garajul proprietarilor."
+
+3. Garajul privat ramane strict owner-only (ciclul AD) — nimeni nu vede si nu
+   scoate masinile altora; scoaterea ramane doar din cercuri (acasa gratis,
+   public cu taxa).
+
+Decizie constienta: intretinerea-zero-consum (hibernare/resting) RAMANE — o
+masina poate sta in AFARA oricarui cerc (drum, padure) acolo nu exista timer,
+iar in cele 5 minute din cerc inca e nevoie de ea. Numerele AB (0.4% buget)
+argheaza ca nu ne doare nimic sa o pastram.
