@@ -586,3 +586,18 @@ REPARATII (post-ciclul Z):
 - Actualizat: env din hidencloud-sftp.yml + hc-inspect.yml; brieful agent nou
   mutat IN REPO (docs/BRIEF_AGENT_NOU.md) - copiile din afara repo-ului nu
   supravietuiesc reseturilor de sandbox.
+
+## Ciclul AA.4 + AA.5 (2026-11-03) — DEPLOY REPARAT si instrumentat
+
+- AA.3 (credentiale noi) a aratat: SSH key merge si pe serverul nou (e per-CONT
+  HidenCloud, nu per-server); uploadul jar/stack/config a reusit, dar pasul 7
+  murea cu exit 2 fara urma (logurile brute nu se descarca din sandbox).
+- AA.4: workflowul SFTP instrumentat cu anotari ::notice/::error vizibile prin
+  checks-annotations API (HC-AUTH/HC-PROPS/HC-UPLOAD/HC-CLEAN/HC-DONE) +
+  fallback la parola si in pasii de curatare/restart (erau key-only).
+- AA.5: CAUZA gasita cu `bash -n` local pe blocurile run: continuarea de linie
+  scrisa `\\`+newline (dublu-backslash) in loc de `\`+newline = eroare de
+  sintaxa la runtime. Rescris if/return. Plus: `getlog before` gardat ||
+  (serverul proaspat poate lipsi logs/latest.log) si `&& break` fara trap set -e.
+- Rezultat: deploy SUCCESS; invatatura permanenta: orice modificare de workflow
+  se valideaza local cu bash -n pe toate blocurile run inainte de push.
