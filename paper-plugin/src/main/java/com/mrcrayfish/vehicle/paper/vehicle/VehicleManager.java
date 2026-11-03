@@ -331,7 +331,13 @@ public final class VehicleManager {
         }
         Location base = anchor != null ? anchor.clone() : player.getLocation();
         base.setPitch(0.0F);
-        Location spot = base.clone().add(base.getDirection().multiply(2.5));
+        // Ciclul AE: garajul scoate masina EXACT din centrul cercului (anchor-ul statiei).
+        // Offset-ul de 2.5m in fata ramane doar pentru fallback-ul fara anchor
+        // (pozitie jucator) ca sa nu spawneze fix sub picioarele lui.
+        Location spot = base.clone();
+        if (anchor == null) {
+            spot.add(base.getDirection().multiply(2.5));
+        }
         spot.setY(base.getY());
         spot.setYaw(base.getYaw());
         LandVehicle vehicle = spawn(stored.id(), spec, spot);

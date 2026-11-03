@@ -652,3 +652,13 @@ PROPRIETARULUI (VehicleManager.parkDrivenByNonOwner, aceleasi exceptii ca quit-c
 podium + pe cric raman; taxi-urile publice fara proprietar nu sunt atinse).
 Proprietarul online primeste mesaj cu numele masinii si al soferului.
 Anti-abandon: nu mai exista „prietenul a iesit si masina ta a ramas in camp".
+
+## Ciclul AE (2026-11-03) — scoaterea din garaj se spawneaza in CENTRUL cercului
+
+Bug de geometrie semnalat de user in-game: retrieve() aplica mereu ofsetul
+"2.5m in fata" (gandit pentru fallback-ul pe jucator) si asupra anchor-ului de
+statie => masina aparea intr-o parte a cercului. Fix: cu anchor de statie =
+pozitie exacta pe anchor (centrul cercului marcat de jucator la /garaj set sau
+de admin la parcarea publica); ofsetul de 2.5m ramane doar pentru fallback
+(anchor null = pozitia jucatorului, ca sa nu apara sub el). Orientarea = yaw-ul
+cercului. Ground-snap-ul din ciclul AC ramane activ (y pe asfalt).
