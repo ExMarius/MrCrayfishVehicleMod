@@ -28,7 +28,7 @@ Token-i si chestiile sensibile sunt in secrets GitHub, niciodata in cod.
 | `/vehicle list` | vehicle.admin | Lista vehicule in lume |
 | `/vehicle save` | vehicle.admin | Salveaza acum vehiculele (fortat) |
 | `/vehicle pack` | vehicle.admin | Retrimite resource-pack-ul la player-ul curent |
-| `/vehicle trust <player>` / `untrust` / `trusted` | vehicle.use | Drepturi de condus pe masina ta; untrust il coboara DIN MASINA imediat daca e la volan (ciclul AC) |
+| `/vehicle trust <player>` / `untrust` / `trusted` | vehicle.use | Trust = VOLAN personal: proprietarul o scoate din garaj, prietenul doar conduce; la iesirea soferului cu trust de pe server, masina revine INSTANT in garajul PROPRIETARULUI (ciclul AD) |
 | `/vehicle paint\|vopsea\|vopseste` | mcv.mechanic.paint (op) | Meniul de culoare pe masina vizata |
 | `/vehicle podium set <vehicul> <pret>` / `remove` | vehicle.admin | Podea de showroom (auto-creeaza/reconstruieste) |
 | `/vehicle magazin\|shop\|dealer` | vehicle.use | Deschide ShopGui (catalog+piese) |

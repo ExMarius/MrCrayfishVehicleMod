@@ -264,6 +264,53 @@ public final class VehicleManager {
         return storedCount;
     }
 
+    /** CICLUL AD (decizia userului - reguli trust real-life): trustul = VOLAN cu
+     *  proprietarul in preajma, PUNCT. Soferul cu trust iese de pe server -> masina
+     *  intra INSTANT in garajul PROPRIETARULUI: nu apare in garajul altcuiva (garajul
+     *  ramane strict owner-only), nu ramane abandonata in lume (anti-abuz/anti-lag).
+     *  Masinile fara proprietar (taxi public) nu sunt atinse. Aceleasi exceptii ca la
+     *  quit-clasic: podium-ul si masina pe cric raman in lume. */
+    public int parkDrivenByNonOwner(java.util.UUID quitterId) {
+        int storedCount = 0;
+        for (LandVehicle vehicle : new java.util.ArrayList<>(vehicles.values())) {
+            if (vehicle.showcase() || vehicle.onJack()) {
+                continue;
+            }
+            if (vehicle.owner().map(quitterId::equals).orElse(false)) {
+                continue; // masinile LUI le acopera parkAllOwnedBy
+            }
+            java.util.UUID ownerId = vehicle.owner().orElse(null);
+            boolean quitterDrivesIt = vehicle.driver()
+                    .map(d -> d.getUniqueId().equals(quitterId)).orElse(false);
+            if (ownerId == null || !quitterDrivesIt) {
+                continue;
+            }
+            StoredVehicle stored = StoredVehicle.from(vehicle);
+            String displayName = vehicle.spec().displayName();
+            unindex(vehicle);
+            releaseChunkTicket(vehicle);
+            trailers.onVehicleRemoved(vehicle.id());
+            vehicles.remove(vehicle.id());
+            pendingWorlds.remove(vehicle.id());
+            vehicle.remove();
+            garage.put(stored.id(), stored);
+            storedCount++;
+            org.bukkit.entity.Player ownerOnline = plugin.getServer().getPlayer(ownerId);
+            if (ownerOnline != null) {
+                String quitterName = org.bukkit.Bukkit.getOfflinePlayer(quitterId).getName();
+                ownerOnline.sendRichMessage("<gray>[Garaj] Masina ta <gold>" + displayName
+                        + "</gold> a intrat in garaj: soferul " + (quitterName == null ? "" : quitterName)
+                        + " (trust) a iesit de pe server.</gray>");
+            }
+        }
+        if (storedCount > 0) {
+            save();
+            plugin.getLogger().info("[Garaj] " + storedCount
+                    + " vehicule conduse cu trust au intrat in garajul proprietarului (soferul a iesit).");
+        }
+        return storedCount;
+    }
+
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
     public boolean retrieve(Player player, UUID vehicleId) {
         return retrieve(player, vehicleId, null);

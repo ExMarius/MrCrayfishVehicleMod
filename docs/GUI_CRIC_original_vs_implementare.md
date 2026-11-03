@@ -639,3 +639,16 @@ User a adus un spec tehnic generat de alt AI (5 module). Verdictul contra codulu
 - Principiile "zero heavy schedulers / event-driven / async save / distSq":
   arhitectura noastra le urmeaza deja (un singur tick task, listeners,
   autosave batchuit 300s; verificat in auditul Y).
+
+## Ciclul AD (2026-11-03) — trust real-life: doar volan, doar cu proprietarul in preajma
+
+Decizia userului (pe proprietate): trustul ramane STRICT acces la volan; mașina
+nu apare in garajul prietenului, nu o poate scoate nimeni in afara proprietarului
+(abuz anti-social eliminat prin design). Propunerea AC/M1 (prietenii scot din
+garaj) RESPINSA de user inainte de implementare - codul de garaj ramane intact.
+
+NOU: soferul cu trust iese de pe server -> masina intra INSTANT in garajul
+PROPRIETARULUI (VehicleManager.parkDrivenByNonOwner, aceleasi exceptii ca quit-clasic:
+podium + pe cric raman; taxi-urile publice fara proprietar nu sunt atinse).
+Proprietarul online primeste mesaj cu numele masinii si al soferului.
+Anti-abandon: nu mai exista „prietenul a iesit si masina ta a ramas in camp".

@@ -300,6 +300,9 @@ public final class VehicleListener implements Listener {
         // QUIT: the ONE global garage - everything of his is stored on the spot.
         // Price depends only on WHERE he pulls it out (/garaj): home = free, public = fee.
         int stored = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
+        // Ciclul AD: si masinile ALTUIVA pe care le conducea cu trust intra instant
+        // in garajul PROPRIETARULUI (trust = doar volan, cu proprietarul in preajma).
+        stored += vehicles.parkDrivenByNonOwner(event.getPlayer().getUniqueId());
         if (stored > 0) {
             plugin.getLogger().info("[Garaj] " + event.getPlayer().getName() + " a iesit - "
                     + stored + " vehicule au intrat in garajul global (zero consum).");
