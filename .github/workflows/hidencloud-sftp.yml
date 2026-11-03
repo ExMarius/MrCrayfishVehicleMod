@@ -1,5 +1,10 @@
 name: HidenCloud deploy (build plugin + upload SSH)
 
+# NOTA OPERATIONALA (ciclul AA): `gh run rerun` esueaza pe acest workflow cu
+# "workflow file may be broken" pentru ca pe default-branch exista UN ALT set de
+# workflow-uri (epoca Oracle/Falix); rerun-urile se valideaza contra default.
+# Redeploy corect = orice push care atinge path-urile de mai jos.
+
 on:
   workflow_dispatch:
   push:
