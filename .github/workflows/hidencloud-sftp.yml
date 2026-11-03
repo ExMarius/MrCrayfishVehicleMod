@@ -151,7 +151,7 @@ jobs:
             echo "::error title=HC-SFTP::nici cheia SSH nici parola nu au mers"
             exit 1
           fi
-          echo "mod conectare: $MODE"
+          echo "::notice title=HC-AUTH::conectat SFTP prin modul: $MODE"
 
           # server.properties MUST carry the fresh pack hash on every deploy: clients cache
           # by URL+hash, so a stale hash means they silently keep the OLD pack (new items
@@ -164,7 +164,10 @@ jobs:
               --plugin-config paper-plugin/src/main/resources/config.yml \
               --output stage/server.properties.patched
             printf 'put stage/server.properties.patched server.properties\n' > batch_props.txt
-            try_sftp $MODE batch_props.txt
+            if ! try_sftp $MODE batch_props.txt > props_out.txt 2>&1; then
+              echo "::error title=HC-PROPS-PUT::put server.properties ESUAT: $(tail -3 props_out.txt | tr -d "\r" | tr '\n' ' ' | cut -c1-300)"
+              exit 1
+            fi
             echo "::notice title=HC-PROPS::server.properties sincronizat cu noul hash al pack-ului"
           else
             echo "::warning title=HC-PROPS::nu am putut citi server.properties; sar peste sync hash"
@@ -193,14 +196,23 @@ jobs:
             printf 'put stage/plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT\n' >> batch_up.txt
             echo "::warning title=HC-WIPE::markerul WIPE_ON_BOOT inclus in upload"
           fi
-          try_sftp $MODE batch_up.txt
+          if ! try_sftp $MODE batch_up.txt > up_out.txt 2>&1; then
+            echo "::error title=HC-UPLOAD::uploadul batch ESUAT: $(tail -5 up_out.txt | tr -d "\r" | tr '\n' ' ' | cut -c1-400)"
+            exit 1
+          fi
           echo "::notice title=HC-UPLOAD::plugin masini + stack + configuri urcate prin SSH ($MODE)"
 
       - name: Curat dublurile vechi
         run: |
           chmod 600 hidencloud/keys/arena_hc_ed25519
+          sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
+          export SSHPASS="$SFTP_PASS_BACKUP"
+          sftp_any() {
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1 \\
+            || sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+          }
           printf 'ls plugins\n' > b_ls.txt
-          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp_ls.txt 2>&1 || true
+          sftp_any b_ls.txt > sftp_ls.txt 2>&1 || true
           grep -oE '(^|/)(TAB v|worldedit-bukkit\.jar|MrCrayfishVehiclePlugin-[^ ]*SNAPSHOT[^ ]*)[^ ]*\.jar' sftp_ls.txt | sed 's|^/||' | sort -u > dupes.txt || true
           printf '' > batch_rm.txt
           while read -r d; do
@@ -210,7 +222,7 @@ jobs:
             esac
           done < dupes.txt
           if [ -s batch_rm.txt ]; then
-            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b batch_rm.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" || true
+            sftp_any batch_rm.txt > /dev/null 2>&1 || true
             echo "::notice title=HC-CLEAN::sters $(( $(wc -l < batch_rm.txt) )) dubluri vechi"
           else
             echo "fara dubluri"
@@ -221,9 +233,11 @@ jobs:
           K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
         run: |
           chmod 600 hidencloud/keys/arena_hc_ed25519
+          export SSHPASS="$SFTP_PASS_BACKUP"
           getlog() {
             printf 'get logs/latest.log %s\n' "$1" > b_get.txt
-            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 \\
+            || sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1
           }
           getlog /tmp/before.log
           BEFORE=$(grep -a 'Done (' /tmp/before.log | tail -1 || echo '?')
