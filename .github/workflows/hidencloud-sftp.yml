@@ -208,8 +208,8 @@ jobs:
           sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
           export SSHPASS="$SFTP_PASS_BACKUP"
           sftp_any() {
-            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1 \\
-            || sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+            if sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1; then return 0; fi
+            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
           }
           printf 'ls plugins\n' > b_ls.txt
           sftp_any b_ls.txt > sftp_ls.txt 2>&1 || true
@@ -236,10 +236,10 @@ jobs:
           export SSHPASS="$SFTP_PASS_BACKUP"
           getlog() {
             printf 'get logs/latest.log %s\n' "$1" > b_get.txt
-            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 \\
-            || sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1
+            if sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1; then return 0; fi
+            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1
           }
-          getlog /tmp/before.log
+          getlog /tmp/before.log || true
           BEFORE=$(grep -a 'Done (' /tmp/before.log | tail -1 || echo '?')
 
           # opţiunea 1: API dacă e cheie proaspătă
@@ -255,7 +255,7 @@ jobs:
             sleep 20
             getlog /tmp/after.log || true
             NEW=$(grep -a 'Done (' /tmp/after.log | tail -1 || echo '')
-            [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ] && break
+            if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then break; fi
           done
           if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then
             echo "::notice title=HC-DONE::RESTART CONFIRMAT — server online cu noul build: $(echo $NEW | cut -c1-120)"
