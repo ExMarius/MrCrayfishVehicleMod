@@ -394,6 +394,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         vehicles.save();
         sender.sendRichMessage("<red>I-ai retras accesul: " + args[1]
                 + " nu mai poate conduce mașina ta.</red>");
+        // Ciclul AC (spec-ul userului, modulul 3): revocarea in timpul mersului =
+        // jucatorul e coborat INSTANT de la volan (nu asteapta sa coboare singur).
+        Player drivingNow = Bukkit.getPlayer(targetUuid);
+        if (drivingNow != null && vehicle.driver().map(d -> d.equals(drivingNow)).orElse(false)) {
+            drivingNow.leaveVehicle();
+            drivingNow.sendRichMessage("<red>Proprietarul tocmai ți-a retras accesul - "
+                    + "ai fost coborât din " + vehicle.spec().displayName() + ".</red>");
+            sender.sendRichMessage("<gray>Era la volan chiar acum - l-am coborât pe loc.</gray>");
+        }
     }
 
     /** /vehicle trusted - who can drive your nearest owned vehicle right now. */

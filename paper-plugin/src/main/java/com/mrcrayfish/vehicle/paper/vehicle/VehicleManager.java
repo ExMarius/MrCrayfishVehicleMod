@@ -129,7 +129,22 @@ public final class VehicleManager {
         return trailers.spawn(spec, location);
     }
 
+    /** Ciclul AC: vehiculele de apa stau la suprafata apei, nu se snap-uiesc pe fund. */
+    private static boolean isWaterVehicle(LandVehicleSpec spec) {
+        String id = spec.id();
+        return "speed_boat".equals(id) || "aluminum_boat".equals(id) || "jet_ski".equals(id);
+    }
+
     private LandVehicle spawn(UUID id, LandVehicleSpec spec, Location location) {
+        // Ciclul AC (din spec-ul AI al userului, modulul 4): raza verticala in jos la
+        // spawn - masina nu mai ramane suspendata daca Y-ul tinta e in aer. Apa = skip.
+        if (!isWaterVehicle(spec) && location.getWorld() != null) {
+            org.bukkit.util.RayTraceResult ground = location.getWorld().rayTraceBlocks(
+                    location, new Vector(0, -1, 0), 20.0, org.bukkit.FluidCollisionMode.NEVER, true);
+            if (ground != null && ground.getHitBlock() != null) {
+                location.setY(ground.getHitBlock().getY() + 1.0);
+            }
+        }
         LandVehicle vehicle = LandVehicle.spawn(plugin, id, location, spec, trailers);
         vehicles.put(id, vehicle);
         pendingWorlds.remove(id);

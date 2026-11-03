@@ -618,3 +618,24 @@ sa nu consume". Implementare:
   invocarea comenzii, niciodata in fundal -> cost zero cand nu o ruleaza nimeni.
 - Accesorii noi (count-uri O(1)): VehicleManager.garageSize(), JackManager.jackCount(),
   WorkstationManager.stationCount(). plugin.yml + tab-complete + help actualizate.
+
+## Ciclul AC (2026-11-03) — spec-ul AI al userului, confruntat cu realitatea
+
+User a adus un spec tehnic generat de alt AI (5 module). Verdictul contra codului:
+- M1 quit->garaj: EXISTEA deja (quit auto-garage, certificat). Sub-punctul
+  "prietenul cu trust scoate masina din garaj in zona": lasat la decizia userului
+  (trust-ul nostru = volan, design Z).
+- M2 unclaimed/claim: EXISTEA deja, intr-o forma MAI BUNA: parcarea unei masini
+  fara proprietar o revendica (first-park rule); ownerless = taxi public (nu
+  am adopat auto-claim la urcare, ar fi omorat taxiul + theft prin atingere).
+- M3 eviction la untrust: NOU — implementat: canDrive se verifica doar la
+  urcare; acum /vehicle untrust il coboara INSTANT daca e la volan in clipa
+  revocarii (leaveVehicle + mesaje ambelor parti).
+- M4 raycast la sol la spawn: NOU — implementat in VehicleManager.spawn
+  (rayTraceBlocks in jos 20 blocuri, y=hit+1; vehiculele de apa
+  speed_boat/aluminum_boat/jet_ski sar — stau la suprafata apei).
+- M5 odometru barci: ERA DEJA conform — odometerul aduna Math.hypot(dx, dz),
+  orizontal-only exact ca in spec, pe distanta reala; nimic de schimbat.
+- Principiile "zero heavy schedulers / event-driven / async save / distSq":
+  arhitectura noastra le urmeaza deja (un singur tick task, listeners,
+  autosave batchuit 300s; verificat in auditul Y).
