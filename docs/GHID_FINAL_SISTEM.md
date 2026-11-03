@@ -41,13 +41,13 @@ Token-i si chestiile sensibile sunt in secrets GitHub, niciodata in cod.
 ## SISTEMUL MECANIC (Player journey testat)
 
 1. **Banc de lucru** (`JackManager` + blenderblocks): pui un jack bloc langa vehicul. Relatie **1:1** cu un banc; max 5 blocuri intre ele.
-2. **Elevator**: cheie mecanica din banc (max 2, fiecare = operator) -> shift-click pe vehicul -> `elevator lifted/lowering/idle`. Min **10 blocuri** intre doua elevatoare (`jack.min-distance` in config).
-3. **Unelte din banc**: cheia si ciocanul apar direct in inventar; apoi dispar din banc si in meniu devin BARRIER "LUATA/Ocupata" (doar un player o tine, reluare doar la spargerea bancului/checarea zonei).
+2. **Elevator (cric)**: apropii masina de placa cricului si dai click cu **cheia de mecanic PE CRIC** (sau din meniul bancului) -> masina se ridica/coboara. Masina coborata ramane PINUITA pe cric pana urca soferul. Clasele de repaus dupa coborare sunt hardcodate: masini joase = pe placa (0.5), garda mare = roti pe pamant (0.0625), ridicat = 0.75 (`jack.offsets` in config = doar override manual pentru exceptii). Min **10 blocuri** intre doua elevatoare (`jack.min-distance`), max `max-wrenches: 2` chei per banc.
+3. **Unelte din banc**: cheia si ciocanul apar direct in inventar; apoi dispar din banc si in meniu devin BARRIER "LUATA/Ocupata" (doar un player o tine, reluare doar la spargerea bancului/checarea zonei). Uneltele de banc DISPAR singure daca jucatorul iese din zona bancului (binding).
 4. **Reparatie/Demontare**: vehicul TREBUIE RIDICAT (`require-lift: true` in config); cheia pe vehicul suspendat = scoti roțile; ciocan-[left-click] pe vehicul suspendat = scoti motorul.
 5. **Repaire items** (`mechanic.repair-items`): REDSTONE, IRON etc sunt consumate la reparatia completa (NU bani - banii in banc se negociaza RP).
 6. **Spray** (nu e unealta de banc) = vopseste direct masina 1:1 ca in mod.
 7. **Paint System propriu** (`mechanic.paint-menu`). Gratuit, GUI propriu — NU consuma item.
-8. **Inchidere masina** (cheia masinii). Nou: `case "lock"` in comanda primeste /vehicle-adjacent (elemenul fizic cu data de incuiere este in LandVehicle).
+8. **Acces la volan = TRUST, FARA CHEI** (ciclul Z): nu exista chei de masina si nici incuiere. Cine poate conduce = proprietarul + jucatorii adaugati cu `/vehicle trust <nume>` langa masina (ori de cati prieteni); `/vehicle untrust` retrage, `/vehicle trusted` listeaza. Trustul e persistat. Pasagerii urca liber oricand.
 
 ## ECONOMIA — FIVEM-STYLE, doar cu Vault/EssentialsX
 - Preturi per tip in `config.yml: dealership.prices` (`shopping_cart: 100` pana la `sports_plane: 500000`).

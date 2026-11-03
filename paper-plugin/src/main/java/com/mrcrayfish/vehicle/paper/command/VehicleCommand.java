@@ -391,7 +391,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         vehicles.save();
-        sender.sendRichMessage("<red>Am luat cheia înapoi: " + args[1]
+        sender.sendRichMessage("<red>I-ai retras accesul: " + args[1]
                 + " nu mai poate conduce mașina ta.</red>");
     }
 

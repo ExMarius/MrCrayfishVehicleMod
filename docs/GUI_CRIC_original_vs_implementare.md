@@ -550,3 +550,27 @@ era REDUNDANTA cu sistemul trust deja functional -> eliminata complet:
   /vehicle trust|untrust|trusted, persistat); pasagerii urca liber.
 - "Cheia de mecanic" (WRENCH-ul bancului) ramane NESCHIMBATA - e unealta de
   service, nu de acces.
+
+## Ciclul AA (2026-10-25) — CURATENIE GENERALA repo + reparatii post-Z
+
+STERSE (neutilizate, fara nicio referinta vie; raman in history/tag backup-2026-10-24-c9ef3e6):
+- Untitled.zip (11.7MB model Collada razlet, politie)
+- kenney_car-kit.zip (4.8MB kit-sursa; asseturile sunt DEJA extrase in
+  src/main/resources/assets, folosite de CI la generarea pack-ului)
+- probe-result.txt (log de diagnostic one-shot din epoca Oracle)
+- oracle-panel/ + oracle-vm/ (infrastructura VECHE de hosting Oracle Cloud;
+  hostingul e HidenCloud de mult — zero referinte in workflows/cod/docs)
+
+LASATE INTENTIONAT: hidencloud/ (VIU: cheia SSH + config TAB/Essentials se urca
+la fiecare deploy), src/ (inputul pack-ului CI + referinta modului), toate cele
+6 workflow-uri (backup-release/paper-milestone-release/manual = functionale),
+tools/ (build_resource_pack.py + teste + wheels preset tuner + pin SHA pack),
+build files mod (identitatea repo-ului original).
+
+REPARATII (post-ciclul Z):
+- /vehicle untrust: mesajul zicea "Am luat cheia inapoi" -> "I-ai retras accesul"
+  (nu mai exista chei).
+- GHID_FINAL_SISTEM: bulletul Elevator rescris realist (cheie PE CRIC, pinuita,
+  clasele de repaus hardcodate), bulletul "Inchidere masina (cheia)" inlocuit cu
+  regula trust, binding-ul uneltelor de banc explicat.
+- README: comanda de build corectata la cea folosita in CI.

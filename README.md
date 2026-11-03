@@ -13,7 +13,7 @@
 >
 > - **Ghid de comanda complet (jucatori + admini): [docs/GHID_FINAL_SISTEM.md](docs/GHID_FINAL_SISTEM.md)**
 > - **Jurnal tehnic ciclu-cu-ciclu (original vs implementare): [docs/GUI_CRIC_original_vs_implementare.md](docs/GUI_CRIC_original_vs_implementare.md)**
-> - Build: `./gradlew :paper-plugin:build` (CI: GitHub Actions build+deploy SSH pe push).
+> - Build: `./paper-plugin/gradlew -p paper-plugin build` (CI: GitHub Actions build+deploy SSH pe push).
 > - Permisiuni: `vehicle.use` jucatori / `vehicle.admin` si `mcv.*` pentru admini.
 >
 > Continutul de mai jos = README-ul original al modului Forge (surasa de inspiratie).
