@@ -76,6 +76,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "garaj", "garage", "parcari" -> garaj(sender, command, label);
             case "paint", "vopsea", "vopseste" -> paint(sender);
             case "give" -> give(sender, args);
+            case "propsdebug" -> propsDebug(sender);
             default -> help(sender, label);
         }
         return true;
@@ -566,6 +567,41 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/garaj</yellow> <gray>- garajul global (set/remove, liste în chat; acasă gratuit, public cu taxă)</gray>");
     }
 
+    /** CICLUL AJ.5: diagnostica blocului-tinta pentru problemele de randare a
+     *  props-urilor (con/placa/teava). Arata CE crede serverul ca e acolo + daca
+     *  mai bantui entitati-fantoma mcv_prop in jur. */
+    private void propsDebug(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Doar un jucator poate rula asta.</red>");
+            return;
+        }
+        if (!player.isOp() && !sender.hasPermission("vehicle.admin")) {
+            player.sendRichMessage("<red>Nu ai permisiunea.</red>");
+            return;
+        }
+        org.bukkit.block.Block target = player.getTargetBlockExact(8);
+        if (target == null || target.getType() == org.bukkit.Material.AIR) {
+            player.sendRichMessage("<gray>[PropsDebug] nu tintesti niciun bloc (maxim 8m).</gray>");
+        } else {
+            com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind kind =
+                    com.mrcrayfish.vehicle.paper.world.TrafficProps.kindOf(target);
+            player.sendRichMessage("<gray>[PropsDebug] bloc: <yellow>" + target.getType()
+                    + "</yellow> stare=<aqua>" + target.getBlockData().getAsString() + "</aqua>"
+                    + " kind=" + (kind == null ? "<red>null (nu e prop al nostru)</red>"
+                        : "<green>" + kind + "</green>")
+                    + " @ " + target.getX() + " " + target.getY() + " " + target.getZ());
+        }
+        int ghosts = 0;
+        for (org.bukkit.entity.Entity entity : player.getNearbyEntities(6, 6, 6)) {
+            if (entity.getScoreboardTags().contains("mcv_prop")) {
+                ghosts++;
+                entity.remove();
+            }
+        }
+        player.sendRichMessage("<gray>[PropsDebug] fantome mcv_prop in 6m: " + ghosts
+                + (ghosts > 0 ? " (le-am sters acum)" : ""));
+    }
+
     /** CICLUL AH: obiectele de drum reale (con/placa) - admin-only, stil audit Y:
      *  ce nu incape in inventar nu se pierde, se arunca la picioare. */
     private void give(CommandSender sender, String[] args) {
@@ -617,7 +653,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
