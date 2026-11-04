@@ -147,7 +147,11 @@ jobs:
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
           PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$JAR" "$PACK" --clobber
+            # Ciclul AH.2: un singur writer per asset de release - aici doar JAR-ul;
+            # PACK-ul il urca exclusiv workflow-ul de deploy HidenCloud (el e owner-ul
+            # asset-ului servit jucatorilor). Remediaza race-ul concurent clobber+care
+            # picau AMBELE workflow-uri fiecare cand pack-ul se schimba.
+            gh release upload "$TAG" "$JAR" --clobber
             gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/$TAG" \
               -f sha="$GITHUB_SHA" -F force=true >/dev/null
             gh release edit "$TAG" --target "$GITHUB_SHA" \
