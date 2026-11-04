@@ -198,8 +198,9 @@ public final class VehiclePlugin extends JavaPlugin {
         getServer().getPluginManager().registerEvents(shopListener, this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.DealerPodiumListener(dealerStations, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new com.mrcrayfish.vehicle.paper.listener.VehicleChunkListener(vehicleManager), this);
-
-        // Sistemul mecanic: piese + cric + banc de lucru + props + GUI + chefie/vopsire.
+        // Ciclul AU: siguranta vitezometrului XP (restaurare la quit/join dupa crash).
+        getServer().getPluginManager().registerEvents(
+                new com.mrcrayfish.vehicle.paper.listener.XpSpeedoListener(vehicleManager), this);
         mechanicManager = new com.mrcrayfish.vehicle.paper.mechanic.MechanicManager(this, vehicleManager);
         getServer().getPluginManager().registerEvents(
                 new com.mrcrayfish.vehicle.paper.mechanic.MechanicListener(mechanicManager, vehicleManager), this);

@@ -52,9 +52,14 @@ public final class VehicleManager {
      *  accelereze la infinit. Cheile invechite se curata pasiv la re-intalnire. */
     /** Ciclul AL: edge-trigger pentru sunetul oficial de boost pad (la intrari). */
     private final Map<UUID, Integer> lastPadIngress = new HashMap<>();
-    /* CICLUL AR revizuit in AS (feedback user): ceasurile NU stau in sidebar -
-     * acolo e deja scoreboard-ul serverului (TAB). Vitezometrul s-a mutat in
-     * action bar-ul masinii (LandVehicle.showFuelOverlay), langa combustibil. */
+    /* CICLUL AT (feedback user): hidrate sidebar si actionbar vitezometru eliminate.
+     * CICLUL AU (user: "fa-l mai frumos, cu toate cerintele"): ceasul de viteza e
+     * bara + numarul de NIVEL XP ale jucatorului - nativ, frumos, zero conflict cu
+     * scoreboard-ul serverului. XP-ul REAL se salveaza in memorie + in PDC (anti
+     * crash) si se restaureaza intocmai cand jucatorul coboara/delogheaza. */
+    private static final org.bukkit.NamespacedKey XP_HUD_BACKUP =
+            new org.bukkit.NamespacedKey("vehicle", "xp_hud_backup");
+    private final Map<UUID, double[]> hijackedXp = new HashMap<>();
     private int activationTick;
     /** Short per-vehicle cooldown after a bumper-car bonk so overlapping cars don't
      * retrigger the jolt and sound every single tick while still touching. */
@@ -561,6 +566,100 @@ public final class VehicleManager {
             }
         }
         ramp.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 4, 0.35D, 0.1D, 0.35D, 0.01D);
+    }
+
+    /* ============== CICLUL AU - vitezometrul pe bara de XP a jucatorului ==============
+     * Cerinta userului: ceas de viteza FRUMOS si nativ, fara sa atin
+     * scoreboard-ul serverului (TAB are sidebar-ul) si cu valori de o masina
+     * normala (max ~150 km/h). Solutia: NIVELUL de XP = km/h (numar mare, verde,
+     * deasupra hotbar-ului), iar bara de XP se umple pe scala configurabila.
+     * XP-ul adevarat nu se pierde: la prima urcare retinem nivel/progres/total si
+     * le restauream la coborare, delogare sau join dupa un crash (PDC backup). */
+
+    /** Ruleaza la fiecare 5 tick-uri pentru un vehicul activ. */
+    private void tickSpeedo(LandVehicle vehicle) {
+        if (!plugin.getConfig().getBoolean("hud.speedo", true)) {
+            return;
+        }
+        Player driver = vehicle.driver().orElse(null);
+        if (driver == null) {
+            return;
+        }
+        UUID id = driver.getUniqueId();
+        if (!hijackedXp.containsKey(id)) {
+            double level = driver.getLevel();
+            double progress = driver.getExp();
+            double total = driver.getTotalExperience();
+            hijackedXp.put(id, new double[]{level, progress, total});
+            driver.getPersistentDataContainer().set(XP_HUD_BACKUP,
+                    org.bukkit.persistence.PersistentDataType.STRING,
+                    level + "," + progress + "," + total);
+        }
+        org.bukkit.util.Vector v = vehicle.velocity();
+        int kmh = (int) Math.round(Math.hypot(v.getX(), v.getZ()) * 20.0D * 3.6D);
+        kmh = Math.max(0, Math.min(999, kmh));
+        int fullScale = Math.max(60,
+                plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
+        driver.setLevel(kmh);
+        driver.setExp((float) Math.min(1.0D, (double) kmh / fullScale));
+    }
+
+    /** Scoate ceasul celor care au coborat/delogat intre doua curatenii (1s). */
+    private void cleanupXpHud() {
+        if (hijackedXp.isEmpty()) {
+            return;
+        }
+        java.util.Set<UUID> driving = new java.util.HashSet<>();
+        for (LandVehicle vehicle : vehicles.values()) {
+            vehicle.driver().ifPresent(driver -> driving.add(driver.getUniqueId()));
+        }
+        hijackedXp.keySet().removeIf(id -> {
+            if (driving.contains(id)) {
+                return false;
+            }
+            Player player = Bukkit.getPlayer(id);
+            if (player != null) {
+                restoreXp(player);
+            }
+            return true;
+        });
+    }
+
+    /** Repune EXACT XP-ul de dinainte de urcare si sterge markerul de backup. */
+    public void restoreXp(Player player) {
+        if (player == null) {
+            return;
+        }
+        double[] backup = hijackedXp.remove(player.getUniqueId());
+        if (backup == null) {
+            // Recuperare dupa crash/restart: markerul supravietuieste in PDC.
+            String marker = player.getPersistentDataContainer().get(XP_HUD_BACKUP,
+                    org.bukkit.persistence.PersistentDataType.STRING);
+            if (marker == null) {
+                return;
+            }
+            String[] parts = marker.split(",");
+            if (parts.length == 3) {
+                try {
+                    backup = new double[]{Double.parseDouble(parts[0]),
+                            Double.parseDouble(parts[1]), Double.parseDouble(parts[2])};
+                } catch (NumberFormatException ignored) {
+                    return;
+                }
+            }
+        }
+        if (backup == null) {
+            return;
+        }
+        player.setLevel((int) backup[0]);
+        player.setExp((float) Math.max(0.0D, Math.min(1.0D, backup[1])));
+        player.setTotalExperience(Math.max(0, (int) backup[2]));
+        player.getPersistentDataContainer().remove(XP_HUD_BACKUP);
+    }
+
+    /** True daca jucatorul are in prezent ceasul de viteza pe XP. */
+    public boolean isXpHijacked(UUID playerId) {
+        return hijackedXp.containsKey(playerId);
     }
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
@@ -1348,6 +1447,10 @@ public final class VehicleManager {
                 } else {
                     updateChunkTicket(vehicle);
                     handleTrafficProps(vehicle);
+                    // Ciclul AU: vitezometrul XP la cadenta de 5 tick-uri.
+                    if (activationTick % 5 == 0) {
+                        tickSpeedo(vehicle);
+                    }
                 }
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Vehicle tick failed for " + vehicle.id(), exception);
@@ -1356,6 +1459,9 @@ public final class VehicleManager {
         }
         trailers.tick();
         handleBumperCarCollisions();
+        if (activationTick % 20 == 0) {
+            cleanupXpHud();
+        }
         } finally {
             com.mrcrayfish.vehicle.paper.runtime.PerfTracker.end(perfStart);
         }

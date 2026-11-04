@@ -38,9 +38,15 @@ physics:
   # the air", en_us.lang). Valori mai mari = lansari mai spectaculoase.
   boost-ramp-lift: 0.38
 
-# Ciclul AT: ceasurile de bord (AR sidebar -> AS action bar) au fost ELIMINATE
-# complet, la cererea userului - bara de jos arata exclusiv "Fuel + odometru",
-# exact ca overlay-ul original al modului. (Nu mai exista nicio cheie hud.*)
+# Ciclul AU (user a cerut ceasurile de viteza FRUMOS, fara sa atinga
+# scoreboard-ul serverului): vitezometrul E bara + numarul de nivel XP ale
+# jucatorului - nativ, verde, deasupra hotbar-ului. XP-ul real se salveaza la
+# urcare si se restaureaza intocmai la coborare/delogare/join-dupa-crash.
+# Action bar-ul de jos ramane "Fuel + odometru" (neschimbat, din mod).
+hud:
+  speedo: true
+  # Scala maxima a cadranului (150 = masina normala): bara de XP se umple spre ea.
+  speed-fullscale-kmh: 150
 
 performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.
