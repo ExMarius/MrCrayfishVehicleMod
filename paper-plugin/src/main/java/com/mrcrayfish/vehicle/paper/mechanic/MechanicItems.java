@@ -466,18 +466,17 @@ public final class MechanicItems {
         return item;
     }
 
+    /** Ciclul AI: entitatile-prop pentru con/placa au fost ELIMINATE; fabricile
+     *  acestea returneaza direct itemul de bloc real (TrafficProps) - meniul
+     *  creative si orice referinta veche primesc automat blocul, nu fantoma. */
     public static ItemStack trafficCone() {
-        ItemStack item = base(Kind.TRAFFIC_CONE, "traffic_cone");
-        finish(item, Component.text("Con de trafic", NamedTextColor.GOLD), List.of(
-                Component.text("Decor stradal - click dreapta pentru plasare.", NamedTextColor.GRAY)));
-        return item;
+        return com.mrcrayfish.vehicle.paper.world.TrafficProps.item(
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.CONE, 1);
     }
 
     public static ItemStack boostPad() {
-        ItemStack item = base(Kind.BOOST_PAD, "boost_pad");
-        finish(item, Component.text("Placa de boost", NamedTextColor.GOLD), List.of(
-                Component.text("Treci cu masina peste ea pentru acceleratie.", NamedTextColor.GRAY)));
-        return item;
+        return com.mrcrayfish.vehicle.paper.world.TrafficProps.item(
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.BOOST_PAD, 1);
     }
 
     public static ItemStack fluidPipe() {

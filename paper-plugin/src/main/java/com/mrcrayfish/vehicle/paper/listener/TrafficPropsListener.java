@@ -41,7 +41,17 @@ public final class TrafficPropsListener implements Listener {
         ItemStack hand = event.getItem();
         TrafficProps.Kind kind = TrafficProps.kindOf(hand);
         if (kind == null) {
-            return;
+            // Ciclul AI: itemele VECHI din ciclurile anterioare (PDC-ul mecanic) si
+            // continuous functioneaza - pun acum BLOCUL real, nu entitatea veche.
+            com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind legacy =
+                    com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.kindOf(hand);
+            if (legacy == com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind.TRAFFIC_CONE) {
+                kind = TrafficProps.Kind.CONE;
+            } else if (legacy == com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind.BOOST_PAD) {
+                kind = TrafficProps.Kind.BOOST_PAD;
+            } else {
+                return;
+            }
         }
         event.setCancelled(true); // hartia nu interactioneaza cu nimic
         Block target = event.getClickedBlock().getRelative(event.getBlockFace());

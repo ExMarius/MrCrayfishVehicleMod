@@ -35,8 +35,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class PropManager {
     private static final String ENTITY_TAG = "mcv_prop";
-    private static final float BOOST_STRENGTH = 1.2F;
-    private static final int BOOST_TICKS = 40;
 
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
@@ -64,7 +62,6 @@ public final class PropManager {
             }
         }
         load();
-        tickTask = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 5L);
     }
 
     public void stop() {
@@ -79,14 +76,36 @@ public final class PropManager {
     }
 
     private void load() {
+        int migrated = 0;
         for (MechanicStore.StoredStation stored : store.loadStations("props")) {
             World world = Bukkit.getWorld(stored.worldId());
             if (world == null) {
                 continue;
             }
+            // CICLUL AI - migratie: conul si placa vechi (entitati ItemDisplay+
+            // Interaction) devin BLOCURI reale exact pe celula salvata, orientarea
+            // placii din yaw-ul memorat. Teava ramane prop-entitate (inca).
+            if ("traffic_cone".equals(stored.kind()) || "boost_pad".equals(stored.kind())) {
+                org.bukkit.block.Block cell = world.getBlockAt(
+                        (int) Math.floor(stored.x()), (int) Math.floor(stored.y()),
+                        (int) Math.floor(stored.z()));
+                if (cell.getType().isAir()) {
+                    cell.setBlockData("traffic_cone".equals(stored.kind())
+                                    ? com.mrcrayfish.vehicle.paper.world.TrafficProps.coneData()
+                                    : com.mrcrayfish.vehicle.paper.world.TrafficProps.padData(
+                            com.mrcrayfish.vehicle.paper.world.TrafficProps.yawToFacing(stored.yaw())),
+                            false);
+                    migrated++;
+                }
+                continue; // nu mai cream entitatea veche
+            }
             spawnRig(stored.id(), stored.kind(),
                     new Location(world, stored.x(), stored.y(), stored.z(), stored.yaw(), 0.0F),
                     JackManager.snapYaw(stored.yaw()));
+        }
+        if (migrated > 0) {
+            plugin.getLogger().info("[Props] Migratie ciclul AI: " + migrated
+                    + " conuri/placi vechi (entitati) convertite la blocuri reale.");
         }
     }
 
@@ -105,24 +124,21 @@ public final class PropManager {
         // Spline ca la jack/banc: rotire la multiplu de 90 grade (ca blocul din mod)
         // si orientarea modelului prin transformare (dealtfel piesele isi ies din grila).
         float snappedYaw = JackManager.snapYaw(yaw);
+        if (!"fluid_pipe".equals(kind)) {
+            return; // ciclul AI: con/placa nu se mai spawn-eaza ca entitati (blocuri reale)
+        }
         Location ground = clickedFace.getBlock().getLocation().add(0.5D, 0.0D, 0.5D);
         spawnRig(UUID.randomUUID(), kind, ground, snappedYaw);
     }
 
+    /** Ciclul AI: mai exista UN SINGUR fel de prop-entitate: teava de fluid. Conul
+     *  si placa de boost sunt de acum BLOCURI reale (TrafficProps). */
     private static String modelFor(String kind) {
-        return switch (kind) {
-            case "boost_pad" -> "boost_pad";
-            case "fluid_pipe" -> "fluid_pipe";
-            default -> "traffic_cone";
-        };
+        return "fluid_pipe";
     }
 
     private static ItemStack itemFor(String kind) {
-        return switch (kind) {
-            case "boost_pad" -> MechanicItems.boostPad();
-            case "fluid_pipe" -> MechanicItems.fluidPipe();
-            default -> MechanicItems.trafficCone();
-        };
+        return MechanicItems.fluidPipe();
     }
 
     private void spawnRig(UUID id, String kind, Location ground, float snappedYaw) {
@@ -194,21 +210,4 @@ public final class PropManager {
         return true;
     }
 
-    /** Placile de boost: vehiculul care trece peste placa primeste accelerare scurta. */
-    private void tick() {
-        counter++;
-        if (counter % 2 != 0) {
-            return;
-        }
-        for (Prop prop : props.values()) {
-            if (!"boost_pad".equals(prop.kind())) {
-                continue;
-            }
-            for (LandVehicle vehicle : vehicles.vehiclesWithin(prop.location(), 1.4D)) {
-                if (vehicle.horizontalSpeed() >= 0.01D) {
-                    vehicle.applyBoost(BOOST_STRENGTH, BOOST_TICKS);
-                }
-            }
-        }
-    }
 }

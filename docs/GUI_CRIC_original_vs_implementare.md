@@ -751,3 +751,29 @@ Implementare:
 
 Urmeaza posibil: fluid_pipe/fluid_pump reale, crate-ul in lume, rampa inclinata
 dupa validarea placii plate in joc.
+
+## Ciclul AI (2026-11-04) — raportul userului: itemele noi aparea mov/negru + eliminare entitati-prop
+
+Diagnostic dublu, ambele validate local:
+1. **Icon mov/negru**: cauza nu era pack-ul (zip verificat local: blockstates +
+   modele + texturi prezente si coerente); era regresia CUNOSCUTA a serverului
+   (commit 7845b33/6810905): PAPER + item_model nu mai randeaza. Fix: itemele
+   TrafficProps trec pe baza dovedita LEATHER_HORSE_ARMOR + alb opac explicit,
+   exact cum fac prop-urile care „aratau ok" la user.
+2. **Variantele VECHI din entitati (PropManager: ItemDisplay+Interaction) —
+   ELIMINATE**: conul si placa de boost nu se mai spawneaza ca entitati deloc.
+   La primul boot, props-urile vechi stocate devin automat BLOCURI reale pe
+   celula salvata (con fara orientare; placa cu orientarea din yaw-ul memorat).
+   Teava de fluid ramane singurul prop-entitate (documentat; urmeaza cand zice
+   userul). tick()-ul de boost al PropManager (scanere entitati la 5 tickuri) a
+   disparut - boost-ul e acum in fizica blocurilor (ciclul AH), iar /vehicle give
+   si meniul creative dau ambele itemul de bloc real. Itemele vechi din
+   cufere (PDC-ul mecanic) sunt inca acceptate si pun blocul real (punte
+   TrafficPropsListener) - nimic pierdut din inventare.
+3. **Fix latent pack** descoperit la verificare: fallback-ul tripwire fara
+   conditie se compunea peste starile hijack-uite (multipart stocheaza toate
+   potrivirile) => dubla randare. Fallback-ul are acum when disarmed=false:
+   separare stricta vanilla (disarmed=false) vs prop-urile noastre (disarmed=true).
+
+Pack reconstruit si repinuit (sha 589272ec...), 24/24 teste unitare locale cu
+builder-ul noi rulate inainte de push.

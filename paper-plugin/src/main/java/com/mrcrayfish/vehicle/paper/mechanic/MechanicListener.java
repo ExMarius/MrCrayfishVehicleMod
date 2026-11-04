@@ -88,16 +88,8 @@ public final class MechanicListener implements Listener {
                     consumeIfNotCreative(held, creative);
                 }
             }
-            case TRAFFIC_CONE -> {
-                event.setCancelled(true);
-                mechanic.props().place("traffic_cone", face, yaw);
-                consumeIfNotCreative(held, creative);
-            }
-            case BOOST_PAD -> {
-                event.setCancelled(true);
-                mechanic.props().place("boost_pad", face, yaw);
-                consumeIfNotCreative(held, creative);
-            }
+            // Ciclul AI: TRAFFIC_CONE/BOOST_PAD nu mai exista ca entitati-prop;
+            // itemele vechi sunt preluate de TrafficPropsListener si pun BLOCUL real.
             case FLUID_PIPE -> {
                 event.setCancelled(true);
                 mechanic.props().place("fluid_pipe", face, yaw);

@@ -1308,9 +1308,12 @@ def build(output: Path) -> tuple[Path, str]:
                       "south": "none", "west": "side"}, "apply": {"model": _BOOST, "y": 270}},
             {"when": {"disarmed": "true", "north": "none", "east": "none",
                       "south": "none", "west": "none"}, "apply": {"model": _CONE}},
-            # firul vanilla, toate celelalte combinatii (serverul nostru = drumuri,
-            # nu capcane cu carlige): o linie dreapta simpla
-            {"apply": {"model": "minecraft:block/trip_wire_ns"}},
+            # firul vanilla = doar starile normale (disarmed=false); pe cele
+            # hijack-uite (disarmed=true) o combinatie fara-when s-ar COMPUSE
+            # cu modelul nostru (multipart stocheaza toate potrivirile) => dubla
+            # randare/z-fighting. Separarea e curata: disarmed=false = vanilla,
+            # disarmed=true = ai nostri.
+            {"when": {"disarmed": "false"}, "apply": {"model": "minecraft:block/trip_wire_ns"}},
         ]})
         copy(ASSETS / "textures/item/wrench.png", namespace / "textures/item/wrench.png")
         copy(ASSETS / "textures/item/hammer.png", namespace / "textures/item/hammer.png")

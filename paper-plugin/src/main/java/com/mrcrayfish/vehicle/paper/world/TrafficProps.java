@@ -52,8 +52,16 @@ public final class TrafficProps {
     /* ================================ itemele ================================ */
 
     public static ItemStack item(Kind kind, int amount) {
-        ItemStack stack = new ItemStack(Material.PAPER, Math.max(1, Math.min(64, amount)));
+        // Ciclul AI: regresia cunoscuta (commit 7845b33/6810905): PAPER + item_model
+        // nu mai randeaza => icon mov/negru. Baza dovedita live este
+        // LEATHER_HORSE_ARMOR + alb opac explicit (exact modelul folosit de
+        // PropManager la entitatile care userul confirma ca „arata ok").
+        ItemStack stack = new ItemStack(Material.LEATHER_HORSE_ARMOR,
+                Math.max(1, Math.min(64, amount)));
         ItemMeta meta = stack.getItemMeta();
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setColor(org.bukkit.Color.fromRGB(0xF9FFFE));
+        }
         meta.setItemModel(new NamespacedKey("vehicle",
                 kind == Kind.CONE ? "traffic_cone" : "boost_pad"));
         meta.getPersistentDataContainer().set(KIND, PersistentDataType.STRING, kind.name());
