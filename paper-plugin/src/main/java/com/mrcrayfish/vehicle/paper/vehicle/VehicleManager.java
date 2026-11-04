@@ -52,11 +52,9 @@ public final class VehicleManager {
      *  accelereze la infinit. Cheile invechite se curata pasiv la re-intalnire. */
     /** Ciclul AL: edge-trigger pentru sunetul oficial de boost pad (la intrari). */
     private final Map<UUID, Integer> lastPadIngress = new HashMap<>();
-    /* CICLUL AR - ceasurile de bord (user: "un ceas de combustibil si unul de
-     * viteza, in dreapta"): sidebar per-sofer, redesenat doar cand valorile s-au
-     * schimbat, sters la coborare (revine scoreboard-ul principal al serverului). */
-    private final Map<UUID, org.bukkit.scoreboard.Scoreboard> hudBoards = new HashMap<>();
-    private final Map<UUID, String> hudLast = new HashMap<>();
+    /* CICLUL AR revizuit in AS (feedback user): ceasurile NU stau in sidebar -
+     * acolo e deja scoreboard-ul serverului (TAB). Vitezometrul s-a mutat in
+     * action bar-ul masinii (LandVehicle.showFuelOverlay), langa combustibil. */
     private int activationTick;
     /** Short per-vehicle cooldown after a bumper-car bonk so overlapping cars don't
      * retrigger the jolt and sound every single tick while still touching. */
@@ -563,95 +561,6 @@ public final class VehicleManager {
             }
         }
         ramp.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 4, 0.35D, 0.1D, 0.35D, 0.01D);
-    }
-
-    /* ==================== CICLUL AR - ceasurile de bord ==================== */
-
-    /** Sidebar in dreapta ecranului, doar pentru sofer: "ceasul" de VITEZA (km/h,
-     *  full-scale configurabil) si cel de COMBUSTIBIL (procent din rezervor).
-     *  Redesenare DOAR cand s-a schimbat vreo valoare (cheia kmh|pct) => 0 spam. */
-    private void tickHud(LandVehicle vehicle) {
-        if (!plugin.getConfig().getBoolean("hud.gauges", true)) {
-            return;
-        }
-        Player driver = vehicle.driver().orElse(null);
-        if (driver == null) {
-            return;
-        }
-        org.bukkit.util.Vector v = vehicle.velocity();
-        double blocksPerSecond = Math.hypot(v.getX(), v.getZ()) * 20.0D;
-        int kmh = (int) Math.round(blocksPerSecond * 3.6D);
-        int fuelPct = (int) Math.round(100.0D * vehicle.fuel()
-                / Math.max(1.0D, vehicle.spec().energyCapacity()));
-        String key = kmh + "|" + fuelPct;
-        UUID id = driver.getUniqueId();
-        if (key.equals(hudLast.get(id))) {
-            return;
-        }
-        hudLast.put(id, key);
-        drawHud(driver, kmh, fuelPct);
-    }
-
-    private void drawHud(Player player, int kmh, int fuelPct) {
-        org.bukkit.scoreboard.Scoreboard board = hudBoards.computeIfAbsent(
-                player.getUniqueId(),
-                ignored -> Bukkit.getScoreboardManager().getNewScoreboard());
-        org.bukkit.scoreboard.Objective objective = board.getObjective("mcvhud");
-        if (objective == null) {
-            objective = board.registerNewObjective("mcvhud",
-                    org.bukkit.scoreboard.Criteria.DUMMY,
-                    net.kyori.adventure.text.Component.text("BORD",
-                            net.kyori.adventure.text.format.NamedTextColor.GOLD),
-                    org.bukkit.scoreboard.RenderType.INTEGER);
-            objective.setDisplaySlot(org.bukkit.scoreboard.DisplaySlot.SIDEBAR);
-        }
-        // sterge liniile vechi de pe acest board (numai cele create de noi)
-        for (String entry : board.getEntries()) {
-            objective.getScore(entry).resetScore();
-        }
-        int fullScale = Math.max(60, plugin.getConfig().getInt("hud.speed-fullscale-kmh", 200));
-        int speedPct = Math.min(100, (int) Math.round(100.0D * kmh / fullScale));
-        objective.getScore("§b§l⚡ §f" + gaugeBar(speedPct) + " §e" + kmh + " km/h").setScore(2);
-        objective.getScore("§6§l⛽ §f" + gaugeBar(fuelPct) + " §e" + fuelPct + "%").setScore(1);
-        if (player.getScoreboard() != board) {
-            player.setScoreboard(board);
-        }
-    }
-
-    /** Cadran din 10 segmente: █ plin / ░ gol - citește instant, ca un ceas auto. */
-    private static String gaugeBar(int pct) {
-        int filled = Math.max(0, Math.min(10, (int) Math.round(pct / 10.0D)));
-        StringBuilder bar = new StringBuilder(10);
-        for (int i = 0; i < 10; i++) {
-            bar.append(i < filled ? '█' : '░');
-        }
-        return bar.toString();
-    }
-
-    /** La coborare/iesire: soferul pierde ceasurile si revine la scoreboard-ul
-     *  principal al serverului (nu atingem tabelele altor pluginuri). */
-    private void cleanupHud() {
-        hudBoards.keySet().removeIf(id -> {
-            Player player = Bukkit.getPlayer(id);
-            boolean stillDriving = false;
-            if (player != null) {
-                for (LandVehicle vehicle : vehicles.values()) {
-                    if (vehicle.driver().map(driver ->
-                            driver.getUniqueId().equals(id)).orElse(false)) {
-                        stillDriving = true;
-                        break;
-                    }
-                }
-            }
-            if (stillDriving) {
-                return false;
-            }
-            if (player != null) {
-                player.setScoreboard(Bukkit.getScoreboardManager().getMainScoreboard());
-            }
-            hudLast.remove(id);
-            return true;
-        });
     }
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
@@ -1439,10 +1348,6 @@ public final class VehicleManager {
                 } else {
                     updateChunkTicket(vehicle);
                     handleTrafficProps(vehicle);
-                    // Ciclul AR: ceasurile de bord au cadenta de 4 tick-uri.
-                    if (activationTick % 4 == 0) {
-                        tickHud(vehicle);
-                    }
                 }
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Vehicle tick failed for " + vehicle.id(), exception);
@@ -1451,9 +1356,6 @@ public final class VehicleManager {
         }
         trailers.tick();
         handleBumperCarCollisions();
-        if (activationTick % 20 == 0) {
-            cleanupHud();
-        }
         } finally {
             com.mrcrayfish.vehicle.paper.runtime.PerfTracker.end(perfStart);
         }

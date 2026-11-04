@@ -38,13 +38,14 @@ physics:
   # the air", en_us.lang). Valori mai mari = lansari mai spectaculoase.
   boost-ramp-lift: 0.38
 
-# Ciclul AR - ceasurile de bord cerute de user ("un ceas de combustibil si unul
-# de viteza ... in dreapta"): sidebar lateral DOAR pentru sofer, redesenat cand
-# se schimba valorile; dispare la coborare si lasa scoreboard-ul principal intact.
+# Ciclul AR -> revizuit AS (feedback user): ceasurile de bord stau in ACTION BAR
+# (jos), nu in sidebar - in dreapta e deja scoreboard-ul serverului (TAB). Doar
+# soferul/ocupantii le vad, la 2x pe secunda; vitezometrul are scala de masina
+# normala, combustibilul e aceeasi bara de "Fuel" ca inainte.
 hud:
   gauges: true
-  # Scala "maxima" a vitezometrului (barra de 10 segmente se umple spre ea).
-  speed-fullscale-kmh: 200
+  # Scala "maxima" a vitezometrului: bara de 10 segmente se umple spre 150 km/h.
+  speed-fullscale-kmh: 150
 
 performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.

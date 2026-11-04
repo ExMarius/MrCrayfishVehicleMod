@@ -1761,10 +1761,30 @@ public final class LandVehicle {
         rig.setSeatGauge(fuel / capacity);
     }
 
-    /** Vanilla replacement for the original mod's continuously updated fuel overlay. */
+    /** Vanilla replacement for the original mod's continuously updated fuel overlay.
+     *  CICLUL AS (feedback user): ceasul de VITEZA NU sta in sidebar (acolo e deja
+     *  scoreboard-ul serverului) - intra aici, in action bar, langa combustibil,
+     *  exact pozitia HUD-ului din mod (OverlayHandler). Scala cadranului e tarata
+     *  ca la o masina normala (~150 km/h plina); mod expune "BPS" (blocuri/s),
+     *  noi aratam direct km/h + bps intre paranteze - 1:1 cu OverlayHandler. */
     private void showFuelOverlay() {
-        Component overlay = Component.text(FuelGauge.overlay(fuel, spec.energyCapacity())
-                + "  |  " + odometerLabel(), NamedTextColor.GOLD);
+        String fuelPlusOdo = FuelGauge.overlay(fuel, spec.energyCapacity())
+                + "  |  " + odometerLabel();
+        Component overlay;
+        if (plugin.getConfig().getBoolean("hud.gauges", true)) {
+            double bps = Math.hypot(velocity.getX(), velocity.getZ()) * 20.0D;
+            int kmh = (int) Math.round(bps * 3.6D);
+            int fullScale = Math.max(60,
+                    plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
+            int pct = Math.max(0, Math.min(100, (int) Math.round(100.0D * kmh / fullScale)));
+            overlay = Component.text("Viteza: " + gaugeBar(pct) + " " + kmh + " km/h",
+                            NamedTextColor.AQUA)
+                    .append(Component.text(String.format(java.util.Locale.ROOT, " (%.1f bps)", bps),
+                            NamedTextColor.DARK_GRAY))
+                    .append(Component.text("  |  " + fuelPlusOdo, NamedTextColor.GOLD));
+        } else {
+            overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
+        }
         for (Entity carrier : rig.seatCarriers()) {
             for (Entity passenger : carrier.getPassengers()) {
                 if (passenger instanceof Player player) {
@@ -1772,6 +1792,16 @@ public final class LandVehicle {
                 }
             }
         }
+    }
+
+    /** Cadran din 10 segmente (█ plin / ░ gol) - ceasul din bord il citesti instant. */
+    private static String gaugeBar(int pct) {
+        int filled = Math.max(0, Math.min(10, (int) Math.round(pct / 10.0D)));
+        StringBuilder bar = new StringBuilder(10);
+        for (int i = 0; i < 10; i++) {
+            bar.append(i < filled ? '█' : '░');
+        }
+        return bar.toString();
     }
 
     public Vector velocity() {
