@@ -1261,8 +1261,9 @@ def build(output: Path) -> tuple[Path, str]:
         write_json(namespace / "models/block/mcv_workstation.json", _ws)
 
         # Blockstates: gazde NEOPACE peste tot (niciun culling pe nicio parte):
-        #  - elevator: petrified_oak_slab bottom=JOS, top=SUS (platforma la +0.5),
-        #    double = tamplarie vanilla (oak_planks), neatins
+        #  - elevator: petrified_oak_slab bottom=JOS, top=SUS (platforma la +0.5)
+        #  - CON (ciclul AL): petrified_oak_slab double = SOLID full-cube, orfan
+        #    (inobtinabila survival) -> cu modelul conului real 1:1 din mod
         #  - banc: composter[level=7], level 0-6+8 = composter vanilla
         _mc_namespace = namespace.parent / "minecraft"
         write_json(_mc_namespace / "blockstates/petrified_oak_slab.json", {"variants": {
@@ -1270,8 +1271,8 @@ def build(output: Path) -> tuple[Path, str]:
             "type=bottom,waterlogged=true": {"model": "vehicle:block/mcv_jack_down"},
             "type=top,waterlogged=false": {"model": "vehicle:block/mcv_jack_up"},
             "type=top,waterlogged=true": {"model": "vehicle:block/mcv_jack_up"},
-            "type=double,waterlogged=false": {"model": "minecraft:block/oak_planks"},
-            "type=double,waterlogged=true": {"model": "minecraft:block/oak_planks"},
+            "type=double,waterlogged=false": {"model": "vehicle:block/mcv_traffic_cone"},
+            "type=double,waterlogged=true": {"model": "vehicle:block/mcv_traffic_cone"},
         }})
         write_json(_mc_namespace / "blockstates/composter.json", {"multipart": [
             {"when": {"level": "0|1|2|3|4|5|6|8"},
@@ -1288,11 +1289,23 @@ def build(output: Path) -> tuple[Path, str]:
         # latura fiind directia sagetii (y=90 in MC roteste nord -> est).
         mechanic_convert(ASSETS / "models/block/traffic_cone.json",
                          namespace / "models/block/mcv_traffic_cone.json")
+        # Ciclul AL: particulele de spargere ale conului = textura lui reala
+        _cone_json = json.loads((namespace / "models/block/mcv_traffic_cone.json").read_text())
+        _cone_json.setdefault("textures", {})
+        _cone_json["textures"]["particle"] = "vehicle:item/traffic_cone"
+        (namespace / "models/block/mcv_traffic_cone.json").write_text(
+            json.dumps(_cone_json, separators=(",", ":")))
         mechanic_convert(ASSETS / "models/block/boost_pad.json",
                          namespace / "models/block/mcv_boost_pad.json")
         # Ciclul AJ: si teava de fluid devine bloc real (state attached=true orfan)
         mechanic_convert(ASSETS / "models/block/fluid_pipe.json",
                          namespace / "models/block/mcv_fluid_pipe.json")
+        # Ciclul AL: particulele tevii = textura proprie (nu dark_metal compus)
+        _pipe_json = json.loads((namespace / "models/block/mcv_fluid_pipe.json").read_text())
+        _pipe_json.setdefault("textures", {})
+        _pipe_json["textures"]["particle"] = "vehicle:item/fluid_pipe"
+        (namespace / "models/block/mcv_fluid_pipe.json").write_text(
+            json.dumps(_pipe_json, separators=(",", ":")))
         # animatia de curgere a sagetilor calare pe copia texturii din pack
         copy(ASSETS / "textures/block/boost_pad.png.mcmeta",
              namespace / "textures/item/boost_pad.png.mcmeta")
@@ -1324,9 +1337,8 @@ def build(output: Path) -> tuple[Path, str]:
             {"when": {"disarmed": "true", "attached": "false", "west": "true",
                       "north": "false", "east": "false", "south": "false"},
              "apply": {"model": _BOOST, "y": 270}},
-            {"when": {"disarmed": "true", "attached": "false", "north": "false",
-                      "east": "false", "south": "false", "west": "false"},
-             "apply": {"model": _CONE}},
+            # Ciclul AL: CON nu mai sta in tripwire (e slab solid double acum);
+            # tripwire = doar PAD (o fata) + TEAVA (attached, axe opuse) + vanilla.
             {"when": {"disarmed": "true", "attached": "true", "north": "true",
                       "south": "true", "east": "false", "west": "false"},
              "apply": {"model": "vehicle:block/mcv_fluid_pipe"}},

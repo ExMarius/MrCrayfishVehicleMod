@@ -50,7 +50,8 @@ public final class VehicleManager {
     /** CICLUL AH: cooldown (tick-uri) intre doua impulsuri consecutive primite de
      *  acelasi vehicul de la o placa de boost - 40t = 2s, ca o rampa lunga sa nu
      *  accelereze la infinit. Cheile invechite se curata pasiv la re-intalnire. */
-    private final Map<UUID, Integer> boostCooldownTicks = new HashMap<>();
+    /** Ciclul AL: edge-trigger pentru sunetul oficial de boost pad (la intrari). */
+    private final Map<UUID, Integer> lastPadIngress = new HashMap<>();
     private int activationTick;
     /** Short per-vehicle cooldown after a bumper-car bonk so overlapping cars don't
      * retrigger the jolt and sound every single tick while still touching. */
@@ -437,32 +438,49 @@ public final class VehicleManager {
         }
     }
 
-    /** Placa de boost: impuls in directia sagetii, cu cap de viteza din config si
-     *  cooldown 40 tick-uri. Particule + sunet tinere, o data per contacte-lot. */
+    /** CICLUL AL - placa de boost EXACT ca in mod (BoostPadBlock.entityInside):
+     *  boost CONTINUU cat timp masina e deasupra plăcii (0.06/tick, fără cooldown),
+     *  doar daca masina se misca IN DIRECTIA sagetii (yaw la cardinalul placii,
+     *  ca in mod `facing == entity.getDirection()`), cap de viteza din config.
+     *  Sunetul formal "vehicle:block.boost_pad.boost" la INTRARE (edge-trigger). */
     private void applyBoostPad(LandVehicle vehicle, org.bukkit.block.Block pad,
                                org.bukkit.util.Vector velocity) {
-        int cooldown = boostCooldownTicks.getOrDefault(vehicle.id(), 0);
-        if (cooldown > 0) {
-            boostCooldownTicks.put(vehicle.id(), cooldown - 1);
-            return;
-        }
         org.bukkit.block.BlockFace facing =
                 com.mrcrayfish.vehicle.paper.world.TrafficProps.padFacing(pad);
         if (facing == null) {
             return;
         }
-        org.bukkit.util.Vector dir = com.mrcrayfish.vehicle.paper.world.TrafficProps.facingVector(facing);
+        // Poarta de directie ca in mod: masina merge pe directia sagetii cardinale.
+        float yaw = vehicle.location().getYaw();
+        org.bukkit.block.BlockFace carFacing = com.mrcrayfish.vehicle.paper.world
+                .TrafficProps.yawToFacing(yaw);
+        if (carFacing != facing) {
+            lastPadIngress.remove(vehicle.id());
+            return;
+        }
         double power = plugin.getConfig().getDouble("physics.boost-pad-accel", 0.06D);
         double maxSpeed = plugin.getConfig().getDouble("physics.boost-pad-max-speed", 1.6D);
+        org.bukkit.util.Vector dir = com.mrcrayfish.vehicle.paper.world.TrafficProps.facingVector(facing);
         double px = velocity.getX() + dir.getX() * power;
         double pz = velocity.getZ() + dir.getZ() * power;
         if (px * px + pz * pz <= maxSpeed * maxSpeed) {
             vehicle.setVelocity(new org.bukkit.util.Vector(px, velocity.getY(), pz));
         }
-        boostCooldownTicks.put(vehicle.id(), 40);
         Location at = pad.getLocation().add(0.5D, 0.25D, 0.5D);
-        pad.getWorld().playSound(at, org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.35F, 1.4F);
-        pad.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 10, 0.4D, 0.05D, 0.4D, 0.01D);
+        // Sunetul oficial de boost doar la INTRAREA pe aceasta placa (edge-trigger)
+        Integer last = lastPadIngress.get(vehicle.id());
+        if (last == null || last != pad.hashCode()) {
+            lastPadIngress.put(vehicle.id(), pad.hashCode());
+            for (org.bukkit.entity.Player near : pad.getWorld().getPlayers()) {
+                if (near.getLocation().distanceSquared(at) <= 40.0D * 40.0D) {
+                    near.playSound(net.kyori.adventure.sound.Sound.sound(
+                            net.kyori.adventure.key.Key.key("vehicle", "block.boost_pad.boost"),
+                            net.kyori.adventure.sound.Sound.Source.NEUTRAL, 1.0F, 0.5F),
+                            at.getX(), at.getY(), at.getZ());
+                }
+            }
+        }
+        pad.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 4, 0.35D, 0.05D, 0.35D, 0.008D);
     }
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */

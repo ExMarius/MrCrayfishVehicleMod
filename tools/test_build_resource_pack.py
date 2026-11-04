@@ -555,10 +555,9 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual(1, len(vanilla))
         # Ciclul AK: modelul vanilla real e block/tripwire_ns (fara underscore)
         self.assertEqual("minecraft:block/tripwire_ns", vanilla[0]["apply"]["model"])
-        cone = [p for p in parts if p["apply"]["model"] == "vehicle:block/mcv_traffic_cone"]
-        self.assertEqual(1, len(cone))
-        self.assertEqual({"disarmed": "true", "attached": "false", "north": "false",
-                          "east": "false", "south": "false", "west": "false"}, cone[0]["when"])
+        # Ciclul AL: conul nu mai e tripwire - a emigrat pe petrified_oak_slab[double]
+        cone = [p for p in parts if "mcv_traffic_cone" in p["apply"]["model"]]
+        self.assertEqual(0, len(cone))
         boost = [p for p in parts
                  if p["apply"]["model"] == "vehicle:block/mcv_boost_pad"]
         self.assertEqual(4, len(boost))
@@ -576,10 +575,7 @@ class ResourcePackBuildTest(unittest.TestCase):
             return [p["apply"] for p in parts
                     if all(state.get(k) in v.split("|") for k, v in p["when"].items())]
         base = {"powered": "false"}
-        self.assertEqual([{"model": "vehicle:block/mcv_traffic_cone"}],
-                         resolve({**base, "attached": "false", "disarmed": "true",
-                                  "north": "false", "east": "false",
-                                  "south": "false", "west": "false"}))
+
         self.assertEqual([{"model": "vehicle:block/mcv_boost_pad"}],
                          resolve({**base, "attached": "false", "disarmed": "true",
                                   "north": "true", "east": "false",
@@ -592,6 +588,25 @@ class ResourcePackBuildTest(unittest.TestCase):
                          resolve({**base, "attached": "false", "disarmed": "false",
                                   "north": "false", "east": "false",
                                   "south": "false", "west": "false"}))
+        # Ciclul AL: conul SOLID = petrified_oak_slab[double] -> model con (orfan survival)
+        slab = self.read_json("assets/minecraft/blockstates/petrified_oak_slab.json")["variants"]
+        self.assertEqual("vehicle:block/mcv_traffic_cone",
+                         slab["type=double,waterlogged=false"]["model"])
+        self.assertEqual("vehicle:block/mcv_traffic_cone",
+                         slab["type=double,waterlogged=true"]["model"])
+        # si elevatoarele raman la jack (regresie)
+        self.assertEqual("vehicle:block/mcv_jack_down", slab["type=bottom,waterlogged=false"]["model"])
+        # particulele de spargere = textura proprie, la toate cele trei props
+        for name, tex_path in (("mcv_traffic_cone", "item/traffic_cone"),
+                               ("mcv_boost_pad", "item/boost_pad"),
+                               ("mcv_fluid_pipe", "item/fluid_pipe")):
+            model = self.read_json(f"assets/vehicle/models/block/{name}.json")
+            particle = model.get("textures", {}).get("particle")
+            self.assertIsNotNone(particle, f"{name} nu are cheia particle")
+            self.assertIn(f"assets/vehicle/textures/{particle.split(':', 1)[1]}.png",
+                          self.entries, f"particula {name} trimite la textura lipsa")
+
+
 
 
 if __name__ == "__main__":

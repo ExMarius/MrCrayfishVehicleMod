@@ -101,7 +101,22 @@ public final class TrafficProps {
 
     /* ================================ blocurile ================================ */
 
+    /** CICLUL AL - CONUL DEVINE SOLID (ca in mod: Block.box(2,0,2,14,18,14); userul a
+     *  cerut explicit "nu poti urca/trece peste el, ca un fence"). Gazda noua:
+     *  petrified_oak_slab[type=double] = stare ORFANA (inobtinabila survival),
+     *  randare controlata 100% de pack - acelasi pipeline dovedit live de statii
+     *  (workstation pe composter[7], jack pe petrified slab bottom/top). */
     public static BlockData coneData() {
+        org.bukkit.block.data.type.Slab data = (org.bukkit.block.data.type.Slab)
+                org.bukkit.Bukkit.createBlockData(Material.PETRIFIED_OAK_SLAB);
+        data.setType(org.bukkit.block.data.type.Slab.Type.DOUBLE);
+        data.setWaterlogged(false);
+        return data;
+    }
+
+    /** Baza tripwire disarmed+zero-fete comună pentru placă/teavă (AH..AK cicluri;
+     *  conul a plecat pe slab solid, dar placa/cat teava cer coliziune ZERO). */
+    private static Tripwire wireBase() {
         Tripwire data = (Tripwire) org.bukkit.Bukkit.createBlockData(Material.TRIPWIRE);
         data.setAttached(false);
         data.setDisarmed(true);
@@ -114,7 +129,7 @@ public final class TrafficProps {
     /** Placa cu sageata aratand spre `facing` (directia in care priveste jucatorul
      *  la plasare). Codam directia IN latura unica activa a firului. */
     public static BlockData padData(BlockFace facing) {
-        Tripwire data = (Tripwire) coneData();
+        Tripwire data = wireBase();
         data.setFace(facing, true);
         return data;
     }
@@ -124,7 +139,7 @@ public final class TrafficProps {
      *  (combinatie complet orfana: attached nu ajunge niciodata true fara carlige,
      *  iar disarmed=true nu apare natural in firul pus de mana). */
     public static BlockData pipeData(BlockFace facing) {
-        Tripwire data = (Tripwire) coneData();
+        Tripwire data = wireBase();
         data.setAttached(true);
         if (facing == BlockFace.EAST || facing == BlockFace.WEST) {
             data.setFace(BlockFace.EAST, true);
@@ -138,7 +153,18 @@ public final class TrafficProps {
 
     /** Identifica blocurile noastre; orice alta combinatie de tripwire = vanilla. */
     public static Kind kindOf(Block block) {
-        if (block == null || block.getType() != Material.TRIPWIRE
+        if (block == null) {
+            return null;
+        }
+        // Ciclul AL: conul SOLID = petrified_oak_slab[double]; bottom/top = jack (alte).
+        if (block.getType() == Material.PETRIFIED_OAK_SLAB) {
+            if (block.getBlockData() instanceof org.bukkit.block.data.type.Slab slab
+                    && slab.getType() == org.bukkit.block.data.type.Slab.Type.DOUBLE) {
+                return Kind.CONE;
+            }
+            return null;
+        }
+        if (block.getType() != Material.TRIPWIRE
                 || !(block.getBlockData() instanceof Tripwire data)
                 || !data.isDisarmed()) {
             return null;
@@ -150,6 +176,9 @@ public final class TrafficProps {
             }
         }
         if (faces == 0 && !data.isAttached()) {
+            // Ciclul AL: conversie lazy in-place a conurilor vechi (tripwire, AH..AK)
+            // pe gazda noua solida - dispare si zgomotul "two-systems".
+            block.setBlockData(coneData(), false);
             return Kind.CONE;
         }
         if (faces == 1 && !data.isAttached()) {
