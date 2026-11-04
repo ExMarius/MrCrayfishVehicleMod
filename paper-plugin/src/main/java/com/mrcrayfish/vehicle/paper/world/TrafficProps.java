@@ -42,7 +42,7 @@ import java.util.List;
  *    distrug fara drop (consumabile fragile).
  */
 public final class TrafficProps {
-    public enum Kind { CONE, BOOST_PAD, FLUID_PIPE, STEEP_RAMP }
+    public enum Kind { CONE, BOOST_PAD, FLUID_PIPE, STEEP_RAMP, FLUID_PUMP, FLUID_EXTRACTOR }
 
     private static final NamespacedKey KIND = new NamespacedKey("vehicle", "prop_kind");
 
@@ -68,6 +68,8 @@ public final class TrafficProps {
                     case BOOST_PAD -> "boost_pad";
                     case FLUID_PIPE -> "fluid_pipe";
                     case STEEP_RAMP -> "steep_boost_ramp";
+                    case FLUID_PUMP -> "fluid_pump";
+                    case FLUID_EXTRACTOR -> "fluid_extractor";
                 }));
         meta.getPersistentDataContainer().set(KIND, PersistentDataType.STRING, kind.name());
         meta.displayName(Component.text(switch (kind) {
@@ -75,6 +77,8 @@ public final class TrafficProps {
                     case BOOST_PAD -> "Placa de Boost";
                     case FLUID_PIPE -> "Teava de Fluid";
                     case STEEP_RAMP -> "Rampa de Boost Abrupta";
+                    case FLUID_PUMP -> "Pompa de Fluid";
+                    case FLUID_EXTRACTOR -> "Extractor de Fluid";
                 }, kind == Kind.CONE ? NamedTextColor.GOLD
                         : kind == Kind.BOOST_PAD ? NamedTextColor.AQUA
                         : kind == Kind.STEEP_RAMP ? NamedTextColor.YELLOW : NamedTextColor.GRAY)
@@ -85,6 +89,8 @@ public final class TrafficProps {
                             case BOOST_PAD -> "Click-dreapta pe asfalt - sageata arata in directia in care privesti";
                             case FLUID_PIPE -> "Click-dreapta langa mixer/pompa - teava reala, pur decorativ";
                             case STEEP_RAMP -> "Click-dreapta pe asfalt - boost dublu si te catapulteaza in aer";
+                            case FLUID_PUMP -> "Click-dreapta capatul unei tevi - pompa din mod, pur decorativ";
+                            case FLUID_EXTRACTOR -> "Click-dreapta langa rezervor - extractorul din mod, pur decorativ";
                         }, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
         stack.setItemMeta(meta);
         return stack;
@@ -170,6 +176,37 @@ public final class TrafficProps {
         return data;
     }
 
+    /** CICLUL AP - pompa de fluid DECORATIVE (FluidPumpBlock din mod). Codare in
+     *  fir: doua laturi ADIACENTE active, neatasat; perechea = {facing, urmatoarea
+     *  in sens orar} => facing-ul e decodabil unic ({N,E}=>N, {E,S}=>E, ...). */
+    public static BlockData pumpData(BlockFace facing) {
+        Tripwire data = wireBase();
+        BlockFace clockwise = switch (facing) {
+            case NORTH -> BlockFace.EAST;
+            case EAST -> BlockFace.SOUTH;
+            case SOUTH -> BlockFace.WEST;
+            default -> BlockFace.NORTH;
+        };
+        data.setFace(facing, true);
+        data.setFace(clockwise, true);
+        return data;
+    }
+
+    /** CICLUL AP - extractorul de fluid DECORATIVE (FluidExtractorBlock din mod).
+     *  Codare: doua laturi OPUSE, neatasat (teava are attached=true => disjunct):
+     *  perechea N+S = extractor orientat NORD, E+W = EST. */
+    public static BlockData extractorData(BlockFace facing) {
+        Tripwire data = wireBase();
+        if (facing == BlockFace.EAST || facing == BlockFace.WEST) {
+            data.setFace(BlockFace.EAST, true);
+            data.setFace(BlockFace.WEST, true);
+        } else {
+            data.setFace(BlockFace.NORTH, true);
+            data.setFace(BlockFace.SOUTH, true);
+        }
+        return data;
+    }
+
     /** Identifica blocurile noastre; orice alta combinatie de tripwire = vanilla. */
     public static Kind kindOf(Block block) {
         if (block == null) {
@@ -217,6 +254,16 @@ public final class TrafficProps {
         // Ciclul AO: 3 laturi active = rampa abrupta (latura lipsa = sensul urcarii).
         if (faces == 3 && !data.isAttached()) {
             return Kind.STEEP_RAMP;
+        }
+        // Ciclul AP: 2 laturi NEATASATE. Opuze (N+S / E+V) = extractor decorativ
+        // (teava are attached=true, deci nu se suprapun). Adiacente = pompa
+        // decorativa (perechea {facing, urmatorul-orar} delimiteaza facing-ul).
+        if (faces == 2 && !data.isAttached()) {
+            if ((data.hasFace(BlockFace.NORTH) && data.hasFace(BlockFace.SOUTH))
+                    || (data.hasFace(BlockFace.EAST) && data.hasFace(BlockFace.WEST))) {
+                return Kind.FLUID_EXTRACTOR;
+            }
+            return Kind.FLUID_PUMP;
         }
         // Ciclul AJ: attached=true + disarmed=true + doua laturi opuse = teava (oricum
         // combinatie orfana pentru firul vanilla pus de mana, care e mereu disarmed=false).

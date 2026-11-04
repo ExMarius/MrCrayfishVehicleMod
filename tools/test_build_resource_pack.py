@@ -585,8 +585,31 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertTrue(all(p["when"].get("attached") == "true" for p in pipe))
         self.assertTrue(all(p["when"].get("disarmed") == "true" for p in pipe))
         self.assertEqual([0, 90], sorted(p["apply"].get("y", 0) for p in pipe))
+        # Ciclul AP: pompa = 2 laturi ADIACENTE neatasate (perechea {facing,
+        # urmatorul-orar}); modelul e nativ sud, de aici y = {N:180, E:270, S:0, W:90}.
+        pump = [p for p in parts if "mcv_fluid_pump" in p["apply"]["model"]]
+        self.assertEqual(4, len(pump))
+        self.assertTrue(all(p["when"].get("attached") == "false" for p in pump))
+        pump_expect = {frozenset(("north", "east")): 180, frozenset(("east", "south")): 270,
+                       frozenset(("south", "west")): 0, frozenset(("west", "north")): 90}
+        for faces_pair, y in pump_expect.items():
+            rule = [p for p in pump
+                    if all(p["when"][f] == "true" for f in faces_pair)
+                    and all(p["when"][f] == "false"
+                            for f in ("north", "east", "south", "west") if f not in faces_pair)]
+            self.assertEqual(1, len(rule), f"pompa: perechea {faces_pair}")
+            self.assertEqual(y, rule[0]["apply"].get("y", 0))
+        # Extractorul = 2 laturi OPUSE neatasate (disjunct de teava: attached=false).
+        extractor = [p for p in parts if "mcv_fluid_extractor" in p["apply"]["model"]]
+        self.assertEqual(2, len(extractor))
+        self.assertTrue(all(p["when"].get("attached") == "false" for p in extractor))
+        self.assertEqual([0, 90], sorted(p["apply"].get("y", 0) for p in extractor))
         self.assertIn("assets/vehicle/models/block/mcv_fluid_pipe.json", self.entries)
         self.assertIn("assets/vehicle/items/fluid_pipe.json", self.entries)
+        for _name in ("fluid_pump", "fluid_extractor"):
+            self.assertIn(f"assets/vehicle/models/block/mcv_{_name}.json", self.entries)
+            self.assertIn(f"assets/vehicle/models/item/{_name}.json", self.entries)
+            self.assertIn(f"assets/vehicle/items/{_name}.json", self.entries)
         self.assertIn("assets/vehicle/models/block/mcv_steep_boost_ramp.json", self.entries)
         self.assertIn("assets/vehicle/models/item/steep_boost_ramp.json", self.entries)
         self.assertIn("assets/vehicle/items/steep_boost_ramp.json", self.entries)
@@ -613,6 +636,14 @@ class ResourcePackBuildTest(unittest.TestCase):
                          resolve({**base, "attached": "false", "disarmed": "true",
                                   "north": "true", "east": "false",
                                   "south": "true", "west": "true"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_fluid_pump", "y": 270}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "false", "east": "true",
+                                  "south": "true", "west": "false"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_fluid_extractor"}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "true", "east": "false",
+                                  "south": "true", "west": "false"}))
         self.assertEqual([{"model": "minecraft:block/tripwire_ns"}],
                          resolve({**base, "attached": "false", "disarmed": "false",
                                   "north": "false", "east": "false",
@@ -633,13 +664,15 @@ class ResourcePackBuildTest(unittest.TestCase):
             for book, pw in (("false", "false"), ("true", "false"), ("true", "true")):
                 self.assertEqual("minecraft:block/lectern",
                                  lectern[f"facing={f},has_book={book},powered={pw}"]["model"])
-        # particulele de spargere = textura proprie, la toate cele patru props
-        # (rampa foloseste sagetile de boost ca in mod, unde modelul baked avea
-        # rampTexture = vehicle:blocks/boost_pad si fara override de particle)
+        # particulele de spargere = textura proprie, la toate props-urile de drum
+        # (rampa: sagetile de boost ca in mod; pompa/extractor: dark_metal/metal,
+        # fix alegerile texturilor "particle" din modelele originale ale modului)
         for name, tex_path in (("mcv_traffic_cone", "item/traffic_cone"),
                                ("mcv_boost_pad", "item/boost_pad"),
                                ("mcv_fluid_pipe", "item/fluid_pipe"),
-                               ("mcv_steep_boost_ramp", "item/boost_pad")):
+                               ("mcv_steep_boost_ramp", "item/boost_pad"),
+                               ("mcv_fluid_pump", "item/dark_metal"),
+                               ("mcv_fluid_extractor", "item/metal")):
             model = self.read_json(f"assets/vehicle/models/block/{name}.json")
             particle = model.get("textures", {}).get("particle")
             self.assertIsNotNone(particle, f"{name} nu are cheia particle")

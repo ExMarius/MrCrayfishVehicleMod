@@ -614,7 +614,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            player.sendRichMessage("<red>/" + "vehicle give <cone|boostpad|pipe|ramp> [cate]</red>");
+            player.sendRichMessage("<red>/" + "vehicle give <cone|boostpad|pipe|ramp|pump|extractor> [cate]</red>");
             return;
         }
         com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind kind =
@@ -626,10 +626,14 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                             com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_PIPE;
                     case "ramp", "rampa", "boostramp", "steep", "steepest" ->
                             com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.STEEP_RAMP;
+                    case "pump", "pompa", "fluidpump", "fluid_pump" ->
+                            com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_PUMP;
+                    case "extractor", "fluidextractor", "fluid_extractor" ->
+                            com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_EXTRACTOR;
                     default -> null;
                 };
         if (kind == null) {
-            player.sendRichMessage("<red>Obiect necunoscut. Foloseste: cone | boostpad | pipe | ramp</red>");
+            player.sendRichMessage("<red>Obiect necunoscut. Foloseste: cone | boostpad | pipe | ramp | pump | extractor</red>");
             return;
         }
         int amount = 1;
@@ -651,6 +655,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case BOOST_PAD -> "Placa de Boost";
             case FLUID_PIPE -> "Teava de Fluid";
             case STEEP_RAMP -> "Rampa de Boost Abrupta";
+            case FLUID_PUMP -> "Pompa de Fluid";
+            case FLUID_EXTRACTOR -> "Extractor de Fluid";
         };
         player.sendRichMessage("<green>Ai primit " + amount + "x " + propName
                 + ". Click-dreapta pe sol pentru plasare.</green>");
@@ -678,7 +684,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("normal", "industrial"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
-            return filter(List.of("cone", "boostpad", "pipe", "ramp"), args[1]);
+            return filter(List.of("cone", "boostpad", "pipe", "ramp", "pump", "extractor"), args[1]);
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
             return filter(List.of("1", "8", "16", "64"), args[2]);

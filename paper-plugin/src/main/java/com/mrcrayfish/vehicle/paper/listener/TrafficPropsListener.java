@@ -83,6 +83,8 @@ public final class TrafficPropsListener implements Listener {
             case BOOST_PAD -> TrafficProps.padData(facing);
             case FLUID_PIPE -> TrafficProps.pipeData(facing);
             case STEEP_RAMP -> TrafficProps.rampData(facing);
+            case FLUID_PUMP -> TrafficProps.pumpData(facing);
+            case FLUID_EXTRACTOR -> TrafficProps.extractorData(facing);
         };
         target.setBlockData(data, false);
         if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {

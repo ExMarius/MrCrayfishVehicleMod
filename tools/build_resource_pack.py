@@ -1173,6 +1173,11 @@ def build(output: Path) -> tuple[Path, str]:
         # (in mod era model programatic comentat, nu JSON; vezi commentul din fisier).
         mechanic_convert(ASSETS / "models/block/steep_boost_ramp.json",
                          namespace / "models/item/steep_boost_ramp.json")
+        # Ciclul AP: pompa + extractorul de fluid (decor, ca teava)
+        mechanic_convert(ASSETS / "models/block/fluid_pump.json",
+                         namespace / "models/item/fluid_pump.json")
+        mechanic_convert(ASSETS / "models/block/fluid_extractor.json",
+                         namespace / "models/item/fluid_extractor.json")
         mechanic_convert(ASSETS / "models/item/panel.json",
                          namespace / "models/item/panel.json")
         mechanic_convert(ASSETS / "models/item/fluid_mixer.json",
@@ -1328,6 +1333,12 @@ def build(output: Path) -> tuple[Path, str]:
         _ramp_json["textures"]["particle"] = "vehicle:item/boost_pad"
         (namespace / "models/block/mcv_steep_boost_ramp.json").write_text(
             json.dumps(_ramp_json, separators=(",", ":")))
+        # Ciclul AP: pompa (capat de teava, cubul cu camera spre sud in model) si
+        # extractorul (cub 16x16 cu ghidaj, "enabled" look) devin blocuri decor.
+        mechanic_convert(ASSETS / "models/block/fluid_pump.json",
+                         namespace / "models/block/mcv_fluid_pump.json")
+        mechanic_convert(ASSETS / "models/block/fluid_extractor.json",
+                         namespace / "models/block/mcv_fluid_extractor.json")
         # Ciclul AL: particulele tevii = textura proprie (nu dark_metal compus)
         _pipe_json = json.loads((namespace / "models/block/mcv_fluid_pipe.json").read_text())
         _pipe_json.setdefault("textures", {})
@@ -1342,6 +1353,8 @@ def build(output: Path) -> tuple[Path, str]:
         _BOOST = "vehicle:block/mcv_boost_pad"
         _CONE = "vehicle:block/mcv_traffic_cone"
         _RAMP = "vehicle:block/mcv_steep_boost_ramp"
+        _PUMP = "vehicle:block/mcv_fluid_pump"
+        _EXTRACTOR = "vehicle:block/mcv_fluid_extractor"
         # Ciclul AK: CRITICA 1.21.4 - tile-ul vanilla tripwire foloseste VARIANTS cu
         # fete BOOLEENE ("east": "true"/"false"), nu multipart enum ("none"/"side")
         # cum era in 1.20! Un when cu valori inexistente e ignorat de client =>
@@ -1393,6 +1406,29 @@ def build(output: Path) -> tuple[Path, str]:
             {"when": {"disarmed": "true", "attached": "false", "west": "false",
                       "north": "true", "east": "true", "south": "true"},
              "apply": {"model": _RAMP, "y": 270}},
+            # Ciclul AP - POMPA: doua laturi ADIACENTE, neatasat; perechea =
+            # {facing, urmatorul-orar}. Modelul are camera spre SUD nativ, deci
+            # rotatiile incep de la 180 (fata nord urca cu y=180 in fata).
+            {"when": {"disarmed": "true", "attached": "false", "north": "true",
+                      "east": "true", "south": "false", "west": "false"},
+             "apply": {"model": _PUMP, "y": 180}},
+            {"when": {"disarmed": "true", "attached": "false", "east": "true",
+                      "south": "true", "north": "false", "west": "false"},
+             "apply": {"model": _PUMP, "y": 270}},
+            {"when": {"disarmed": "true", "attached": "false", "south": "true",
+                      "west": "true", "north": "false", "east": "false"},
+             "apply": {"model": _PUMP}},
+            {"when": {"disarmed": "true", "attached": "false", "west": "true",
+                      "north": "true", "east": "false", "south": "false"},
+             "apply": {"model": _PUMP, "y": 90}},
+            # Ciclul AP - EXTRACTORUL: doua laturi OPUSE NEATASATE (teava are
+            # attached=true => disjunct). Modelul e nativ nord.
+            {"when": {"disarmed": "true", "attached": "false", "north": "true",
+                      "south": "true", "east": "false", "west": "false"},
+             "apply": {"model": _EXTRACTOR}},
+            {"when": {"disarmed": "true", "attached": "false", "east": "true",
+                      "west": "true", "north": "false", "south": "false"},
+             "apply": {"model": _EXTRACTOR, "y": 90}},
             {"when": {"disarmed": "true", "attached": "true", "east": "true",
                       "west": "true", "north": "false", "south": "false"},
              "apply": {"model": "vehicle:block/mcv_fluid_pipe", "y": 90}},
@@ -1404,7 +1440,8 @@ def build(output: Path) -> tuple[Path, str]:
         for _extra_item in ("sports_wheel", "off_road_wheel", "wrench", "hammer", "key",
                             "jack", "jack_head", "disabled_jack", "mechanic_workstation",
                             "traffic_cone", "boost_pad", "fluid_pipe",
-                            "steep_boost_ramp", "spray_can"):
+                            "steep_boost_ramp", "fluid_pump", "fluid_extractor",
+                            "spray_can"):
             write_json(namespace / f"items/{_extra_item}.json",
                        item_definition(f"vehicle:item/{_extra_item}"))
         # Panel + galeti cu fluid (iteme din ModItems): panel-ul are modelul propriu
@@ -1463,8 +1500,8 @@ def build(output: Path) -> tuple[Path, str]:
                 return False
             if name in ("wrench", "hammer", "key", "jack", "jack_head", "disabled_jack",
                         "mechanic_workstation", "traffic_cone", "boost_pad", "fluid_pipe",
-                        "steep_boost_ramp", "spray_can", "hose_segment", "nozzle",
-                        "jerry_can",
+                        "steep_boost_ramp", "fluid_pump", "fluid_extractor",
+                        "spray_can", "hose_segment", "nozzle", "jerry_can",
                         "industrial_jerry_can", "garage_terminal", "tow_bar",
                         "go_kart_body", "fluid_tank"):
                 return False
