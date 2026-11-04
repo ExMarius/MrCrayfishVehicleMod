@@ -187,6 +187,9 @@ public final class VehiclePlugin extends JavaPlugin {
             garajCommand.setTabCompleter(garaj);
         }
         getServer().getPluginManager().registerEvents(new VehicleListener(this, vehicleManager), this);
+        // Ciclul AH: con de trafic + placa de boost ca blocuri reale (tripwire hijack).
+        getServer().getPluginManager().registerEvents(
+                new com.mrcrayfish.vehicle.paper.listener.TrafficPropsListener(), this);
         getServer().getPluginManager().registerEvents(new GasPumpListener(gasPumpManager, vehicleManager), this);
         getServer().getPluginManager().registerEvents(new JerryCanListener(this, vehicleManager, gasPumpManager), this);
         com.mrcrayfish.vehicle.paper.listener.ShopListener shopListener =

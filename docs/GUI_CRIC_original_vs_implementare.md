@@ -723,3 +723,31 @@ Decizie: serverul cere versiunea EXACTA 1.21.4 (nativ), ca orice server cu
 continut custom greu (conventia din ecosistemul ItemsAdder/pack-uri custom).
 Scos download-ul din staging + stergerea jar-ului din plugins la fiecare deploy.
 Avantaj colateral: o singura matrice de testare, zero surprize la update-uri MC.
+
+## Ciclul AH (2026-11-04) — conul de trafic si placa de boost ca BLOCURI REALE
+
+Audit mod vs plugin (raspunsul la „ce ne lipseste"): modul inregistreaza 10
+blocuri (traffic_cone, fluid_extractor, fluid_mixer, gas_pump, fluid_pipe,
+fluid_pump, workstation, vehicle_crate, jack+jack_head); boost_pad/ramp/steep
+sunt COMENTATE chiar in mod (nici el nu le activeaza). La noi: mixer + pompa +
+banc + cric sunt deja blocuri reale; consumabilele raman iteme. Lipsa reala
+acoperita acum: CONUL si PLACA DE BOOST.
+
+Implementare:
+- Gazda = minecraft:tripwire: unicul bloc vanilla plasabil FARA coliziune =>
+  treci prin ambele, si tu si masina (userul banuia corect ca slab nu merge).
+- Stari-orfane disarmed=true: nicio latura activa = con; exact o latura = placa
+  de boost, latura fiind directia sagetii (plasare dupa privire + mesaj cardinal).
+- Dinamism (VehicleManager.tick, doar vehicule in miscare): conul lovit la
+  viteza se rastoarna instant (air + drop item + sunet); placa impinge pe
+  directia sagetii (physics.boost-pad-accel / boost-pad-max-speed, cooldown 40t,
+  particule FLAME + sunet discret).
+- BlockPhysics anulata pentru combinatiile noastre (fara intoarcere vizuala in
+  fir); pistoanele nu le misca; apa nu le clateste; exploziile le distrug.
+- /vehicle give cone|boostpad [n] (vehicle.admin); spargere => itemul custom
+  (niciodata string vanilla); audit-Y: ce nu incape in inventar pica la picioare.
+- Pack: modele din mod convertite + animatia sagetilor (mcmeta) + blockstates/
+  tripwire.json (fallback fir vanilla = linie simpla; trade-off consemnat).
+
+Urmeaza posibil: fluid_pipe/fluid_pump reale, crate-ul in lume, rampa inclinata
+dupa validarea placii plate in joc.

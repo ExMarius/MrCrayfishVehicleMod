@@ -23,6 +23,10 @@ physics:
   fuel-full-burn-speed: 18.0
   # Multiplicator global pentru unghiul maxim de virare al tuturor vehiculelor (1.0 = ca in mod).
   steering-angle-multiplier: 1.0
+  # Ciclul AH - placa de boost (bloc real, fara coliziune; masina trece peste):
+  # impulsul per contact (blocuri/tick) si viteza orizontala maxima rezultata.
+  boost-pad-accel: 0.06
+  boost-pad-max-speed: 1.6
 
 performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.

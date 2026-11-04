@@ -75,6 +75,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             // trimitea la o subcomanda INEXISTENTA - masinile parea ca „dispar").
             case "garaj", "garage", "parcari" -> garaj(sender, command, label);
             case "paint", "vopsea", "vopseste" -> paint(sender);
+            case "give" -> give(sender, args);
             default -> help(sender, label);
         }
         return true;
@@ -558,17 +559,63 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " gaspump</yellow> <gray>- primești o pompă de benzină plasabilă</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
         sender.sendRichMessage("<yellow>/" + label + " paint</yellow> <gray>- paleta noastră de vopsea GRATUITĂ (stai lângă mașina ta)</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " give <cone|boostpad> [n]</yellow> <gray>- con de trafic / placă de boost, blocuri reale plasabile (admin)</gray>");
         sender.sendRichMessage("<yellow>/" + label + " podium set <vehicul> <pret></yellow> <gray>- showroom static (admin); remove = șterge podiumul de aici</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
         sender.sendRichMessage("<yellow>/" + label + " perf</yellow> <gray>- cât consumă pluginul acum (tick/RAM/contoare), fără să consume (op)</gray>");
         sender.sendRichMessage("<yellow>/garaj</yellow> <gray>- garajul global (set/remove, liste în chat; acasă gratuit, public cu taxă)</gray>");
     }
 
+    /** CICLUL AH: obiectele de drum reale (con/placa) - admin-only, stil audit Y:
+     *  ce nu incape in inventar nu se pierde, se arunca la picioare. */
+    private void give(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Doar un jucator poate primi obiecte de drum.</red>");
+            return;
+        }
+        if (!player.isOp() && !sender.hasPermission("vehicle.admin")) {
+            player.sendRichMessage("<red>Nu ai permisiunea pentru obiecte de drum.</red>");
+            return;
+        }
+        if (args.length < 2) {
+            player.sendRichMessage("<red>/" + "vehicle give <cone|boostpad> [cate]</red>");
+            return;
+        }
+        com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind kind =
+                switch (args[1].toLowerCase(Locale.ROOT)) {
+                    case "cone", "con" -> com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.CONE;
+                    case "boostpad", "boost", "pad" ->
+                            com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.BOOST_PAD;
+                    default -> null;
+                };
+        if (kind == null) {
+            player.sendRichMessage("<red>Obiect necunoscut. Foloseste: cone | boostpad</red>");
+            return;
+        }
+        int amount = 1;
+        if (args.length >= 3) {
+            try {
+                amount = Math.max(1, Math.min(64, Integer.parseInt(args[2])));
+            } catch (NumberFormatException exception) {
+                player.sendRichMessage("<red>Cantitatea trebuie sa fie un numar (1-64).</red>");
+                return;
+            }
+        }
+        ItemStack given = com.mrcrayfish.vehicle.paper.world.TrafficProps.item(kind, amount);
+        java.util.Map<Integer, ItemStack> leftover = player.getInventory().addItem(given);
+        for (ItemStack rest : leftover.values()) {
+            player.getWorld().dropItemNaturally(player.getLocation(), rest);
+        }
+        player.sendRichMessage("<green>Ai primit " + amount + "x " + (kind ==
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.CONE ? "Con de Trafic"
+                : "Placa de Boost") + ". Click-dreapta pe sol pentru plasare.</green>");
+    }
+
     @Override
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -584,6 +631,12 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
+            return filter(List.of("cone", "boostpad"), args[1]);
+        }
+        if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
+            return filter(List.of("1", "8", "16", "64"), args[2]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("spawn")) {
             List<String> types = new ArrayList<>(LandVehicleSpec.ids());

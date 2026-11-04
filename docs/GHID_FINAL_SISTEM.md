@@ -34,6 +34,7 @@ Token-i si chestiile sensibile sunt in secrets GitHub, niciodata in cod.
 | `/vehicle magazin\|shop\|dealer` | vehicle.use | Deschide ShopGui (catalog+piese) |
 | `/vehicle creative` | mcv.creative | Meniul complet de service in creative |
 | `/vehicle perf\|consum\|stats` | mcv.perf (op) | Cat consuma pluginul ACUM (tick ms/RAM/contoare) - citire gratuita, fara sarcina noua |
+| `/vehicle give <cone|boostpad> [n]` | vehicle.admin | Obiecte de drum REALE (blocuri, nu entitati): con de trafic (se rastoarna cand il calci cu masina) si placa de boost (treci prin/e peste, impinge masina pe directia sagetii) |
 | `/vehicle gaspump` / `jerrycan normal\|industrial` | vehicle.admin | Iti da item-urile speciale |
 | `/garaj [set\|remove]` | vehicle.garage | Cercul personal de parcare (ieșire gratuită de acasa) |
 
@@ -55,6 +56,7 @@ Token-i si chestiile sensibile sunt in secrets GitHub, niciodata in cod.
 - Piese consumabile (motor/roti/spray) in `mechanic.parts.prices`.
 - Garaj retrieval: `economy.public-garage-retrieval-fee: 500` in locul public, `0` in locul personal.
 - Parcare cu timer (ciclul AF): masina lasata GOALA intr-un cerc marcat (personal sau public) intra SINGURA in garajul proprietarului dupa `garage.auto-store-park-minutes: 5.0` minute. La scoaterea unei masini, orice blocator gol cu proprietar e mutat automat la garajul LUI (tow anti-blocare); podium + pe-cric + vehicul ocupat + taxi fara proprietar sunt exceptate.
+- Obiecte de drum (ciclul AH): gazda = tripwire cu stari-orfane (disarmed=true, niciodata naturale) => fara coliziune pentru nimeni; pistoanele nu le misca, apa nu le clateste, exploziile le distrug. Placa: `physics.boost-pad-accel: 0.06`, `physics.boost-pad-max-speed: 1.6` (blocuri/tick); cooldown 2s per masina.
 - Fuellium se fabrica din Blaze Juice + Ender Sap in **FluidMixer** (`mechanic.fluid-mixer` in config).
 
 ## STABILITATE CERTIFICATA (cicluri A→J)

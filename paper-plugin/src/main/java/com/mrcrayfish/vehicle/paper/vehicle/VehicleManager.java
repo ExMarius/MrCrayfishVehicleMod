@@ -47,6 +47,10 @@ public final class VehicleManager {
      *  de parcare. Cheia dispare cand vehiculul pleaca din cerc / se occupa / iese
      *  din lume (retainAll la inceputul fiecarui sweep). */
     private final Map<UUID, Integer> parkedInSpotSeconds = new HashMap<>();
+    /** CICLUL AH: cooldown (tick-uri) intre doua impulsuri consecutive primite de
+     *  acelasi vehicul de la o placa de boost - 40t = 2s, ca o rampa lunga sa nu
+     *  accelereze la infinit. Cheile invechite se curata pasiv la re-intalnire. */
+    private final Map<UUID, Integer> boostCooldownTicks = new HashMap<>();
     private int activationTick;
     /** Short per-vehicle cooldown after a bumper-car bonk so overlapping cars don't
      * retrigger the jolt and sound every single tick while still touching. */
@@ -397,6 +401,68 @@ public final class VehicleManager {
             plugin.getLogger().info("[Garaj] Auto-store: " + storedNow
                     + " vehicule mutate in garajul proprietarilor (parcare expirata).");
         }
+    }
+
+    /** CICLUL AH: contactele cu conurile/placile de boost, scanate doar cat masina
+     *  se misca. Conul atins in viteza se rastoarna (dispare cu drop de item); placa
+     *  impinge masina pe directia sagetii. Scanare mica: 3x3 orizontal x 3 niveluri
+     *  (groapa/sub slab/pardiune acoperite) = max 27 citiri per masina in miscare. */
+    private void handleTrafficProps(LandVehicle vehicle) {
+        Location center = vehicle.location();
+        org.bukkit.World world = center.getWorld();
+        if (world == null) {
+            return;
+        }
+        org.bukkit.util.Vector velocity = vehicle.velocity();
+        boolean movingFast = velocity.getX() * velocity.getX() + velocity.getZ() * velocity.getZ()
+                >= 0.05D * 0.05D;
+        int cx = center.getBlockX();
+        int cy = center.getBlockY();
+        int cz = center.getBlockZ();
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dy = -1; dy <= 1; dy++) {
+                for (int dz = -1; dz <= 1; dz++) {
+                    org.bukkit.block.Block block = world.getBlockAt(cx + dx, cy + dy, cz + dz);
+                    com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind kind =
+                            com.mrcrayfish.vehicle.paper.world.TrafficProps.kindOf(block);
+                    if (kind == com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.CONE) {
+                        if (movingFast) {
+                            com.mrcrayfish.vehicle.paper.world.TrafficProps.knockCone(block);
+                        }
+                    } else if (kind == com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.BOOST_PAD) {
+                        applyBoostPad(vehicle, block, velocity);
+                    }
+                }
+            }
+        }
+    }
+
+    /** Placa de boost: impuls in directia sagetii, cu cap de viteza din config si
+     *  cooldown 40 tick-uri. Particule + sunet tinere, o data per contacte-lot. */
+    private void applyBoostPad(LandVehicle vehicle, org.bukkit.block.Block pad,
+                               org.bukkit.util.Vector velocity) {
+        int cooldown = boostCooldownTicks.getOrDefault(vehicle.id(), 0);
+        if (cooldown > 0) {
+            boostCooldownTicks.put(vehicle.id(), cooldown - 1);
+            return;
+        }
+        org.bukkit.block.BlockFace facing =
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.padFacing(pad);
+        if (facing == null) {
+            return;
+        }
+        org.bukkit.util.Vector dir = com.mrcrayfish.vehicle.paper.world.TrafficProps.facingVector(facing);
+        double power = plugin.getConfig().getDouble("physics.boost-pad-accel", 0.06D);
+        double maxSpeed = plugin.getConfig().getDouble("physics.boost-pad-max-speed", 1.6D);
+        double px = velocity.getX() + dir.getX() * power;
+        double pz = velocity.getZ() + dir.getZ() * power;
+        if (px * px + pz * pz <= maxSpeed * maxSpeed) {
+            vehicle.setVelocity(new org.bukkit.util.Vector(px, velocity.getY(), pz));
+        }
+        boostCooldownTicks.put(vehicle.id(), 40);
+        Location at = pad.getLocation().add(0.5D, 0.25D, 0.5D);
+        pad.getWorld().playSound(at, org.bukkit.Sound.ENTITY_FIREWORK_ROCKET_LAUNCH, 0.35F, 1.4F);
+        pad.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 10, 0.4D, 0.05D, 0.4D, 0.01D);
     }
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */
@@ -1183,6 +1249,7 @@ public final class VehicleManager {
                     }
                 } else {
                     updateChunkTicket(vehicle);
+                    handleTrafficProps(vehicle);
                 }
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Vehicle tick failed for " + vehicle.id(), exception);

@@ -1279,6 +1279,39 @@ def build(output: Path) -> tuple[Path, str]:
             {"when": {"level": "7"},
              "apply": {"model": "vehicle:block/mcv_workstation"}},
         ]})
+
+        # === CICLUL AH: con de trafic + placa de boost ca blocuri reale ===
+        # Gazda = minecraft:tripwire (firul de sarma): unicul bloc vanilla plasabil
+        # FARA coliziune - jucatorii si masinile trec prin el, exact cerinta userului.
+        # Stari hijack-uite = ORFANE: disarmed=true nu apare natural (firul pus de
+        # mana ramane disarmed=false). Nicio latura => CON; exact o latura => PLACA,
+        # latura fiind directia sagetii (y=90 in MC roteste nord -> est).
+        mechanic_convert(ASSETS / "models/block/traffic_cone.json",
+                         namespace / "models/block/mcv_traffic_cone.json")
+        mechanic_convert(ASSETS / "models/block/boost_pad.json",
+                         namespace / "models/block/mcv_boost_pad.json")
+        # animatia de curgere a sagetilor calare pe copia texturii din pack
+        copy(ASSETS / "textures/block/boost_pad.png.mcmeta",
+             namespace / "textures/item/boost_pad.png.mcmeta")
+        # placa e o fasie subtire la y=0 => scoatem fata "down" (anti-flicker, ca la statii)
+        _unfloor_bottom_faces(namespace / "models/block/mcv_boost_pad.json")
+        _BOOST = "vehicle:block/mcv_boost_pad"
+        _CONE = "vehicle:block/mcv_traffic_cone"
+        write_json(_mc_namespace / "blockstates/tripwire.json", {"multipart": [
+            {"when": {"disarmed": "true", "north": "side", "east": "none",
+                      "south": "none", "west": "none"}, "apply": {"model": _BOOST}},
+            {"when": {"disarmed": "true", "north": "none", "east": "side",
+                      "south": "none", "west": "none"}, "apply": {"model": _BOOST, "y": 90}},
+            {"when": {"disarmed": "true", "north": "none", "east": "none",
+                      "south": "side", "west": "none"}, "apply": {"model": _BOOST, "y": 180}},
+            {"when": {"disarmed": "true", "north": "none", "east": "none",
+                      "south": "none", "west": "side"}, "apply": {"model": _BOOST, "y": 270}},
+            {"when": {"disarmed": "true", "north": "none", "east": "none",
+                      "south": "none", "west": "none"}, "apply": {"model": _CONE}},
+            # firul vanilla, toate celelalte combinatii (serverul nostru = drumuri,
+            # nu capcane cu carlige): o linie dreapta simpla
+            {"apply": {"model": "minecraft:block/trip_wire_ns"}},
+        ]})
         copy(ASSETS / "textures/item/wrench.png", namespace / "textures/item/wrench.png")
         copy(ASSETS / "textures/item/hammer.png", namespace / "textures/item/hammer.png")
         copy(ASSETS / "textures/item/key.png", namespace / "textures/item/key.png")
