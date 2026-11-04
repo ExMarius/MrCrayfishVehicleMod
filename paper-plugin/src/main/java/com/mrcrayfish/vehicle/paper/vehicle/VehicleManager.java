@@ -429,6 +429,27 @@ public final class VehicleManager {
                     if (kind == com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.CONE) {
                         if (movingFast) {
                             com.mrcrayfish.vehicle.paper.world.TrafficProps.knockCone(block);
+                        } else {
+                            // CICLUL AN - gard virtual: gazda de fir (vezi TrafficProps
+                            // .coneData) nu are coliziune nativa, deci la atingere
+                            // LENTA taiem DOAR componenta de viteza care intra in con.
+                            // Componenta care iese ramane libera: cu spatele iesi oricand.
+                            // Rezultat: conul se simte ca un gard, DAR randarea ramane
+                            // incapabila de culling (firul transparent nu oculeaza nimic).
+                            double toConeX = block.getX() + 0.5D - center.getX();
+                            double toConeZ = block.getZ() + 0.5D - center.getZ();
+                            double flatDist = Math.hypot(toConeX, toConeZ);
+                            if (flatDist > 1.0E-4D) {
+                                double dirX = toConeX / flatDist;
+                                double dirZ = toConeZ / flatDist;
+                                double intoCone = velocity.getX() * dirX
+                                        + velocity.getZ() * dirZ;
+                                if (intoCone > 0.0D) {
+                                    velocity.setX(velocity.getX() - intoCone * dirX);
+                                    velocity.setZ(velocity.getZ() - intoCone * dirZ);
+                                    vehicle.setVelocity(velocity);
+                                }
+                            }
                         }
                     } else if (kind == com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.BOOST_PAD) {
                         applyBoostPad(vehicle, block, velocity);

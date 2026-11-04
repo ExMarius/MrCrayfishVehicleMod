@@ -1262,8 +1262,8 @@ def build(output: Path) -> tuple[Path, str]:
 
         # Blockstates: gazde NEOPACE peste tot (niciun culling pe nicio parte):
         #  - elevator: petrified_oak_slab bottom=JOS, top=SUS (platforma la +0.5)
-        #  - CON (ciclul AL): petrified_oak_slab double = SOLID full-cube, orfan
-        #    (inobtinabila survival) -> cu modelul conului real 1:1 din mod
+        #  - RELICVA con (Al): slab[double] ramase in lume randeaza TOT conul 1:1,
+        #    pana la conversia lazy in fir (prima atingere, vezi TrafficProps.kindOf)
         #  - banc: composter[level=7], level 0-6+8 = composter vanilla
         _mc_namespace = namespace.parent / "minecraft"
         write_json(_mc_namespace / "blockstates/petrified_oak_slab.json", {"variants": {
@@ -1271,11 +1271,12 @@ def build(output: Path) -> tuple[Path, str]:
             "type=bottom,waterlogged=true": {"model": "vehicle:block/mcv_jack_down"},
             "type=top,waterlogged=false": {"model": "vehicle:block/mcv_jack_up"},
             "type=top,waterlogged=true": {"model": "vehicle:block/mcv_jack_up"},
-            "type=double,waterlogged=false": {"model": "minecraft:block/oak_planks"},
-            "type=double,waterlogged=true": {"model": "minecraft:block/oak_planks"},
+            "type=double,waterlogged=false": {"model": "vehicle:block/mcv_traffic_cone"},
+            "type=double,waterlogged=true": {"model": "vehicle:block/mcv_traffic_cone"},
         }})
-        # Ciclul AM: conul SOLID NEOPAC pe lectern[has_book=false,powered=true] -
-        # combinatie ORFANA vanilla (nu poate fi powered fara carte). Chei FULL pentru
+        # Ciclul AN: lecternul ramane doar RELICVA din AM - cele 4 combinatii orfane
+        # (has_book=false, powered=true) randeaza conul pana la conversia lazy in fir.
+        # Cele 12 combinatii legitime = pupitru vanilla, intacte. Chei FULL pentru
         # fiecare combinatie (16) => zero ambiguitate de rezolutie client-side.
         _lectern_v = {}
         for _f, _y in (("north", 0), ("east", 90), ("south", 180), ("west", 270)):
@@ -1339,6 +1340,13 @@ def build(output: Path) -> tuple[Path, str]:
         #   TEAVA: disarmed=true, attached=TRUE, N+S sau E+V true (axe opuse)
         #   FIR VANILLA: orice disarmed=false (nemodificat)
         write_json(_mc_namespace / "blockstates/tripwire.json", {"multipart": [
+            # Ciclul AN: CONUL REVINE PE FIR (gazda originala AH..AK). Firul e
+            # transparent + fara coliziune nativa => clientul nu poate cule nicio
+            # fata vecina: "gaura in jos" de la gazdele solide (AL slab, AM lectern)
+            # dispare DEFINITIV. Soliditatea s-a mutat in plugin (gard virtual).
+            {"when": {"disarmed": "true", "attached": "false", "north": "false",
+                      "east": "false", "south": "false", "west": "false"},
+             "apply": {"model": _CONE}},
             {"when": {"disarmed": "true", "attached": "false", "north": "true",
                       "east": "false", "south": "false", "west": "false"},
              "apply": {"model": _BOOST}},
@@ -1351,8 +1359,8 @@ def build(output: Path) -> tuple[Path, str]:
             {"when": {"disarmed": "true", "attached": "false", "west": "true",
                       "north": "false", "east": "false", "south": "false"},
              "apply": {"model": _BOOST, "y": 270}},
-            # Ciclul AL: CON nu mai sta in tripwire (e slab solid double acum);
-            # tripwire = doar PAD (o fata) + TEAVA (attached, axe opuse) + vanilla.
+            # TEAVA (ciclul AJ): attached=true + axe opuse. Ultima regula = firul
+            # vanilla (disarmed=false), separatorul care nu se compune peste props.
             {"when": {"disarmed": "true", "attached": "true", "north": "true",
                       "south": "true", "east": "false", "west": "false"},
              "apply": {"model": "vehicle:block/mcv_fluid_pipe"}},

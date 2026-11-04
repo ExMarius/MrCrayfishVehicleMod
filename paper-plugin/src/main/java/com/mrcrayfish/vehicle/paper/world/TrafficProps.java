@@ -101,22 +101,19 @@ public final class TrafficProps {
 
     /* ================================ blocurile ================================ */
 
-    /** CICLUL AM - gazda FINALA a conului: minecraft:lectern[has_book=false, powered=true].
-     *  Motivatia iteratiei: userul vrea con SOLID (ca in mod: Block.box(2,0,2,14,18,14)),
-     *  dar gazda solida ANTERIOARA (petrified_oak_slab[type=double]) e OPACA full-cube
-     *  -> oculeaza fata blocului de dedesubt (vizuala "gaura in jos" raportata live).
-     *  Lecternul e SOLID + NEOPAC (nu culeaza fetele vecine) => zero gauri.
-     *  Combinația has_book=FALSE + powered=TRUE e ORFANA ABSOLUTA in vanilla
-     *  (un pupitru nu poate fi "powered" fara carte), deci nicio carte legitima nu isi
-     *  schimba aspectul. powered=true emite semnal redstone spre blocul din dedesubt
-     *  (irelevant pe drumuri, acceptat si documentat). */
+    /** CICLUL AN - gazda conului REVINE la firul de sarma (exact ca la inceput, AH..AK):
+     *  minecraft:tripwire[disarmed=true, attached=false, fara nicio latura activa].
+     *  Istoricul iteratiei: pentru "con solid" gazda a fost mutata pe slab[double]
+     *  (AL) si apoi lectern[powered, fara carte] (AM), dar ambele gazde SOLIDE
+     *  oculeaza fata blocului de dedesubt in randarea clientului 1.21.4 => "gaura
+     *  in jos" vizibila cand conul sta pe blocuri mari (iarba), raportata de user
+     *  de doua ori. Firul e TRANSPARENT + fara coliziune nativa => randarea nu poate
+     *  cule NICIODATA o fata vecina: gaura nu mai poate exista, garantat.
+     *  Soliditatea NU se pierde: s-a mutat server-side in VehicleManager - la viteza
+     *  mica conul taie viteza care intra in el (se simte ca un gard), in viteza se
+     *  rastoarna ca inainte. */
     public static BlockData coneData() {
-        // FIX COMPILARE (CI f741b0a): paper-api 1.21.4 expune pe Lectern doar getterul
-        // hasBook(), NU si setHasBook (setter abia in 1.21.5+). Construim starea direct
-        // din string - parserul vanilla accepta orice combinatie, inclusiv orfana
-        // has_book=false + powered=true care ne intereseaza.
-        return org.bukkit.Bukkit.createBlockData(
-                "minecraft:lectern[has_book=false,powered=true,facing=north]");
+        return wireBase();
     }
 
     /** Baza tripwire disarmed+zero-fete comună pentru placă/teavă (AH..AK cicluri;
@@ -161,12 +158,14 @@ public final class TrafficProps {
         if (block == null) {
             return null;
         }
-        // Ciclul AM: conul SOLID = lectern[has_book=false, powered=true] (NEOPAC =>
-        // dispar gaurile de sub el). Conversii lazy in-place pentru gazdele legacy:
-        // slab[double] (AL) si fir-disarmed (AH..AK) devin lectern automat la atingere.
+        // Ciclul AN: gazda conului e DIN NOU firul (vezi coneData). Relicvele solide
+        // din ciclurile AL/AM (slab[double], lectern[powered fara carte]) se convertesc
+        // lazy IN FIR la prima atingere (masina sau propsdebug) - asa dispare si
+        // "gaura in jos" de sub ele, fara replasare manuala.
         if (block.getType() == Material.LECTERN) {
             if (block.getBlockData() instanceof org.bukkit.block.data.type.Lectern lectern
                     && !lectern.hasBook() && lectern.isPowered()) {
+                block.setBlockData(coneData(), false);
                 return Kind.CONE;
             }
             return null;
@@ -191,9 +190,8 @@ public final class TrafficProps {
             }
         }
         if (faces == 0 && !data.isAttached()) {
-            // Ciclul AL: conversie lazy in-place a conurilor vechi (tripwire, AH..AK)
-            // pe gazda noua solida - dispare si zgomotul "two-systems".
-            block.setBlockData(coneData(), false);
+            // Ciclul AN: firul fara laturi e CHIAR gazda nativa a conului (revenire
+            // dupa AL/AM pe gazde solide) - nicio conversie, nimic de mutat.
             return Kind.CONE;
         }
         if (faces == 1 && !data.isAttached()) {

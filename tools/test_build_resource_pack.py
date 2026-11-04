@@ -548,16 +548,22 @@ class ResourcePackBuildTest(unittest.TestCase):
         return granule
 
     def test_traffic_props_blockstates_are_fully_partitioned(self):
-        """Ciclul AI/AJ: con, placa si teava sunt partitii disjuncte de tripwire;
-        separatorul vanilla (disarmed=false) NU se poate compune peste ele."""
+        """Ciclul AI/AJ/AN: con, placa si teava sunt partitii disjuncte de tripwire;
+        separatorul vanilla (disarmed=false) NU se poate compune peste ele. In AN
+        conul a REVENIT pe fir (zero culling garantat) dupa excursia AL/AM pe gazde
+        solide care ocoleau fata blocului de dedesubt ("gaura in jos")."""
         parts = self.read_json("assets/minecraft/blockstates/tripwire.json")["multipart"]
         vanilla = [p for p in parts if p.get("when") == {"disarmed": "false"}]
         self.assertEqual(1, len(vanilla))
         # Ciclul AK: modelul vanilla real e block/tripwire_ns (fara underscore)
         self.assertEqual("minecraft:block/tripwire_ns", vanilla[0]["apply"]["model"])
-        # Ciclul AL: conul nu mai e tripwire - a emigrat pe petrified_oak_slab[double]
+        # Ciclul AN: conul e DIN NOU in tripwire - regula cu toate fetele false,
+        # disarmed=true, attached=false (fix starea coneData() din TrafficProps).
         cone = [p for p in parts if "mcv_traffic_cone" in p["apply"]["model"]]
-        self.assertEqual(0, len(cone))
+        self.assertEqual(1, len(cone))
+        self.assertEqual({"disarmed": "true", "attached": "false", "north": "false",
+                          "east": "false", "south": "false", "west": "false"},
+                         cone[0]["when"])
         boost = [p for p in parts
                  if p["apply"]["model"] == "vehicle:block/mcv_boost_pad"]
         self.assertEqual(4, len(boost))
@@ -576,6 +582,10 @@ class ResourcePackBuildTest(unittest.TestCase):
                     if all(state.get(k) in v.split("|") for k, v in p["when"].items())]
         base = {"powered": "false"}
 
+        self.assertEqual([{"model": "vehicle:block/mcv_traffic_cone"}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "false", "east": "false",
+                                  "south": "false", "west": "false"}))
         self.assertEqual([{"model": "vehicle:block/mcv_boost_pad"}],
                          resolve({**base, "attached": "false", "disarmed": "true",
                                   "north": "true", "east": "false",
@@ -588,11 +598,13 @@ class ResourcePackBuildTest(unittest.TestCase):
                          resolve({**base, "attached": "false", "disarmed": "false",
                                   "north": "false", "east": "false",
                                   "south": "false", "west": "false"}))
-        # Ciclul AM: conul SOLID NEOPAC = lectern[has_book=false,powered=true] (orfana
-        # absoluta vanilla). Slab-double revine la vanilla, jackurile raman intacte.
+        # Ciclul AN: relicvele solide din AL/AM randeaza TOT conul (nu cuburi de
+        # oak_planks) pana la conversia lazy in fir; jackurile raman intacte.
         slab = self.read_json("assets/minecraft/blockstates/petrified_oak_slab.json")["variants"]
-        self.assertEqual("minecraft:block/oak_planks",
+        self.assertEqual("vehicle:block/mcv_traffic_cone",
                          slab["type=double,waterlogged=false"]["model"])
+        self.assertEqual("vehicle:block/mcv_traffic_cone",
+                         slab["type=double,waterlogged=true"]["model"])
         self.assertEqual("vehicle:block/mcv_jack_down", slab["type=bottom,waterlogged=false"]["model"])
         lectern = self.read_json("assets/minecraft/blockstates/lectern.json")["variants"]
         for f in ("north", "east", "south", "west"):
