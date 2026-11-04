@@ -81,6 +81,8 @@ public final class LandVehicle {
     private double verticalVelocity;
     /** Odometru: metrii (blocuri) parcursi cumulativ - persistat in vehicles.yml. */
     private double odometerMeters;
+    /** Ciclul AW: viteza reala neteda (blocuri/secunda), aceeasi baza ca odometrul. */
+    private double smoothedSpeedBps;
     private boolean onGround = true;
     private boolean handbraking;
     private boolean charging;
@@ -272,6 +274,11 @@ public final class LandVehicle {
         updateVehicleMotion(globalSpeedLimit, enginePowered);
         // Kilometraj: distanta REALA parcursa (blocuri/tick ~ metri), acumulata ieftin.
         odometerMeters += Math.hypot(motion.getX(), motion.getZ());
+        // CICLUL AW: vitezometrul citeste ACEEASI miscare reala ca odometrul
+        // (motion, NU velocity - velocity e inputul pad-urilor si poate fi
+        // inflat/blockat de fizica). EMA peste ~4 tick-uri contra jitter-ului.
+        double instBps = Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
+        smoothedSpeedBps += (instBps - smoothedSpeedBps) * 0.25D;
 
         verticalVelocity -= 0.08D;
         Vector requestedMovement = new Vector(motion.getX(), verticalVelocity + motion.getY(), motion.getZ());
@@ -1216,6 +1223,12 @@ public final class LandVehicle {
         return odometerMeters;
     }
 
+    /** Ciclul AW: viteza reala neteda in blocuri/secunda (aceeasi sursa ca odometrul,
+     *  NU velocity-ul pad-urilor). Folosita de vitezometru (bari + text). */
+    public double smoothedSpeedBps() {
+        return smoothedSpeedBps;
+    }
+
     public void restoreOdometer(double meters) {
         if (Double.isFinite(meters) && meters >= 0.0D) {
             odometerMeters = meters;
@@ -1765,18 +1778,21 @@ public final class LandVehicle {
      *  CICLUL AV (forma finala ceruta de user): deasupra hotbar-ului sta bara de
      *  XP goala umpluta proportional (VehicleManager.tickSpeedo, nivel 0 = fara
      *  cifra verde), iar SCRISUL vitezei il deseneaza pluginul aici, in action
-     *  bar: "⚡ x km/h (bps)" in fata cadranului clasic Fuel + odometru. km/h e
-     *  tinut in teritoriul unei masini normale (<= 2x scala, default 150) ca sa nu
-     *  mai apara niciodata citiri aberante gen 800; unitatea bps e cea a modului. */
+     *  bar: "Viteza: x km/h (bps)" in fata cadranului clasic Fuel + odometru.
+     *  CICLUL AW: viteza = miscarea REALA a masinii (aceeasi sursa ca odometrul,
+     *  EMA ~4 tick), limitata la scala maxima (default 150) - niciodata citiri
+     *  aberante gen 800; unitatea bps e cea a modului. */
     private void showFuelOverlay() {
         String fuelPlusOdo = FuelGauge.overlay(fuel, spec.energyCapacity())
                 + "  |  " + odometerLabel();
         Component overlay;
         if (plugin.getConfig().getBoolean("hud.speedo", true)) {
-            double bps = Math.hypot(velocity.getX(), velocity.getZ()) * 20.0D;
+            // Ciclul AW: viteza = miscarea REALA (aceeasi sursa ca odometrul),
+            // deci cifra si kilometrajul nu se mai contrazic niciodata.
+            double bps = smoothedSpeedBps;
             int fullScale = Math.max(60,
                     plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
-            int kmh = Math.max(0, Math.min(2 * fullScale, (int) Math.round(bps * 3.6D)));
+            int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D)));
             overlay = Component.text("Viteza: " + kmh + " km/h", NamedTextColor.AQUA)
                     .append(Component.text(String.format(java.util.Locale.ROOT, " (%.1f bps)", bps),
                             NamedTextColor.DARK_GRAY))

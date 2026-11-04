@@ -598,14 +598,13 @@ public final class VehicleManager {
                     org.bukkit.persistence.PersistentDataType.STRING,
                     level + "," + progress + "," + total);
         }
-        org.bukkit.util.Vector v = vehicle.velocity();
-        // Ciclul AV: NIVELUL RAMANE 0 (vanilla nu deseneaza cifra verde cand
-        // nivelul e 0) - se vede DOAR umplerea barei = viteza pe scala maxima.
-        // Textul propriu-zis ("⚡ x km/h") il deseneaza pluginul in action bar.
-        double bps = Math.hypot(v.getX(), v.getZ()) * 20.0D;
-        int kmh = Math.max(0, Math.min(999, (int) Math.round(bps * 3.6D)));
+        // Ciclul AV->AW: NIVELUL RAMANE 0 (fara cifra verde); umplerea barei =
+        // viteza REALA (aceeasi baza ca odometrul, via smoothedSpeedBps) pe scala
+        // maxima configurabila. Nu mai citim velocity (inflat de pad-uri).
+        double bps = vehicle.smoothedSpeedBps();
         int fullScale = Math.max(60,
                 plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
+        int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D)));
         driver.setLevel(0);
         driver.setExp((float) Math.max(0.0D, Math.min(1.0D, (double) kmh / fullScale)));
     }

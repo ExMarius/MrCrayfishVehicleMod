@@ -38,12 +38,13 @@ physics:
   # the air", en_us.lang). Valori mai mari = lansari mai spectaculoase.
   boost-ramp-lift: 0.38
 
-# Ciclul AV (forma finala ceruta de user): vitezometrul = bara de XP goala,
+# Ciclul AW (forma finala ceruta de user): vitezometrul = bara de XP goala,
 # umpluta proportional cu viteza, DEASUPRA selectorului de iteme (nivelul e 0,
 # deci cifra verde nu apare deloc); scrisul vitezei e desenat de plugin in
 # action bar ("Viteza: x km/h (y bps)"), inaintea cadranului clasic Fuel+odo.
-# km/h e tinut in teritoriul unei masini normale (afisarea nu depaseste 2x
-# scala). XP-ul real se salveaza la urcare si se restaureaza intocmai la
+# Viteza = miscarea REALA a masinii (aceeasi sursa ca odometrul/metrii, nu
+# inputul pad-urilor); afisarea nu depaseste scala maxima.
+# XP-ul real se salveaza la urcare si se restaureaza intocmai la
 # coborare/delogare/join-dupa-crash - nimeni nu pierde nivelele de enchanting.
 hud:
   speedo: true
