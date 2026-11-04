@@ -553,11 +553,12 @@ class ResourcePackBuildTest(unittest.TestCase):
         parts = self.read_json("assets/minecraft/blockstates/tripwire.json")["multipart"]
         vanilla = [p for p in parts if p.get("when") == {"disarmed": "false"}]
         self.assertEqual(1, len(vanilla))
-        self.assertEqual("minecraft:block/trip_wire_ns", vanilla[0]["apply"]["model"])
+        # Ciclul AK: modelul vanilla real e block/tripwire_ns (fara underscore)
+        self.assertEqual("minecraft:block/tripwire_ns", vanilla[0]["apply"]["model"])
         cone = [p for p in parts if p["apply"]["model"] == "vehicle:block/mcv_traffic_cone"]
         self.assertEqual(1, len(cone))
-        self.assertEqual({"disarmed": "true", "north": "none", "east": "none",
-                          "south": "none", "west": "none"}, cone[0]["when"])
+        self.assertEqual({"disarmed": "true", "attached": "false", "north": "false",
+                          "east": "false", "south": "false", "west": "false"}, cone[0]["when"])
         boost = [p for p in parts
                  if p["apply"]["model"] == "vehicle:block/mcv_boost_pad"]
         self.assertEqual(4, len(boost))
@@ -577,16 +578,20 @@ class ResourcePackBuildTest(unittest.TestCase):
         base = {"powered": "false"}
         self.assertEqual([{"model": "vehicle:block/mcv_traffic_cone"}],
                          resolve({**base, "attached": "false", "disarmed": "true",
-                                  "north": "none", "east": "none",
-                                  "south": "none", "west": "none"}))
+                                  "north": "false", "east": "false",
+                                  "south": "false", "west": "false"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_boost_pad"}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "true", "east": "false",
+                                  "south": "false", "west": "false"}))
         self.assertEqual([{"model": "vehicle:block/mcv_fluid_pipe"}],
                          resolve({**base, "attached": "true", "disarmed": "true",
-                                  "north": "side", "south": "side",
-                                  "east": "none", "west": "none"}))
-        self.assertEqual([{"model": "minecraft:block/trip_wire_ns"}],
+                                  "north": "true", "south": "true",
+                                  "east": "false", "west": "false"}))
+        self.assertEqual([{"model": "minecraft:block/tripwire_ns"}],
                          resolve({**base, "attached": "false", "disarmed": "false",
-                                  "north": "none", "east": "none",
-                                  "south": "none", "west": "none"}))
+                                  "north": "false", "east": "false",
+                                  "south": "false", "west": "false"}))
 
 
 if __name__ == "__main__":

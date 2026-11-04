@@ -1300,31 +1300,40 @@ def build(output: Path) -> tuple[Path, str]:
         _unfloor_bottom_faces(namespace / "models/block/mcv_boost_pad.json")
         _BOOST = "vehicle:block/mcv_boost_pad"
         _CONE = "vehicle:block/mcv_traffic_cone"
+        # Ciclul AK: CRITICA 1.21.4 - tile-ul vanilla tripwire foloseste VARIANTS cu
+        # fete BOOLEENE ("east": "true"/"false"), nu multipart enum ("none"/"side")
+        # cum era in 1.20! Un when cu valori inexistente e ignorat de client =>
+        # props-urile randeau missing-model (mov/negru). Bug-ul ascuns care dura
+        # de la AH pana in AJ - gasit prin /vehicle propsdebug (stare live:
+        # "east=false"). Iar modelul vanilla de fir = block/tripwire_ns (fara _).
+        # CONDITII FINALE:
+        #   CON:  disarmed=true, attached=false, toate 4 fetele false
+        #   PAD:  disarmed=true, attached=false, exact o fata true (directia sagetii)
+        #   TEAVA: disarmed=true, attached=TRUE, N+S sau E+V true (axe opuse)
+        #   FIR VANILLA: orice disarmed=false (nemodificat)
         write_json(_mc_namespace / "blockstates/tripwire.json", {"multipart": [
-            {"when": {"disarmed": "true", "north": "side", "east": "none",
-                      "south": "none", "west": "none"}, "apply": {"model": _BOOST}},
-            {"when": {"disarmed": "true", "north": "none", "east": "side",
-                      "south": "none", "west": "none"}, "apply": {"model": _BOOST, "y": 90}},
-            {"when": {"disarmed": "true", "north": "none", "east": "none",
-                      "south": "side", "west": "none"}, "apply": {"model": _BOOST, "y": 180}},
-            {"when": {"disarmed": "true", "north": "none", "east": "none",
-                      "south": "none", "west": "side"}, "apply": {"model": _BOOST, "y": 270}},
-            {"when": {"disarmed": "true", "north": "none", "east": "none",
-                      "south": "none", "west": "none"}, "apply": {"model": _CONE}},
-            # Ciclul AJ - TEAVA DE FLUID: attached=true + disarmed=true + laturi
-            # opuse (combinatie complet orfana pentru firul vanilla pus de mana).
-            {"when": {"disarmed": "true", "attached": "true", "north": "side",
-                      "south": "side", "east": "none", "west": "none"},
+            {"when": {"disarmed": "true", "attached": "false", "north": "true",
+                      "east": "false", "south": "false", "west": "false"},
+             "apply": {"model": _BOOST}},
+            {"when": {"disarmed": "true", "attached": "false", "east": "true",
+                      "north": "false", "south": "false", "west": "false"},
+             "apply": {"model": _BOOST, "y": 90}},
+            {"when": {"disarmed": "true", "attached": "false", "south": "true",
+                      "north": "false", "east": "false", "west": "false"},
+             "apply": {"model": _BOOST, "y": 180}},
+            {"when": {"disarmed": "true", "attached": "false", "west": "true",
+                      "north": "false", "east": "false", "south": "false"},
+             "apply": {"model": _BOOST, "y": 270}},
+            {"when": {"disarmed": "true", "attached": "false", "north": "false",
+                      "east": "false", "south": "false", "west": "false"},
+             "apply": {"model": _CONE}},
+            {"when": {"disarmed": "true", "attached": "true", "north": "true",
+                      "south": "true", "east": "false", "west": "false"},
              "apply": {"model": "vehicle:block/mcv_fluid_pipe"}},
-            {"when": {"disarmed": "true", "attached": "true", "east": "side",
-                      "west": "side", "north": "none", "south": "none"},
+            {"when": {"disarmed": "true", "attached": "true", "east": "true",
+                      "west": "true", "north": "false", "south": "false"},
              "apply": {"model": "vehicle:block/mcv_fluid_pipe", "y": 90}},
-            # firul vanilla = doar starile normale (disarmed=false); pe cele
-            # hijack-uite (disarmed=true) o combinatie fara-when s-ar COMPUSE
-            # cu modelul nostru (multipart stocheaza toate potrivirile) => dubla
-            # randare/z-fighting. Separarea e curata: disarmed=false = vanilla,
-            # disarmed=true = ai nostri.
-            {"when": {"disarmed": "false"}, "apply": {"model": "minecraft:block/trip_wire_ns"}},
+            {"when": {"disarmed": "false"}, "apply": {"model": "minecraft:block/tripwire_ns"}},
         ]})
         copy(ASSETS / "textures/item/wrench.png", namespace / "textures/item/wrench.png")
         copy(ASSETS / "textures/item/hammer.png", namespace / "textures/item/hammer.png")
