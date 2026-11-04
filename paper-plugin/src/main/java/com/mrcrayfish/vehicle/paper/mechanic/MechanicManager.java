@@ -565,15 +565,13 @@ public final class MechanicManager {
     /* ======================== routing entitati / pauza ======================== */
 
     /** Click dreapta pe entitatile sistemului (interactions ale statiilor inca
-     *  pe entitati: mixer/props; cricul si bancul sunt BLOCURI solide acum). */
+     *  pe entitati: mixer; cricul, bancul si props-urile sunt BLOCURI acum). */
     public boolean handleEntityInteraction(Player player, Entity entity, ItemStack held) {
         if (mixers.handleClick(player, entity, held)) {
             return true;
         }
-        if (props.byEntityPublic(entity).isPresent()) {
-            player.sendRichMessage("<gray>Prop stradal - ghemuit + pumn = il ridici.</gray>");
-            return true;
-        }
+        // Ciclul AJ: props-urile nu mai sunt entitati (sunt blocuri tripwire);
+        // jucatorii le sparg/ridica ca pe orice bloc.
         return false;
     }
 
