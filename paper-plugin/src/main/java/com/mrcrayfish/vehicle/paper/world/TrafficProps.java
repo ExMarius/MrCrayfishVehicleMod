@@ -111,12 +111,12 @@ public final class TrafficProps {
      *  schimba aspectul. powered=true emite semnal redstone spre blocul din dedesubt
      *  (irelevant pe drumuri, acceptat si documentat). */
     public static BlockData coneData() {
-        org.bukkit.block.data.type.Lectern data = (org.bukkit.block.data.type.Lectern)
-                org.bukkit.Bukkit.createBlockData(Material.LECTERN);
-        data.setFacing(BlockFace.NORTH);
-        data.setHasBook(false);
-        data.setPowered(true);
-        return data;
+        // FIX COMPILARE (CI f741b0a): paper-api 1.21.4 expune pe Lectern doar getterul
+        // hasBook(), NU si setHasBook (setter abia in 1.21.5+). Construim starea direct
+        // din string - parserul vanilla accepta orice combinatie, inclusiv orfana
+        // has_book=false + powered=true care ne intereseaza.
+        return org.bukkit.Bukkit.createBlockData(
+                "minecraft:lectern[has_book=false,powered=true,facing=north]");
     }
 
     /** Baza tripwire disarmed+zero-fete comună pentru placă/teavă (AH..AK cicluri;
