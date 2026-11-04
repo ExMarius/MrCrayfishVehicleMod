@@ -559,7 +559,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         sender.sendRichMessage("<yellow>/" + label + " gaspump</yellow> <gray>- primești o pompă de benzină plasabilă</gray>");
         sender.sendRichMessage("<yellow>/" + label + " list</yellow> <gray>- număr vehicule active</gray>");
         sender.sendRichMessage("<yellow>/" + label + " paint</yellow> <gray>- paleta noastră de vopsea GRATUITĂ (stai lângă mașina ta)</gray>");
-        sender.sendRichMessage("<yellow>/" + label + " give <cone|boostpad> [n]</yellow> <gray>- con de trafic / placă de boost, blocuri reale plasabile (admin)</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " give <cone|boostpad|pipe> [n]</yellow> <gray>- con / placă de boost / țeavă de fluid, blocuri reale plasabile (admin)</gray>");
         sender.sendRichMessage("<yellow>/" + label + " podium set <vehicul> <pret></yellow> <gray>- showroom static (admin); remove = șterge podiumul de aici</gray>");
         sender.sendRichMessage("<yellow>/" + label + " save</yellow> <gray>- salvează vehiculele</gray>");
         sender.sendRichMessage("<yellow>/" + label + " perf</yellow> <gray>- cât consumă pluginul acum (tick/RAM/contoare), fără să consume (op)</gray>");
@@ -578,7 +578,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            player.sendRichMessage("<red>/" + "vehicle give <cone|boostpad> [cate]</red>");
+            player.sendRichMessage("<red>/" + "vehicle give <cone|boostpad|pipe> [cate]</red>");
             return;
         }
         com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind kind =
@@ -586,10 +586,12 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                     case "cone", "con" -> com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.CONE;
                     case "boostpad", "boost", "pad" ->
                             com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.BOOST_PAD;
+                    case "pipe", "teava", "fluidpipe", "fluid_pipe" ->
+                            com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_PIPE;
                     default -> null;
                 };
         if (kind == null) {
-            player.sendRichMessage("<red>Obiect necunoscut. Foloseste: cone | boostpad</red>");
+            player.sendRichMessage("<red>Obiect necunoscut. Foloseste: cone | boostpad | pipe</red>");
             return;
         }
         int amount = 1;
@@ -633,7 +635,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("normal", "industrial"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("give")) {
-            return filter(List.of("cone", "boostpad"), args[1]);
+            return filter(List.of("cone", "boostpad", "pipe"), args[1]);
         }
         if (args.length == 3 && args[0].equalsIgnoreCase("give")) {
             return filter(List.of("1", "8", "16", "64"), args[2]);
