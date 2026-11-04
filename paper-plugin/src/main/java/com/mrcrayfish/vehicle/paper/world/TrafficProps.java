@@ -101,16 +101,21 @@ public final class TrafficProps {
 
     /* ================================ blocurile ================================ */
 
-    /** CICLUL AL - CONUL DEVINE SOLID (ca in mod: Block.box(2,0,2,14,18,14); userul a
-     *  cerut explicit "nu poti urca/trece peste el, ca un fence"). Gazda noua:
-     *  petrified_oak_slab[type=double] = stare ORFANA (inobtinabila survival),
-     *  randare controlata 100% de pack - acelasi pipeline dovedit live de statii
-     *  (workstation pe composter[7], jack pe petrified slab bottom/top). */
+    /** CICLUL AM - gazda FINALA a conului: minecraft:lectern[has_book=false, powered=true].
+     *  Motivatia iteratiei: userul vrea con SOLID (ca in mod: Block.box(2,0,2,14,18,14)),
+     *  dar gazda solida ANTERIOARA (petrified_oak_slab[type=double]) e OPACA full-cube
+     *  -> oculeaza fata blocului de dedesubt (vizuala "gaura in jos" raportata live).
+     *  Lecternul e SOLID + NEOPAC (nu culeaza fetele vecine) => zero gauri.
+     *  Combinația has_book=FALSE + powered=TRUE e ORFANA ABSOLUTA in vanilla
+     *  (un pupitru nu poate fi "powered" fara carte), deci nicio carte legitima nu isi
+     *  schimba aspectul. powered=true emite semnal redstone spre blocul din dedesubt
+     *  (irelevant pe drumuri, acceptat si documentat). */
     public static BlockData coneData() {
-        org.bukkit.block.data.type.Slab data = (org.bukkit.block.data.type.Slab)
-                org.bukkit.Bukkit.createBlockData(Material.PETRIFIED_OAK_SLAB);
-        data.setType(org.bukkit.block.data.type.Slab.Type.DOUBLE);
-        data.setWaterlogged(false);
+        org.bukkit.block.data.type.Lectern data = (org.bukkit.block.data.type.Lectern)
+                org.bukkit.Bukkit.createBlockData(Material.LECTERN);
+        data.setFacing(BlockFace.NORTH);
+        data.setHasBook(false);
+        data.setPowered(true);
         return data;
     }
 
@@ -156,10 +161,20 @@ public final class TrafficProps {
         if (block == null) {
             return null;
         }
-        // Ciclul AL: conul SOLID = petrified_oak_slab[double]; bottom/top = jack (alte).
+        // Ciclul AM: conul SOLID = lectern[has_book=false, powered=true] (NEOPAC =>
+        // dispar gaurile de sub el). Conversii lazy in-place pentru gazdele legacy:
+        // slab[double] (AL) si fir-disarmed (AH..AK) devin lectern automat la atingere.
+        if (block.getType() == Material.LECTERN) {
+            if (block.getBlockData() instanceof org.bukkit.block.data.type.Lectern lectern
+                    && !lectern.hasBook() && lectern.isPowered()) {
+                return Kind.CONE;
+            }
+            return null;
+        }
         if (block.getType() == Material.PETRIFIED_OAK_SLAB) {
             if (block.getBlockData() instanceof org.bukkit.block.data.type.Slab slab
                     && slab.getType() == org.bukkit.block.data.type.Slab.Type.DOUBLE) {
+                block.setBlockData(coneData(), false);
                 return Kind.CONE;
             }
             return null;

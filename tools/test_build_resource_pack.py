@@ -588,14 +588,20 @@ class ResourcePackBuildTest(unittest.TestCase):
                          resolve({**base, "attached": "false", "disarmed": "false",
                                   "north": "false", "east": "false",
                                   "south": "false", "west": "false"}))
-        # Ciclul AL: conul SOLID = petrified_oak_slab[double] -> model con (orfan survival)
+        # Ciclul AM: conul SOLID NEOPAC = lectern[has_book=false,powered=true] (orfana
+        # absoluta vanilla). Slab-double revine la vanilla, jackurile raman intacte.
         slab = self.read_json("assets/minecraft/blockstates/petrified_oak_slab.json")["variants"]
-        self.assertEqual("vehicle:block/mcv_traffic_cone",
+        self.assertEqual("minecraft:block/oak_planks",
                          slab["type=double,waterlogged=false"]["model"])
-        self.assertEqual("vehicle:block/mcv_traffic_cone",
-                         slab["type=double,waterlogged=true"]["model"])
-        # si elevatoarele raman la jack (regresie)
         self.assertEqual("vehicle:block/mcv_jack_down", slab["type=bottom,waterlogged=false"]["model"])
+        lectern = self.read_json("assets/minecraft/blockstates/lectern.json")["variants"]
+        for f in ("north", "east", "south", "west"):
+            self.assertEqual("vehicle:block/mcv_traffic_cone",
+                             lectern[f"facing={f},has_book=false,powered=true"]["model"])
+            # 12 combination legitime vanilla: pupitru randeaza pupitru
+            for book, pw in (("false", "false"), ("true", "false"), ("true", "true")):
+                self.assertEqual("minecraft:block/lectern",
+                                 lectern[f"facing={f},has_book={book},powered={pw}"]["model"])
         # particulele de spargere = textura proprie, la toate cele trei props
         for name, tex_path in (("mcv_traffic_cone", "item/traffic_cone"),
                                ("mcv_boost_pad", "item/boost_pad"),

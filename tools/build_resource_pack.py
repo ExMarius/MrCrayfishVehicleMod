@@ -1271,9 +1271,23 @@ def build(output: Path) -> tuple[Path, str]:
             "type=bottom,waterlogged=true": {"model": "vehicle:block/mcv_jack_down"},
             "type=top,waterlogged=false": {"model": "vehicle:block/mcv_jack_up"},
             "type=top,waterlogged=true": {"model": "vehicle:block/mcv_jack_up"},
-            "type=double,waterlogged=false": {"model": "vehicle:block/mcv_traffic_cone"},
-            "type=double,waterlogged=true": {"model": "vehicle:block/mcv_traffic_cone"},
+            "type=double,waterlogged=false": {"model": "minecraft:block/oak_planks"},
+            "type=double,waterlogged=true": {"model": "minecraft:block/oak_planks"},
         }})
+        # Ciclul AM: conul SOLID NEOPAC pe lectern[has_book=false,powered=true] -
+        # combinatie ORFANA vanilla (nu poate fi powered fara carte). Chei FULL pentru
+        # fiecare combinatie (16) => zero ambiguitate de rezolutie client-side.
+        _lectern_v = {}
+        for _f, _y in (("north", 0), ("east", 90), ("south", 180), ("west", 270)):
+            for _book in ("false", "true"):
+                for _pw in ("false", "true"):
+                    _key = f"facing={_f},has_book={_book},powered={_pw}"
+                    if _book == "false" and _pw == "true":
+                        _lectern_v[_key] = {"model": "vehicle:block/mcv_traffic_cone"}
+                    else:
+                        _lectern_v[_key] = {"model": "minecraft:block/lectern",
+                                            **({"y": _y} if _y else {})}
+        write_json(_mc_namespace / "blockstates/lectern.json", {"variants": _lectern_v})
         write_json(_mc_namespace / "blockstates/composter.json", {"multipart": [
             {"when": {"level": "0|1|2|3|4|5|6|8"},
              "apply": {"model": "minecraft:block/composter"}},
