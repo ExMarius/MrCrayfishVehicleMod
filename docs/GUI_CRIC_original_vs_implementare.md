@@ -707,3 +707,19 @@ incarca packetul nostru cu format 1.21.4 si ar vedea continutul custom STRICAT
 Gameplay-ul server-side (economie, garaje, mecanic, trust) e oricum neutru la
 versiunea clientului — singurul vector sensibil e resource pack-ul, si el e
 acoperit de politica de mai sus.
+
+## Ciclul AG.2 (2026-11-04) — ViaVersion REVERSAT: politica = client EXACT 1.21.4
+
+Semnalat de user live: pe clientul cu versiunea cea mai NOUA (prin traducerea
+ViaVersion), la volan jucatorul se punea intr-o pozitie diferita de cum il vedeau
+ceilalti, plus rubber-banding in spate la mers („ma gliciuiesc in spate").
+
+Diagnostic: NU e bug de cod — e limitarea traducerii de protocol intre versiuni.
+Rig-urile noastre (armor-stand-uri miscate server-side, scaune pozitionate la
+pixel) sunt calibrate pentru 1.21.4; clientul tradus calculeaza altfel offsetul
+de passenger si interpolarea => nereparabil curat din server.
+
+Decizie: serverul cere versiunea EXACTA 1.21.4 (nativ), ca orice server cu
+continut custom greu (conventia din ecosistemul ItemsAdder/pack-uri custom).
+Scos download-ul din staging + stergerea jar-ului din plugins la fiecare deploy.
+Avantaj colateral: o singura matrice de testare, zero surprize la update-uri MC.
