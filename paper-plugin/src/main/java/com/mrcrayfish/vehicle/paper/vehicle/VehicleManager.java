@@ -52,11 +52,14 @@ public final class VehicleManager {
      *  accelereze la infinit. Cheile invechite se curata pasiv la re-intalnire. */
     /** Ciclul AL: edge-trigger pentru sunetul oficial de boost pad (la intrari). */
     private final Map<UUID, Integer> lastPadIngress = new HashMap<>();
-    /* CICLUL AT (feedback user): hidrate sidebar si actionbar vitezometru eliminate.
-     * CICLUL AU (user: "fa-l mai frumos, cu toate cerintele"): ceasul de viteza e
-     * bara + numarul de NIVEL XP ale jucatorului - nativ, frumos, zero conflict cu
-     * scoreboard-ul serverului. XP-ul REAL se salveaza in memorie + in PDC (anti
-     * crash) si se restaureaza intocmai cand jucatorul coboara/delogheaza. */
+    /* CICLUL AU -> AV (user: "o bara frumos deasupra selectorului de iteme, sa nu
+     * se mai vada chestiile de acolo, iar scrisul il faci tu"): vitezometrul este
+     * bara de XP a jucatorului, dar cu NIVELUL TINUT PE 0 - vanilla nu deseneaza
+     * numarul verde cand nivelul e 0, deci ramane doar umplerea barei (frumos,
+     * nativ, zero conflict cu scoreboard-ul TAB din dreapta). Textul cu viteza il
+     * scrie pluginul in action bar (LandVehicle.showFuelOverlay). XP-ul REAL se
+     * salveaza in memorie + in PDC (anti-crash) si se restaureaza intocmai cand
+     * jucatorul coboara/delogheaza - nimeni nu pierde nivelele de enchanting. */
     private static final org.bukkit.NamespacedKey XP_HUD_BACKUP =
             new org.bukkit.NamespacedKey("vehicle", "xp_hud_backup");
     private final Map<UUID, double[]> hijackedXp = new HashMap<>();
@@ -596,12 +599,15 @@ public final class VehicleManager {
                     level + "," + progress + "," + total);
         }
         org.bukkit.util.Vector v = vehicle.velocity();
-        int kmh = (int) Math.round(Math.hypot(v.getX(), v.getZ()) * 20.0D * 3.6D);
-        kmh = Math.max(0, Math.min(999, kmh));
+        // Ciclul AV: NIVELUL RAMANE 0 (vanilla nu deseneaza cifra verde cand
+        // nivelul e 0) - se vede DOAR umplerea barei = viteza pe scala maxima.
+        // Textul propriu-zis ("⚡ x km/h") il deseneaza pluginul in action bar.
+        double bps = Math.hypot(v.getX(), v.getZ()) * 20.0D;
+        int kmh = Math.max(0, Math.min(999, (int) Math.round(bps * 3.6D)));
         int fullScale = Math.max(60,
                 plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
-        driver.setLevel(kmh);
-        driver.setExp((float) Math.min(1.0D, (double) kmh / fullScale));
+        driver.setLevel(0);
+        driver.setExp((float) Math.max(0.0D, Math.min(1.0D, (double) kmh / fullScale)));
     }
 
     /** Scoate ceasul celor care au coborat/delogat intre doua curatenii (1s). */

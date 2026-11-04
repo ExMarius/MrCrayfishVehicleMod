@@ -1762,13 +1762,28 @@ public final class LandVehicle {
     }
 
     /** Vanilla replacement for the original mod's continuously updated fuel overlay.
-     *  CICLUL AT (feedback user, a doua revizuire): ceasul de viteza este ELIMINAT
-     *  complet - incercarile AR (sidebar, confundat cu TAB-ul serverului) si AS
-     *  (action bar, valorile km/h parea mult prea mari) nu ca fost utile. Ramane
-     *  EXCLUSIV overlay-ul clasic al modului: "Fuel: X / Y (Z%)  |  odometru". */
+     *  CICLUL AV (forma finala ceruta de user): deasupra hotbar-ului sta bara de
+     *  XP goala umpluta proportional (VehicleManager.tickSpeedo, nivel 0 = fara
+     *  cifra verde), iar SCRISUL vitezei il deseneaza pluginul aici, in action
+     *  bar: "⚡ x km/h (bps)" in fata cadranului clasic Fuel + odometru. km/h e
+     *  tinut in teritoriul unei masini normale (<= 2x scala, default 150) ca sa nu
+     *  mai apara niciodata citiri aberante gen 800; unitatea bps e cea a modului. */
     private void showFuelOverlay() {
-        Component overlay = Component.text(FuelGauge.overlay(fuel, spec.energyCapacity())
-                + "  |  " + odometerLabel(), NamedTextColor.GOLD);
+        String fuelPlusOdo = FuelGauge.overlay(fuel, spec.energyCapacity())
+                + "  |  " + odometerLabel();
+        Component overlay;
+        if (plugin.getConfig().getBoolean("hud.speedo", true)) {
+            double bps = Math.hypot(velocity.getX(), velocity.getZ()) * 20.0D;
+            int fullScale = Math.max(60,
+                    plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
+            int kmh = Math.max(0, Math.min(2 * fullScale, (int) Math.round(bps * 3.6D)));
+            overlay = Component.text("Viteza: " + kmh + " km/h", NamedTextColor.AQUA)
+                    .append(Component.text(String.format(java.util.Locale.ROOT, " (%.1f bps)", bps),
+                            NamedTextColor.DARK_GRAY))
+                    .append(Component.text("  ·  " + fuelPlusOdo, NamedTextColor.GOLD));
+        } else {
+            overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
+        }
         for (Entity carrier : rig.seatCarriers()) {
             for (Entity passenger : carrier.getPassengers()) {
                 if (passenger instanceof Player player) {
