@@ -567,6 +567,18 @@ class ResourcePackBuildTest(unittest.TestCase):
         boost = [p for p in parts
                  if p["apply"]["model"] == "vehicle:block/mcv_boost_pad"]
         self.assertEqual(4, len(boost))
+        # Ciclul AO: rampa abrupta = 3 laturi active + attached=false; latura lipsa
+        # este sensul urcarii (aceeasi conventie de rotatie ca la placa).
+        ramp = [p for p in parts if "mcv_steep_boost_ramp" in p["apply"]["model"]]
+        self.assertEqual(4, len(ramp))
+        self.assertTrue(all(p["when"].get("attached") == "false" for p in ramp))
+        self.assertTrue(all(p["when"].get("disarmed") == "true" for p in ramp))
+        for missing, y in (("north", 0), ("east", 90), ("south", 180), ("west", 270)):
+            rule = [p for p in ramp if p["when"][missing] == "false"]
+            self.assertEqual(1, len(rule))
+            self.assertEqual(y, rule[0]["apply"].get("y", 0))
+            others = [f for f in ("north", "east", "south", "west") if f != missing]
+            self.assertTrue(all(rule[0]["when"][f] == "true" for f in others))
         # Ciclul AJ: teava de fluid = attached=true (orfana pt firul vanilla).
         pipe = [p for p in parts if "mcv_fluid_pipe" in p["apply"]["model"]]
         self.assertEqual(2, len(pipe))
@@ -575,6 +587,9 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual([0, 90], sorted(p["apply"].get("y", 0) for p in pipe))
         self.assertIn("assets/vehicle/models/block/mcv_fluid_pipe.json", self.entries)
         self.assertIn("assets/vehicle/items/fluid_pipe.json", self.entries)
+        self.assertIn("assets/vehicle/models/block/mcv_steep_boost_ramp.json", self.entries)
+        self.assertIn("assets/vehicle/models/item/steep_boost_ramp.json", self.entries)
+        self.assertIn("assets/vehicle/items/steep_boost_ramp.json", self.entries)
         # simularea exacta a rezolutiei clientului: fiecare stare hijack-uita
         # randeaza EXACT un model (niciun element de compunere vanilla peste ele).
         def resolve(state):
@@ -594,6 +609,10 @@ class ResourcePackBuildTest(unittest.TestCase):
                          resolve({**base, "attached": "true", "disarmed": "true",
                                   "north": "true", "south": "true",
                                   "east": "false", "west": "false"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_steep_boost_ramp", "y": 90}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "true", "east": "false",
+                                  "south": "true", "west": "true"}))
         self.assertEqual([{"model": "minecraft:block/tripwire_ns"}],
                          resolve({**base, "attached": "false", "disarmed": "false",
                                   "north": "false", "east": "false",
@@ -614,10 +633,13 @@ class ResourcePackBuildTest(unittest.TestCase):
             for book, pw in (("false", "false"), ("true", "false"), ("true", "true")):
                 self.assertEqual("minecraft:block/lectern",
                                  lectern[f"facing={f},has_book={book},powered={pw}"]["model"])
-        # particulele de spargere = textura proprie, la toate cele trei props
+        # particulele de spargere = textura proprie, la toate cele patru props
+        # (rampa foloseste sagetile de boost ca in mod, unde modelul baked avea
+        # rampTexture = vehicle:blocks/boost_pad si fara override de particle)
         for name, tex_path in (("mcv_traffic_cone", "item/traffic_cone"),
                                ("mcv_boost_pad", "item/boost_pad"),
-                               ("mcv_fluid_pipe", "item/fluid_pipe")):
+                               ("mcv_fluid_pipe", "item/fluid_pipe"),
+                               ("mcv_steep_boost_ramp", "item/boost_pad")):
             model = self.read_json(f"assets/vehicle/models/block/{name}.json")
             particle = model.get("textures", {}).get("particle")
             self.assertIsNotNone(particle, f"{name} nu are cheia particle")

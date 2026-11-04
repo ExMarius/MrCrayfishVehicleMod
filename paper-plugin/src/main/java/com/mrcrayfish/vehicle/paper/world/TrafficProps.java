@@ -42,7 +42,7 @@ import java.util.List;
  *    distrug fara drop (consumabile fragile).
  */
 public final class TrafficProps {
-    public enum Kind { CONE, BOOST_PAD, FLUID_PIPE }
+    public enum Kind { CONE, BOOST_PAD, FLUID_PIPE, STEEP_RAMP }
 
     private static final NamespacedKey KIND = new NamespacedKey("vehicle", "prop_kind");
 
@@ -67,20 +67,24 @@ public final class TrafficProps {
                     case CONE -> "traffic_cone";
                     case BOOST_PAD -> "boost_pad";
                     case FLUID_PIPE -> "fluid_pipe";
+                    case STEEP_RAMP -> "steep_boost_ramp";
                 }));
         meta.getPersistentDataContainer().set(KIND, PersistentDataType.STRING, kind.name());
         meta.displayName(Component.text(switch (kind) {
                     case CONE -> "Con de Trafic";
                     case BOOST_PAD -> "Placa de Boost";
                     case FLUID_PIPE -> "Teava de Fluid";
+                    case STEEP_RAMP -> "Rampa de Boost Abrupta";
                 }, kind == Kind.CONE ? NamedTextColor.GOLD
-                        : kind == Kind.BOOST_PAD ? NamedTextColor.AQUA : NamedTextColor.GRAY)
+                        : kind == Kind.BOOST_PAD ? NamedTextColor.AQUA
+                        : kind == Kind.STEEP_RAMP ? NamedTextColor.YELLOW : NamedTextColor.GRAY)
                 .decoration(TextDecoration.ITALIC, false));
         meta.lore(List.of(
                 Component.text(switch (kind) {
                             case CONE -> "Click-dreapta pe asfalt - conul real, masina il rastoarna";
                             case BOOST_PAD -> "Click-dreapta pe asfalt - sageata arata in directia in care privesti";
                             case FLUID_PIPE -> "Click-dreapta langa mixer/pompa - teava reala, pur decorativ";
+                            case STEEP_RAMP -> "Click-dreapta pe asfalt - boost dublu si te catapulteaza in aer";
                         }, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
         stack.setItemMeta(meta);
         return stack;
@@ -153,6 +157,19 @@ public final class TrafficProps {
         return data;
     }
 
+    /** CICLUL AO - rampa de boost abrupta (SteepBoostRampBlock din mod, tile
+     *  BoostTileEntity(1.0F) = boost DUBLU fata de placuta, care are 0.5F).
+     *  Codare in fir: 3 laturi ACTIVE din 4; latura LIPSA = directia de urcare
+     *  (echivalentul facing-ului din blockstate-ul modului). Orfana absoluta in
+     *  vanilla la fel ca celelalte stari hijack-uite (disarmed=true). */
+    public static BlockData rampData(BlockFace facing) {
+        Tripwire data = wireBase();
+        for (BlockFace face : List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST)) {
+            data.setFace(face, face != facing);
+        }
+        return data;
+    }
+
     /** Identifica blocurile noastre; orice alta combinatie de tripwire = vanilla. */
     public static Kind kindOf(Block block) {
         if (block == null) {
@@ -197,6 +214,10 @@ public final class TrafficProps {
         if (faces == 1 && !data.isAttached()) {
             return Kind.BOOST_PAD;
         }
+        // Ciclul AO: 3 laturi active = rampa abrupta (latura lipsa = sensul urcarii).
+        if (faces == 3 && !data.isAttached()) {
+            return Kind.STEEP_RAMP;
+        }
         // Ciclul AJ: attached=true + disarmed=true + doua laturi opuse = teava (oricum
         // combinatie orfana pentru firul vanilla pus de mana, care e mereu disarmed=false).
         if (faces == 2 && data.isAttached()
@@ -215,6 +236,21 @@ public final class TrafficProps {
         Tripwire data = (Tripwire) block.getBlockData();
         for (BlockFace face : List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST)) {
             if (data.hasFace(face)) {
+                return face;
+            }
+        }
+        return null;
+    }
+
+    /** Directia de urcare a rampei = SINGURA latura lipsa a firului (ciclul AO);
+     *  null daca blocul nu e rampa. */
+    public static BlockFace rampFacing(Block block) {
+        if (kindOf(block) != Kind.STEEP_RAMP) {
+            return null;
+        }
+        Tripwire data = (Tripwire) block.getBlockData();
+        for (BlockFace face : List.of(BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST)) {
+            if (!data.hasFace(face)) {
                 return face;
             }
         }

@@ -453,6 +453,8 @@ public final class VehicleManager {
                         }
                     } else if (kind == com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.BOOST_PAD) {
                         applyBoostPad(vehicle, block, velocity);
+                    } else if (kind == com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.STEEP_RAMP) {
+                        applyBoostRamp(vehicle, block, velocity);
                     }
                 }
             }
@@ -502,6 +504,60 @@ public final class VehicleManager {
             }
         }
         pad.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 4, 0.35D, 0.05D, 0.35D, 0.008D);
+    }
+
+    /** CICLUL AO - rampa de boost abrupta EXACT ca in mod (SteepBoostRampBlock
+     *  .entityInside): aceeasi poarta de directie ca la placa, dar tile-ul ei e
+     *  BoostTileEntity(1.0F) = boost DUBLU fata de placa (0.5F), sunetul oficial
+     *  "vehicle:block.boost_pad.boost" la intrare (edge) cu VOLUM 2.0 (in mod placa
+     *  are volum 1.0), iar descrierea oficiala a blocului (en_us.lang) spune
+     *  "sends your vehicle high into the air": aici lift vertical continuu cat timp
+     *  esti pe rampa - inlocuieste urcarea pe mesh-ul inclinat din mod, care nu
+     *  exista fizic intr-un pack de blocuri. setLaunching(3) din mod = doar 3 tick
+     *  de scutire de fall-damage; vehiculele noastre nu iau fall-damage => no-op. */
+    private void applyBoostRamp(LandVehicle vehicle, org.bukkit.block.Block ramp,
+                                org.bukkit.util.Vector velocity) {
+        org.bukkit.block.BlockFace ascent =
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.rampFacing(ramp);
+        if (ascent == null) {
+            return;
+        }
+        // Poarta de directie identica cu modul: facing-ul rampei == directia masinii.
+        float yaw = vehicle.location().getYaw();
+        org.bukkit.block.BlockFace carFacing = com.mrcrayfish.vehicle.paper.world
+                .TrafficProps.yawToFacing(yaw);
+        if (carFacing != ascent) {
+            lastPadIngress.remove(vehicle.id());
+            return;
+        }
+        double power = plugin.getConfig().getDouble("physics.boost-ramp-accel", 0.12D);
+        double maxSpeed = plugin.getConfig().getDouble("physics.boost-pad-max-speed", 1.6D);
+        double lift = plugin.getConfig().getDouble("physics.boost-ramp-lift", 0.38D);
+        org.bukkit.util.Vector dir = com.mrcrayfish.vehicle.paper.world.TrafficProps.facingVector(ascent);
+        double px = velocity.getX() + dir.getX() * power;
+        double pz = velocity.getZ() + dir.getZ() * power;
+        double vy = Math.max(velocity.getY(), lift);
+        if (px * px + pz * pz <= maxSpeed * maxSpeed) {
+            vehicle.setVelocity(new org.bukkit.util.Vector(px, vy, pz));
+        } else {
+            vehicle.setVelocity(new org.bukkit.util.Vector(velocity.getX(), vy, velocity.getZ()));
+        }
+        Location at = ramp.getLocation().add(0.5D, 0.6D, 0.5D);
+        // Sunetul oficial de boost la INTRAREA pe aceasta rampa (edge-trigger),
+        // volum 2.0F ca in SteepBoostRampBlock (placa are 1.0F), pitch 0.5F ambele.
+        Integer last = lastPadIngress.get(vehicle.id());
+        if (last == null || last != ramp.hashCode()) {
+            lastPadIngress.put(vehicle.id(), ramp.hashCode());
+            for (org.bukkit.entity.Player near : ramp.getWorld().getPlayers()) {
+                if (near.getLocation().distanceSquared(at) <= 40.0D * 40.0D) {
+                    near.playSound(net.kyori.adventure.sound.Sound.sound(
+                            net.kyori.adventure.key.Key.key("vehicle", "block.boost_pad.boost"),
+                            net.kyori.adventure.sound.Sound.Source.NEUTRAL, 2.0F, 0.5F),
+                            at.getX(), at.getY(), at.getZ());
+                }
+            }
+        }
+        ramp.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 4, 0.35D, 0.1D, 0.35D, 0.01D);
     }
 
     /** Spawns the garaged vehicle next to its owner, exactly like pulling out of a garage. */

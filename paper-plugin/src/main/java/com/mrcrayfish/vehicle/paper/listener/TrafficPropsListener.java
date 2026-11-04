@@ -82,6 +82,7 @@ public final class TrafficPropsListener implements Listener {
             case CONE -> TrafficProps.coneData();
             case BOOST_PAD -> TrafficProps.padData(facing);
             case FLUID_PIPE -> TrafficProps.pipeData(facing);
+            case STEEP_RAMP -> TrafficProps.rampData(facing);
         };
         target.setBlockData(data, false);
         if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
@@ -94,6 +95,10 @@ public final class TrafficPropsListener implements Listener {
             event.getPlayer().sendMessage(Component.text("[Drum] ", NamedTextColor.DARK_GREEN)
                     .append(Component.text("Placa de boost apasa spre " + naming(facing)
                             + " - masina care o calca e impinsa in acea directie.", NamedTextColor.GRAY)));
+        } else if (kind == TrafficProps.Kind.STEEP_RAMP) {
+            event.getPlayer().sendMessage(Component.text("[Drum] ", NamedTextColor.DARK_GREEN)
+                    .append(Component.text("Rampa abrupta urca spre " + naming(facing)
+                            + " - boost dublu si te catapulteaza in aer (ca in mod).", NamedTextColor.GRAY)));
         }
     }
 

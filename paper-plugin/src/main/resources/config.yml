@@ -4,7 +4,7 @@ resource-pack:
   url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
   # Ciclul AH: pack-ul s-a schimbat (con de trafic + placa de boost) => hash nou;
   # server.properties il primeste automat la fiecare deploy.
-  sha1: "7888dbca566959eb311ee0e4faaecf25efc2ae98"
+  sha1: "8c470ad5b09e045d8d006f3f46630637426b276c"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
@@ -29,6 +29,14 @@ physics:
   # impulsul per contact (blocuri/tick) si viteza orizontala maxima rezultata.
   boost-pad-accel: 0.06
   boost-pad-max-speed: 1.6
+  # Ciclul AO - rampa de boost abrupta (SteepBoostRampBlock din mod): in mod tile-ul
+  # ei e BoostTileEntity(1.0F) = EXACT dublul placii (0.5F) => accel 0.12. Capul de
+  # viteza e acelasi boost-pad-max-speed (in mod limita vine din motor, nu din rampa).
+  boost-ramp-accel: 0.12
+  # Lift vertical continuu cat timp masina e pe rampa si merge pe directia de
+  # urcare - inlocuieste planul inclinat din mod ("sends your vehicle high into
+  # the air", en_us.lang). Valori mai mari = lansari mai spectaculoase.
+  boost-ramp-lift: 0.38
 
 performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.
