@@ -114,6 +114,13 @@ jobs:
                  | jq -r '[.assets[] | select(.name | test("^[Tt][Aa][Bb].*\\.jar$"))] | .[0].browser_download_url // ""')
           [ -n "$TBJ" ] && curl -fsSL -m 120 -o stage/plugins/TAB.jar "$TBJ" || true
 
+          # ViaVersion (Ciclul AG): clienti cu versiuni NOI (>= server 1.21.4) pot intra.
+          # FARA ViaBackwards: clienti mai vechi decat 1.21.4 ar citi un pack cu format
+          # nou (pack_format 1.21.4) => mobila/masinile/armele s-ar vedea stricate.
+          VV=$(curl -fsSL --retry 2 -m 30 "https://api.github.com/repos/ViaVersion/ViaVersion/releases/latest" \
+                | jq -r '[.assets[] | select(.name | test("^ViaVersion-[0-9].*\\.jar$"))] | .[0].browser_download_url // ""')
+          [ -n "$VV" ] && curl -fsSL -m 120 -o stage/plugins/ViaVersion.jar "$VV" || true
+
           cp hidencloud/config/TAB/config.yml stage/plugins/TAB/config.yml
           cp hidencloud/config/Essentials/motd.txt stage/plugins/Essentials/motd.txt
           mkdir -p stage/trigger

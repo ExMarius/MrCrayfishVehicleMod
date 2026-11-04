@@ -691,3 +691,19 @@ Decizie constienta: intretinerea-zero-consum (hibernare/resting) RAMANE — o
 masina poate sta in AFARA oricarui cerc (drum, padure) acolo nu exista timer,
 iar in cele 5 minute din cerc inca e nevoie de ea. Numerele AB (0.4% buget)
 argheaza ca nu ne doare nimic sa o pastram.
+
+## Ciclul AG (2026-11-04) — ViaVersion in stack-ul de deploy
+
+Serverul ramane NEMODAT pentru clienti (vanilla + resource pack fortat; mobila/
+arme/masini = toate prin plugin, aceeasi tehnica ca vehiculele). Instalat
+ViaVersion in `hidencloud-sftp.yml` (descarcat proaspat din GitHub releases la
+fiecare deploy, stilul Essentials/TAB — nicio jar binara in git).
+
+**Politica de versiuni**: doar clienti cu versiunea >= server (1.21.4+).
+ViaBackwards NU se instaleaza dinadins: un client mai vechi (1.20.4 si jos) ar
+incarca packetul nostru cu format 1.21.4 si ar vedea continutul custom STRICAT
+(modele fallback/vanilla). Regula: va spunem playerilor "versiunea minima 1.21.4".
+
+Gameplay-ul server-side (economie, garaje, mecanic, trust) e oricum neutru la
+versiunea clientului — singurul vector sensibil e resource pack-ul, si el e
+acoperit de politica de mai sus.
