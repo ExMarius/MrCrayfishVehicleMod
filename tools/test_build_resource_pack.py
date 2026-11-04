@@ -644,6 +644,22 @@ class ResourcePackBuildTest(unittest.TestCase):
                          resolve({**base, "attached": "false", "disarmed": "true",
                                   "north": "true", "east": "false",
                                   "south": "true", "west": "false"}))
+        # Ciclul AQ: partitia e EXHAUSTIVA - fiecare din cele 64 de combinatii
+        # logice ale firului (4 fete x attached x disarmed; powered nu apare in
+        # nicio regula) rezolva EXACT un model. Niciun mozaic de fire forfecate
+        # nu poate ajunge vreodata la "nimic invizibil".
+        for disarmed in ("false", "true"):
+            for attached in ("false", "true"):
+                for n in ("false", "true"):
+                    for e in ("false", "true"):
+                        for s in ("false", "true"):
+                            for w in ("false", "true"):
+                                hits = resolve({"disarmed": disarmed, "attached": attached,
+                                                "north": n, "east": e, "south": s,
+                                                "west": w, "powered": "false"})
+                                self.assertEqual(1, len(hits),
+                                                 f"starea d={disarmed} a={attached} "
+                                                 f"{n}{e}{s}{w} -> {len(hits)} reguli")
         self.assertEqual([{"model": "minecraft:block/tripwire_ns"}],
                          resolve({**base, "attached": "false", "disarmed": "false",
                                   "north": "false", "east": "false",

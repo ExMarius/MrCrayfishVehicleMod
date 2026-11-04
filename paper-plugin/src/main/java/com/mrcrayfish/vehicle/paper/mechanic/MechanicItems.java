@@ -485,6 +485,23 @@ public final class MechanicItems {
                 com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_PIPE, 1);
     }
 
+    /** Ciclul AO: rampa abrupta - acelasi bloc real, boost dublu ca in mod. */
+    public static ItemStack steepBoostRamp() {
+        return com.mrcrayfish.vehicle.paper.world.TrafficProps.item(
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.STEEP_RAMP, 1);
+    }
+
+    /** Ciclul AP: pompa si extractorul de fluid - decor complet langa mixer. */
+    public static ItemStack fluidPump() {
+        return com.mrcrayfish.vehicle.paper.world.TrafficProps.item(
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_PUMP, 1);
+    }
+
+    public static ItemStack fluidExtractor() {
+        return com.mrcrayfish.vehicle.paper.world.TrafficProps.item(
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_EXTRACTOR, 1);
+    }
+
     /* ============================ cufar vehicul ============================= */
 
     /** Payload text: specId|fuel|engineTier|wheelType|health|color|locked|ownerUuid */

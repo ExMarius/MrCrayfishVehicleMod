@@ -19,25 +19,36 @@ import org.bukkit.util.Vector;
 import java.util.List;
 
 /**
- * CICLUL AH — conul de trafic si placa de boost ca BLOCURI REALE (persista in
- * lume zero-plugin-storage, se sparg normal, particule de spargere din pack).
+ * Propsurile de drum ca BLOCURI REALE (persista in lume zero-plugin-storage,
+ * se sparg normal, particule de spargere din pack). Pornit in ciclul AH,
+ * finalizat prin ciclurile AN/AO/AP si auditat exhaustiv in AQ.
  *
  * Gazda = minecraft:tripwire (firul de sarma), ales pentru ca e singurul bloc
- * vanilla PLASABIL fara NICIO forma de coliziune: jucatorul trece prin ele si
- * masina trece prin ele - exact cum a cerut userul pentru placa de boost
- * („sa poti trece prin ea, gen si masina si tu"; un slab ar fi dat hop la masina).
+ * vanilla PLASABIL fara NICIO forma de coliziune si fara occlusion pe fetele
+ * vecine: niciun prop nu ocoleste vreodata fata blocului de dedesubt (problema
+ * "gaura in jos" de la gazdele solide incercate in AL/AM e imposibila aici).
  *
  * Blocstate-urile hijack-uite sunt ORFANE in vanilla: disarmed=true nu apare
- * niciodata in firul pus manual de jucatori (el ramane disarmed=false; disarmed
- * apare doar dupa forfecarea unui hook, si atunci firul sta de obicei pe o armatura).
- *  - niciun „side" activ            => CON DE TRAFIC
- *  - exact o latura activa          => PLACA DE BOOST, sageata aratand acea directie
+ * niciodata in firul pus manual de jucatori. Partitia pe laturi (audit AQ =
+ * acoperire exhaustiva, fiecare combinatie de fir randeaza exact un model):
+ *  - niciun „side" activ                        => CON DE TRAFIC
+ *  - exact o latura                             => PLACA DE BOOST (sageata=fata)
+ *  - doua laturi OPUSE + attached=true (AH..AK) => TEAVA DE FLUID
+ *  - trei laturi                                => RAMPA ABRUPTA (latura lipsa
+ *                                                  = sensul urcarii)
+ *  - doua laturi ADIACENTE, neatasat            => POMPA DE FLUID (decor)
+ *  - doua laturi OPUSE, neatasat                => EXTRACTOR DE FLUID (decor)
+ *  - orice disarmed=true ramas / disarmed=false => FIR VANILLA nemodificat
  *
  * Realism:
- *  - masina care loveste CONUL il rastoarna = se sparge instant si si-arunca
- *    singur itemul pe asfalt (conul real se deformeaza sub roti, nu opreste masina);
- *  - PLACA impinge masina in directia sagetii (acceleratie + cap de viteza din
- *    config, cooldown 40 tick-uri ca sa nu zboare la infinit pe o rampa lunga);
+ *  - viteza mare + CON => se rastoarna cu drop; viteza mica + CON =>
+ *    gard virtual server-side (VehicleManager taie doar viteza care intra in
+ *    el; conul ramane la locul lui, masina nu-l strapunge);
+ *  - PLACA impinge masina CONTINUU pe directia sagetii (0.06/tick, cap din
+ *    config, fara cooldown - ciclul AL, exact ca BoostPadBlock.entityInside);
+ *  - RAMPA are boost-ul DUBLU (0.12/tick, ciclul AO, BoostTileEntity 1.0F din
+ *    mod) si lift vertical ("sends your vehicle high into the air");
+ *  - teava/pompa/extractorul sunt pur decorative, masina trece prin ele;
  *  - pistoanele nu le pot misca (lipite), apa nu le clateste, exploziile le
  *    distrug fara drop (consumabile fragile).
  */

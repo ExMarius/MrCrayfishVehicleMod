@@ -125,6 +125,11 @@ public final class CreativeGui {
                 inventory.setItem(31, give(MechanicItems.trafficCone()));
                 inventory.setItem(33, give(MechanicItems.boostPad()));
                 inventory.setItem(35, give(MechanicItems.fluidPipe()));
+                // Ciclul AQ: paritate completa cu /vehicle give - rampa, pompa,
+                // extractorul intra si ele in meniul creative al statiilor.
+                inventory.setItem(38, give(MechanicItems.steepBoostRamp()));
+                inventory.setItem(40, give(MechanicItems.fluidPump()));
+                inventory.setItem(42, give(MechanicItems.fluidExtractor()));
             }
         }
         int rowSlot = 45;

@@ -9,6 +9,8 @@ The current rider-pose implementation mounts every seat occupant on a minimum-sc
 
 The vanilla mount-heart HUD is retained in resource pack r38 and acts as a shared ten-heart fuel gauge. Every occupied seat receives the same value from its vehicle's persisted fuel level, so the driver and passengers see matching hearts. Half-hearts round down, making the first fuel use visible immediately; the final half-heart represents empty because a living carrier cannot remain alive at zero health. A source-style action-bar overlay also reports the continuously changing `Fuel: current / capacity (percent)` value to every occupant. As in the original mod, Creative-mode drivers do not consume fuel. Ordinary horses retain their normal health display.
 
+The six road props are real, world-persisted blocks (admin `/vehicle give cone|boostpad|pipe|ramp|pump|extractor`, also in the stations creative GUI): the Traffic Cone, Boost Pad, Steep Boost Ramp (its source `BoostTileEntity(1.0F)` is exactly double the pad's 0.5F boost, with the source's official volume-2.0 boost sound and the lang-file "sends your vehicle high into the air" lift), Fluid Pipe, Fluid Pump, and Fluid Extractor. Every prop lives on an orphan combination of vanilla tripwire states (`disarmed=true` with an exact face mask per prop), so unmodified clients render the source models 1:1 while ordinary tripwire stays untouched — the cone at full speed knocks over with its item drop, at walking speed it behaves as a server-side fence, and a permanent regression test proves every one of the 64 logical tripwire states resolves to exactly one model, so no sheared-wire mosaic can ever render invisible.
+
 ## Build
 
 Requires Java 21 and Gradle 9+.
