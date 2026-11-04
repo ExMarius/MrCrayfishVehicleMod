@@ -83,6 +83,16 @@ public final class LandVehicle {
     private double odometerMeters;
     /** Ciclul AW: viteza reala neteda (blocuri/secunda), aceeasi baza ca odometrul. */
     private double smoothedSpeedBps;
+
+    /** CICLUL AX: o singura sursa de adevar pentru "metri" si "km/h" pe TOATE
+     *  caile de miscare (land, apa, avion, elicopter - inainte track-urile se
+     *  faceau doar pe land, deci elicopterul avea odometru si vitezometru oprite).
+     *  Cumulam odometrul si netezim viteza (EMA ~4 tick) din miscarea REALA. */
+    private void trackRealTravel(Vector travel) {
+        double delta = Math.hypot(travel.getX(), travel.getZ());
+        odometerMeters += delta;
+        smoothedSpeedBps += (delta * 20.0D - smoothedSpeedBps) * 0.25D;
+    }
     private boolean onGround = true;
     private boolean handbraking;
     private boolean charging;
@@ -272,13 +282,7 @@ public final class LandVehicle {
             updateWheelPositions();
         }
         updateVehicleMotion(globalSpeedLimit, enginePowered);
-        // Kilometraj: distanta REALA parcursa (blocuri/tick ~ metri), acumulata ieftin.
-        odometerMeters += Math.hypot(motion.getX(), motion.getZ());
-        // CICLUL AW: vitezometrul citeste ACEEASI miscare reala ca odometrul
-        // (motion, NU velocity - velocity e inputul pad-urilor si poate fi
-        // inflat/blockat de fizica). EMA peste ~4 tick-uri contra jitter-ului.
-        double instBps = Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
-        smoothedSpeedBps += (instBps - smoothedSpeedBps) * 0.25D;
+        trackRealTravel(motion);
 
         verticalVelocity -= 0.08D;
         Vector requestedMovement = new Vector(motion.getX(), verticalVelocity + motion.getY(), motion.getZ());
@@ -461,6 +465,7 @@ public final class LandVehicle {
             return;
         }
         Vector requestedMovement = velocity.clone().add(motion);
+        trackRealTravel(requestedMovement); // CICLUL AX: barca/planiau fara odometru/vitezometru
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
                 spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
@@ -555,6 +560,7 @@ public final class LandVehicle {
         heading.multiply(0.05D);
         velocity = lerp(velocity, heading, helicopter.movementStrength());
         motion.add(velocity);
+        trackRealTravel(motion); // CICLUL AX: elicopterul avea odometru/vitezometru oprite
 
         Vector requestedMovement = motion.clone();
         if (!operating) {
@@ -824,6 +830,7 @@ public final class LandVehicle {
             return;
         }
         Vector requestedMovement = motion.clone();
+        trackRealTravel(requestedMovement); // CICLUL AX: avionul avea odometru/vitezometru oprite
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
                 spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
