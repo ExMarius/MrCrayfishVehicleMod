@@ -32,6 +32,21 @@ import org.bukkit.inventory.ItemStack;
  */
 public final class TrafficPropsListener implements Listener {
 
+    /** Ciclul AJ.4: orice entitate-fantoma "mcv_prop" (item-display-urile vechi
+     *  din epoca PropManager - salvate in chunk NBT desi erau setPersistent(false))
+     *  e stearsa la incarcare chunkului; purge-ul de la boot acopera doar spawnul,
+     *  asta acopera ORICE chunk pe care paseste un jucator. Idempotent. */
+    @EventHandler
+    public void onChunkLoad(org.bukkit.event.world.ChunkLoadEvent event) {
+        if (!event.isNewChunk()) {
+            for (org.bukkit.entity.Entity entity : event.getChunk().getEntities()) {
+                if (entity.getScoreboardTags().contains("mcv_prop")) {
+                    entity.remove();
+                }
+            }
+        }
+    }
+
     @EventHandler(ignoreCancelled = true)
     public void onPlace(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_BLOCK || event.getClickedBlock() == null
