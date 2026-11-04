@@ -42,7 +42,7 @@ import java.util.List;
  *    distrug fara drop (consumabile fragile).
  */
 public final class TrafficProps {
-    public enum Kind { CONE, BOOST_PAD }
+    public enum Kind { CONE, BOOST_PAD, FLUID_PIPE }
 
     private static final NamespacedKey KIND = new NamespacedKey("vehicle", "prop_kind");
 
@@ -63,16 +63,25 @@ public final class TrafficProps {
             armor.setColor(org.bukkit.Color.fromRGB(0xF9FFFE));
         }
         meta.setItemModel(new NamespacedKey("vehicle",
-                kind == Kind.CONE ? "traffic_cone" : "boost_pad"));
+                switch (kind) {
+                    case CONE -> "traffic_cone";
+                    case BOOST_PAD -> "boost_pad";
+                    case FLUID_PIPE -> "fluid_pipe";
+                }));
         meta.getPersistentDataContainer().set(KIND, PersistentDataType.STRING, kind.name());
-        meta.displayName(Component.text(kind == Kind.CONE ? "Con de Trafic" : "Placa de Boost",
-                        kind == Kind.CONE ? NamedTextColor.GOLD : NamedTextColor.AQUA)
+        meta.displayName(Component.text(switch (kind) {
+                    case CONE -> "Con de Trafic";
+                    case BOOST_PAD -> "Placa de Boost";
+                    case FLUID_PIPE -> "Teava de Fluid";
+                }, kind == Kind.CONE ? NamedTextColor.GOLD
+                        : kind == Kind.BOOST_PAD ? NamedTextColor.AQUA : NamedTextColor.GRAY)
                 .decoration(TextDecoration.ITALIC, false));
         meta.lore(List.of(
-                Component.text(kind == Kind.CONE
-                                ? "Click-dreapta pe asfalt - conul real, masina il rastoarna"
-                                : "Click-dreapta pe asfalt - sageata arata in directia in care privesti",
-                        NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
+                Component.text(switch (kind) {
+                            case CONE -> "Click-dreapta pe asfalt - conul real, masina il rastoarna";
+                            case BOOST_PAD -> "Click-dreapta pe asfalt - sageata arata in directia in care privesti";
+                            case FLUID_PIPE -> "Click-dreapta langa mixer/pompa - teava reala, pur decorativ";
+                        }, NamedTextColor.GRAY).decoration(TextDecoration.ITALIC, false)));
         stack.setItemMeta(meta);
         return stack;
     }
@@ -110,11 +119,28 @@ public final class TrafficProps {
         return data;
     }
 
+    /** CICLUL AJ - teava de fluid: dreapta, orientata N-S sau E-V dupa privire.
+     *  State-hijack: attached=TRUE + disarmed=true + doua laturi OPUSE activate
+     *  (combinatie complet orfana: attached nu ajunge niciodata true fara carlige,
+     *  iar disarmed=true nu apare natural in firul pus de mana). */
+    public static BlockData pipeData(BlockFace facing) {
+        Tripwire data = (Tripwire) coneData();
+        data.setAttached(true);
+        if (facing == BlockFace.EAST || facing == BlockFace.WEST) {
+            data.setFace(BlockFace.EAST, true);
+            data.setFace(BlockFace.WEST, true);
+        } else {
+            data.setFace(BlockFace.NORTH, true);
+            data.setFace(BlockFace.SOUTH, true);
+        }
+        return data;
+    }
+
     /** Identifica blocurile noastre; orice alta combinatie de tripwire = vanilla. */
     public static Kind kindOf(Block block) {
         if (block == null || block.getType() != Material.TRIPWIRE
                 || !(block.getBlockData() instanceof Tripwire data)
-                || !data.isDisarmed() || data.isAttached()) {
+                || !data.isDisarmed()) {
             return null;
         }
         int faces = 0;
@@ -123,7 +149,20 @@ public final class TrafficProps {
                 faces++;
             }
         }
-        return faces == 0 ? Kind.CONE : (faces == 1 ? Kind.BOOST_PAD : null);
+        if (faces == 0 && !data.isAttached()) {
+            return Kind.CONE;
+        }
+        if (faces == 1 && !data.isAttached()) {
+            return Kind.BOOST_PAD;
+        }
+        // Ciclul AJ: attached=true + disarmed=true + doua laturi opuse = teava (oricum
+        // combinatie orfana pentru firul vanilla pus de mana, care e mereu disarmed=false).
+        if (faces == 2 && data.isAttached()
+                && ((data.hasFace(BlockFace.NORTH) && data.hasFace(BlockFace.SOUTH))
+                        || (data.hasFace(BlockFace.EAST) && data.hasFace(BlockFace.WEST)))) {
+            return Kind.FLUID_PIPE;
+        }
+        return null;
     }
 
     /** Directia sagetii de pe placa (latura unica activa); null daca blocul nu e placa. */
@@ -148,6 +187,38 @@ public final class TrafficProps {
             case WEST -> new Vector(-1.0D, 0.0D, 0.0D);
             default -> new Vector();
         };
+    }
+
+    /** CICLUL AJ - migratie unica la pornire: prop-urile vechi (entitati salvate
+     *  in sectiunea "props" a MechanicStore) devin blocuri reale pe celulele lor.
+     *  PropManager e sters complet; sectiunea dispare la primul saveAll. */
+    public static int migrateLegacyProps(
+            com.mrcrayfish.vehicle.paper.persistence.MechanicStore store) {
+        int migrated = 0;
+        for (com.mrcrayfish.vehicle.paper.persistence.MechanicStore.StoredStation stored
+                : store.loadStations("props")) {
+            org.bukkit.World world = org.bukkit.Bukkit.getWorld(stored.worldId());
+            if (world == null) {
+                continue;
+            }
+            Block cell = world.getBlockAt((int) Math.floor(stored.x()),
+                    (int) Math.floor(stored.y()), (int) Math.floor(stored.z()));
+            if (cell.getType() != Material.AIR && cell.getType() != Material.TRIPWIRE) {
+                continue;
+            }
+            BlockFace facing = yawToFacing((float) stored.yaw());
+            BlockData data = switch (stored.kind()) {
+                case "traffic_cone" -> coneData();
+                case "boost_pad" -> padData(facing);
+                case "fluid_pipe" -> pipeData(facing);
+                default -> null;
+            };
+            if (data != null) {
+                cell.setBlockData(data, false);
+                migrated++;
+            }
+        }
+        return migrated;
     }
 
     /** yaw-ul jucatorului -> cardinalul spre care priveste (conventia Bukkit:

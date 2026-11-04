@@ -44,7 +44,6 @@ public final class MechanicManager {
     private final MechanicStore store;
     private final JackManager jacks;
     private final WorkstationManager workstations;
-    private final PropManager props;
     private final FluidMixerManager mixers;
     private final MechanicGui mechanicGui;
     private BukkitTask saveTask;
@@ -61,7 +60,6 @@ public final class MechanicManager {
         // Butonul RIDICA/COBOARA isi revine singur in meniu la finalul animatiei.
         this.jacks.setStateChangedHook(jackId -> workstations.refreshByJack(jackId));
         this.jacks.setRemovedHook(this.workstations::handleJackRemoved);
-        this.props = new PropManager(plugin, vehicles, store);
         this.mixers = new FluidMixerManager(plugin, store);
         this.mechanicGui = new MechanicGui(this);
     }
@@ -69,7 +67,15 @@ public final class MechanicManager {
     public void start() {
         jacks.start();
         workstations.start();
-        props.start();
+        // Ciclul AJ: props-urile vechi (entitati) din sectiunea "props" a
+        // MechanicStore devin AUTOMAT blocuri reale pe celulele lor (con/placa/
+        // teava). Sectiunea se sterge la primul save (saveAll rescrie fisierul).
+        int migratedProps = com.mrcrayfish.vehicle.paper.world.TrafficProps
+                .migrateLegacyProps(store);
+        if (migratedProps > 0) {
+            plugin.getLogger().info("[Props] Ciclul AJ: " + migratedProps
+                    + " prop-uri vechi (entitati) au devenit blocuri reale.");
+        }
         mixers.start();
         long autosave = Math.max(30L, plugin.getConfig().getLong("persistence.autosave-seconds", 300L));
         saveTask = Bukkit.getScheduler().runTaskTimer(plugin, this::save, autosave * 20L, autosave * 20L);
@@ -83,7 +89,6 @@ public final class MechanicManager {
             saveTask.cancel();
         }
         save();
-        props.stop();
         workstations.stop();
         jacks.stop();
         mixers.stop();
@@ -93,7 +98,6 @@ public final class MechanicManager {
         List<Object> mixed = new ArrayList<>();
         mixed.addAll(jacks.snapshot());
         mixed.addAll(workstations.snapshot());
-        mixed.addAll(props.snapshot());
         mixed.addAll(mixers.snapshot());
         store.saveAll(mixed);
     }
@@ -104,10 +108,6 @@ public final class MechanicManager {
 
     public WorkstationManager workstations() {
         return workstations;
-    }
-
-    public PropManager props() {
-        return props;
     }
 
     public FluidMixerManager mixers() {

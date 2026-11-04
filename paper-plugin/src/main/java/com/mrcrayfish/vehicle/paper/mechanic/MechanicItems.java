@@ -479,11 +479,10 @@ public final class MechanicItems {
                 com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.BOOST_PAD, 1);
     }
 
+    /** Ciclul AJ: si teava devine BLOC real (ca conul si placa) - PropManager e sters. */
     public static ItemStack fluidPipe() {
-        ItemStack item = base(Kind.FLUID_PIPE, "fluid_pipe");
-        finish(item, Component.text("Teava de fluid", NamedTextColor.GOLD), List.of(
-                Component.text("Decor de statie - click dreapta pentru plasare.", NamedTextColor.GRAY)));
-        return item;
+        return com.mrcrayfish.vehicle.paper.world.TrafficProps.item(
+                com.mrcrayfish.vehicle.paper.world.TrafficProps.Kind.FLUID_PIPE, 1);
     }
 
     /* ============================ cufar vehicul ============================= */

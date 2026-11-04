@@ -1206,7 +1206,7 @@ public final class LandVehicle {
     private double lastSurfaceFriction = 1.0D;
     private double lastSurfaceTractionFactor = LandVehicleSpec.STANDARD_TRACTION;
 
-    /** Viteza orizontala in blocuri/secunda (public - si PropManager/boost pad o foloseste). */
+    /** Viteza orizontala in blocuri/secunda (public - o foloseste si TrafficProps/boost pad). */
     public double horizontalSpeed() {
         return Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
     }

@@ -88,13 +88,9 @@ public final class MechanicListener implements Listener {
                     consumeIfNotCreative(held, creative);
                 }
             }
-            // Ciclul AI: TRAFFIC_CONE/BOOST_PAD nu mai exista ca entitati-prop;
-            // itemele vechi sunt preluate de TrafficPropsListener si pun BLOCUL real.
-            case FLUID_PIPE -> {
-                event.setCancelled(true);
-                mechanic.props().place("fluid_pipe", face, yaw);
-                consumeIfNotCreative(held, creative);
-            }
+            // Ciclul AI/AJ: TRAFFIC_CONE / BOOST_PAD / FLUID_PIPE nu mai exista ca
+            // entitati-prop deloc (PropManager sters); itemele lor sunt preluate de
+            // TrafficPropsListener si pun BLOCUL real (tripwire hijack state).
             case FLUID_MIXER -> {
                 event.setCancelled(true);
                 if (mechanic.mixers().place(player, face, yaw)) {
@@ -216,12 +212,8 @@ public final class MechanicListener implements Listener {
             return;
         }
         Entity clicked = event.getEntity();
-        // props: ghemuit + pumn = ridicare inapoi in inventar
-        if (mechanic.props().handleBreak(player, clicked)) {
-            event.setCancelled(true);
-            mechanic.save();
-            return;
-        }
+        // props-entitati nu mai exista (ciclul AJ: PropManager sters complet);
+        // conurile/placile/tevile sunt blocuri reale si se sparg ca blocuri.
         // hammer pe vehicul: demontare in cufar (doar proprietarul, perm mcv.vehicle.dismantle)
         Optional<LandVehicle> vehicle = vehicles.byEntity(clicked);
         if (vehicle.isEmpty()) {

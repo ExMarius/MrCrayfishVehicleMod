@@ -49,6 +49,8 @@ public final class TrafficPropsListener implements Listener {
                 kind = TrafficProps.Kind.CONE;
             } else if (legacy == com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind.BOOST_PAD) {
                 kind = TrafficProps.Kind.BOOST_PAD;
+            } else if (legacy == com.mrcrayfish.vehicle.paper.mechanic.MechanicItems.Kind.FLUID_PIPE) {
+                kind = TrafficProps.Kind.FLUID_PIPE;
             } else {
                 return;
             }
@@ -60,12 +62,12 @@ public final class TrafficPropsListener implements Listener {
                     NamedTextColor.RED));
             return;
         }
-        BlockFace facing = kind == TrafficProps.Kind.BOOST_PAD
-                ? TrafficProps.yawToFacing(event.getPlayer().getLocation().getYaw())
-                : null;
-        BlockData data = kind == TrafficProps.Kind.BOOST_PAD
-                ? TrafficProps.padData(facing)
-                : TrafficProps.coneData();
+        BlockFace facing = TrafficProps.yawToFacing(event.getPlayer().getLocation().getYaw());
+        BlockData data = switch (kind) {
+            case CONE -> TrafficProps.coneData();
+            case BOOST_PAD -> TrafficProps.padData(facing);
+            case FLUID_PIPE -> TrafficProps.pipeData(facing);
+        };
         target.setBlockData(data, false);
         if (event.getPlayer().getGameMode() != GameMode.CREATIVE) {
             hand.setAmount(hand.getAmount() - 1);

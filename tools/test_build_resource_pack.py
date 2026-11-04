@@ -547,6 +547,47 @@ class ResourcePackBuildTest(unittest.TestCase):
             raise AssertionError("truncated Ogg stream")
         return granule
 
+    def test_traffic_props_blockstates_are_fully_partitioned(self):
+        """Ciclul AI/AJ: con, placa si teava sunt partitii disjuncte de tripwire;
+        separatorul vanilla (disarmed=false) NU se poate compune peste ele."""
+        parts = self.read_json("assets/minecraft/blockstates/tripwire.json")["multipart"]
+        vanilla = [p for p in parts if p.get("when") == {"disarmed": "false"}]
+        self.assertEqual(1, len(vanilla))
+        self.assertEqual("minecraft:block/trip_wire_ns", vanilla[0]["apply"]["model"])
+        cone = [p for p in parts if p["apply"]["model"] == "vehicle:block/mcv_traffic_cone"]
+        self.assertEqual(1, len(cone))
+        self.assertEqual({"disarmed": "true", "north": "none", "east": "none",
+                          "south": "none", "west": "none"}, cone[0]["when"])
+        boost = [p for p in parts
+                 if p["apply"]["model"] == "vehicle:block/mcv_boost_pad"]
+        self.assertEqual(4, len(boost))
+        # Ciclul AJ: teava de fluid = attached=true (orfana pt firul vanilla).
+        pipe = [p for p in parts if "mcv_fluid_pipe" in p["apply"]["model"]]
+        self.assertEqual(2, len(pipe))
+        self.assertTrue(all(p["when"].get("attached") == "true" for p in pipe))
+        self.assertTrue(all(p["when"].get("disarmed") == "true" for p in pipe))
+        self.assertEqual([0, 90], sorted(p["apply"].get("y", 0) for p in pipe))
+        self.assertIn("assets/vehicle/models/block/mcv_fluid_pipe.json", self.entries)
+        self.assertIn("assets/vehicle/items/fluid_pipe.json", self.entries)
+        # simularea exacta a rezolutiei clientului: fiecare stare hijack-uita
+        # randeaza EXACT un model (niciun element de compunere vanilla peste ele).
+        def resolve(state):
+            return [p["apply"] for p in parts
+                    if all(state.get(k) in v.split("|") for k, v in p["when"].items())]
+        base = {"powered": "false"}
+        self.assertEqual([{"model": "vehicle:block/mcv_traffic_cone"}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "none", "east": "none",
+                                  "south": "none", "west": "none"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_fluid_pipe"}],
+                         resolve({**base, "attached": "true", "disarmed": "true",
+                                  "north": "side", "south": "side",
+                                  "east": "none", "west": "none"}))
+        self.assertEqual([{"model": "minecraft:block/trip_wire_ns"}],
+                         resolve({**base, "attached": "false", "disarmed": "false",
+                                  "north": "none", "east": "none",
+                                  "south": "none", "west": "none"}))
+
 
 if __name__ == "__main__":
     unittest.main()

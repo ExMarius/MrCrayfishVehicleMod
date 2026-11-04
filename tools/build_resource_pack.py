@@ -1290,6 +1290,9 @@ def build(output: Path) -> tuple[Path, str]:
                          namespace / "models/block/mcv_traffic_cone.json")
         mechanic_convert(ASSETS / "models/block/boost_pad.json",
                          namespace / "models/block/mcv_boost_pad.json")
+        # Ciclul AJ: si teava de fluid devine bloc real (state attached=true orfan)
+        mechanic_convert(ASSETS / "models/block/fluid_pipe.json",
+                         namespace / "models/block/mcv_fluid_pipe.json")
         # animatia de curgere a sagetilor calare pe copia texturii din pack
         copy(ASSETS / "textures/block/boost_pad.png.mcmeta",
              namespace / "textures/item/boost_pad.png.mcmeta")
@@ -1308,6 +1311,14 @@ def build(output: Path) -> tuple[Path, str]:
                       "south": "none", "west": "side"}, "apply": {"model": _BOOST, "y": 270}},
             {"when": {"disarmed": "true", "north": "none", "east": "none",
                       "south": "none", "west": "none"}, "apply": {"model": _CONE}},
+            # Ciclul AJ - TEAVA DE FLUID: attached=true + disarmed=true + laturi
+            # opuse (combinatie complet orfana pentru firul vanilla pus de mana).
+            {"when": {"disarmed": "true", "attached": "true", "north": "side",
+                      "south": "side", "east": "none", "west": "none"},
+             "apply": {"model": "vehicle:block/mcv_fluid_pipe"}},
+            {"when": {"disarmed": "true", "attached": "true", "east": "side",
+                      "west": "side", "north": "none", "south": "none"},
+             "apply": {"model": "vehicle:block/mcv_fluid_pipe", "y": 90}},
             # firul vanilla = doar starile normale (disarmed=false); pe cele
             # hijack-uite (disarmed=true) o combinatie fara-when s-ar COMPUSE
             # cu modelul nostru (multipart stocheaza toate potrivirile) => dubla
