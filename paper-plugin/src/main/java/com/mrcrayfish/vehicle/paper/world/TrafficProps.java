@@ -194,6 +194,14 @@ public final class TrafficProps {
      *  PropManager e sters complet; sectiunea dispare la primul saveAll. */
     public static int migrateLegacyProps(
             com.mrcrayfish.vehicle.paper.persistence.MechanicStore store) {
+        // Ciclul AJ.3: daca din orice motiv au supravietuit entitati-fantoma
+        // mcv_prop (prop-urile vechi erau item-display-uri), le stergem acum -
+        // PropManager (care le curata la boot) a fost sters complet in AJ.
+        int ghosts = purgeLegacyPropEntities();
+        if (ghosts > 0) {
+            org.bukkit.Bukkit.getLogger().info("[Props] AJ.3: " + ghosts
+                    + " entitati-fantoma mcv_prop eliminate din lume.");
+        }
         int migrated = 0;
         for (com.mrcrayfish.vehicle.paper.persistence.MechanicStore.StoredStation stored
                 : store.loadStations("props")) {
@@ -219,6 +227,21 @@ public final class TrafficProps {
             }
         }
         return migrated;
+    }
+
+    /** AJ.3: sterge ORICE entitate etichetata mcv_prop / mcv_<uuid> din lumile
+     *  incarcate (item-display-urile vechi de prop). Idempotent. */
+    public static int purgeLegacyPropEntities() {
+        int removed = 0;
+        for (org.bukkit.World world : org.bukkit.Bukkit.getWorlds()) {
+            for (org.bukkit.entity.Entity entity : world.getEntities()) {
+                if (entity.getScoreboardTags().contains("mcv_prop")) {
+                    entity.remove();
+                    removed++;
+                }
+            }
+        }
+        return removed;
     }
 
     /** yaw-ul jucatorului -> cardinalul spre care priveste (conventia Bukkit:
