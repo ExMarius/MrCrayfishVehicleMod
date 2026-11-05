@@ -731,11 +731,10 @@ public final class LandVehicleRig {
                 double radians = Math.toRadians(seatYaw);
                 double pitchRadians = Math.toRadians(rider.getPitch());
                 double horizontal = Math.cos(pitchRadians) * 5.0D;
-                Location target = rider.getLocation().clone().add(
-                        -Math.sin(radians) * horizontal,
-                        -Math.sin(pitchRadians) * 5.0D,
-                        Math.cos(radians) * horizontal);
-                rider.lookAt(target);
+                Location origin = rider.getLocation();
+                rider.lookAt(origin.getX() - Math.sin(radians) * horizontal,
+                        origin.getY() - Math.sin(pitchRadians) * 5.0D,
+                        origin.getZ() + Math.cos(radians) * horizontal);
             }
         }
     }
