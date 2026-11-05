@@ -1869,10 +1869,15 @@ public final class LandVehicle {
                     .font(hudFont);
             section.setLength(0);
 
-            // CICLUL BG: completam direct pana la 182px cu spatii binare -
-            // HUD-ul nostru se opreste in stanga (inimile de cal din dreapta
-            // raman citilele de combustibil, exact vanilla).
-            int rest = 182 - width;
+            // CICLUL BI (feedback user): in survival textul statea PESTE inimile
+            // jucatorului (coloana stanga, x=centru-91). Trebuie LIPIT de inimile
+            // de cal (care incep la centru+10), deci marginea DREAPTA a textului
+            // = centru+6 (4px spatiu). Cu linia centrata vanilla: latimea totala
+            // trebuie 2*width - 12 => pad = width - 12.
+            int rest = survivalLike ? width - 12 : 182 - width;
+            if (rest < 0) {
+                rest = 0; // textul nu poate fi negativ-lung; case www default
+            }
             while (rest > 0) {
                 for (int bit = 0; bit < 7; bit++) {
                     int value = 64 >> bit;
