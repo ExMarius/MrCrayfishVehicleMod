@@ -305,61 +305,6 @@ public final class LandVehicle {
         if (collision.verticalCollision()) {
             verticalVelocity = 0.0D;
         }
-        /* BL6 diagnoza temporara: de ce nu se deplaseaza masina cu scaun-barca. */
-        if (age % 20 == 0) {
-            org.bukkit.Input in = driver == null ? null : driver.getCurrentInput();
-            Bukkit.getLogger().info("[SEATDBG2] id=" + spec.id()
-                    + " driver=" + (driver == null ? "-" : driver.getName())
-                    + " input=" + (in == null ? "-" : ("f=" + in.isForward() + " b=" + in.isBackward()
-                            + " l=" + in.isLeft() + " r=" + in.isRight() + " jump=" + in.isJump()))
-                    + " throttle=" + String.format(java.util.Locale.ROOT, "%.2f", throttle)
-                    + " steer=" + String.format(java.util.Locale.ROOT, "%.2f", steeringAngle)
-                    + " speed=" + String.format(java.util.Locale.ROOT, "%.2f", horizontalSpeed())
-                    + " req=" + String.format(java.util.Locale.ROOT, "%.3f/%.3f/%.3f",
-                            requestedMovement.getX(), requestedMovement.getY(), requestedMovement.getZ())
-                    + " got=" + String.format(java.util.Locale.ROOT, "%.3f/%.3f/%.3f",
-                            collision.movement().getX(), collision.movement().getY(), collision.movement().getZ())
-                    + " loc=" + String.format(java.util.Locale.ROOT, "%.2f/%.2f/%.2f",
-                            location.getX(), location.getY(), location.getZ())
-                    + " onGround=" + onGround);
-            if (age % 100 == 0 && driver != null) {
-                double half = spec.entityWidth() * 0.5D;
-                org.bukkit.util.BoundingBox box = new org.bukkit.util.BoundingBox(
-                        location.getX() - half, location.getY(), location.getZ() - half,
-                        location.getX() + half, location.getY() + spec.entityHeight(), location.getZ() + half);
-                StringBuilder hits = new StringBuilder();
-                int found = 0;
-                for (int bx = (int) Math.floor(box.getMinX()); bx <= (int) Math.floor(box.getMaxX()); bx++) {
-                    for (int by = (int) Math.floor(box.getMinY()); by <= (int) Math.floor(box.getMaxY()); by++) {
-                        for (int bz = (int) Math.floor(box.getMinZ()); bz <= (int) Math.floor(box.getMaxZ()); bz++) {
-                            org.bukkit.block.Block block = world.getBlockAt(bx, by, bz);
-                            if (block.getType().isAir() || found >= 6) {
-                                continue;
-                            }
-                            boolean overlaps = false;
-                            for (org.bukkit.util.BoundingBox shape : block.getCollisionShape().getBoundingBoxes()) {
-                                if (box.overlaps(shape.clone().shift(bx, by, bz))) {
-                                    overlaps = true;
-                                    break;
-                                }
-                            }
-                            if (overlaps) {
-                                hits.append(bx).append(',').append(by).append(',').append(bz)
-                                        .append('=').append(block.getType()).append(' ');
-                                found++;
-                            }
-                        }
-                    }
-                }
-                Bukkit.getLogger().info("[SEATDBG3] box=" + String.format(java.util.Locale.ROOT,
-                        "%.2f..%.2f/%.2f..%.2f/%.2f..%.2f", box.getMinX(), box.getMaxX(),
-                        box.getMinY(), box.getMaxY(), box.getMinZ(), box.getMaxZ())
-                        + " w=" + spec.entityWidth() + " h=" + spec.entityHeight()
-                        + " climbStations=" + spec.climbsStationSlabs()
-                        + " blocker(hasCollisionsIn)=" + world.hasCollisionsIn(box.clone().expand(-1.0E-7D))
-                        + " blocks=[" + hits + "]");
-            }
-        }
         // Daune la impact: mersul blocat orizontal la viteza avariaza proportional si
         // avertizeaza soferul; formula e a portului (modul nu avea valori exacte ale
         // impactului, doar health + drop la 0), pragul porneste de la viteza de mers.

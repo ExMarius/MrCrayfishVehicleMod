@@ -9,9 +9,12 @@ import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.Horse;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -31,64 +34,6 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /** Multipart vanilla-display rig driven by a generated land-vehicle definition. */
 public final class LandVehicleRig {
-    /** BL5 (decizie user, seattest a): scaunul este o BARCA invizibila.
-     *  Motorul vanilla de riding la barca da exact ce trebuie: corpul sta
-     *  lipit de scaun si se roteste o data cu vehiculul, iar capul se poate
-     *  intoarce aproape complet (fara clampa de ~45 grade a calului).
-     *  Barca nu are atribute (nu se poate scala) si nu are viata => bara de
-     *  inimi-combustibil dispare; combustibilul ramane in textul HUD. */
-    public static final float SEAT_LIFT_MIN = -1.0F;
-    public static final float SEAT_LIFT_MAX = 1.0F;
-    /** Reglaj fin (in blocuri) al inaltimii la care sta calareaul, ca sa
-     *  potrivim "sezutul" barei la scaunul din model. Se aplica instant. */
-    private static volatile float seatLift = -0.28F;
-
-    public static void setSeatLift(float lift) {
-        seatLift = Math.max(SEAT_LIFT_MIN, Math.min(SEAT_LIFT_MAX, lift));
-    }
-
-    public static float seatLift() {
-        return seatLift;
-    }
-
-    /** BL8: comutator pentru fortarea rotatiei scaunului la yaw-ul vehiculului.
-     *  true (default) = serverul roteste scaunul o data cu masina; false =
-     *  scaunul mosteneste rotatia ancorei (fara pachete de rotatie proprii). */
-    private static volatile boolean forceSeatYaw = true;
-
-    public static void setForceSeatYaw(boolean force) {
-        forceSeatYaw = force;
-    }
-
-    public static boolean forceSeatYaw() {
-        return forceSeatYaw;
-    }
-
-    /** BL9: tipul scaunului. BOAT = varianta validata vizual de user, dar barca
-     *  are input de la calaret si poate fi rotita de client (se invarte pe
-     *  masina). MINECART = acelasi comportament de riding (corp blocat, cap
-     *  liber), dar NU are niciun input de la calaret, deci rotatia ei vine
-     *  exclusiv de la server. Comutabil live cu /vehicle seatkind. */
-    private static volatile org.bukkit.entity.EntityType seatType = org.bukkit.entity.EntityType.MARKER;
-
-    public static void setSeatType(org.bukkit.entity.EntityType type) {
-        if (type == org.bukkit.entity.EntityType.MINECART || type == org.bukkit.entity.EntityType.OAK_BOAT) {
-            seatType = type;
-        }
-    }
-
-    public static org.bukkit.entity.EntityType seatType() {
-        return seatType;
-    }
-
-    /** Reseteaza scaunele (dismonteaza calaretii) ca sa fie recreate cu tipul nou. */
-    public void resetSeats() {
-        for (SeatCarrier carrier : seats) {
-            discardSeat(carrier);
-            carrier.rider = null;
-        }
-    }
-
     public static final String ENTITY_TAG = "mcv_plugin_vehicle";
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
     /* Ciclul BL: scaunul este un cal la scara minima, invizibil, fara saua:
@@ -96,9 +41,9 @@ public final class LandVehicleRig {
      * vanilla la yaw-ul vehiculului (corp blocat, cap liber). Entitatile sunt
      * excluse din selectoarele /kill si sunt ejectate inainte de remove(), deci
      * bucla din cautarea vanilla a locului de demontare nu apare. */
-    /** BL5: barca nu se poate scala (nu e LivingEntity). Ramanem la offset 0
-     *  si compunem pozitia calareului din reglajul `seatLift`. */
-    private static final float SEAT_PASSENGER_OFFSET = 0.0F;
+    private static final double SEAT_CARRIER_SCALE = 0.0625D;
+    private static final float SEAT_PASSENGER_OFFSET = 0.7F * (float) SEAT_CARRIER_SCALE;
+    private static final double SEAT_GAUGE_MAX_HEALTH = FuelGauge.MAX_HALF_HEARTS;
 
     private final UUID vehicleId;
     private final LandVehicleSpec spec;
@@ -232,17 +177,14 @@ public final class LandVehicleRig {
         List<SeatCarrier> seats = new ArrayList<>();
         boolean bodyAssigned = false;
         for (LandVehicleSpec.Seat seat : spec.seats()) {
-            /* BL12: fiecare scaun primeste ancora LUI (display invizibil, item
-             * gol). Inainte scaunul soferului folosea chiar display-ul corpului
-             * masinii, iar rotatia acelei ancore se compunea cu rotatia
-             * scaunului => "barca se invarte pe masina". Ancora ramane acum
-             * NEROTITA (vezi update()), deci yaw-ul scaunului are o singura
-             * sursa: serverul. */
-            ItemDisplay anchor = display(world, location, new ItemStack(Material.AIR));
-            mark(anchor, vehicleId);
-            all.add(anchor);
+            ItemDisplay anchor;
             if (seat.driver() && !bodyAssigned) {
+                anchor = body;
                 bodyAssigned = true;
+            } else {
+                anchor = display(world, location, new ItemStack(Material.AIR));
+                mark(anchor, vehicleId);
+                all.add(anchor);
             }
             seats.add(new SeatCarrier(anchor, seat));
         }
@@ -283,40 +225,66 @@ public final class LandVehicleRig {
         });
     }
 
-    private static Entity seatCarrier(World world, Location location, UUID vehicleId) {
-        /* BL5/BL6: barca invizibila = scaun. Nu are AI, nu se scalaeaza, nu are
-         * viata; doar transporta calareaul cu clamp-ul larg de privire.
-         * BL6: flagul de invizibilitate NU este respectat de randarea barcii in
-         * 1.21.4 (barca se vedea pe masina), deci o ascundem explicit din
-         * client pentru fiecare jucator (Paper hideEntity). */
-        Entity seat = world.spawnEntity(location, seatType);
-        seat.setInvisible(true);
-        seat.setInvulnerable(true);
-        seat.setSilent(true);
-        seat.setPersistent(false);
-        seat.setGravity(false);
+    private static Horse seatCarrier(World world, Location location, UUID vehicleId) {
+        /* Ciclul BL (feedback user): scaun = cal FARA saua. Calul are clampa
+         * vanilla de riding: yaw-ul calareului este legat de yaw-ul vehiculului,
+         * deci corpul ramane blocat pe scaun si doar capul se roteste liber
+         * (~45 grade), exact ca in mod. Fara saua entitatea NU este
+         * "controllable" de catre client (era problema cu porcul cu saua:
+         * clientul ii impunea rotatia dupa camera si se batea cap in cap cu
+         * setRotation-ul server-ului -> corpul se invartea/oscila). */
+        Horse seat = world.spawn(location, Horse.class, carrier -> {
+            /* Ciclul BM (seattest a confirmat: varianta C tine corpul fix):
+             * cal CU saua + tamed => vanilla activeaza clampa de riding
+             * (yaw-ul calareului legat de yaw-ul monturii -> corp blocat,
+             * cap liber stanga-dreapta). MOVEMENT_SPEED 0 => jucatorul nu
+             * poate plimba montura cu WASD; rotatia prin mouse ramane. */
+            carrier.setTamed(true);
+            carrier.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
+            carrier.setAI(false);
+            carrier.setGravity(false);
+            carrier.setCollidable(false);
+            carrier.setInvisible(true);
+            carrier.setInvulnerable(true);
+            carrier.setSilent(true);
+            carrier.setPersistent(false);
+            carrier.setRemoveWhenFarAway(false);
+            AttributeInstance scale = carrier.getAttribute(Attribute.SCALE);
+            if (scale != null) {
+                scale.setBaseValue(SEAT_CARRIER_SCALE);
+            }
+            AttributeInstance speed = carrier.getAttribute(Attribute.MOVEMENT_SPEED);
+            if (speed != null) {
+                speed.setBaseValue(0.0D);
+            }
+            AttributeInstance maximumHealth = carrier.getAttribute(Attribute.MAX_HEALTH);
+            if (maximumHealth != null) {
+                maximumHealth.setBaseValue(SEAT_GAUGE_MAX_HEALTH);
+            }
+            carrier.setHealth(SEAT_GAUGE_MAX_HEALTH);
+        });
         mark(seat, vehicleId);
         return seat;
     }
 
-    private Entity createSeatMount(SeatCarrier carrier) {
+    private Horse createSeatMount(SeatCarrier carrier) {
         if (removed || !carrier.anchor.isValid()) {
             return null;
         }
         Location location = carrier.anchor.getLocation();
-        Entity seat = seatCarrier(location.getWorld(), location, vehicleId);
-        /* BL14: scaunul este entitate DE SINE STATATOARE, teleportata de server
-         * pe scaun in fiecare tick (pozitie + yaw de la vehicul). Fara parinte
-         * nu exista compunere de rotatii, iar un MARKER nu poate fi condus de
-         * client (nu are input), deci pozitia rămâne integral a serverului. */
-        seat.teleport(location);
+        Horse seat = seatCarrier(location.getWorld(), location, vehicleId);
+        if (!carrier.anchor.addPassenger(seat)) {
+            seat.remove();
+            return null;
+        }
         carrier.mount = seat;
         entities.add(seat);
+        applySeatGauge(seat);
         return seat;
     }
 
     private void discardSeat(SeatCarrier carrier) {
-        Entity seat = carrier.mount;
+        Horse seat = carrier.mount;
         carrier.mount = null;
         if (seat != null) {
             entities.remove(seat);
@@ -490,12 +458,13 @@ public final class LandVehicleRig {
         }
 
         for (SeatCarrier carrier : seats) {
-            Vector3f seatPoint = pigAnchor(chassis(
-                    seatOffset(carrier.properties), wheelieAngle, bodyRoll));
-            Location seatLocation = local(root, seatPoint);
-            carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            /* BL12: ancora rămâne NEROTITA - rotatia o poarta doar scaunul. */
-            carrier.anchor.setRotation(0.0F, 0.0F);
+            if (carrier.anchor != body) {
+                Vector3f seatPoint = pigAnchor(chassis(
+                        seatOffset(carrier.properties), wheelieAngle, bodyRoll));
+                Location seatLocation = local(root, seatPoint);
+                carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                carrier.anchor.setRotation(yaw + carrier.properties.yawOffset(), 0.0F);
+            }
             maintainSeat(carrier, yaw);
         }
     }
@@ -581,7 +550,7 @@ public final class LandVehicleRig {
 
     private void maintainSeat(SeatCarrier carrier, float yaw) {
         float seatYaw = yaw + carrier.properties.yawOffset();
-        Entity seat = carrier.mount;
+        Horse seat = carrier.mount;
         if (seat == null) {
             return;
         }
@@ -592,7 +561,7 @@ public final class LandVehicleRig {
             if (!removed && riderId != null) {
                 Player rider = Bukkit.getPlayer(riderId);
                 if (rider != null && rider.isOnline() && !rider.isDead()) {
-                    Entity replacement = createSeatMount(carrier);
+                    Horse replacement = createSeatMount(carrier);
                     if (replacement != null && replacement.addPassenger(rider)) {
                         carrier.rider = riderId;
                         replacement.setRotation(seatYaw, 0.0F);
@@ -615,15 +584,13 @@ public final class LandVehicleRig {
             return;
         }
         carrier.rider = rider.getUniqueId();
-        /* BL14: pozitia si orientarea scaunului vin de la VEHICUL, in fiecare
-         * tick, fara praguri: calaretul este tras efectiv dupa masina (inclusiv
-         * la viraje), iar orice deviere venita din client este anulata imediat. */
-        Location target = carrier.anchor.getLocation();
-        target.setYaw(seatYaw);
-        target.setPitch(0.0F);
-        seat.teleport(target, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-        if (forceSeatYaw && (seat.getYaw() != seatYaw || seat.getPitch() != 0.0F)) {
-            seat.setRotation(seatYaw, 0.0F);
+        /* CICLUL BL15 (revert la varianta C validata de user in seattest):
+         * cal cu saua, fara NICIUN setRotation din server. Clampa de riding
+         * vanilla tine corpul calareului lipit de vehicul (este tras odata cu
+         * masina la viraje), iar capul se roteste liber in limitele vanilla.
+         * Orice setRotation fortat producea oscilatie/rotire vizibila. */
+        if (!seat.isValid()) {
+            return;
         }
     }
 
@@ -663,7 +630,7 @@ public final class LandVehicleRig {
     }
 
     private static Vector3f pigAnchor(Vector3f seatPoint) {
-        return new Vector3f(seatPoint).sub(0.0F, SEAT_PASSENGER_OFFSET - seatLift, 0.0F);
+        return new Vector3f(seatPoint).sub(0.0F, SEAT_PASSENGER_OFFSET, 0.0F);
     }
 
     private Vector3f chassis(Vector3f sourcePoint, float wheelieAngle, float bodyRoll) {
@@ -699,9 +666,19 @@ public final class LandVehicleRig {
     }
 
     public void setSeatGauge(float fraction) {
-        /* BL5: barca nu are viata, deci inimile nu mai pot afisa combustibilul.
-         * Pastram valoarea pentru HUD-ul text (FuelGauge.overlay). */
         seatGauge = Float.isFinite(fraction) ? Math.max(0.0F, Math.min(1.0F, fraction)) : 1.0F;
+        for (SeatCarrier carrier : seats) {
+            if (carrier.mount != null && carrier.mount.isValid()) {
+                applySeatGauge(carrier.mount);
+            }
+        }
+    }
+
+    private void applySeatGauge(Horse seat) {
+        double health = FuelGauge.mountHealth(seatGauge);
+        if (Math.abs(seat.getHealth() - health) > 0.01D) {
+            seat.setHealth(health);
+        }
     }
 
     public void tickSeats(float yaw) {
@@ -711,30 +688,7 @@ public final class LandVehicleRig {
         for (SeatCarrier carrier : seats) {
             maintainSeat(carrier, yaw);
         }
-        /* BL6: re-ascundem barcile (jucatori intrati ulterior) + diagnoza. */
-        seatDebugTicks++;
-        if (seatDebugTicks % 20 == 0) {
-            for (SeatCarrier carrier : seats) {
-                Entity seat = carrier.mount;
-                if (seat == null || !seat.isValid()) {
-                    continue;
-                }
-                if (!seat.getPassengers().isEmpty()) {
-                    Location anchorLocation = carrier.anchor.getLocation();
-                    org.bukkit.util.Vector delta = seat.getLocation().toVector()
-                            .subtract(anchorLocation.toVector());
-                    Bukkit.getLogger().info("[SEATDBG] mount=" + seat.getType()
-                            + " passengers=" + seat.getPassengers().size()
-                            + " seatYaw=" + String.format(java.util.Locale.ROOT, "%.1f", seat.getYaw())
-                            + " wantYaw=" + String.format(java.util.Locale.ROOT, "%.1f", yaw + carrier.properties.yawOffset())
-                            + " delta=" + String.format(java.util.Locale.ROOT, "%.3f/%.3f/%.3f",
-                                    delta.getX(), delta.getY(), delta.getZ()));
-                }
-            }
-        }
     }
-
-    private int seatDebugTicks;
 
     public boolean mount(Player player) {
         if (removed || !valid()) {
@@ -750,7 +704,7 @@ public final class LandVehicleRig {
         double playerHalfHeight = player.getBoundingBox().getHeight() * 0.5D;
         Location playerLocation = player.getLocation();
         for (SeatCarrier carrier : seats) {
-            Entity seat = carrier.mount;
+            Horse seat = carrier.mount;
             if (seat != null && seat.isValid() && !seat.getPassengers().isEmpty()) {
                 continue;
             }
@@ -768,27 +722,14 @@ public final class LandVehicleRig {
             }
         }
         if (closest == null) {
-            Bukkit.getLogger().info("[SEATDBG4] mount FAILED: niciun scaun liber pentru " + player.getName());
             return false;
         }
 
         if (closest.mount != null) {
             discardSeat(closest);
         }
-        Entity seat = createSeatMount(closest);
-        boolean boarded = false;
-        if (seat == null) {
-            Bukkit.getLogger().info("[SEATDBG4] mount FAILED: nu am putut crea scaunul pentru " + player.getName());
-        } else {
-            boarded = seat.addPassenger(player);
-            if (!boarded) {
-                Bukkit.getLogger().info("[SEATDBG4] mount FAILED: addPassenger refuzat ("
-                        + seat.getType() + ", passengers=" + seat.getPassengers().size() + ")");
-            }
-        }
-        if (boarded) {
-            /* BL7: calaretul primeste entitatea inapoi (daca fusese ascunsa),
-             * ca clientul sa-l poata aseza pe scaun. */
+        Horse seat = createSeatMount(closest);
+        if (seat != null && seat.addPassenger(player)) {
             closest.rider = player.getUniqueId();
             return true;
         }
@@ -915,9 +856,13 @@ public final class LandVehicleRig {
          * Restoring an ordinary bounding box also keeps the fallback dismount
          * location independent of the carrier's minimum render scale. */
         for (SeatCarrier carrier : seats) {
-            Entity seat = carrier.mount;
+            Horse seat = carrier.mount;
             if (seat == null || !seat.isValid() || seat.getPassengers().isEmpty()) {
                 continue;
+            }
+            AttributeInstance scale = seat.getAttribute(Attribute.SCALE);
+            if (scale != null) {
+                scale.setBaseValue(1.0D);
             }
             seat.eject();
             if (!seat.getPassengers().isEmpty()) {
@@ -1075,7 +1020,7 @@ public final class LandVehicleRig {
     private static final class SeatCarrier {
         private final ItemDisplay anchor;
         private final LandVehicleSpec.Seat properties;
-        private Entity mount;
+        private Horse mount;
         private UUID rider;
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
@@ -1083,7 +1028,7 @@ public final class LandVehicleRig {
             this.properties = properties;
         }
 
-        private Entity seat() {
+        private Horse seat() {
             return mount;
         }
     }

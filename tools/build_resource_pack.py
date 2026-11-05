@@ -1737,7 +1737,6 @@ def build(output: Path) -> tuple[Path, str]:
         emit_vehicle_previews(namespace)
         emit_jack_gui_backdrop(namespace)
         emit_hud_speed_font(namespace)
-        emit_invisible_seat_boat(namespace)
 
         if output.exists():
             output.unlink()
@@ -2488,29 +2487,6 @@ def emit_hud_speed_font(namespace: Path) -> None:
     write_json(namespace / 'font/hud_speed_creative.json',
                {'providers': creative_providers})
 
-
-
-def emit_invisible_seat_boat(namespace: Path) -> None:
-    """CICLUL BL8: scaunul vehiculelor este o barca invizibila.
-
-    Flagul vanilla de invizibilitate NU este respectat de randarea barcii in
-    1.21.4 (barca se vedea pe masina), iar ascunderea din client
-    (Player#hideEntity) rupe asezarea calareului. Solutia curata: textura
-    barcii devine complet transparenta in pack, deci clientul nu deseneaza
-    nimic, dar entitatea rămâne cunoscuta si calareul este asezat normal.
-    """
-    mc = namespace.parent / "minecraft"
-    texture_dir = mc / "textures/entity/boat"
-    texture_dir.mkdir(parents=True, exist_ok=True)
-    transparent = _png_encode_rgba(16, 16, bytes(16 * 16 * 4))
-    for name in ("oak", "oak_chest", "boat", "boat_oak"):
-        (texture_dir / f"{name}.png").write_bytes(transparent)
-    # BL9: acelasi tratament pentru MINECART (scaunul alternativ): toate
-    # vagoanele folosesc o singura textura in vanilla.
-    minecart_dir = mc / "textures/entity"
-    minecart_dir.mkdir(parents=True, exist_ok=True)
-    for name in ("minecart", "minecart_chest"):
-        (minecart_dir / f"{name}.png").write_bytes(transparent)
 
 
 def main() -> None:

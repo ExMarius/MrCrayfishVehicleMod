@@ -80,77 +80,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "propsdebug" -> propsDebug(sender);
             case "seattest" -> seatTest(sender, args);
-            case "seatlift" -> seatLiftCmd(sender, args);
-            case "seatyaw" -> seatYawCmd(sender, args);
-            case "seatkind" -> seatKindCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
-    }
-
-    /** /vehicle seatkind <minecart|boat>: alege entitatea-scaun. Recreaza
-     *  scaunele imediat (te da jos, urci din nou). */
-    private void seatKindCmd(CommandSender sender, String[] args) {
-        if (args.length < 2) {
-            sender.sendRichMessage("<yellow>seatkind actual: "
-                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.seatType()
-                    + " | folosire: /vehicle seatkind <minecart|boat></yellow>");
-            return;
-        }
-        org.bukkit.entity.EntityType type = switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
-            case "boat", "barca" -> org.bukkit.entity.EntityType.OAK_BOAT;
-            case "marker", "invizibil" -> org.bukkit.entity.EntityType.MARKER;
-            case "minecart", "vagon" -> org.bukkit.entity.EntityType.MINECART;
-            default -> null;
-        };
-        if (type == null) {
-            sender.sendRichMessage("<red>Folosire: /vehicle seatkind <marker|minecart|boat></red>");
-            return;
-        }
-        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatType(type);
-        int reset = plugin.vehicles().resetAllSeats();
-        sender.sendRichMessage("<green>seatkind = " + type + " (scaune recreate: " + reset
-                + "). Urcă-te din nou în mașină.</green>");
-    }
-
-    /** /vehicle seatyaw <on|off>: porneste/opreste fortarea rotatiei scaunului
-     *  (barca) la yaw-ul vehiculului. Diagnostic pentru "barca se invarte". */
-    private void seatYawCmd(CommandSender sender, String[] args) {
-        if (args.length < 2) {
-            sender.sendRichMessage("<yellow>seatyaw actual: "
-                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.forceSeatYaw()
-                    + " | folosire: /vehicle seatyaw <on|off></yellow>");
-            return;
-        }
-        boolean force = !"off".equalsIgnoreCase(args[1]);
-        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setForceSeatYaw(force);
-        sender.sendRichMessage("<green>seatyaw = " + force + " (serverul "
-                + (force ? "roteste" : "NU mai roteste") + " scaunul)</green>");
-    }
-
-    /** /vehicle seatlift <blocuri>: reglaj fin pe verticala al pozitiei calareului
-     *  pe scaun (valoarea se aplica instant, fara restart). Se foloseste o
-     *  singura data pentru a potrivi sezutul pe modele, apoi valoarea se
-     *  fixeaza in LandVehicleRig. */
-    private void seatLiftCmd(CommandSender sender, String[] args) {
-        if (args.length < 2) {
-            sender.sendRichMessage("<yellow>seatlift actual: "
-                    + String.format(java.util.Locale.ROOT, "%.3f", com.mrcrayfish.vehicle.paper.render.LandVehicleRig.seatLift())
-                    + " | folosire: /vehicle seatlift <" + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.SEAT_LIFT_MIN
-                    + ".." + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.SEAT_LIFT_MAX + "></yellow>");
-            return;
-        }
-        double value;
-        try {
-            value = Double.parseDouble(args[1].replace(',', '.'));
-        } catch (NumberFormatException error) {
-            sender.sendRichMessage("<red>Numar invalid.</red>");
-            return;
-        }
-        float lift = (float) value;
-        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatLift(lift);
-        sender.sendRichMessage("<green>seatlift = " + String.format(java.util.Locale.ROOT, "%.3f", lift)
-                + " (negativ = mai jos, pozitiv = mai sus)</green>");
     }
 
     /** /vehicle creative (mcv.creative): meniul complet al sistemului mecanic. */
@@ -659,8 +591,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <a|b|c|e|f|g></red>"
-                    + " a=barca, b=cal fara saua, c=cal cu saua, e=cal cu saua + server roteste, f=strider, g=camel.");
+            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <b|c></red>"
+                    + " b=cal fara saua (acum), c=cal cu saua (vanilla clasic).");
             return;
         }
         // curata randul vechi (daca exista)
@@ -682,23 +614,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         double rx = Math.cos(radians), rz = Math.sin(radians);
 
         java.util.List<Entity> spawned = new java.util.ArrayList<>();
-        spawned.add(spawnSeatTest(base.clone().add(rx * -6.0D, 0, rz * -6.0D), "A barca (clamp larg, corp lipit)", SeatKind.BOAT));
-        spawned.add(spawnSeatTest(base.clone().add(rx * -3.0D, 0, rz * -3.0D), "B cal fara saua", SeatKind.HORSE_BARE));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 0.0D, 0, rz * -3.0D), "C cal cu saua", SeatKind.HORSE_SADDLED));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 3.0D, 0, rz * 3.0D), "E C + rotire server/tick", SeatKind.HORSE_SADDLED));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 6.0D, 0, rz * 6.0D), "F strider cu saua", SeatKind.STRIDER_SADDLED));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 9.0D, 0, rz * 9.0D), "G camel cu saua", SeatKind.CAMEL_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * -1.5D, 0, rz * -1.5D), "B cal fara saua", SeatKind.HORSE_BARE));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 1.5D, 0, rz * 1.5D), "C cal cu saua", SeatKind.HORSE_SADDLED));
         for (Entity entity : spawned) {
             seatTestEntities.add(entity.getUniqueId());
         }
 
         int index = switch (args[1].toLowerCase(Locale.ROOT)) {
-            case "a" -> 0;
-            case "b" -> 1;
-            case "c" -> 2;
-            case "e" -> 3;
-            case "f" -> 4;
-            case "g" -> 5;
+            case "b" -> 0;
+            case "c" -> 1;
             default -> -1;
         };
         if (index < 0) {
@@ -710,21 +634,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         if (!seat.addPassenger(player)) {
             sender.sendRichMessage("<red>Nu te-a putut urca (permisiuni/protectie?).</red>");
             return;
-        }
-        if (args[1].equalsIgnoreCase("e")) {
-            final float fixedYaw = seat.getYaw();
-            final java.util.UUID seatId = seat.getUniqueId();
-            final Object[] holder = new Object[1];
-            holder[0] = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
-                Entity entity = Bukkit.getEntity(seatId);
-                if (entity == null || !entity.isValid() || entity.getPassengers().isEmpty()) {
-                    if (holder[0] instanceof org.bukkit.scheduler.BukkitTask task) {
-                        task.cancel();
-                    }
-                    return;
-                }
-                entity.setRotation(fixedYaw, 0.0F);
-            }, 1L, 1L);
         }
         sender.sendRichMessage("<gold>[SeatTest]</gold> " + spawnedLabels()[index]
                 + " - apasa F5, lasa tastele si invarte doar mouse-ul: uita-te daca corpul sta blocat si doar capul se roteste.");
@@ -740,57 +649,26 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }, 20L * 300);
     }
 
-    private enum SeatKind { BOAT, HORSE_BARE, HORSE_SADDLED, STRIDER_SADDLED, CAMEL_SADDLED }
+    private enum SeatKind { HORSE_BARE, HORSE_SADDLED }
 
     private static String[] spawnedLabels() {
-        return new String[] {"A barca (corp lipit ~105 grade cap liber)", "B cal fara saua (cap liber total, corp se invarte)",
-                "C cal cu saua (corp fix, cap ~45 grade)", "E C + rotire fortata server/tick",
-                "F strider cu saua", "G camel cu saua"};
+        return new String[] {"B cal fara saua", "C cal cu saua (vanilla clasic)"};
     }
 
-    private Entity spawnSeatTest(Location location, String label, SeatKind kind) {
-        Entity seat;
-        if (kind == SeatKind.BOAT) {
-            seat = location.getWorld().spawnEntity(location, org.bukkit.entity.EntityType.OAK_BOAT);
-            seat.setInvulnerable(true);
-            seat.setSilent(true);
-            seat.setPersistent(false);
-        } else if (kind == SeatKind.HORSE_BARE || kind == SeatKind.HORSE_SADDLED) {
-            Horse horse = location.getWorld().spawn(location, Horse.class, carrier -> {
-                carrier.setTamed(true);
-                carrier.setAI(false);
-                carrier.setGravity(false);
-                carrier.setCollidable(false);
-                carrier.setInvulnerable(true);
-                carrier.setSilent(true);
-                carrier.setPersistent(false);
-            });
-            if (kind == SeatKind.HORSE_SADDLED) {
-                horse.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
-            }
-            seat = horse;
-        } else if (kind == SeatKind.STRIDER_SADDLED) {
-            org.bukkit.entity.Strider strider = location.getWorld().spawn(location, org.bukkit.entity.Strider.class, carrier -> {
-                carrier.setSaddle(true);
-                carrier.setAI(false);
-                carrier.setGravity(false);
-                carrier.setCollidable(false);
-                carrier.setInvulnerable(true);
-                carrier.setSilent(true);
-                carrier.setPersistent(false);
-            });
-            seat = strider;
-        } else {
-            org.bukkit.entity.Camel camel = location.getWorld().spawn(location, org.bukkit.entity.Camel.class, carrier -> {
-                carrier.setAI(false);
-                carrier.setGravity(false);
-                carrier.setCollidable(false);
-                carrier.setInvulnerable(true);
-                carrier.setSilent(true);
-                carrier.setPersistent(false);
-            });
-            camel.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
-            seat = camel;
+    private Horse spawnSeatTest(Location location, String label, SeatKind kind) {
+        /* Tipizat Horse de la cap la coada - exact constructia din
+         * LandVehicleRig # seatCarrier care se stie ca compileaza in CI. */
+        Horse seat = location.getWorld().spawn(location, Horse.class, carrier -> {
+            carrier.setTamed(true);
+            carrier.setAI(false);
+            carrier.setGravity(false);
+            carrier.setCollidable(false);
+            carrier.setInvulnerable(true);
+            carrier.setSilent(true);
+            carrier.setPersistent(false);
+        });
+        if (kind == SeatKind.HORSE_SADDLED) {
+            seat.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
         }
         seat.customName(net.kyori.adventure.text.Component.text(label));
         seat.setCustomNameVisible(true);
@@ -894,7 +772,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatlift", "seatyaw", "seatkind"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -909,16 +787,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
-            return filter(List.of("a", "b", "c", "e", "f", "g"), args[1]);
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("seatkind")) {
-            return filter(List.of("marker", "minecart", "boat"), args[1]);
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("seatyaw")) {
-            return filter(List.of("on", "off"), args[1]);
-        }
-        if (args.length == 2 && args[0].equalsIgnoreCase("seatlift")) {
-            return filter(List.of("-0.6", "-0.45", "-0.28", "-0.1", "0", "0.2", "0.4"), args[1]);
+            return filter(List.of("b", "c"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);
