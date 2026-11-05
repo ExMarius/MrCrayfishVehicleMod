@@ -1,4 +1,10 @@
-# Extract log server - 2026-11-05T16:57:14Z
+# Extract log server - 2026-11-05T16:59:47Z
 
 ## fisiere in logs/
-(indisponibil)
+Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
+mariusuke-184939.d496911d@jacob.hidencloud.com: Permission denied (password,publickey).
+Connection closed
+## output get latest.log
+Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
+mariusuke-184939.d496911d@jacob.hidencloud.com: Permission denied (password,publickey).
+Connection closed
