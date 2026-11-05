@@ -40,16 +40,18 @@ jobs:
               -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b "$1" \
               -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
           }
-          printf 'ls -1 logs /tmp/ls_logs.txt\n' > b_ls.txt
-          sftp_any b_ls.txt >/dev/null || true
+          printf 'ls -1 logs\n' > b_ls.txt
+          sftp_any b_ls.txt > /tmp/ls_logs.txt 2>&1 || true
           echo "===== fisiere in logs/ ====="; tail -8 /tmp/ls_logs.txt 2>/dev/null || true
           printf 'get logs/latest.log /tmp/latest.log\n' > b_get.txt
-          sftp_any b_get.txt >/dev/null || true
+          sftp_any b_get.txt > /tmp/get_out.txt 2>&1 || true
+          echo "===== output get latest.log ====="; cat /tmp/get_out.txt
           NEWEST=$(grep -oE 'logs/[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]+\.log\.gz' /tmp/ls_logs.txt 2>/dev/null | sort | tail -1 || true)
           echo "arhiva recenta: ${NEWEST:-<niciuna>}"
           if [ -n "$NEWEST" ]; then
             printf 'get %s /tmp/prev.log.gz\n' "$NEWEST" > b_get2.txt
-            if sftp_any b_get2.txt >/dev/null; then gunzip -c /tmp/prev.log.gz > /tmp/prev.log || true; fi
+            if sftp_any b_get2.txt > /tmp/get_out2.txt 2>&1; then gunzip -c /tmp/prev.log.gz > /tmp/prev.log || true; fi
+            cat /tmp/get_out2.txt 2>/dev/null || true
           fi
           ls -la /tmp/latest.log /tmp/prev.log 2>/dev/null || true
       - name: Construiesc extractul
@@ -60,7 +62,9 @@ jobs:
             echo "# Extract log server - $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             echo
             echo "## fisiere in logs/"
-            tail -8 /tmp/ls_logs.txt 2>/dev/null || echo "(indisponibil)"
+            tail -12 /tmp/ls_logs.txt 2>/dev/null || echo "(indisponibil)"
+            echo "## output get latest.log"
+            cat /tmp/get_out.txt 2>/dev/null || echo "(indisponibil)"
             for f in /tmp/latest.log /tmp/prev.log; do
               [ -f "$f" ] || continue
               echo
