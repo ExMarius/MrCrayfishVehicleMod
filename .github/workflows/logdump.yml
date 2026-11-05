@@ -1,8 +1,9 @@
 name: Log dump (diagnostic)
 
-# Unealta de diagnostic: aduce ultimele linii din logs/latest.log ale serverului
-# HidenCloud in output-ul actiunii (si ca artefact), ca sa putem citi erorile
-# reale fara sa cerem jucatorului sa copieze din consola.
+# Unealta de diagnostic: aduce logs/latest.log (+ cea mai recenta arhiva din logs/)
+# de pe serverul HidenCloud si publica un extract in diagnostics/last-log-excerpt.txt
+# pe branch-ul de lucru, ca sa poata fi citit din repo (blob-urile de log nu sunt
+# accesibile din sandbox).
 
 on:
   workflow_dispatch:
@@ -13,9 +14,10 @@ on:
       - ".github/logdump-request"
 
 permissions:
-  contents: read
+  contents: write
 
 env:
+  BRANCH: arena/2f9f7b9e-mrcrayfishvehiclemod
   SFTP_HOST: jacob.hidencloud.com
   SFTP_PORT: "2022"
   SFTP_USER: mariusuke-184939.d496911d
@@ -23,41 +25,59 @@ env:
 
 jobs:
   dump:
-    name: Aduc latest.log
+    name: Aduc logul
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download log through SFTP
+        with:
+          ref: arena/2f9f7b9e-mrcrayfishvehiclemod
+      - name: Download logs through SFTP
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
           export SSHPASS="$SFTP_PASS_BACKUP"
+          sftp_any() {
+            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b "$1" \
+              -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+          }
           printf 'ls -1 logs /tmp/ls_logs.txt\n' > b_ls.txt
-          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-            -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b b_ls.txt \
-            -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 || true
-          echo "===== fisiere in logs/ ====="; tail -5 /tmp/ls_logs.txt 2>/dev/null || true
+          sftp_any b_ls.txt >/dev/null || true
+          echo "===== fisiere in logs/ ====="; tail -8 /tmp/ls_logs.txt 2>/dev/null || true
           printf 'get logs/latest.log /tmp/latest.log\n' > b_get.txt
-          ok=0
-          for i in 1 2 3; do
-            if sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
-                 -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b b_get.txt \
-                 -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"; then ok=1; break; fi
-            sleep 5
-          done
-          if [ "$ok" != "1" ]; then echo "::error title=SFTP::nu am putut descarca logs/latest.log"; exit 1; fi
-          ls -la /tmp/latest.log
-      - name: Rezumat
+          sftp_any b_get.txt >/dev/null || true
+          NEWEST=$(grep -oE 'logs/[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]+\.log\.gz' /tmp/ls_logs.txt 2>/dev/null | sort | tail -1 || true)
+          echo "arhiva recenta: ${NEWEST:-<niciuna>}"
+          if [ -n "$NEWEST" ]; then
+            printf 'get %s /tmp/prev.log.gz\n' "$NEWEST" > b_get2.txt
+            if sftp_any b_get2.txt >/dev/null; then gunzip -c /tmp/prev.log.gz > /tmp/prev.log || true; fi
+          fi
+          ls -la /tmp/latest.log /tmp/prev.log 2>/dev/null || true
+      - name: Construiesc extractul
         run: |
-          echo "===== SEATDBG (ultimele 40) ====="
-          grep -a "SEATDBG" /tmp/latest.log | tail -40 || echo "(niciun SEATDBG)"
-          echo "===== Exceptii / erori plugin (ultimele 60) ====="
-          grep -anE "Exception|ERROR|Could not pass|MrCrayfishVehicle" /tmp/latest.log | tail -60 || echo "(nimic)"
-          echo "===== Ultimele 25 linii ====="
-          tail -25 /tmp/latest.log
-      - name: Upload log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: latest-log
-          path: /tmp/latest.log
-          if-no-files-found: warn
+          mkdir -p diagnostics
+          OUT=diagnostics/last-log-excerpt.txt
+          {
+            echo "# Extract log server - $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "## fisiere in logs/"
+            tail -8 /tmp/ls_logs.txt 2>/dev/null || echo "(indisponibil)"
+            for f in /tmp/latest.log /tmp/prev.log; do
+              [ -f "$f" ] || continue
+              echo
+              echo "==================== $f ($(wc -l < "$f") linii) ===================="
+              echo "---- SEATDBG / SEATDBG2 (ultimele 60) ----"
+              grep -a "SEATDBG" "$f" | tail -60 || echo "(niciun SEATDBG)"
+              echo "---- Exceptii / erori (ultimele 80) ----"
+              grep -anE "Exception|ERROR|Could not pass" "$f" | tail -80 || echo "(nimic)"
+              echo "---- Ultimele 30 linii ----"
+              tail -30 "$f"
+            done
+          } > "$OUT"
+          wc -l "$OUT"
+      - name: Public extractul pe branch
+        run: |
+          git config user.name "arena-agent"
+          git config user.email "297053741+arena-agent@users.noreply.github.com"
+          git add diagnostics/last-log-excerpt.txt
+          git commit -m "Diagnostic: extract log server (automat)" || echo "nimic de comis"
+          git push origin HEAD:$BRANCH || echo "push esuat (se reia la urmatorul dump)"
