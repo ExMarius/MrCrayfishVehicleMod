@@ -31,6 +31,11 @@ jobs:
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
           export SSHPASS="$SFTP_PASS_BACKUP"
+          printf 'ls -1 logs /tmp/ls_logs.txt\n' > b_ls.txt
+          sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b b_ls.txt \
+            -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 || true
+          echo "===== fisiere in logs/ ====="; tail -5 /tmp/ls_logs.txt 2>/dev/null || true
           printf 'get logs/latest.log /tmp/latest.log\n' > b_get.txt
           ok=0
           for i in 1 2 3; do
