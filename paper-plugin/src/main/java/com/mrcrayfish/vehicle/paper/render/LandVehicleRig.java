@@ -270,21 +270,6 @@ public final class LandVehicleRig {
         return lookLockTolerance;
     }
 
-    private Entity cameraAnchor;
-
-    /** BL26: camera poate fi legata de o entitate (mecanismul de spectate).
-     *  Entitatea este tinuta pe scaun si rotita de server pe yaw-ul masinii,
-     *  deci camera se roteste cu masina fara ca mouse-ul sa o poata misca. */
-    private static volatile boolean cameraEntityEnabled = false;
-
-    public static boolean cameraEntityEnabled() {
-        return cameraEntityEnabled;
-    }
-
-    public static void setCameraEntityEnabled(boolean enabled) {
-        cameraEntityEnabled = enabled;
-    }
-
     /** BL24: camera urmeaza vehiculul. Clientul aplica rotatia din pachetul de
      *  pozitionare, dar noi il trimitem doar cu rotatia RELATIVA (pozitia ramane
      *  neatinsa), deci nu exista teleport pe server si pasagerul NU este dat jos.
@@ -849,97 +834,9 @@ public final class LandVehicleRig {
         }
         /* BL21: camera ramane pe directia vehiculului (mouse-ul nu mai roteste
          * jucatorul). Pitch-ul rămâne liber. 999 = dezactivat. */
-        // BL25: pachetul de pozitionare este REFUZAT de client cat timp jucatorul
-        // e pasager ("Invalid move player packet received"), deci rotirea camerei
-        // se face doar prin camera-entity (BL26, /vehicle seatcam on).
-        if (cameraEntityEnabled) {
-            attachCamera(rider, seatYaw);
-        }
-    }
-
-    /** Leaga camera jucatorului de o entitate-tinta asezata pe scaun si rotita
-     *  de server: camera se roteste cu masina, mouse-ul ramane fara efect pe
-     *  yaw, iar pitch-ul este preluat de la jucator (liber). */
-    private void attachCamera(Player rider, float yaw) {
-        try {
-            if (cameraAnchor == null || !cameraAnchor.isValid()) {
-                cameraAnchor = rider.getWorld().spawn(rider.getLocation(),
-                        org.bukkit.entity.ArmorStand.class, stand -> {
-                    stand.setInvisible(true);
-                    stand.setMarker(true);
-                    stand.setGravity(false);
-                    stand.setInvulnerable(true);
-                    stand.setSilent(true);
-                    stand.setPersistent(false);
-                    stand.setRemoveWhenFarAway(false);
-                });
-                cameraAnchor.addScoreboardTag(ENTITY_TAG);
-            }
-            Location eyes = rider.getEyeLocation();
-            cameraAnchor.teleport(eyes, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            cameraAnchor.setRotation(yaw, rider.getPitch());
-            if (!sendCamera(rider, cameraAnchor)) {
-                cameraEntityEnabled = false;
-            }
-        } catch (Throwable error) {
-            cameraEntityEnabled = false;
-            Bukkit.getLogger().warning("[SEATCAM] nu pot lega camera: "
-                    + error.getClass().getSimpleName() + " " + error.getMessage());
-        }
-    }
-
-    /** Trimite pachetul vanilla de camera (null => camera revine pe jucator). */
-    private static boolean sendCamera(Player player, Entity target) {
-        if (lookPacketFailed) {
-            return false;
-        }
-        if (cameraCtor == null) {
-            initCameraPacket();
-            if (cameraCtor == null) {
-                return false;
-            }
-        }
-        try {
-            Object handle = player.getClass().getMethod("getHandle").invoke(player);
-            Object argument = target == null
-                    ? handle
-                    : target.getClass().getMethod("getHandle").invoke(target);
-            Object packet = cameraCtor.newInstance(argument);
-            Object connection = connectionField.get(handle);
-            sendMethod.invoke(connection, packet);
-            return true;
-        } catch (Throwable error) {
-            lookPacketFailed = true;
-            Bukkit.getLogger().warning("[SEATCAM] pachetul de camera nu este disponibil: "
-                    + error.getClass().getSimpleName() + " " + error.getMessage());
-            return false;
-        }
-    }
-
-    private static java.lang.reflect.Constructor<?> cameraCtor;
-
-    private static synchronized void initCameraPacket() {
-        try {
-            Class<?> packetClass = Class.forName(
-                    "net.minecraft.network.protocol.game.ClientboundSetCameraPacket");
-            Class<?> entityClass = Class.forName("net.minecraft.world.entity.Entity");
-            cameraCtor = packetClass.getConstructor(entityClass);
-        } catch (Throwable error) {
-            Bukkit.getLogger().warning("[SEATCAM] pachetul de camera nu este disponibil: "
-                    + error.getClass().getSimpleName() + " " + error.getMessage());
-            cameraCtor = null;
-        }
-    }
-
-    /** Readuce camera pe jucator (la coborare / stergere vehicul). */
-    public void releaseCamera(Player player) {
-        if (cameraAnchor != null) {
-            sendCamera(player, null);
-        }
-        if (cameraAnchor != null) {
-            cameraAnchor.remove();
-            cameraAnchor = null;
-        }
+        // BL25: blocarea camerei din server este IMPOSIBILA cat timp jucatorul
+        // este pasager - clientul vanilla deconecteaza cu
+        // "Invalid move player packet received". Vezi /vehicle seatlook.
     }
 
     private void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
@@ -1200,10 +1097,6 @@ public final class LandVehicleRig {
 
     public void remove() {
         removed = true;
-        if (cameraAnchor != null) {
-            cameraAnchor.remove();
-            cameraAnchor = null;
-        }
         /* Detach riders synchronously while the living carrier is still valid.
          * Restoring an ordinary bounding box also keeps the fallback dismount
          * location independent of the carrier's minimum render scale. */
