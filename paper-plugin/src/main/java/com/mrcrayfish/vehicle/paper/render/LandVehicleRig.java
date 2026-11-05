@@ -890,6 +890,9 @@ public final class LandVehicleRig {
 
     /** Trimite pachetul vanilla de camera (null => camera revine pe jucator). */
     private static boolean sendCamera(Player player, Entity target) {
+        if (lookPacketFailed) {
+            return false;
+        }
         if (cameraCtor == null) {
             initCameraPacket();
             if (cameraCtor == null) {
@@ -906,7 +909,7 @@ public final class LandVehicleRig {
             sendMethod.invoke(connection, packet);
             return true;
         } catch (Throwable error) {
-            cameraCtor = null;
+            lookPacketFailed = true;
             Bukkit.getLogger().warning("[SEATCAM] pachetul de camera nu este disponibil: "
                     + error.getClass().getSimpleName() + " " + error.getMessage());
             return false;
@@ -921,14 +924,6 @@ public final class LandVehicleRig {
                     "net.minecraft.network.protocol.game.ClientboundSetCameraPacket");
             Class<?> entityClass = Class.forName("net.minecraft.world.entity.Entity");
             cameraCtor = packetClass.getConstructor(entityClass);
-            // BL26a: calea de trimitere trebuie rezolvata AICI (rutina veche,
-            // care o initializa, nu mai este apelata).
-            Class<?> serverPlayer = Class.forName("net.minecraft.server.level.ServerPlayer");
-            connectionField = serverPlayer.getField("connection");
-            Class<?> listener = Class.forName(
-                    "net.minecraft.server.network.ServerGamePacketListenerImpl");
-            sendMethod = listener.getMethod("send",
-                    Class.forName("net.minecraft.network.protocol.Packet"));
         } catch (Throwable error) {
             Bukkit.getLogger().warning("[SEATCAM] pachetul de camera nu este disponibil: "
                     + error.getClass().getSimpleName() + " " + error.getMessage());
