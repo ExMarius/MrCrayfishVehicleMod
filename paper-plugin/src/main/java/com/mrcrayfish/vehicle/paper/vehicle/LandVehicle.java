@@ -1814,11 +1814,13 @@ public final class LandVehicle {
             double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
             int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
 
-            /* CICLUL BB (feedback user): inimile de cal NU se pot redesa separat
-             * pentru VEHICUL dintr-un pack (textura li se imparte cu alea ale
-             * cailor reali - asta ar strica "inimile cailor din joc"); in locul
-             * lor, combustibilul primeste cadran LCD propriu: pompa + 10 celule,
-             * culoare dupa nivel (verde >=50%, galben >=20%, rosu <20%). */
+            /* CICLUL BC (feedback user): inimile de cal primesc ALT MODEL de
+             * combustibil EXACT pe locul lor - forme de inima LCD cu fundal opac,
+             * desenate in dreapta (x = jumatate ecran +10, identic cu pozitia
+             * inimilor vanilla de montura). Inimile cailor normali din joc raman
+             * NETANGIBILE (nu atingem nicio textura - la coborare glifele dispar
+             * si userul vede din nou inimile default ale monturii). STANGA:
+             * viteza (km/h) + odometru (m/km), tot in fontul propriu. */
             double capacity = spec.energyCapacity();
             float fuelFraction = capacity > 0.0F
                     ? Math.max(0.0F, Math.min(1.0F, (float) (fuel / capacity)))
@@ -1835,22 +1837,8 @@ public final class LandVehicle {
             }
             section.append('\uE20A'); // "km/h" (31px)
             width += 31;
-            Component speedPart = Component.text(section.toString(), NamedTextColor.GOLD)
-                    .font(hudFont).append(Component.text("\uF804")); // spatiu 8px
+            section.append('\uF804'); // spatiu 8px intre viteza si odometru
             width += 8;
-            section.setLength(0);
-
-            section.append('\uE210'); // pompa (11px)
-            width += 11;
-            for (int cell = 0; cell < 10; cell++) {
-                section.append(cell < filledCells ? '\uE211' : '\uE212'); // 4px
-                width += 4;
-            }
-            Component fuelPart = Component.text(section.toString(), fuelColor)
-                    .font(hudFont).append(Component.text("\uF804")); // spatiu 8px
-            width += 8;
-            section.setLength(0);
-
             // odometrul, aceeasi fonta: "248 m..." sau "2.5 km"
             String odo = odometerLabel();
             for (int i = 0; i < odo.length(); i++) {
@@ -1870,7 +1858,14 @@ public final class LandVehicle {
                     width += c == ' ' ? 2 : 8;
                 }
             }
-            int pad = 182 - width; // completeaza pana la latimea hotbar-ului
+            Component leftPart = Component.text(section.toString(), NamedTextColor.GOLD)
+                    .font(hudFont);
+            section.setLength(0);
+
+            // spatiu gol pana la offsetul 101 (= coloana inimilor de cal,
+            // jumatate ecran + 10px), minim 8px ramas dupa sectiunea din stanga
+            int middleGap = Math.max(8, 101 - width);
+            int pad = middleGap;
             for (int bit = 0; bit < 7; bit++) {
                 int value = 64 >> bit; // 64,32,16,8,4,2,1
                 while (pad >= value) {
@@ -1878,9 +1873,29 @@ public final class LandVehicle {
                     pad -= value;
                 }
             }
-            overlay = speedPart
-                    .append(fuelPart)
-                    .append(Component.text(section.toString(), NamedTextColor.YELLOW)
+            width += middleGap;
+            Component gapPart = Component.text(section.toString(), NamedTextColor.WHITE)
+                    .font(hudFont);
+            section.setLength(0);
+
+            // INIMILE-COMBUSTIBIL acopera pozitia exacta a inimilor vanilla
+            for (int cell = 0; cell < 10; cell++) {
+                section.append(cell < filledCells ? '\uE211' : '\uE212'); // 8px fiecare
+                width += 8;
+            }
+            int rest = 182 - width; // completare pana la latimea hotbar-ului
+            while (rest > 0) {
+                for (int bit = 0; bit < 7; bit++) {
+                    int value = 64 >> bit;
+                    while (rest >= value) {
+                        section.append((char) (0xF800 + bit));
+                        rest -= value;
+                    }
+                }
+            }
+            overlay = leftPart
+                    .append(gapPart)
+                    .append(Component.text(section.toString(), fuelColor)
                             .font(hudFont));
         } else {
             overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);

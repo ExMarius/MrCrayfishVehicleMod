@@ -43,17 +43,16 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual({f"vehicle:font/hud/digit_{d}.png" for d in "0123456789"} |
                          {"vehicle:font/hud/kmh.png", "vehicle:font/hud/km.png",
                           "vehicle:font/hud/m.png", "vehicle:font/hud/dot.png",
-                          "vehicle:font/hud/pump.png", "vehicle:font/hud/cell_on.png",
-                          "vehicle:font/hud/cell_off.png"},
+                          "vehicle:font/hud/cell_on.png", "vehicle:font/hud/cell_off.png"},
                          files)
         chars = "".join(provider["chars"][0] for provider in bitmaps)
         self.assertIn(chr(0xE200), chars)  # E200 = cifra 0
         self.assertIn(chr(0xE209), chars)  # E209 = cifra 9
         self.assertIn(chr(0xE20A), chars)  # E20A = eticheta km/h
         self.assertIn(chr(0xE20D), chars)  # E20D = eticheta km (odometru)
-        self.assertIn(chr(0xE210), chars)  # E210 = pompa (combustibil)
-        self.assertIn(chr(0xE211), chars)  # E211 = celula plina
-        self.assertIn(chr(0xE212), chars)  # E212 = celula goala
+        self.assertIn(chr(0xE211), chars)  # E211 = inima-combustibil plina
+        self.assertIn(chr(0xE212), chars)  # E212 = inima-combustibil goala
+        self.assertNotIn(chr(0xE210), chars)  # BC: pompa a disparut - inimile sunt peste
         self.assertTrue(all(provider["ascent"] == -12 for provider in bitmaps))
         self.assertEqual({advance for advance in space["advances"].values()},
                          {64, 32, 16, 8, 4, 2, 1})

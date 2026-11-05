@@ -2384,19 +2384,22 @@ def emit_jack_gui_backdrop(namespace: Path) -> None:
 
 
 def emit_hud_speed_font(namespace: Path) -> None:
-    """CICLUL BA+BB (feedback user): HUD cu font propriu, STANGA, la randul
-    INIMILOR (x = jumatate-91, sus ~randul health-ului), alaturi de inimile
-    de cal - viteza (cifre + km/h), odometrul (valoare + m/km) SI cadrantul de
-    combustibil (pompa + 10 celule LCD colorate dupa nivel: verde/galben/rosu).
-    Inimile de cal in sine NU se pot redesa DOAR pentru vehicul dintr-un pack
-    (textura li se imparte cu alea ale cailor reali) - cadranul LCD make e
-    indicatorul de combustibil CFRUMOS, iar inimile raman pe post de backup.
+    """CICLUL BA+BC (feedback user): HUD cu font propriu. In STANGA (x =
+    jumatate-91, randul inimilor): viteza (cifre LCD bold + km/h) si odometrul.
+    In DREAPTA (x = jumatate+10, PE POZITIA exacta a inimilor de
+    cal/montura): 10 INIMI-COMBUSTIBIL - forme de inima LCD cu fundal OPAC
+    care acopera complet inimile vanilla ale porcului purtator (9px, pas 8px),
+    colorate dupa nivel (verde/galben/rosu). La coborare nu exista mesaj =>
+    inimile monturilor normale din joc raman 100% vanilla (cerinta user:
+    fara sa afectezi inimile cailor normali - NU atingem nicio textura).
 
-    Action bar-ul vanilla e CENTRAT pe ecran; alinierea stanga precisa se
-    face prin completare cu SPATII de avans fix (64/32/16/8/4/2/1) pana la
-    latimea totala 182 (= latimea hotbar-ului, marginea stanga a coloanei).
+    Action bar-ul vanilla e CENTRAT pe ecran; pozitionarea stanga/dreapta
+    precisa se face prin completare cu SPATII de avans fix (64/32/16/8/4/2/1)
+    pana la latimea totala 182 (= latimea hotbar-ului). Calculurile de
+    avans sunt replicare in LandVehicle.showFuelOverlay (constantele de mai
+    jos trebuie sa ramana sincronizate la orice schimbare de masca).
     Ascent -12 = glifele coboara ~20px sub linia action bar-ului -> rindul
-    de deasupra hotbar-ului. (AZ: ascent -4 era 'prea sus'.)
+    deasupra hotbar-ului (BA: -4 era "prea sus").
 
     LATIMI (px), formula vanilla = ceil(pngW * fontHeight / pngH),
     fontHeight = 9, pngH = 14:
@@ -2405,13 +2408,9 @@ def emit_hud_speed_font(namespace: Path) -> None:
       'm'    (png 12x14) -> 8
       'km/h' (png 48x14) -> 31
       'km'   (png 24x14) -> 16
-      pompa  (png 16x14) -> 11
-      celula (png  6x14) -> 4
-    LA ORICE schimbare de masca/separatoare, actualizeaza si constantele
-    din LandVehicle.showFuelOverlay (ele tin alinierea stanga a HUD-ului).
-
+      inima-combustibil (png 12x14) -> 8  (10 buc = 80px = randul inimilor)
     Chars: E200..E209 cifre, E20A 'km/h', E20B 'm', E20C '.', E20D 'km',
-    E210 pompa combustibil, E211 celula plina, E212 celula goala,
+    E211 inima-combustibil plina, E212 inima-combustibil goala,
     F800..F806 spatii de avans 64/32/16/8/4/2/1 (descompunere binara)."""
     masks = {
         '0': ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
@@ -2429,17 +2428,22 @@ def emit_hud_speed_font(namespace: Path) -> None:
         '/': ("00001", "00001", "00010", "00100", "00100", "01000", "01000"),
         'h': ("10000", "10000", "10110", "11001", "10001", "10001", "10001"),
         '.': ("0", "0", "0", "0", "0", "1", "1"),
-        # pompa de benzina (corp + fereastra + duza spre dreapta)
-        'pump': ("1111100", "1001000", "1011101", "1001101", "1100100",
-                 "1101100", "1111111"),
+        # CICLUL BC: inima-combustibil (5 coloane, fundal opac sub forma)
+        'heart_on': ("01010", "11111", "11111", "01110", "00100", "00000", "00000"),
+        'heart_off': ("01010", "10101", "10001", "01010", "00100", "00000", "00000"),
     }
     scale = 2  # bold: fiecare pixel din masca => 2x2 pixeli in PNG (stroke gros)
     white = (255, 255, 255, 255)
+    dark_gray = (85, 85, 85, 255)
 
-    def render_png(rows: tuple, rgba=white) -> bytes:
+    def render_png(rows: tuple, rgba=white, opaque_bg: bool = False) -> bytes:
         cols = len(rows[0])
         width, height = cols * scale + scale, len(rows) * scale  # +margine dreapta
         buf = bytearray(width * height * 4)
+        if opaque_bg:
+            # CICLUL BC: acopera complet inimile vanilla de dedesubt
+            for i in range(0, len(buf), 4):
+                buf[i:i + 4] = bytes((20, 20, 20, 255))
         for y, row in enumerate(rows):
             for x, cell in enumerate(row):
                 if cell == '1':
@@ -2462,20 +2466,20 @@ def emit_hud_speed_font(namespace: Path) -> None:
     providers = [{'type': 'space', 'advances': {
         chr(0xF800 + i): advance
         for i, advance in enumerate((64, 32, 16, 8, 4, 2, 1))}}]
-    glyphs = [(chr(0xE200 + int(d)), f'digit_{d}.png', masks[d], white) for d in '0123456789']
+    glyphs = [(chr(0xE200 + int(d)), f'digit_{d}.png', masks[d], white, False)
+              for d in '0123456789']
     glyphs += [
-        (chr(0xE20A), 'kmh.png', glue('k', 'm', '/', 'h'), white),  # eticheta km/h
-        (chr(0xE20B), 'm.png', masks['m'], white),                  # metri
-        (chr(0xE20C), 'dot.png', masks['.'], white),                # zecimala odometru
-        (chr(0xE20D), 'km.png', glue('k', 'm'), white),             # kilometri odometru
-        (chr(0xE210), 'pump.png', masks['pump'], white),            # CICLUL BB: combustibil
-        # celula PLINA se coloreaza la runtime (verde/galben/rosu); GOALA e gri
-        (chr(0xE211), 'cell_on.png', ("11", "11", "11", "11", "11", "11", "11"), white),
-        (chr(0xE212), 'cell_off.png', ("11", "00", "00", "00", "00", "00", "11"),
-         (85, 85, 85, 255)),
+        (chr(0xE20A), 'kmh.png', glue('k', 'm', '/', 'h'), white, False),  # eticheta km/h
+        (chr(0xE20B), 'm.png', masks['m'], white, False),                  # metri
+        (chr(0xE20C), 'dot.png', masks['.'], white, False),                # zecimala odometru
+        (chr(0xE20D), 'km.png', glue('k', 'm'), white, False),             # kilometri odometru
+        # CICLUL BC: inimile-combustibil (albe => colorate runtime; goala=gri),
+        # cu FUNDAL OPAC ca sa acopere radical inimile vanilla ale monturii.
+        (chr(0xE211), 'cell_on.png', masks['heart_on'], white, True),
+        (chr(0xE212), 'cell_off.png', masks['heart_off'], dark_gray, True),
     ]
-    for char, filename, rows, rgba in glyphs:
-        (hud_dir / filename).write_bytes(render_png(rows, rgba))
+    for char, filename, rows, rgba, opaque in glyphs:
+        (hud_dir / filename).write_bytes(render_png(rows, rgba, opaque))
         providers.append({'type': 'bitmap', 'file': f'vehicle:font/hud/{filename}',
                           'ascent': ascent, 'height': 9, 'chars': [char]})
     write_json(namespace / 'font/hud_speed.json', {'providers': providers})
