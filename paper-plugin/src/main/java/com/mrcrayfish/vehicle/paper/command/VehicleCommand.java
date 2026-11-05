@@ -16,10 +16,8 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
-import org.bukkit.entity.Boat;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Horse;
-import org.bukkit.entity.Pig;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -593,8 +591,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <a|b|c|d></red>"
-                    + " a=barca, b=cal fara saua (acum), c=cal cu saua (vanilla clasic), d=porc cu saua (vechi).");
+            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <b|c></red>"
+                    + " b=cal fara saua (acum), c=cal cu saua (vanilla clasic).");
             return;
         }
         // curata randul vechi (daca exista)
@@ -616,19 +614,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         double rx = Math.cos(radians), rz = Math.sin(radians);
 
         java.util.List<Entity> spawned = new java.util.ArrayList<>();
-        spawned.add(spawnSeatTest(base.clone().add(rx * -3.0D, 0, rz * -3.0D), "A barca", SeatKind.BOAT));
-        spawned.add(spawnSeatTest(base.clone().add(rx * -1.0D, 0, rz * -1.0D), "B cal fara saua", SeatKind.HORSE_BARE));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 1.0D, 0, rz * 1.0D), "C cal cu saua", SeatKind.HORSE_SADDLED));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 3.0D, 0, rz * 3.0D), "D porc cu saua", SeatKind.PIG_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * -1.5D, 0, rz * -1.5D), "B cal fara saua", SeatKind.HORSE_BARE));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 1.5D, 0, rz * 1.5D), "C cal cu saua", SeatKind.HORSE_SADDLED));
         for (Entity entity : spawned) {
             seatTestEntities.add(entity.getUniqueId());
         }
 
         int index = switch (args[1].toLowerCase(Locale.ROOT)) {
-            case "a" -> 0;
-            case "b" -> 1;
-            case "c" -> 2;
-            case "d" -> 3;
+            case "b" -> 0;
+            case "c" -> 1;
             default -> -1;
         };
         if (index < 0) {
@@ -655,33 +649,25 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }, 20L * 300);
     }
 
-    private enum SeatKind { BOAT, HORSE_BARE, HORSE_SADDLED, PIG_SADDLED }
+    private enum SeatKind { HORSE_BARE, HORSE_SADDLED }
 
     private static String[] spawnedLabels() {
-        return new String[] {"A barca simpla", "B cal fara saua", "C cal cu saua (vanilla clasic)", "D porc cu saua"};
+        return new String[] {"B cal fara saua", "C cal cu saua (vanilla clasic)"};
     }
 
     private Entity spawnSeatTest(Location location, String label, SeatKind kind) {
-        Entity entity = switch (kind) {
-            case BOAT -> location.getWorld().spawn(location, Boat.class);
-            case HORSE_BARE -> {
-                Horse horse = location.getWorld().spawn(location, Horse.class);
-                horse.setTamed(true);
-                yield horse;
-            }
-            case HORSE_SADDLED -> {
-                Horse horse = location.getWorld().spawn(location, Horse.class);
-                horse.setTamed(true);
-                horse.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
-                yield horse;
-            }
-            case PIG_SADDLED -> {
-                Pig pig = location.getWorld().spawn(location, Pig.class);
-                pig.setAdult();
-                pig.setSaddle(true);
-                yield pig;
-            }
-        };
+        Entity entity;
+        if (kind == SeatKind.HORSE_BARE) {
+            Horse horse = location.getWorld().spawn(location, Horse.class);
+            horse.setTamed(true);
+            entity = horse;
+        } else {
+            Horse horse = location.getWorld().spawn(location, Horse.class);
+            horse.setTamed(true);
+            Horse saddleHorse = horse;
+            saddleHorse.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
+            entity = saddleHorse;
+        }
         entity.setInvulnerable(true);
         entity.setSilent(true);
         entity.setCollidable(false);
@@ -807,7 +793,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
-            return filter(List.of("a", "b", "c", "d"), args[1]);
+            return filter(List.of("b", "c"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);
