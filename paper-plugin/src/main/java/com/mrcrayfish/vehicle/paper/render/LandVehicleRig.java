@@ -635,6 +635,13 @@ public final class LandVehicleRig {
             return;
         }
         carrier.rider = rider.getUniqueId();
+        hideSeatFromPlayers(seat);
+        /* BL10: pozitia scaunului vine EXCLUSIV de la vehicul (entitatea nu mai
+         * are parinte-display, deci o teleportam noi in fiecare tick). */
+        Location seatLocation = carrier.anchor.getLocation();
+        if (seat.getLocation().distanceSquared(seatLocation) > 1.0E-6D) {
+            seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        }
         /* BM: scaunul are rider; cat timp vehiculul NU vireaza/se misca,
          * rotatia ramane la client (clampa vanilla de riding blocheaza
          * corpul pe scaun si lasa capul liber). In timpul virajelor/mersului

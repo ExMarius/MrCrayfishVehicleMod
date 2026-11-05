@@ -99,11 +99,12 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         org.bukkit.entity.EntityType type = switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
             case "boat", "barca" -> org.bukkit.entity.EntityType.OAK_BOAT;
+            case "marker", "invizibil" -> org.bukkit.entity.EntityType.MARKER;
             case "minecart", "vagon" -> org.bukkit.entity.EntityType.MINECART;
             default -> null;
         };
         if (type == null) {
-            sender.sendRichMessage("<red>Folosire: /vehicle seatkind <minecart|boat></red>");
+            sender.sendRichMessage("<red>Folosire: /vehicle seatkind <marker|minecart|boat></red>");
             return;
         }
         com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatType(type);
@@ -911,7 +912,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("a", "b", "c", "e", "f", "g"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seatkind")) {
-            return filter(List.of("minecart", "boat"), args[1]);
+            return filter(List.of("marker", "minecart", "boat"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seatyaw")) {
             return filter(List.of("on", "off"), args[1]);
