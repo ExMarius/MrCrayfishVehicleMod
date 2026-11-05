@@ -724,9 +724,18 @@ public final class LandVehicleRig {
         if (lookLockTolerance < 999.0F) {
             float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
             if (deviation > lookLockTolerance) {
-                Location locked = rider.getLocation();
-                locked.setYaw(seatYaw);
-                rider.teleport(locked);
+                /* BL20a: NU teleportam jucatorul (teleportul pe un pasager il
+                 * da jos => "nu mai pot urca"). Fortam doar PRIVIREA: clientul
+                 * primeste un pachet de rotire a camerei, pozitia rămâne a
+                 * vehiculului, iar pitch-ul curent este pastrat. */
+                double radians = Math.toRadians(seatYaw);
+                double pitchRadians = Math.toRadians(rider.getPitch());
+                double horizontal = Math.cos(pitchRadians) * 5.0D;
+                Location target = rider.getLocation().clone().add(
+                        -Math.sin(radians) * horizontal,
+                        -Math.sin(pitchRadians) * 5.0D,
+                        Math.cos(radians) * horizontal);
+                rider.lookAt(target);
             }
         }
     }
