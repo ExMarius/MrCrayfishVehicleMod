@@ -2384,9 +2384,14 @@ def emit_jack_gui_backdrop(namespace: Path) -> None:
 
 
 def emit_hud_speed_font(namespace: Path) -> None:
-    """CICLUL BA (feedback user): HUD cu font propriu, STANGA, la randul
+    """CICLUL BA+BB (feedback user): HUD cu font propriu, STANGA, la randul
     INIMILOR (x = jumatate-91, sus ~randul health-ului), alaturi de inimile
-    de cal - DOAR viteza (cifre + km/h) si odometrul (valoare + m/km).
+    de cal - viteza (cifre + km/h), odometrul (valoare + m/km) SI cadrantul de
+    combustibil (pompa + 10 celule LCD colorate dupa nivel: verde/galben/rosu).
+    Inimile de cal in sine NU se pot redesa DOAR pentru vehicul dintr-un pack
+    (textura li se imparte cu alea ale cailor reali) - cadranul LCD make e
+    indicatorul de combustibil CFRUMOS, iar inimile raman pe post de backup.
+
     Action bar-ul vanilla e CENTRAT pe ecran; alinierea stanga precisa se
     face prin completare cu SPATII de avans fix (64/32/16/8/4/2/1) pana la
     latimea totala 182 (= latimea hotbar-ului, marginea stanga a coloanei).
@@ -2400,11 +2405,14 @@ def emit_hud_speed_font(namespace: Path) -> None:
       'm'    (png 12x14) -> 8
       'km/h' (png 48x14) -> 31
       'km'   (png 24x14) -> 16
+      pompa  (png 16x14) -> 11
+      celula (png  6x14) -> 4
     LA ORICE schimbare de masca/separatoare, actualizeaza si constantele
     din LandVehicle.showFuelOverlay (ele tin alinierea stanga a HUD-ului).
 
     Chars: E200..E209 cifre, E20A 'km/h', E20B 'm', E20C '.', E20D 'km',
-    F801..F807 spatii de avans 64/32/16/8/4/2/1 (descompunere binara)."""
+    E210 pompa combustibil, E211 celula plina, E212 celula goala,
+    F800..F806 spatii de avans 64/32/16/8/4/2/1 (descompunere binara)."""
     masks = {
         '0': ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
         '1': ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
@@ -2421,11 +2429,14 @@ def emit_hud_speed_font(namespace: Path) -> None:
         '/': ("00001", "00001", "00010", "00100", "00100", "01000", "01000"),
         'h': ("10000", "10000", "10110", "11001", "10001", "10001", "10001"),
         '.': ("0", "0", "0", "0", "0", "1", "1"),
+        # pompa de benzina (corp + fereastra + duza spre dreapta)
+        'pump': ("1111100", "1001000", "1011101", "1001101", "1100100",
+                 "1101100", "1111111"),
     }
     scale = 2  # bold: fiecare pixel din masca => 2x2 pixeli in PNG (stroke gros)
     white = (255, 255, 255, 255)
 
-    def render_png(rows: tuple) -> bytes:
+    def render_png(rows: tuple, rgba=white) -> bytes:
         cols = len(rows[0])
         width, height = cols * scale + scale, len(rows) * scale  # +margine dreapta
         buf = bytearray(width * height * 4)
@@ -2435,7 +2446,7 @@ def emit_hud_speed_font(namespace: Path) -> None:
                     for dy in range(scale):
                         for dx in range(scale):
                             off = ((y * scale + dy) * width + x * scale + dx) * 4
-                            buf[off:off + 4] = bytes(white)
+                            buf[off:off + 4] = bytes(rgba)
         return _png_encode_rgba(width, height, bytes(buf))
 
     def glue(*letters: str) -> tuple:
@@ -2451,13 +2462,20 @@ def emit_hud_speed_font(namespace: Path) -> None:
     providers = [{'type': 'space', 'advances': {
         chr(0xF800 + i): advance
         for i, advance in enumerate((64, 32, 16, 8, 4, 2, 1))}}]
-    glyphs = [(chr(0xE200 + int(d)), f'digit_{d}.png', masks[d]) for d in '0123456789']
-    glyphs += [(chr(0xE20A), 'kmh.png', glue('k', 'm', '/', 'h')),   # eticheta km/h
-               (chr(0xE20B), 'm.png', masks['m']),                   # metri
-               (chr(0xE20C), 'dot.png', masks['.']),                 # zecimala odometru
-               (chr(0xE20D), 'km.png', glue('k', 'm'))]              # kilometri odometru
-    for char, filename, rows in glyphs:
-        (hud_dir / filename).write_bytes(render_png(rows))
+    glyphs = [(chr(0xE200 + int(d)), f'digit_{d}.png', masks[d], white) for d in '0123456789']
+    glyphs += [
+        (chr(0xE20A), 'kmh.png', glue('k', 'm', '/', 'h'), white),  # eticheta km/h
+        (chr(0xE20B), 'm.png', masks['m'], white),                  # metri
+        (chr(0xE20C), 'dot.png', masks['.'], white),                # zecimala odometru
+        (chr(0xE20D), 'km.png', glue('k', 'm'), white),             # kilometri odometru
+        (chr(0xE210), 'pump.png', masks['pump'], white),            # CICLUL BB: combustibil
+        # celula PLINA se coloreaza la runtime (verde/galben/rosu); GOALA e gri
+        (chr(0xE211), 'cell_on.png', ("11", "11", "11", "11", "11", "11", "11"), white),
+        (chr(0xE212), 'cell_off.png', ("11", "00", "00", "00", "00", "00", "11"),
+         (85, 85, 85, 255)),
+    ]
+    for char, filename, rows, rgba in glyphs:
+        (hud_dir / filename).write_bytes(render_png(rows, rgba))
         providers.append({'type': 'bitmap', 'file': f'vehicle:font/hud/{filename}',
                           'ascent': ascent, 'height': 9, 'chars': [char]})
     write_json(namespace / 'font/hud_speed.json', {'providers': providers})

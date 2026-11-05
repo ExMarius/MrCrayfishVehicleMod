@@ -1813,32 +1813,60 @@ public final class LandVehicle {
                     plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
             double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
             int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
-            StringBuilder glyphs = new StringBuilder();
+
+            /* CICLUL BB (feedback user): inimile de cal NU se pot redesa separat
+             * pentru VEHICUL dintr-un pack (textura li se imparte cu alea ale
+             * cailor reali - asta ar strica "inimile cailor din joc"); in locul
+             * lor, combustibilul primeste cadran LCD propriu: pompa + 10 celule,
+             * culoare dupa nivel (verde >=50%, galben >=20%, rosu <20%). */
+            double capacity = spec.energyCapacity();
+            float fuelFraction = capacity > 0.0F
+                    ? Math.max(0.0F, Math.min(1.0F, (float) (fuel / capacity)))
+                    : 1.0F;
+            NamedTextColor fuelColor = fuelFraction >= 0.5F ? NamedTextColor.GREEN
+                    : (fuelFraction >= 0.2F ? NamedTextColor.YELLOW : NamedTextColor.RED);
+            int filledCells = (int) Math.round(fuelFraction * 10.0F);
+
+            StringBuilder section = new StringBuilder();
             int width = 0;
             for (char digit : String.valueOf(kmh).toCharArray()) {
-                glyphs.append((char) (0xE200 + (digit - '0'))); // E200..E209 = cifre 0..9 (8px)
+                section.append((char) (0xE200 + (digit - '0'))); // 8px
                 width += 8;
             }
-            glyphs.append('\uE20A'); // "km/h" (31px)
+            section.append('\uE20A'); // "km/h" (31px)
             width += 31;
-            glyphs.append('\uF804'); // spatiu 8px intre viteza si odometru
+            Component speedPart = Component.text(section.toString(), NamedTextColor.GOLD)
+                    .font(hudFont).append(Component.text("\uF804")); // spatiu 8px
             width += 8;
+            section.setLength(0);
+
+            section.append('\uE210'); // pompa (11px)
+            width += 11;
+            for (int cell = 0; cell < 10; cell++) {
+                section.append(cell < filledCells ? '\uE211' : '\uE212'); // 4px
+                width += 4;
+            }
+            Component fuelPart = Component.text(section.toString(), fuelColor)
+                    .font(hudFont).append(Component.text("\uF804")); // spatiu 8px
+            width += 8;
+            section.setLength(0);
+
             // odometrul, aceeasi fonta: "248 m..." sau "2.5 km"
             String odo = odometerLabel();
             for (int i = 0; i < odo.length(); i++) {
                 char c = odo.charAt(i);
                 if (c >= '0' && c <= '9') {
-                    glyphs.append((char) (0xE200 + (c - '0'))); // 8px
+                    section.append((char) (0xE200 + (c - '0'))); // 8px
                     width += 8;
                 } else if (c == '.') {
-                    glyphs.append('\uE20C'); // 3px
+                    section.append('\uE20C'); // 3px
                     width += 3;
                 } else if (c == 'k' && i + 1 < odo.length() && odo.charAt(i + 1) == 'm') {
-                    glyphs.append('\uE20D'); // "km" (16px)
+                    section.append('\uE20D'); // "km" (16px)
                     width += 16;
                     i++;
                 } else { // ' ' sau 'm' din "248 m"
-                    glyphs.append(c == ' ' ? '\uF806' : '\uE20B'); // spatiu 2px / "m" (8px)
+                    section.append(c == ' ' ? '\uF806' : '\uE20B'); // spatiu 2px / "m" (8px)
                     width += c == ' ' ? 2 : 8;
                 }
             }
@@ -1846,12 +1874,14 @@ public final class LandVehicle {
             for (int bit = 0; bit < 7; bit++) {
                 int value = 64 >> bit; // 64,32,16,8,4,2,1
                 while (pad >= value) {
-                    glyphs.append((char) (0xF800 + bit));
+                    section.append((char) (0xF800 + bit));
                     pad -= value;
                 }
             }
-            overlay = Component.text(glyphs.toString(), NamedTextColor.GOLD)
-                    .font(hudFont);
+            overlay = speedPart
+                    .append(fuelPart)
+                    .append(Component.text(section.toString(), NamedTextColor.YELLOW)
+                            .font(hudFont));
         } else {
             overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
         }
