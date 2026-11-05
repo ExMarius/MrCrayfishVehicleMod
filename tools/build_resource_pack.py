@@ -2505,6 +2505,12 @@ def emit_invisible_seat_boat(namespace: Path) -> None:
     transparent = _png_encode_rgba(16, 16, bytes(16 * 16 * 4))
     for name in ("oak", "oak_chest", "boat", "boat_oak"):
         (texture_dir / f"{name}.png").write_bytes(transparent)
+    # BL9: acelasi tratament pentru MINECART (scaunul alternativ): toate
+    # vagoanele folosesc o singura textura in vanilla.
+    minecart_dir = mc / "textures/entity"
+    minecart_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("minecart", "minecart_chest"):
+        (minecart_dir / f"{name}.png").write_bytes(transparent)
 
 
 def main() -> None:

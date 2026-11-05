@@ -64,6 +64,31 @@ public final class LandVehicleRig {
         return forceSeatYaw;
     }
 
+    /** BL9: tipul scaunului. BOAT = varianta validata vizual de user, dar barca
+     *  are input de la calaret si poate fi rotita de client (se invarte pe
+     *  masina). MINECART = acelasi comportament de riding (corp blocat, cap
+     *  liber), dar NU are niciun input de la calaret, deci rotatia ei vine
+     *  exclusiv de la server. Comutabil live cu /vehicle seatkind. */
+    private static volatile org.bukkit.entity.EntityType seatType = org.bukkit.entity.EntityType.MINECART;
+
+    public static void setSeatType(org.bukkit.entity.EntityType type) {
+        if (type == org.bukkit.entity.EntityType.MINECART || type == org.bukkit.entity.EntityType.OAK_BOAT) {
+            seatType = type;
+        }
+    }
+
+    public static org.bukkit.entity.EntityType seatType() {
+        return seatType;
+    }
+
+    /** Reseteaza scaunele (dismonteaza calaretii) ca sa fie recreate cu tipul nou. */
+    public void resetSeats() {
+        for (SeatCarrier carrier : seats) {
+            discardSeat(carrier);
+            carrier.rider = null;
+        }
+    }
+
     public static final String ENTITY_TAG = "mcv_plugin_vehicle";
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
     /* Ciclul BL: scaunul este un cal la scara minima, invizibil, fara saua:
@@ -261,7 +286,7 @@ public final class LandVehicleRig {
          * BL6: flagul de invizibilitate NU este respectat de randarea barcii in
          * 1.21.4 (barca se vedea pe masina), deci o ascundem explicit din
          * client pentru fiecare jucator (Paper hideEntity). */
-        Entity seat = world.spawnEntity(location, org.bukkit.entity.EntityType.OAK_BOAT);
+        Entity seat = world.spawnEntity(location, seatType);
         seat.setInvisible(true);
         seat.setInvulnerable(true);
         seat.setSilent(true);

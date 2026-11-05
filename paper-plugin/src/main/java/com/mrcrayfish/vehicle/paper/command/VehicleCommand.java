@@ -82,9 +82,34 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "seattest" -> seatTest(sender, args);
             case "seatlift" -> seatLiftCmd(sender, args);
             case "seatyaw" -> seatYawCmd(sender, args);
+            case "seatkind" -> seatKindCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatkind <minecart|boat>: alege entitatea-scaun. Recreaza
+     *  scaunele imediat (te da jos, urci din nou). */
+    private void seatKindCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatkind actual: "
+                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.seatType()
+                    + " | folosire: /vehicle seatkind <minecart|boat></yellow>");
+            return;
+        }
+        org.bukkit.entity.EntityType type = switch (args[1].toLowerCase(java.util.Locale.ROOT)) {
+            case "boat", "barca" -> org.bukkit.entity.EntityType.OAK_BOAT;
+            case "minecart", "vagon" -> org.bukkit.entity.EntityType.MINECART;
+            default -> null;
+        };
+        if (type == null) {
+            sender.sendRichMessage("<red>Folosire: /vehicle seatkind <minecart|boat></red>");
+            return;
+        }
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatType(type);
+        int reset = plugin.vehicles().resetAllSeats();
+        sender.sendRichMessage("<green>seatkind = " + type + " (scaune recreate: " + reset
+                + "). Urcă-te din nou în mașină.</green>");
     }
 
     /** /vehicle seatyaw <on|off>: porneste/opreste fortarea rotatiei scaunului
@@ -868,7 +893,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatlift", "seatyaw"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatlift", "seatyaw", "seatkind"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -884,6 +909,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
             return filter(List.of("a", "b", "c", "e", "f", "g"), args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("seatkind")) {
+            return filter(List.of("minecart", "boat"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seatyaw")) {
             return filter(List.of("on", "off"), args[1]);
