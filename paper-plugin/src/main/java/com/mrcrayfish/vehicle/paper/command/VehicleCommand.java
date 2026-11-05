@@ -110,24 +110,21 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private void seatKindCmd(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendRichMessage("<yellow>seatkind actual: "
-                    + (com.mrcrayfish.vehicle.paper.render.LandVehicleRig.armorStandSeat()
-                        ? "armorstand" : "cal")
-                    + " | folosire: /vehicle seatkind <cal|armorstand></yellow>");
+                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.seatKind()
+                    + " | folosire: /vehicle seatkind <porc|cal|armorstand></yellow>");
             return;
         }
         String kind = args[1].toLowerCase(java.util.Locale.ROOT);
-        boolean stand;
-        if (kind.equals("armorstand") || kind.equals("armura")) {
-            stand = true;
-        } else if (kind.equals("cal") || kind.equals("horse")) {
-            stand = false;
-        } else {
-            sender.sendRichMessage("<red>Folosire: /vehicle seatkind <cal|armorstand></red>");
+        if (kind.equals("armura") || kind.equals("horse")) {
+            kind = kind.equals("armura") ? "armorstand" : "cal";
+        }
+        if (!List.of("porc", "cal", "armorstand").contains(kind)) {
+            sender.sendRichMessage("<red>Folosire: /vehicle seatkind <porc|cal|armorstand></red>");
             return;
         }
-        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setArmorStandSeat(stand);
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatKind(kind);
         int reset = plugin.vehicles().resetAllSeats();
-        sender.sendRichMessage("<green>seatkind = " + (stand ? "armorstand" : "cal")
+        sender.sendRichMessage("<green>seatkind = " + kind
                 + " (scaune recreate: " + reset + "). Urcă-te din nou în mașină.</green>");
     }
 
@@ -836,7 +833,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(List.of("anchor", "mount", "both", "off"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seatkind")) {
-            return filter(List.of("cal", "armorstand"), args[1]);
+            return filter(List.of("porc", "cal", "armorstand"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
             return filter(List.of("b", "c"), args[1]);

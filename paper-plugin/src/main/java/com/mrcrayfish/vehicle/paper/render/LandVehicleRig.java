@@ -228,14 +228,16 @@ public final class LandVehicleRig {
     /** BL16: scaunul poate fi si ARMOR STAND (entitate vie fara AI, deci nu se
      *  roteste dupa camera cum face calul). Implicit: calul = varianta C
      *  validata de user; comutabil live cu /vehicle seatkind. */
-    private static volatile boolean armorStandSeat = true;
+    private static volatile String seatKind = "porc";
 
-    public static void setArmorStandSeat(boolean armorStand) {
-        armorStandSeat = armorStand;
+    public static void setSeatKind(String kind) {
+        if (java.util.List.of("porc", "cal", "armorstand").contains(kind)) {
+            seatKind = kind;
+        }
     }
 
-    public static boolean armorStandSeat() {
-        return armorStandSeat;
+    public static String seatKind() {
+        return seatKind;
     }
 
     /** BL18: sursa rotatiei scaunului, comutabila live:
@@ -243,7 +245,7 @@ public final class LandVehicleRig {
      *  mount  = rotim doar scaunul (ancora 0)
      *  both   = ambele
      *  off    = niciuna (scaunul rămâne cum e) */
-    private static volatile String seatYawMode = "anchor";
+    private static volatile String seatYawMode = "mount";
 
     public static void setSeatYawMode(String mode) {
         seatYawMode = mode;
@@ -259,6 +261,38 @@ public final class LandVehicleRig {
             discardSeat(carrier);
             carrier.rider = null;
         }
+    }
+
+    /** BL19 (cerinta user: scaunul de la inceput): PORC cu sa, fara AI, tăiat
+     *  de la orice input (MOVEMENT_SPEED 0), invizibil. Corpul calareului stă
+     *  lipit de vehicul pentru ca serverul ii impune yaw-ul in fiecare tick. */
+    private static Entity pigCarrier(World world, Location location, UUID vehicleId) {
+        org.bukkit.entity.Pig pig = world.spawn(location, org.bukkit.entity.Pig.class, carrier -> {
+            carrier.setSaddle(true);
+            carrier.setAI(false);
+            carrier.setGravity(false);
+            carrier.setCollidable(false);
+            carrier.setInvisible(true);
+            carrier.setInvulnerable(true);
+            carrier.setSilent(true);
+            carrier.setPersistent(false);
+            carrier.setRemoveWhenFarAway(false);
+            AttributeInstance scale = carrier.getAttribute(Attribute.SCALE);
+            if (scale != null) {
+                scale.setBaseValue(SEAT_CARRIER_SCALE);
+            }
+            AttributeInstance speed = carrier.getAttribute(Attribute.MOVEMENT_SPEED);
+            if (speed != null) {
+                speed.setBaseValue(0.0D);
+            }
+            AttributeInstance maximumHealth = carrier.getAttribute(Attribute.MAX_HEALTH);
+            if (maximumHealth != null) {
+                maximumHealth.setBaseValue(SEAT_GAUGE_MAX_HEALTH);
+            }
+            carrier.setHealth(SEAT_GAUGE_MAX_HEALTH);
+        });
+        mark(pig, vehicleId);
+        return pig;
     }
 
     private static Entity armStandCarrier(World world, Location location, UUID vehicleId) {
@@ -332,9 +366,11 @@ public final class LandVehicleRig {
             return null;
         }
         Location location = carrier.anchor.getLocation();
-        Entity seat = armorStandSeat
-                ? armStandCarrier(location.getWorld(), location, vehicleId)
-                : seatCarrier(location.getWorld(), location, vehicleId);
+        Entity seat = switch (seatKind) {
+            case "armorstand" -> armStandCarrier(location.getWorld(), location, vehicleId);
+            case "cal" -> seatCarrier(location.getWorld(), location, vehicleId);
+            default -> pigCarrier(location.getWorld(), location, vehicleId);
+        };
         if (!carrier.anchor.addPassenger(seat)) {
             seat.remove();
             return null;
