@@ -76,5 +76,5 @@ jobs:
           NOTES=$(printf 'Checkpoint complet si stabil (pre-vehicule proprii).\n\nInclude:\n- plugin JAR: garaj global fizic r=2 (/garaj hibrid), scoatere gratuita acasa / cu taxa la public (Vault), podiumuri statice anti-furt permanent (showcase + OP bypass), livrare in garaj la cumparare, salvare asincrona vehicles.yml + garages.yml, [wipe] + mod PURGE;\n- resource pack obligatoriu (modele, texturi, sunete) r39;\n- SHA256SUMS pentru ambele artefacte.\n\nClient vanilla + pack-ul = tot ce trebuie. Rollback instant: checkout acest tag + redeploy.\n')
           gh release create "$TAG" release/* \
             --target "$GITHUB_SHA" \
-            --title "Backup complet ${TAG#backup-release-} - Garaj Global + Podium + Wipe" \
+            --title "Backup complet ${TAG#backup-release-} - snapshot proiect (plugin + pack)" \
             --notes "$NOTES"

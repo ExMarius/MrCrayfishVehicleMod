@@ -2409,8 +2409,9 @@ def emit_hud_speed_font(namespace: Path) -> None:
       'km/h' (png 48x14) -> 31
       'km'   (png 24x14) -> 16
       segment bara (png 12x14) -> 8  (10 buc = 80px = zona inimilor)
-    Chars: E200..E209 cifre, E20A 'km/h', E20B 'm', E20C '.', E20D 'km',
-    E211 segment bara-combustibil PLIN (rosu), E212 segment GOL (negru),
+    Chars: E200..E209 cifre, E20A 'km/h', E20B 'm', E20C '.', E20D 'km'
+    (E210..E212 au fost starse in ciclul BK - bara si pompa de combustibil nu
+    se mai deseneaza; inimile de cal ramaneau postul de combustibil).
     F800..F806 spatii de avans 64/32/16/8/4/2/1 (descompunere binara)."""
     masks = {
         '0': ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
@@ -2428,32 +2429,21 @@ def emit_hud_speed_font(namespace: Path) -> None:
         '/': ("00001", "00001", "00010", "00100", "00100", "01000", "01000"),
         'h': ("10000", "10000", "10110", "11001", "10001", "10001", "10001"),
         '.': ("0", "0", "0", "0", "0", "1", "1"),
-        # CICLUL BE: bara rosie de consum (segment LCD 5 coloane; 2=highlight
-        # deschis, 1=corp rosu plin, 0=negru/chassis; fundal oricum OPAC)
-        'bar_on': ("22222", "11111", "11111", "11111", "11111", "11111", "11111"),
-        'bar_off': ("00000", "00000", "00000", "00000", "00000", "00000", "00000"),
     }
     scale = 2  # bold: fiecare pixel din masca => 2x2 pixeli in PNG (stroke gros)
     white = (255, 255, 255, 255)
-    dark_gray = (85, 85, 85, 255)
 
-    def render_png(rows: tuple, rgba=white, opaque_bg: bool = False,
-                   rgba2: tuple | None = None) -> bytes:
+    def render_png(rows: tuple, rgba=white) -> bytes:
         cols = len(rows[0])
         width, height = cols * scale + scale, len(rows) * scale  # +margine dreapta
         buf = bytearray(width * height * 4)
-        if opaque_bg:
-            # CICLUL BC+: acopera complet inimile vanilla de dedesubt
-            for i in range(0, len(buf), 4):
-                buf[i:i + 4] = bytes((20, 20, 20, 255))
         for y, row in enumerate(rows):
             for x, cell in enumerate(row):
-                if cell == '1' or (cell == '2' and rgba2 is not None):
-                    color = rgba if cell == '1' else rgba2
+                if cell == '1':
                     for dy in range(scale):
                         for dx in range(scale):
                             off = ((y * scale + dy) * width + x * scale + dx) * 4
-                            buf[off:off + 4] = bytes(color)
+                            buf[off:off + 4] = bytes(rgba)
         return _png_encode_rgba(width, height, bytes(buf))
 
     def glue(*letters: str) -> tuple:
@@ -2469,25 +2459,16 @@ def emit_hud_speed_font(namespace: Path) -> None:
     providers = [{'type': 'space', 'advances': {
         chr(0xF800 + i): advance
         for i, advance in enumerate((64, 32, 16, 8, 4, 2, 1))}}]
-    glyphs = [(chr(0xE200 + int(d)), f'digit_{d}.png', masks[d], white, False, None)
+    glyphs = [(chr(0xE200 + int(d)), f'digit_{d}.png', masks[d], white)
               for d in '0123456789']
     glyphs += [
-        (chr(0xE20A), 'kmh.png', glue('k', 'm', '/', 'h'), white, False, None),
-        (chr(0xE20B), 'm.png', masks['m'], white, False, None),
-        (chr(0xE20C), 'dot.png', masks['.'], white, False, None),
-        (chr(0xE20D), 'km.png', glue('k', 'm'), white, False, None),
+        (chr(0xE20A), 'kmh.png', glue('k', 'm', '/', 'h'), white),
+        (chr(0xE20B), 'm.png', masks['m'], white),
+        (chr(0xE20C), 'dot.png', masks['.'], white),
+        (chr(0xE20D), 'km.png', glue('k', 'm'), white),
     ]
-    # CICLUL BE (feedback user): bara rosie de consum = 10 segmente LCD cu
-    # fundal OPAC peste toata zona inimilor vanilla de montura (inimile nu se
-    # mai vad deloc); PLIN = rosu ton-pe-ton (highlight sus + corp), GOL = negru.
-    fuel_red = (235, 45, 45, 255)
-    fuel_lit = (255, 130, 130, 255)
-    glyphs += [
-        (chr(0xE211), 'cell_on.png', masks['bar_on'], fuel_red, True, fuel_lit),
-        (chr(0xE212), 'cell_off.png', masks['bar_off'], fuel_red, True, fuel_lit),
-    ]
-    for char, filename, rows, rgba, opaque, rgba2 in glyphs:
-        (hud_dir / filename).write_bytes(render_png(rows, rgba, opaque, rgba2))
+    for char, filename, rows, rgba in glyphs:
+        (hud_dir / filename).write_bytes(render_png(rows, rgba))
         providers.append({'type': 'bitmap', 'file': f'vehicle:font/hud/{filename}',
                           'ascent': ascent, 'height': 9, 'chars': [char]})
     write_json(namespace / 'font/hud_speed.json', {'providers': providers})
