@@ -1819,10 +1819,9 @@ public final class LandVehicle {
             // marginea stanga a liniei ajunge fix la coloana din stanga a GUI-ului.
             // LATIMILE DE MAI JOS trebuie sa ramana sincronizate cu masca/fontul
             // din tools/build_resource_pack.py#emit_hud_speed_font.
-            // CICLUL BF: in CREATIVE/SPECTATOR clientul NU mai deseneaza
-            // inimile -> bara de consum se omite (rand compact: viteza + odo).
-            boolean survivalLike = player.getGameMode() == GameMode.SURVIVAL
-                    || player.getGameMode() == GameMode.ADVENTURE;
+            // CICLUL BG (feedback user, forma FINALA): inimile de cal raman
+            // POSTUL DE COMBUSTIBIL (song-ul vanilla neatimse); HUD-ul nostru
+            // = DOAR viteza (km/h) + odometrul (m/km), in STANGA inimilor.
             net.kyori.adventure.key.Key hudFont =
                     net.kyori.adventure.key.Key.key("vehicle", "hud_speed");
             double bps = smoothedSpeedBps;
@@ -1830,20 +1829,6 @@ public final class LandVehicle {
                     plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
             double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
             int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
-
-            /* CICLUL BE (feedback user): in locul formelor de inima -> BARA
-             * ROSIE de consum: 10 segmente LCD contigue cu fundal OPAC, peste
-             * pozitia exacta a inimilor de cal (dreapta, x = jumatate+10) -
-             * inimile vanilla nu se mai vad deloc, iar ale cailor reali din
-             * joc raman neatiginse (nu atingem nicio textura). Segmentul e
-             * deja ROSU in textura (ton-pe-ton cu highlight), deci componenta
-             * poarta ALB (= nu mai tintam peste). Golire = segmente negre. */
-            double capacity = spec.energyCapacity();
-            float fuelFraction = capacity > 0.0F
-                    ? Math.max(0.0F, Math.min(1.0F, (float) (fuel / capacity)))
-                    : 1.0F;
-            NamedTextColor fuelColor = NamedTextColor.WHITE;
-            int filledCells = (int) Math.round(fuelFraction * 10.0F);
 
             StringBuilder section = new StringBuilder();
             int width = 0;
@@ -1878,46 +1863,10 @@ public final class LandVehicle {
                     .font(hudFont);
             section.setLength(0);
 
-            if (!survivalLike) {
-                // CICLUL BF: creative/spectator - completam direct pana la 182
-                // (fara bara de consum); randul ramane la aceeasi inaltime.
-                int rest = 182 - width;
-                while (rest > 0) {
-                    for (int bit = 0; bit < 7; bit++) {
-                        int value = 64 >> bit;
-                        while (rest >= value) {
-                            section.append((char) (0xF800 + bit));
-                            rest -= value;
-                        }
-                    }
-                }
-                return leftPart.append(Component.text(section.toString(),
-                        NamedTextColor.WHITE).font(hudFont));
-            }
-
-            // spatiu gol pana la offsetul 101 (= coloana inimilor de cal,
-            // jumatate ecran + 10px), minim 8px ramas dupa sectiunea din stanga
-            int middleGap = Math.max(8, 101 - width);
-            int pad = middleGap;
-            for (int bit = 0; bit < 7; bit++) {
-                int value = 64 >> bit; // 64,32,16,8,4,2,1
-                while (pad >= value) {
-                    section.append((char) (0xF800 + bit));
-                    pad -= value;
-                }
-            }
-            width += middleGap;
-            Component gapPart = Component.text(section.toString(), NamedTextColor.WHITE)
-                    .font(hudFont);
-            section.setLength(0);
-
-            // BARA DE COMBUSTIBIL acopera zona inimilor vanilla (10 segmente
-            // de 8px contigui = 80px, identic latimii randul inimilor)
-            for (int cell = 0; cell < 10; cell++) {
-                section.append(cell < filledCells ? '\uE211' : '\uE212'); // 8px fiecare
-                width += 8;
-            }
-            int rest = 182 - width; // completare pana la latimea hotbar-ului
+            // CICLUL BG: completam direct pana la 182px cu spatii binare -
+            // HUD-ul nostru se opreste in stanga (inimile de cal din dreapta
+            // raman citilele de combustibil, exact vanilla).
+            int rest = 182 - width;
             while (rest > 0) {
                 for (int bit = 0; bit < 7; bit++) {
                     int value = 64 >> bit;
@@ -1927,10 +1876,8 @@ public final class LandVehicle {
                     }
                 }
             }
-            overlay = leftPart
-                    .append(gapPart)
-                    .append(Component.text(section.toString(), fuelColor)
-                            .font(hudFont));
+            overlay = leftPart.append(Component.text(section.toString(),
+                    NamedTextColor.WHITE).font(hudFont));
         } else {
             overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
         }

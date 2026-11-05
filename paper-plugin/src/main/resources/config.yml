@@ -38,13 +38,11 @@ physics:
   # the air", en_us.lang). Valori mai mari = lansari mai spectaculoase.
   boost-ramp-lift: 0.38
 
-# Ciclul BC (forma finala ceruta de user, beta-ready): BARA DE XP RAMANE EXACT
-# CA IN JOC - nu o mai atinge nimic. HUD-ul (font propriu vehicle:hud_speed) e
-# in doua coloane: STANGA (randul inimilor de jucator) = viteza km/h (cifre LCD
-# bold) + odometru; DREAPTA, EXACT peste pozitia inimilor de cal, = 10 inimi-
-# combustibil LCD cu fundal opac (inimile vanilla ale porcului purtator sunt
-# complet acoperite; inimile cailor reali din joc raman neatiginse - nu
-# modificam nicio textura, doar suprapunem glife cat timp conduce).
+# Ciclul BG (forma finala agreta de user, beta-ready): inimile de cal RĂMAN
+# postul de COMBUSTIBIL - vanilla, neatins, functioneaza in orice gamemode.
+# HUD-ul nostru (font propriu vehicle:hud_speed, bold LCD) = DOAR viteza
+# (km/h) + odometru (km/m) in STANGA randului inimilor de cal, centrat pe
+# columnul din stanga al GUI-ului cu spatii binare la 182px.
 # Viteza = miscarea REALA a masinii (aceeasi sursa ca odometrul) x factorul
 # cosmetic hud.speed-display-factor; plafonta la scala maxima.
 hud:
