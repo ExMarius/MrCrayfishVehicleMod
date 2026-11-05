@@ -1,12 +1,12 @@
-# Extract log server - 2026-11-05T19:47:29Z
+# Extract log server - 2026-11-05T20:00:51Z
 
 ## fisiere in logs/
-logs/2026-11-05-41.log.gz
 logs/2026-11-05-42.log.gz
 logs/2026-11-05-43.log.gz
 logs/2026-11-05-44.log.gz
 logs/2026-11-05-45.log.gz
 logs/2026-11-05-46.log.gz
+logs/2026-11-05-47.log.gz
 logs/2026-11-05-5.log.gz
 logs/2026-11-05-6.log.gz
 logs/2026-11-05-7.log.gz
@@ -17,42 +17,41 @@ logs/latest.log
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
 sftp> get logs/latest.log /tmp/latest.log
 
-==================== /tmp/latest.log (169 linii) ====================
+==================== /tmp/latest.log (166 linii) ====================
 ---- SEATDBG / SEATDBG2 (ultimele 60) ----
 ---- Exceptii / erori (ultimele 80) ----
-70:[19:41:27] [Server thread/ERROR]: [Essentials] You are running an unsupported server version!
-167:[19:46:21] [Server thread/WARN]: [SEATCAM] pachetul de camera nu este disponibil: NullPointerException Cannot invoke "java.lang.reflect.Field.get(Object)" because "com.mrcrayfish.vehicle.paper.render.LandVehicleRig.connectionField" is null
+70:[19:51:03] [Server thread/ERROR]: [Essentials] You are running an unsupported server version!
 ---- Ultimele 30 linii ----
-[19:41:28] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support.redis: Missing configuration section "proxy-support.redis.url" of type String, using default value redis://:password@localhost:6379/0.
-[19:41:28] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support.rabbitmq: Missing configuration section "proxy-support.rabbitmq.exchange" of type String, using default value plugin.
-[19:41:28] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support.rabbitmq: Missing configuration section "proxy-support.rabbitmq.url" of type String, using default value amqp://guest:guest@localhost:5672/%2F.
-[19:41:28] [Server thread/INFO]: [TAB] [WARN] Found a total of 26 issues.
-[19:41:28] [Server thread/INFO]: [TAB] Enabled in 589ms
-[19:41:28] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Enabling MrCrayfishVehiclePlugin v0.1.0-SNAPSHOT
-[19:41:28] [Server thread/INFO]: [MrCrayfishVehiclePlugin] [Magazin] Economie conectata: EssentialsX Economy
-[19:41:28] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Loaded 0 vehicle(s); 9 deferred, 7 stored in garages.
-[19:41:28] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Loaded 0 trailer(s).
-[19:41:28] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Loaded 2 parking spot(s).
-[19:41:28] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.
-[19:41:28] [Server thread/INFO]: [EssentialsChat] Enabling EssentialsChat v2.22.1-dev+28-f8724e2
-[19:41:28] [Server thread/INFO]: [EssentialsChat] Starting Metrics. Opt-out using the global bStats config.
-[19:41:29] [Server thread/INFO]: [spark] Starting background profiler...
-[19:41:29] [Server thread/INFO]: Done preparing level "world" (5.283s)
-[19:41:29] [Server thread/INFO]: Running delayed init tasks
-[19:41:29] [Craft Scheduler Thread - 3 - Essentials/INFO]: [Essentials] Fetching version information...
-[19:41:29] [Server thread/INFO]: [Essentials] Essentials found a compatible payment resolution method: Vault Compatibility Layer (v1.7.3-b131)!
-[19:41:29] [Server thread/INFO]: Done (19.413s)! For help, type "help"
-[19:41:29] [Craft Scheduler Thread - 2 - Vault/INFO]: [Vault] Checking for Updates ... 
-[19:41:29] [Craft Scheduler Thread - 2 - Vault/INFO]: [Vault] No new version available
-[19:42:02] [User Authenticator #0/INFO]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
-[19:42:07] [Server thread/INFO]: ExMarius joined the game
-[19:42:07] [Server thread/INFO]: ExMarius[/86.120.224.203:9614] logged in with entity id 27 at ([world]206.58629442064992, 65.36437505632644, -92.7118949577593)
-[19:46:03] [Server thread/INFO]: ExMarius issued server command: /vehicle seatcam off
-[19:46:09] [Server thread/INFO]: ExMarius issued server command: /vehicle seatcam off
-[19:46:21] [Server thread/INFO]: ExMarius issued server command: /vehicle seatcam on
-[19:46:21] [Server thread/WARN]: [SEATCAM] pachetul de camera nu este disponibil: NullPointerException Cannot invoke "java.lang.reflect.Field.get(Object)" because "com.mrcrayfish.vehicle.paper.render.LandVehicleRig.connectionField" is null
-[19:46:30] [Server thread/INFO]: ExMarius issued server command: /vehicle seatcam on
-[19:46:32] [Server thread/INFO]: ExMarius issued server command: /vehicle seatcam on
+[19:51:04] [Server thread/INFO]: [TAB] [WARN] [config.yml] scoreboard-teams: Missing configuration section "scoreboard-teams.disable-condition" of type String, using default value %world%=disabledworld.
+[19:51:04] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support: Missing configuration section "proxy-support.type" of type String, using default value PLUGIN.
+[19:51:04] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support.plugin: Missing configuration section "proxy-support.plugin.name" of type String, using default value RedisBungee.
+[19:51:04] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support.redis: Missing configuration section "proxy-support.redis.url" of type String, using default value redis://:password@localhost:6379/0.
+[19:51:04] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support.rabbitmq: Missing configuration section "proxy-support.rabbitmq.exchange" of type String, using default value plugin.
+[19:51:04] [Server thread/INFO]: [TAB] [WARN] [config.yml] proxy-support.rabbitmq: Missing configuration section "proxy-support.rabbitmq.url" of type String, using default value amqp://guest:guest@localhost:5672/%2F.
+[19:51:05] [Server thread/INFO]: [TAB] [WARN] Found a total of 26 issues.
+[19:51:05] [Server thread/INFO]: [TAB] Enabled in 472ms
+[19:51:05] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Enabling MrCrayfishVehiclePlugin v0.1.0-SNAPSHOT
+[19:51:05] [Server thread/INFO]: [MrCrayfishVehiclePlugin] [Magazin] Economie conectata: EssentialsX Economy
+[19:51:05] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Loaded 0 vehicle(s); 9 deferred, 7 stored in garages.
+[19:51:05] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Loaded 0 trailer(s).
+[19:51:05] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Loaded 2 parking spot(s).
+[19:51:05] [Server thread/INFO]: [MrCrayfishVehiclePlugin] Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.
+[19:51:05] [Server thread/INFO]: [EssentialsChat] Enabling EssentialsChat v2.22.1-dev+28-f8724e2
+[19:51:05] [Server thread/INFO]: [EssentialsChat] Starting Metrics. Opt-out using the global bStats config.
+[19:51:05] [Server thread/INFO]: [spark] Starting background profiler...
+[19:51:06] [Server thread/INFO]: Done preparing level "world" (5.118s)
+[19:51:06] [Server thread/INFO]: Running delayed init tasks
+[19:51:06] [Craft Scheduler Thread - 3 - Essentials/INFO]: [Essentials] Fetching version information...
+[19:51:06] [Server thread/INFO]: [Essentials] Essentials found a compatible payment resolution method: Vault Compatibility Layer (v1.7.3-b131)!
+[19:51:06] [Server thread/INFO]: Done (18.983s)! For help, type "help"
+[19:51:06] [Craft Scheduler Thread - 2 - Vault/INFO]: [Vault] Checking for Updates ... 
+[19:51:06] [Craft Scheduler Thread - 2 - Vault/INFO]: [Vault] No new version available
+[19:59:29] [User Authenticator #0/INFO]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
+[19:59:34] [Server thread/INFO]: ExMarius joined the game
+[19:59:34] [Server thread/INFO]: ExMarius[/86.120.224.203:10131] logged in with entity id 27 at ([world]114.83439138628057, 64.36437587012875, 66.4754144547359)
+[19:59:42] [Server thread/INFO]: ExMarius issued server command: /vehicle seatcam on
+[19:59:54] [Server thread/INFO]: ExMarius lost connection: Cannot interact with self!
+[19:59:54] [Server thread/INFO]: ExMarius left the game
 
 ==================== /tmp/prev.log (214 linii) ====================
 ---- SEATDBG / SEATDBG2 (ultimele 60) ----
