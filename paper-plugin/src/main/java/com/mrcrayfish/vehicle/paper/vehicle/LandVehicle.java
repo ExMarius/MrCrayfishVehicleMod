@@ -1797,10 +1797,15 @@ public final class LandVehicle {
             // Ciclul AW: viteza = miscarea REALA (aceeasi sursa ca odometrul),
             // deci cifra si kilometrajul nu se mai contrazic niciodata.
             // Ciclul AY: factor cosmetic (default 1.75 ~ maxim 70 km/h cerut).
-            // Ciclul AZ (feedback user): bara XP ramane a jocului; viteza e
-            // desenata cu FONT PROPRIU al pack-ului (vehicle:hud_speed - cifre
-            // LCD bold 5x7, glife cu ascent negativ => scrisul coboara DEASUPRA
-            // INIMILOR, nu mai sus), iar Fuel+odo raman pe linia action bar.
+            // CICLUL BA (feedback user): HUD-ul sta IN STANGA, la randul
+            // inimilor de cal, doar cu FONT PROPRIU (vehicle:hud_speed): viteza
+            // (cifre bold + "km/h") si odometrul (valoare + "m"/"km"). Bara XP
+            // ramane a jocului. Alinierea stanga: linia action bar e centrata
+            // pe ecran => completam la latimea hotbar-ului (182px) cu spatii
+            // de avans fix (F801..F807 = 64/32/16/8/4/2/1, descompunere binara);
+            // marginea stanga a liniei ajunge fix la coloana din stanga a GUI-ului.
+            // LATIMILE DE MAI JOS trebuie sa ramana sincronizate cu masca/fontul
+            // din tools/build_resource_pack.py#emit_hud_speed_font.
             net.kyori.adventure.key.Key hudFont =
                     net.kyori.adventure.key.Key.key("vehicle", "hud_speed");
             double bps = smoothedSpeedBps;
@@ -1809,14 +1814,44 @@ public final class LandVehicle {
             double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
             int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
             StringBuilder glyphs = new StringBuilder();
+            int width = 0;
             for (char digit : String.valueOf(kmh).toCharArray()) {
-                glyphs.append((char) (0xE200 + (digit - '0'))); // E200..E209 = cifre 0..9
+                glyphs.append((char) (0xE200 + (digit - '0'))); // E200..E209 = cifre 0..9 (8px)
+                width += 8;
+            }
+            glyphs.append('\uE20A'); // "km/h" (31px)
+            width += 31;
+            glyphs.append('\uF804'); // spatiu 8px intre viteza si odometru
+            width += 8;
+            // odometrul, aceeasi fonta: "248 m..." sau "2.5 km"
+            String odo = odometerLabel();
+            for (int i = 0; i < odo.length(); i++) {
+                char c = odo.charAt(i);
+                if (c >= '0' && c <= '9') {
+                    glyphs.append((char) (0xE200 + (c - '0'))); // 8px
+                    width += 8;
+                } else if (c == '.') {
+                    glyphs.append('\uE20C'); // 3px
+                    width += 3;
+                } else if (c == 'k' && i + 1 < odo.length() && odo.charAt(i + 1) == 'm') {
+                    glyphs.append('\uE20D'); // "km" (16px)
+                    width += 16;
+                    i++;
+                } else { // ' ' sau 'm' din "248 m"
+                    glyphs.append(c == ' ' ? '\uF806' : '\uE20B'); // spatiu 2px / "m" (8px)
+                    width += c == ' ' ? 2 : 8;
+                }
+            }
+            int pad = 182 - width; // completeaza pana la latimea hotbar-ului
+            for (int bit = 0; bit < 7; bit++) {
+                int value = 64 >> bit; // 64,32,16,8,4,2,1
+                while (pad >= value) {
+                    glyphs.append((char) (0xF800 + bit));
+                    pad -= value;
+                }
             }
             overlay = Component.text(glyphs.toString(), NamedTextColor.GOLD)
-                    .font(hudFont)
-                    .append(Component.text("\uE20A", NamedTextColor.GRAY)
-                            .font(hudFont))                             // E20A = "km/h"
-                    .append(Component.text("   " + fuelPlusOdo, NamedTextColor.GOLD));
+                    .font(hudFont);
         } else {
             overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
         }

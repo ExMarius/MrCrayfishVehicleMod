@@ -2384,15 +2384,27 @@ def emit_jack_gui_backdrop(namespace: Path) -> None:
 
 
 def emit_hud_speed_font(namespace: Path) -> None:
-    """CICLUL AZ (feedback user): bara XP ramane EXACT ca in joc (nu o mai
-    atingem), iar viteza e SCRISA CU FONT PROPRIU, deasupra inimilor - glife
-    cu ascent NEGATIV (-4 coboara glifa sub linia action bar-ului cu ~12px,
-    fix in zona de deasupra inimilor). Cifre 5x7 bold (x2 = stroke gros),
-    plus eticheta 'km/h', ca un tablou de bord LCD. Numerele sunt invocate
-    din LandVehicle.showFuelOverlay cu chars E200..E209 (cifre) + E20A (km/h).
+    """CICLUL BA (feedback user): HUD cu font propriu, STANGA, la randul
+    INIMILOR (x = jumatate-91, sus ~randul health-ului), alaturi de inimile
+    de cal - DOAR viteza (cifre + km/h) si odometrul (valoare + m/km).
+    Action bar-ul vanilla e CENTRAT pe ecran; alinierea stanga precisa se
+    face prin completare cu SPATII de avans fix (64/32/16/8/4/2/1) pana la
+    latimea totala 182 (= latimea hotbar-ului, marginea stanga a coloanei).
+    Ascent -12 = glifele coboara ~20px sub linia action bar-ului -> rindul
+    de deasupra hotbar-ului. (AZ: ascent -4 era 'prea sus'.)
 
-    DOAR valoarea ascent din font/hud_speed.json muta randul vertical
-    (-1 joaca, +1 urca cu ~3px per unitate) - reglaj unic de pozitie."""
+    LATIMI (px), formula vanilla = ceil(pngW * fontHeight / pngH),
+    fontHeight = 9, pngH = 14:
+      cifra  (png 12x14) -> 8
+      '.'    (png  4x14) -> 3
+      'm'    (png 12x14) -> 8
+      'km/h' (png 48x14) -> 31
+      'km'   (png 24x14) -> 16
+    LA ORICE schimbare de masca/separatoare, actualizeaza si constantele
+    din LandVehicle.showFuelOverlay (ele tin alinierea stanga a HUD-ului).
+
+    Chars: E200..E209 cifre, E20A 'km/h', E20B 'm', E20C '.', E20D 'km',
+    F801..F807 spatii de avans 64/32/16/8/4/2/1 (descompunere binara)."""
     masks = {
         '0': ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
         '1': ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
@@ -2408,11 +2420,12 @@ def emit_hud_speed_font(namespace: Path) -> None:
         'm': ("00000", "00000", "11010", "10101", "10101", "10101", "10101"),
         '/': ("00001", "00001", "00010", "00100", "00100", "01000", "01000"),
         'h': ("10000", "10000", "10110", "11001", "10001", "10001", "10001"),
+        '.': ("0", "0", "0", "0", "0", "1", "1"),
     }
     scale = 2  # bold: fiecare pixel din masca => 2x2 pixeli in PNG (stroke gros)
     white = (255, 255, 255, 255)
 
-    def render_png(rows: tuple) -> tuple:
+    def render_png(rows: tuple) -> bytes:
         cols = len(rows[0])
         width, height = cols * scale + scale, len(rows) * scale  # +margine dreapta
         buf = bytearray(width * height * 4)
@@ -2425,22 +2438,28 @@ def emit_hud_speed_font(namespace: Path) -> None:
                             buf[off:off + 4] = bytes(white)
         return _png_encode_rgba(width, height, bytes(buf))
 
+    def glue(*letters: str) -> tuple:
+        rows = [""] * 7
+        for i, letter in enumerate(letters):
+            for r in range(7):
+                rows[r] += masks[letter][r] + ("0" if i < len(letters) - 1 else "")
+        return tuple(rows)
+
     hud_dir = namespace / 'textures/font/hud'
     hud_dir.mkdir(parents=True, exist_ok=True)
-    providers = []  # cifrele sunt deja latime consecventa; nu e nevoie de offset-uri
-    for digit in '0123456789':
-        (hud_dir / f'digit_{digit}.png').write_bytes(render_png(masks[digit]))
-        providers.append({
-            'type': 'bitmap', 'file': f'vehicle:font/hud/digit_{digit}.png',
-            'ascent': -4, 'height': 9, 'chars': [chr(0xE200 + int(digit))]})
-    # Eticheta "km/h": patru masti lipite cu cate o coloana goala intre ele.
-    label_rows = [""] * 7
-    for i, letter in enumerate(('k', 'm', '/', 'h')):
-        for r in range(7):
-            label_rows[r] += masks[letter][r] + ("0" if i < 3 else "")
-    (hud_dir / 'kmh.png').write_bytes(render_png(tuple(label_rows)))
-    providers.append({'type': 'bitmap', 'file': 'vehicle:font/hud/kmh.png',
-                      'ascent': -4, 'height': 9, 'chars': ['\ue20a']})
+    ascent = -12  # CICLUL BA: randul INIMILOR (AZ cu -4 era "prea sus")
+    providers = [{'type': 'space', 'advances': {
+        chr(0xF800 + i): advance
+        for i, advance in enumerate((64, 32, 16, 8, 4, 2, 1))}}]
+    glyphs = [(chr(0xE200 + int(d)), f'digit_{d}.png', masks[d]) for d in '0123456789']
+    glyphs += [(chr(0xE20A), 'kmh.png', glue('k', 'm', '/', 'h')),   # eticheta km/h
+               (chr(0xE20B), 'm.png', masks['m']),                   # metri
+               (chr(0xE20C), 'dot.png', masks['.']),                 # zecimala odometru
+               (chr(0xE20D), 'km.png', glue('k', 'm'))]              # kilometri odometru
+    for char, filename, rows in glyphs:
+        (hud_dir / filename).write_bytes(render_png(rows))
+        providers.append({'type': 'bitmap', 'file': f'vehicle:font/hud/{filename}',
+                          'ascent': ascent, 'height': 9, 'chars': [char]})
     write_json(namespace / 'font/hud_speed.json', {'providers': providers})
 
 
