@@ -50,6 +50,9 @@ hud:
   speedo: true
   # Scala maxima a cadranului (150 = masina normala): bara de XP se umple spre ea.
   speed-fullscale-kmh: 150
+  # Ciclul AY: factor COSMETIC de afisaj - viteza reala masurata (ca la odometru)
+  # e ~40 km/h pe paduri; userul a cerut ca maximul sa arate ~70. Fizica neschimbata.
+  speed-display-factor: 1.75
 
 performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.

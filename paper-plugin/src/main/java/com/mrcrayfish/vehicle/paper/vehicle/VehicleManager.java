@@ -598,13 +598,14 @@ public final class VehicleManager {
                     org.bukkit.persistence.PersistentDataType.STRING,
                     level + "," + progress + "," + total);
         }
-        // Ciclul AV->AW: NIVELUL RAMANE 0 (fara cifra verde); umplerea barei =
-        // viteza REALA (aceeasi baza ca odometrul, via smoothedSpeedBps) pe scala
-        // maxima configurabila. Nu mai citim velocity (inflat de pad-uri).
+        // Ciclul AV->AW->AY: NIVELUL RAMANE 0 (fara cifra verde); umplerea barei =
+        // viteza REALA (aceeasi baza ca odometrul, via smoothedSpeedBps) x factorul
+        // cosmetic (default 1.75) pe scala maxima configurabila.
         double bps = vehicle.smoothedSpeedBps();
         int fullScale = Math.max(60,
                 plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
-        int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D)));
+        double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
+        int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
         driver.setLevel(0);
         driver.setExp((float) Math.max(0.0D, Math.min(1.0D, (double) kmh / fullScale)));
     }

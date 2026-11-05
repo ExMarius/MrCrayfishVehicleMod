@@ -1796,10 +1796,12 @@ public final class LandVehicle {
         if (plugin.getConfig().getBoolean("hud.speedo", true)) {
             // Ciclul AW: viteza = miscarea REALA (aceeasi sursa ca odometrul),
             // deci cifra si kilometrajul nu se mai contrazic niciodata.
+            // Ciclul AY: factor cosmetic (default 1.75 ~ maxim 70 km/h cerut).
             double bps = smoothedSpeedBps;
             int fullScale = Math.max(60,
                     plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
-            int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D)));
+            double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
+            int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
             overlay = Component.text("Viteza: " + kmh + " km/h", NamedTextColor.AQUA)
                     .append(Component.text(String.format(java.util.Locale.ROOT, " (%.1f bps)", bps),
                             NamedTextColor.DARK_GRAY))
