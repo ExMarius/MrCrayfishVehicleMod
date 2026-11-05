@@ -255,12 +255,14 @@ public final class LandVehicleRig {
         seat.setPersistent(false);
         seat.setGravity(false);
         mark(seat, vehicleId);
-        hideSeatFromPlayers(seat);
         return seat;
     }
 
-    /** BL6: ascunde scaunul-barca de toti jucatorii din lume (si de cei care
-     *  apar ulterior - re-apelat periodic din tickSeats). */
+    /** BL6/BL7: ascunde scaunul-barca de ceilalti jucatori. CALAREUL este
+     *  EXCLUS: clientul trebuie sa cunoasca entitatea pe care sta, altfel
+     *  serverul il considera urcat dar clientul nu-l aseaza (bug observat live:
+     *  "nici macar nu ma urca in masina"). Pentru calaret barca ramane
+     *  invizibila prin flagul de invizibilitate. */
     private static void hideSeatFromPlayers(Entity seat) {
         org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("MrCrayfishVehiclePlugin");
         if (plugin == null || seat == null || !seat.isValid()) {
@@ -270,8 +272,9 @@ public final class LandVehicleRig {
         if (world == null) {
             return;
         }
+        List<Entity> passengers = seat.getPassengers();
         for (Player player : world.getPlayers()) {
-            if (player.equals(seat)) {
+            if (player.equals(seat) || passengers.contains(player)) {
                 continue;
             }
             player.hideEntity(plugin, seat);
@@ -699,8 +702,8 @@ public final class LandVehicleRig {
                 if (seat == null || !seat.isValid()) {
                     continue;
                 }
-                hideSeatFromPlayers(seat);
                 if (!seat.getPassengers().isEmpty()) {
+                    hideSeatFromPlayers(seat);
                     Location anchorLocation = carrier.anchor.getLocation();
                     org.bukkit.util.Vector delta = seat.getLocation().toVector()
                             .subtract(anchorLocation.toVector());
@@ -749,6 +752,7 @@ public final class LandVehicleRig {
             }
         }
         if (closest == null) {
+            Bukkit.getLogger().info("[SEATDBG4] mount FAILED: niciun scaun liber pentru " + player.getName());
             return false;
         }
 
@@ -756,7 +760,23 @@ public final class LandVehicleRig {
             discardSeat(closest);
         }
         Entity seat = createSeatMount(closest);
-        if (seat != null && seat.addPassenger(player)) {
+        boolean boarded = false;
+        if (seat == null) {
+            Bukkit.getLogger().info("[SEATDBG4] mount FAILED: nu am putut crea scaunul pentru " + player.getName());
+        } else {
+            boarded = seat.addPassenger(player);
+            if (!boarded) {
+                Bukkit.getLogger().info("[SEATDBG4] mount FAILED: addPassenger refuzat ("
+                        + seat.getType() + ", passengers=" + seat.getPassengers().size() + ")");
+            }
+        }
+        if (boarded) {
+            /* BL7: calaretul primeste entitatea inapoi (daca fusese ascunsa),
+             * ca clientul sa-l poata aseza pe scaun. */
+            org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("MrCrayfishVehiclePlugin");
+            if (plugin != null) {
+                player.showEntity(plugin, seat);
+            }
             hideSeatFromPlayers(seat);
             closest.rider = player.getUniqueId();
             return true;

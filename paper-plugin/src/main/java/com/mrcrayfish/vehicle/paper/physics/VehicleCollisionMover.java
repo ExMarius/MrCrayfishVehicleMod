@@ -147,12 +147,17 @@ public final class VehicleCollisionMover {
 
     private static boolean collides(World world, BoundingBox box, boolean ignoreStations) {
         BoundingBox query = box.clone().expand(-COLLISION_EPSILON);
-        // Poarta rapida: doar daca vehiculul ignora statiile SI in zona exista
-        // vreun bloc-statie trecem pe calea detaliata (rar); in rest calea nativa.
-        if (!ignoreStations || !hasStationBlock(world, query)) {
-            return world.hasCollisionsIn(query);
+        /* Ciclul BL7 (dovada din log): World#hasCollisionsIn() numara si
+         * ENTITATI. Scaunul vehiculului este o barca invizibila care sta in
+         * interiorul cutiei masinii, deci testul nativ raporta "blocat" in
+         * fiecare tick cat timp soferul era asezat (masina nu se deplasa, dar
+         * vira si rotile se invarteau). Acceptam testul nativ doar ca reject
+         * rapid (false = sigur liber) si confirmam pe BLOCURI, ca entitatile
+         * pasager sa nu mai blocheze vehiculul. */
+        if (!world.hasCollisionsIn(query)) {
+            return false;
         }
-        return collidesIgnoringStations(world, query);
+        return collidesWithBlocks(world, query, !ignoreStations);
     }
 
     /** Misiunea anti-lag + cerinta user: statiile-bloc (cric jos, banc etc.) sunt
@@ -181,7 +186,9 @@ public final class VehicleCollisionMover {
 
     /** Coliziune manuala identica cu cea nativa, dar sari peste blocurile-statie.
      *  Folosita DOAR cand poarta de mai sus a gasit vreo statie in zona. */
-    private static boolean collidesIgnoringStations(World world, BoundingBox query) {
+    /** Test pur pe blocuri (ignora entitatile). {@code skipStations} = blocurile
+     *  de statie (cric/banc) nu sunt solide pentru vehicul. */
+    private static boolean collidesWithBlocks(World world, BoundingBox query, boolean skipStations) {
         int minX = (int) Math.floor(query.getMinX());
         int minY = (int) Math.floor(query.getMinY());
         int minZ = (int) Math.floor(query.getMinZ());
@@ -193,7 +200,8 @@ public final class VehicleCollisionMover {
                 for (int z = minZ; z <= maxZ; z++) {
                     org.bukkit.block.Block block = world.getBlockAt(x, y, z);
                     if (block.getType().isAir()
-                            || com.mrcrayfish.vehicle.paper.mechanic.StationBlocks.kindOf(block) != null) {
+                            || (skipStations
+                                && com.mrcrayfish.vehicle.paper.mechanic.StationBlocks.kindOf(block) != null)) {
                         continue;
                     }
                     for (BoundingBox shape : block.getCollisionShape().getBoundingBoxes()) {
