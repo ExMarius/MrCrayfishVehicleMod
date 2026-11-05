@@ -16,6 +16,10 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
+import org.bukkit.entity.Boat;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Horse;
+import org.bukkit.entity.Pig;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
@@ -77,6 +81,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "paint", "vopsea", "vopseste" -> paint(sender);
             case "give" -> give(sender, args);
             case "propsdebug" -> propsDebug(sender);
+            case "seattest" -> seatTest(sender, args);
             default -> help(sender, label);
         }
         return true;
@@ -570,6 +575,127 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     /** CICLUL AJ.5: diagnostica blocului-tinta pentru problemele de randare a
      *  props-urilor (con/placa/teava). Arata CE crede serverul ca e acolo + daca
      *  mai bantui entitati-fantoma mcv_prop in jur. */
+    /**
+     * Ciclul BL diagnostic: "corpul se rasuceste cu mouse-ul in scaun" nu s-a
+     * rezolvat cu porcul-cu-saua (vechi) nici cu calul-fara-saua (BL). Vanilla
+     * decide client-side cum leaga corpul calareului de vehicul si depinde de
+     * TIPUL entitatii (barci, cai, porci se comporta diferit) - asta nu se
+     * poate simula offline. spawneaza un rand de 4 scaune test vizibile si
+     * monteaza jucatorul programatic pe varianta ceruta, ca sa identificam
+     * empiric pe serverul real ce tipuletz de scaun tine corpul blocat si
+     * capul liber. Auto-curatare dupa 5 minute.
+     */
+    private final java.util.List<java.util.UUID> seatTestEntities = new java.util.ArrayList<>();
+
+    private void seatTest(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Doar din joc.</red>");
+            return;
+        }
+        if (args.length < 2) {
+            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <a|b|c|d></red>"
+                    + " a=barca, b=cal fara saua (acum), c=cal cu saua (vanilla clasic), d=porc cu saua (vechi).");
+            return;
+        }
+        // curata randul vechi (daca exista)
+        for (java.util.UUID id : seatTestEntities) {
+            Entity old = Bukkit.getEntity(id);
+            if (old != null) {
+                old.remove();
+            }
+        }
+        seatTestEntities.clear();
+
+        Location eye = player.getLocation();
+        float yaw = eye.getYaw();
+        double radians = Math.toRadians(yaw);
+        // randul sta perpendicular pe privire, la 4 blocuri in fata jucatorului
+        double fx = -Math.sin(radians), fz = Math.cos(radians);
+        Location base = eye.clone().add(fx * 4.0D, 0.0D, fz * 4.0D);
+        base.setYaw((float) Math.toDegrees(Math.atan2(-fx, fz)));
+        double rx = Math.cos(radians), rz = Math.sin(radians);
+
+        java.util.List<Entity> spawned = new java.util.ArrayList<>();
+        spawned.add(spawnSeatTest(base.clone().add(rx * -3.0D, 0, rz * -3.0D), "A barca", SeatKind.BOAT));
+        spawned.add(spawnSeatTest(base.clone().add(rx * -1.0D, 0, rz * -1.0D), "B cal fara saua", SeatKind.HORSE_BARE));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 1.0D, 0, rz * 1.0D), "C cal cu saua", SeatKind.HORSE_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 3.0D, 0, rz * 3.0D), "D porc cu saua", SeatKind.PIG_SADDLED));
+        for (Entity entity : spawned) {
+            seatTestEntities.add(entity.getUniqueId());
+        }
+
+        int index = switch (args[1].toLowerCase(Locale.ROOT)) {
+            case "a" -> 0;
+            case "b" -> 1;
+            case "c" -> 2;
+            case "d" -> 3;
+            default -> -1;
+        };
+        if (index < 0) {
+            sender.sendRichMessage("<red>Varianta necunoscuta; foloseste a, b, c sau d.</red>");
+            return;
+        }
+        Entity seat = spawned.get(index);
+        player.leaveVehicle();
+        if (!seat.addPassenger(player)) {
+            sender.sendRichMessage("<red>Nu te-a putut urca (permisiuni/protectie?).</red>");
+            return;
+        }
+        sender.sendRichMessage("<gold>[SeatTest]</gold> " + spawnedLabels()[index]
+                + " - apasa F5, lasa tastele si invarte doar mouse-ul: uita-te daca corpul sta blocat si doar capul se roteste.");
+        // auto-cleanup dupa 5 minute ca sa nu ramana teste ratacite
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            for (java.util.UUID id : new java.util.ArrayList<>(seatTestEntities)) {
+                Entity entity = Bukkit.getEntity(id);
+                if (entity != null) {
+                    entity.remove();
+                }
+            }
+            seatTestEntities.clear();
+        }, 20L * 300);
+    }
+
+    private enum SeatKind { BOAT, HORSE_BARE, HORSE_SADDLED, PIG_SADDLED }
+
+    private static String[] spawnedLabels() {
+        return new String[] {"A barca simpla", "B cal fara saua", "C cal cu saua (vanilla clasic)", "D porc cu saua"};
+    }
+
+    private Entity spawnSeatTest(Location location, String label, SeatKind kind) {
+        Entity entity = switch (kind) {
+            case BOAT -> location.getWorld().spawn(location, Boat.class);
+            case HORSE_BARE -> {
+                Horse horse = location.getWorld().spawn(location, Horse.class);
+                horse.setTamed(true);
+                yield horse;
+            }
+            case HORSE_SADDLED -> {
+                Horse horse = location.getWorld().spawn(location, Horse.class);
+                horse.setTamed(true);
+                horse.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
+                yield horse;
+            }
+            case PIG_SADDLED -> {
+                Pig pig = location.getWorld().spawn(location, Pig.class);
+                pig.setAdult();
+                pig.setSaddle(true);
+                yield pig;
+            }
+        };
+        entity.setInvulnerable(true);
+        entity.setSilent(true);
+        entity.setCollidable(false);
+        entity.setPersistent(false);
+        entity.setGravity(false);
+        entity.customName(net.kyori.adventure.text.Component.text(label));
+        entity.setCustomNameVisible(true);
+        entity.addScoreboardTag("mcv_seat_test");
+        if (entity instanceof org.bukkit.entity.Animals animals) {
+            animals.setAI(false);
+        }
+        return entity;
+    }
+
     private void propsDebug(CommandSender sender) {
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Doar un jucator poate rula asta.</red>");
@@ -666,7 +792,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -679,6 +805,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 4 && args[0].equalsIgnoreCase("podium") && "set".equalsIgnoreCase(args[1])) {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
+            return filter(List.of("a", "b", "c", "d"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);
