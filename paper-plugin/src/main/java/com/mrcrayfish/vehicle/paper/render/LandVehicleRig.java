@@ -69,7 +69,7 @@ public final class LandVehicleRig {
      *  masina). MINECART = acelasi comportament de riding (corp blocat, cap
      *  liber), dar NU are niciun input de la calaret, deci rotatia ei vine
      *  exclusiv de la server. Comutabil live cu /vehicle seatkind. */
-    private static volatile org.bukkit.entity.EntityType seatType = org.bukkit.entity.EntityType.OAK_BOAT;
+    private static volatile org.bukkit.entity.EntityType seatType = org.bukkit.entity.EntityType.MARKER;
 
     public static void setSeatType(org.bukkit.entity.EntityType type) {
         if (type == org.bukkit.entity.EntityType.MINECART || type == org.bukkit.entity.EntityType.OAK_BOAT) {
@@ -305,10 +305,11 @@ public final class LandVehicleRig {
         }
         Location location = carrier.anchor.getLocation();
         Entity seat = seatCarrier(location.getWorld(), location, vehicleId);
-        if (!carrier.anchor.addPassenger(seat)) {
-            seat.remove();
-            return null;
-        }
+        /* BL14: scaunul este entitate DE SINE STATATOARE, teleportata de server
+         * pe scaun in fiecare tick (pozitie + yaw de la vehicul). Fara parinte
+         * nu exista compunere de rotatii, iar un MARKER nu poate fi condus de
+         * client (nu are input), deci pozitia rămâne integral a serverului. */
+        seat.teleport(location);
         carrier.mount = seat;
         entities.add(seat);
         return seat;
@@ -614,21 +615,14 @@ public final class LandVehicleRig {
             return;
         }
         carrier.rider = rider.getUniqueId();
-        /* BL12: pozitia vine de la ancora (scaunul este pasagerul ei, deci
-         * urmeaza automat vehiculul si clientul nu poate conduce scaunul);
-         * serverul impune doar yaw-ul vehiculului, in fiecare tick. */
-        if (seat.getYaw() != seatYaw || seat.getPitch() != 0.0F) {
-            seat.setRotation(seatYaw, 0.0F);
-        }
-        /* BM: scaunul are rider; cat timp vehiculul NU vireaza/se misca,
-         * rotatia ramane la client (clampa vanilla de riding blocheaza
-         * corpul pe scaun si lasa capul liber). In timpul virajelor/mersului
-         * serverul tine scaunul la yaw-ul vehiculului => corpul calatorul
-         * se misca o data cu masina. */
-        /* BL5: serverul tine scaunul (barca) la yaw-ul vehiculului in FIECARE
-         * tick, deci corpul calareului se roteste o data cu masina. Capul
-         * ramane liber pentru ca barca are clampa de privire foarte larga. */
-        if (forceSeatYaw && seat.getYaw() != seatYaw) {
+        /* BL14: pozitia si orientarea scaunului vin de la VEHICUL, in fiecare
+         * tick, fara praguri: calaretul este tras efectiv dupa masina (inclusiv
+         * la viraje), iar orice deviere venita din client este anulata imediat. */
+        Location target = carrier.anchor.getLocation();
+        target.setYaw(seatYaw);
+        target.setPitch(0.0F);
+        seat.teleport(target, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        if (forceSeatYaw && (seat.getYaw() != seatYaw || seat.getPitch() != 0.0F)) {
             seat.setRotation(seatYaw, 0.0F);
         }
     }
