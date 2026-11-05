@@ -270,44 +270,73 @@ public final class LandVehicleRig {
         return lookLockTolerance;
     }
 
-    /** BL21: trimite clientului pachetul vanilla de "priveste spre punct"
-     *  (ClientboundPlayerLookAtPacket) - singura cale prin care camera poate fi
-     *  rotita din server FARA teleport (teleportul da jos pasagerul). Totul
-     *  este in try/catch: daca serverul nu permite reflectia, jocul merge
-     *  exact ca inainte, doar fara blocarea camerei. */
+    /** BL24: camera urmeaza vehiculul. Clientul aplica rotatia din pachetul de
+     *  pozitionare, dar noi il trimitem doar cu rotatia RELATIVA (pozitia ramane
+     *  neatinsa), deci nu exista teleport pe server si pasagerul NU este dat jos.
+     *  Totul in try/catch: daca serverul nu permite reflectia, jocul merge
+     *  exact ca inainte, doar fara urmarirea camerei. */
     private static volatile boolean lookPacketFailed = false;
-    private static java.lang.reflect.Constructor<?> lookPacketCtor;
+    private static java.lang.reflect.Constructor<?> posPacketCtor;
+    private static java.lang.reflect.Constructor<?> moveRotationCtor;
+    private static int yawIndex = 2;
+    private static Object vec3Zero;
+    private static Object relativeRotation;
     private static java.lang.reflect.Field connectionField;
     private static java.lang.reflect.Method sendMethod;
+    private static final java.util.concurrent.atomic.AtomicInteger LOOK_ID =
+            new java.util.concurrent.atomic.AtomicInteger(1);
 
-    private static void initLookPacket() {
+    private static synchronized void initLookPacket() {
         try {
             Class<?> packetClass = Class.forName(
-                    "net.minecraft.network.protocol.game.ClientboundPlayerLookAtPacket");
+                    "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket");
             for (java.lang.reflect.Constructor<?> candidate : packetClass.getConstructors()) {
                 Class<?>[] types = candidate.getParameterTypes();
-                if (types.length < 5 || types.length > 6) {
+                if (types.length != 3 || types[0] != int.class || types[2] != java.util.Set.class) {
                     continue;
                 }
-                boolean usable = true;
-                for (Class<?> type : types) {
-                    if (type == double.class || type == float.class || type == int.class) {
-                        continue;
+                Class<?> changeClass = types[1];
+                for (java.lang.reflect.Constructor<?> moveCtor : changeClass.getConstructors()) {
+                    Class<?>[] moveTypes = moveCtor.getParameterTypes();
+                    if (moveTypes.length == 4 && moveTypes[2] == float.class && moveTypes[3] == float.class) {
+                        moveRotationCtor = moveCtor;
+                        Class<?> vecClass = moveTypes[0];
+                        vec3Zero = vecClass.getField("ZERO").get(null);
+                        yawIndex = 2;
+                        if (changeClass.isRecord()) {
+                            java.lang.reflect.RecordComponent[] parts = changeClass.getRecordComponents();
+                            for (int index = 0; index < parts.length; index++) {
+                                String name = parts[index].getName().toLowerCase();
+                                if (name.contains("yrot") || name.contains("y_rot")) {
+                                    yawIndex = index;
+                                }
+                            }
+                        }
+                        break;
                     }
-                    if (type.isEnum() && type.getSimpleName().contains("Anchor")) {
-                        continue;
-                    }
-                    if (type.isEnum() && type.getSimpleName().contains("Type")) {
-                        continue;
-                    }
-                    if (!type.isPrimitive()) {
-                        continue;
-                    }
-                    usable = false;
-                    break;
                 }
-                if (usable) {
-                    lookPacketCtor = candidate;
+                java.lang.reflect.Type generic = candidate.getGenericParameterTypes()[2];
+                if (generic instanceof java.lang.reflect.ParameterizedType) {
+                    java.lang.reflect.Type argument =
+                            ((java.lang.reflect.ParameterizedType) generic).getActualTypeArguments()[0];
+                    if (argument instanceof Class<?>) {
+                        @SuppressWarnings({"unchecked", "rawtypes"})
+                        Class<? extends Enum> relativeEnum = (Class<? extends Enum>) argument;
+                        java.util.Set<Object> relatives = new java.util.LinkedHashSet<>();
+                        for (String name : new String[]{"X", "Y", "Z", "Y_ROT", "X_ROT"}) {
+                            try {
+                                relatives.add(Enum.valueOf(relativeEnum, name));
+                            } catch (IllegalArgumentException ignored) {
+                                // versiune fara acest flag
+                            }
+                        }
+                        if (!relatives.isEmpty()) {
+                            relativeRotation = relatives;
+                        }
+                    }
+                }
+                if (moveRotationCtor != null && relativeRotation != null) {
+                    posPacketCtor = candidate;
                     break;
                 }
             }
@@ -319,54 +348,31 @@ public final class LandVehicleRig {
             Bukkit.getLogger().warning("[SEATLOOK] pachetul de rotire a camerei nu este disponibil: "
                     + error.getClass().getSimpleName() + " " + error.getMessage());
             lookPacketFailed = true;
-            lookPacketCtor = null;
+            posPacketCtor = null;
         }
     }
 
-    /** Roteste camera jucatorului spre directia data (fara sa-l miste). */
-    private static void forceLook(Player player, float yaw, float pitch) {
+    /** Roteste camera jucatorului pe directia data, fara sa-l miste si fara sa-l dea jos. */
+    private static void forceLook(Player player, float yaw) {
         if (lookPacketFailed) {
             return;
         }
-        if (lookPacketCtor == null) {
+        if (posPacketCtor == null) {
             initLookPacket();
-            if (lookPacketCtor == null) {
+            if (posPacketCtor == null) {
                 return;
             }
         }
         try {
-            double yawRadians = Math.toRadians(yaw);
-            double pitchRadians = Math.toRadians(pitch);
-            Location eye = player.getEyeLocation();
-            double x = eye.getX() - Math.sin(yawRadians) * Math.cos(pitchRadians) * 10.0D;
-            double y = eye.getY() - Math.sin(pitchRadians) * 10.0D;
-            double z = eye.getZ() + Math.cos(yawRadians) * Math.cos(pitchRadians) * 10.0D;
-            Class<?>[] types = lookPacketCtor.getParameterTypes();
-            Object[] args = new Object[types.length];
-            for (int index = 0; index < types.length; index++) {
-                Class<?> type = types[index];
-                if (type == double.class) {
-                    double value = index == 1 ? x : index == 2 ? y : z;
-                    args[index] = value;
-                } else if (type == float.class) {
-                    args[index] = index == 1 ? (float) x : index == 2 ? (float) y : (float) z;
-                } else if (type == int.class) {
-                    args[index] = 0;
-                } else if (type.isEnum()) {
-                    String constant = type.getSimpleName().contains("Anchor") ? "FEET" : "ABSOLUTE";
-                    Object value = null;
-                    for (Object candidate : type.getEnumConstants()) {
-                        if (((Enum<?>) candidate).name().equals(constant)) {
-                            value = candidate;
-                            break;
-                        }
-                    }
-                    args[index] = value != null ? value : type.getEnumConstants()[0];
-                } else {
-                    args[index] = null;
-                }
-            }
-            Object packet = lookPacketCtor.newInstance(args);
+            float deltaYaw = wrapDegrees(yaw - player.getLocation().getYaw());
+            Object[] change = new Object[4];
+            change[0] = vec3Zero;
+            change[1] = vec3Zero;
+            change[yawIndex] = deltaYaw;
+            change[yawIndex == 2 ? 3 : 2] = 0.0F;
+            Object moveRotation = moveRotationCtor.newInstance(change);
+            Object packet = posPacketCtor.newInstance(
+                    LOOK_ID.getAndIncrement(), moveRotation, relativeRotation);
             Object handle = player.getClass().getMethod("getHandle").invoke(player);
             Object connection = connectionField.get(handle);
             sendMethod.invoke(connection, packet);
@@ -831,7 +837,7 @@ public final class LandVehicleRig {
         if (lookLockTolerance < 999.0F) {
             float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
             if (deviation > lookLockTolerance) {
-                forceLook(rider, seatYaw, rider.getPitch());
+                forceLook(rider, seatYaw);
             }
         }
     }
