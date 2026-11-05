@@ -4,16 +4,25 @@ import org.bukkit.Material;
 import org.bukkit.block.Block;
 
 /**
- * Paper equivalent of the original SurfaceHelper material map for STANDARD
- * wheels. Checks use exact material families rather than substring matching,
- * so solid blocks such as sandstone are not accidentally treated as sand.
+ * Paper equivalent of the original SurfaceHelper material map. Checks use exact
+ * material families rather than substring matching, so solid blocks such as
+ * sandstone are not accidentally treated as sand.
+ *
+ * <p>{@code friction} is the BASE surface friction from the source; the mounted
+ * {@code WheelType} applies its per-category modifier on top (road/dirt/snow),
+ * exactly like the mod's IWheelType.applyPhysics. STANDARD wheels reproduce the
+ * previous hardcoded values 1-la-1 (0.9*1.1 / 1.1*1.3 / 1.5*1.7).</p>
  */
-public record SurfaceProfile(float friction, float tractionFactor) {
-    private static final SurfaceProfile SOLID = new SurfaceProfile(0.9F * 1.1F, 1.0F);
-    private static final SurfaceProfile DIRT = new SurfaceProfile(1.1F * 1.3F, 0.9F);
-    private static final SurfaceProfile SNOW = new SurfaceProfile(1.5F * 1.7F, 0.9F);
-    private static final SurfaceProfile ICE = new SurfaceProfile(1.5F, 0.01F);
-    private static final SurfaceProfile NONE = new SurfaceProfile(0.0F, 1.0F);
+public record SurfaceProfile(Category category, float friction, float tractionFactor) {
+    public enum Category {
+        NONE, ROAD, DIRT, SNOW, ICE
+    }
+
+    private static final SurfaceProfile SOLID = new SurfaceProfile(Category.ROAD, 0.9F, 1.0F);
+    private static final SurfaceProfile DIRT = new SurfaceProfile(Category.DIRT, 1.1F, 0.9F);
+    private static final SurfaceProfile SNOW = new SurfaceProfile(Category.SNOW, 1.5F, 0.9F);
+    private static final SurfaceProfile ICE = new SurfaceProfile(Category.ICE, 1.5F, 0.01F);
+    private static final SurfaceProfile NONE = new SurfaceProfile(Category.NONE, 0.0F, 1.0F);
 
     public static SurfaceProfile at(Block block) {
         Material material = block.getType();

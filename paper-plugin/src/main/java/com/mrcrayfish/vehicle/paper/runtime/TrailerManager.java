@@ -115,10 +115,34 @@ public final class TrailerManager {
         return trailer;
     }
 
+    /** Hitch state gate: PaperTrailer.attach/detach calls this for VEHICLE pullers.
+     * The puller's whole rig (tow bar included) is re-packed and resent immediately,
+     * so a resting car never shows a visually locked tow bar after coupling/uncoupling
+     * while its own physics was asleep. */
+    void onHitchChanged(UUID pullerVehicleId) {
+        if (pullerVehicleId == null) {
+            return;
+        }
+        vehicles.byId(pullerVehicleId).ifPresent(LandVehicle::forceVisualSync);
+    }
+
     public void tick() {
         refreshWaterPlacementTargets();
         for (PaperTrailer trailer : new ArrayList<>(trailers.values())) {
             try {
+                if (!trailer.isInLoadedChunk()) {
+                    continue; // parked in an unloaded chunk: zero physics cost
+                }
+                if (!trailer.rig().valid()) {
+                    // Rig entities died with a chunk unload (non-persistent). Rebuild
+                    // in place so the trailer reappears instead of haunting the map.
+                    trailer.rebuildRig();
+                    // Immediate re-index: clicks/tow logic must not wait for the
+                    // periodic 20-tick reverse-index rebuild to see the new entities.
+                    for (Entity entity : trailer.rig().entities()) {
+                        entities.put(entity.getUniqueId(), trailer);
+                    }
+                }
                 trailer.tick();
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Trailer tick failed for " + trailer.id(), exception);

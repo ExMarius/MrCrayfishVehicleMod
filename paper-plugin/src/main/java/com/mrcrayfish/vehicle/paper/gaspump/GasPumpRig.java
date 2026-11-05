@@ -1,11 +1,24 @@
 package com.mrcrayfish.vehicle.paper.gaspump;
 
+// ============================================================================
+// [NU SCHIMBA - VERSIUNE INGHETATA V2, VALIDATA DE UTILIZATOR 2026-10-18, commit e5b122f]
+// Pompa docata: PERFECTA (v1). Pistol flutant ținut: rotație pe privire, furtunul
+// intră 0.22 în corp, ultimele 2 segmente ascunse doar pentru holder (FP curat).
+// Limită cunoscută și ACCEPTATĂ: unirea furtun-pistol nu e pixel-perfect.
+// + LOGISTICĂ (acord explicit 2026-10-18, după înghețarea V2): click pe vehicul cu
+//   duza ținută NU mai urcă în vehicul (doar alimentează); maxim 1 duză per jucător.
+// Orice schimbare în acest pachet cere acordul EXPLICIT al utilizatorului.
+// Restaurare instant: git checkout gaspump-perfect-v2 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/
+// Vezi paper-plugin/SNAPSHOT_GAS_PUMP_OK.md pentru constantele exacte.
+// ============================================================================
+
 import io.papermc.paper.entity.TeleportFlag;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Player;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
@@ -41,15 +54,14 @@ public final class GasPumpRig {
     private static final float HOSE_THICKNESS = 0.0625F;
 
     /** Local offset of the hose's pump-side anchor, relative to the bottom block's floor.
-     *  Shifted 1 block toward the pump's own left (west when the pump faces north) from the
-     *  original mod's anchor, nudged 2 pixels (2/16 block) further north, 2 more pixels
-     *  toward the east, then 1 more pixel (1/16 block) further north. */
+     *  Restored to the long-tuned value: the hose must stay on the pump's left side
+     *  (user feedback 2026-10-18: moving it right was wrong). */
     private static final Vector3f HOSE_OUTLET_LOCAL = new Vector3f(-0.575F, 1.64F, 0.1125F);
     /** Local offset where the nozzle rests when nobody is holding it.
-     *  Net 0.5 block toward the pump's own left (west when the pump faces north): 2 blocks
-     *  west, then corrected 1.5 blocks back east after it overshot. A further 1-block-west
-     *  attempt put it on the wrong side of the pump entirely, so that move is reverted. */
-    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(-0.5F, 1.5F, 0.26F);
+     *  Source puts it on the pump's positive side (flipped correctly from the old -0.5);
+     *  nudged +5 model pixels (5/16 = 0.3125) further out toward the pump's own left so the
+     *  dock sits on the body edge instead of clipping inside the pump (user-reported). */
+    private static final Vector3f NOZZLE_REST_LOCAL = new Vector3f(0.5525F, 1.5F, 0.18F);
     /** The nozzle model's own spout faces back toward the pump instead of outward (confirmed
      *  still backward even with zero extra rotation), so it needs a half-turn on top of the
      *  pump's own yaw whenever its rotation is set. */
@@ -63,14 +75,39 @@ public final class GasPumpRig {
     private final List<ItemDisplay> hose;
     private final List<Entity> entities;
 
+    /**
+     * Extra hose segments the HOLDER alone sees: the shared chain is anchored at the body's
+     * hand (what bystanders and F5 render), while these last two segments replace its very end
+     * on the holder's screen only and stick exactly into the nozzle item in first person.
+     */
+    /**
+     * How many shared-chain segments (counted from the hand end) are hidden from the HOLDER.
+     * First person should show the nozzle item cleanly in view; hose segments parked right in
+     * front of the player's own face only clutter the screen (holder feedback 2026-10-18:
+     * "in FP want to see the pistol, not the hose"). Bystanders keep seeing the full chain.
+     */
+    static final int HOLDER_HIDDEN_SEGMENTS = 2;
+
+    /** How deep (blocks, along the view facing) the hose tip is pushed into the held nozzle
+     *  body, so the hose plugs into the pistol's CENTER instead of dangling at its edge. */
+    private static final float NOZZLE_CONNECT_DEPTH = 0.22F;
+
+    /** Unused spare displays, spawned hidden and parked at the pump root forever. */
+    static final int HOLDER_TAIL_SEGMENTS = 2;
+
+    private final List<ItemDisplay> holderTail;
+    private UUID tailViewerId;
+
     private GasPumpRig(UUID pumpId, Interaction interaction, ItemDisplay bottom, ItemDisplay top,
-                       ItemDisplay nozzle, List<ItemDisplay> hose, List<Entity> entities) {
+                       ItemDisplay nozzle, List<ItemDisplay> hose, List<ItemDisplay> holderTail,
+                       List<Entity> entities) {
         this.pumpId = pumpId;
         this.interaction = interaction;
         this.bottom = bottom;
         this.top = top;
         this.nozzle = nozzle;
         this.hose = hose;
+        this.holderTail = holderTail;
         this.entities = entities;
     }
 
@@ -110,8 +147,18 @@ public final class GasPumpRig {
             hose.add(segment);
         }
 
+        // Holder-only tail: born hidden from everybody, shown to whoever holds the nozzle.
+        List<ItemDisplay> holderTail = new ArrayList<>(HOLDER_TAIL_SEGMENTS);
+        for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
+            ItemDisplay segment = display(world, root, model("hose_segment"));
+            segment.setVisibleByDefault(false);
+            mark(segment, pumpId);
+            all.add(segment);
+            holderTail.add(segment);
+        }
+
         GasPumpRig rig = new GasPumpRig(pumpId, interaction, bottom, top, nozzle,
-                Collections.unmodifiableList(hose), all);
+                Collections.unmodifiableList(hose), Collections.unmodifiableList(holderTail), all);
         rig.update(root, null, null);
         return rig;
     }
@@ -126,6 +173,14 @@ public final class GasPumpRig {
      *                       (matches the original renderer); ignored when {@code nozzleLocation} is null.
      */
     public void update(Location root, Location nozzleLocation, Vector lookDirection) {
+        update(root, nozzleLocation, lookDirection, null);
+    }
+
+    /**
+     * @param holder the player holding the nozzle (their view yaw drives the floating nozzle),
+     *               or {@code null} when it is docked / nobody is holding it.
+     */
+    public void update(Location root, Location nozzleLocation, Vector lookDirection, Player holder) {
         if (!valid()) {
             return;
         }
@@ -138,22 +193,48 @@ public final class GasPumpRig {
         place(bottom, root, new Vector3f(0.0F, 0.5F, 0.0F));
         place(top, root, new Vector3f(0.0F, 1.5F, 0.0F));
 
-        Vector3f outlet = worldPoint(root, HOSE_OUTLET_LOCAL);
+        // Hose outlet anchor must rotate WITH the pump body (Bukkit yaw rotation), otherwise
+        // re-placing the pump at a different yaw leaves the hose pouring out of the wrong side.
+        float bodyRad = (float) Math.toRadians(yaw);
+        double bodyCos = Math.cos(bodyRad), bodySin = Math.sin(bodyRad);
+        Vector3f outlet = new Vector3f(
+                (float) (root.getX() + HOSE_OUTLET_LOCAL.x * bodyCos - HOSE_OUTLET_LOCAL.z * bodySin),
+                (float) root.getY() + HOSE_OUTLET_LOCAL.y,
+                (float) (root.getZ() + HOSE_OUTLET_LOCAL.x * bodySin + HOSE_OUTLET_LOCAL.z * bodyCos));
         Vector3f nozzlePoint;
         Vector3f endTangent;
         if (nozzleLocation != null) {
             nozzlePoint = new Vector3f((float) nozzleLocation.getX(), (float) nozzleLocation.getY(),
                     (float) nozzleLocation.getZ());
-            nozzle.teleport(new Location(world, nozzlePoint.x, nozzlePoint.y, nozzlePoint.z));
-            nozzle.setRotation(yaw + NOZZLE_YAW_OFFSET, 0.0F);
+            // Floating nozzle: rides the holder's view yaw (no extra offset - the 180 deg
+            // pump-dock offset used to show its face backwards). The display itself sits at
+            // the hand point, while the hose chain tip is pushed INTO the middle of the nozzle
+            // body (along the same facing), so the hose plugs into the pistol's center and the
+            // junction never visually splits.
+            float holdYaw = holder != null ? holder.getEyeLocation().getYaw() : yaw;
+            double holdRad = Math.toRadians(holdYaw);
+            double fwx = -Math.sin(holdRad), fwz = Math.cos(holdRad);
+            nozzlePoint.add((float) (fwx * NOZZLE_CONNECT_DEPTH), 0.0F, (float) (fwz * NOZZLE_CONNECT_DEPTH));
+            nozzle.teleport(new Location(world, nozzleLocation.getX(), nozzleLocation.getY(), nozzleLocation.getZ()));
+            nozzle.setRotation(holdYaw, 0.0F);
             nozzle.setTransformation(new Transformation(new Vector3f(), new Quaternionf(),
                     new Vector3f(1.0F, 1.0F, 1.0F), new Quaternionf()));
             endTangent = lookDirection == null ? new Vector3f(0.0F, 3.0F, 0.0F)
                     : new Vector3f((float) lookDirection.getX(), (float) lookDirection.getY(),
                             (float) lookDirection.getZ()).mul(3.0F);
         } else {
-            nozzlePoint = worldPoint(root, NOZZLE_REST_LOCAL);
+            // Paper rotates the ItemDisplay transformation translation by the entity yaw
+            // (setRotation). place() uses yaw + NOZZLE_YAW_OFFSET, so the visual dock point is
+            // root + rotY(yaw + NOZZLE_YAW_OFFSET) * NOZZLE_REST_LOCAL (Bukkit yaw convention:
+            // x' = x cos - z sin, z' = x sin + z cos). The hose tail must target exactly that
+            // same point or it cuts through the pump.
             place(nozzle, root, NOZZLE_REST_LOCAL, NOZZLE_YAW_OFFSET);
+            float dockYaw = (float) Math.toRadians(yaw + NOZZLE_YAW_OFFSET);
+            double cos = Math.cos(dockYaw), sin = Math.sin(dockYaw);
+            nozzlePoint = new Vector3f(
+                    (float) (root.getX() + NOZZLE_REST_LOCAL.x * cos - NOZZLE_REST_LOCAL.z * sin),
+                    (float) root.getY() + NOZZLE_REST_LOCAL.y,
+                    (float) (root.getZ() + NOZZLE_REST_LOCAL.x * sin + NOZZLE_REST_LOCAL.z * cos));
             endTangent = new Vector3f(0.0F, 3.0F, 0.0F);
         }
 
@@ -163,18 +244,13 @@ public final class GasPumpRig {
             placeHoseSegment(hose.get(i), points[i], points[i + 1], world);
         }
 
-        updateBrightness(root);
-    }
+        // Unused spare tail segments stay parked at the root and strictly hidden from everyone.
+        Vector3f rootPoint = new Vector3f((float) root.getX(), (float) root.getY(), (float) root.getZ());
+        for (int i = 0; i < HOLDER_TAIL_SEGMENTS; i++) {
+            placeHoseSegment(holderTail.get(i), rootPoint, rootPoint, world);
+        }
 
-    /** World-space rotation of a local offset by the rig's own facing, for hose/curve math only. */
-    private static Vector3f worldPoint(Location root, Vector3f local) {
-        double radians = Math.toRadians(root.getYaw());
-        float cos = (float) Math.cos(radians);
-        float sin = (float) Math.sin(radians);
-        float worldX = local.x * cos - local.z * sin;
-        float worldZ = local.x * sin + local.z * cos;
-        return new Vector3f((float) root.getX() + worldX, (float) root.getY() + local.y,
-                (float) root.getZ() + worldZ);
+        updateBrightness(root);
     }
 
     private static void place(ItemDisplay display, Location root, Vector3f center) {
@@ -220,7 +296,9 @@ public final class GasPumpRig {
     private static void configure(Display display) {
         display.setInterpolationDelay(0);
         display.setInterpolationDuration(1);
-        display.setTeleportDuration(VANILLA_ENTITY_LERP_TICKS);
+        // Instant teleports: the default lerping window made the hose visibly trail behind
+        // the moving hand (the earlier display()-level 0 was being overwritten back to 3 here).
+        display.setTeleportDuration(0);
         display.setInvulnerable(true);
         display.setPersistent(false);
         display.setShadowRadius(0.0F);
@@ -228,9 +306,15 @@ public final class GasPumpRig {
     }
 
     private static ItemStack model(String name) {
-        ItemStack item = new ItemStack(Material.PAPER);
+        // PAPER + item_model nu mai randeaza pe server (regresie live). Unificat cu
+        // LandVehicleRig+coloredStack: LEATHER_HORSE_ARMOR + alb explicit (dyed_color
+        // pe stack => tint opac pe orice client, aspect = albul din backup).
+        ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setColor(org.bukkit.Color.fromRGB(0xF9FFFE));
+        }
         item.setItemMeta(meta);
         return item;
     }
@@ -254,6 +338,13 @@ public final class GasPumpRig {
         return pumpId;
     }
 
+    /** The display+interaction entities die whenever their chunk unloads (persistent=false);
+     *  false means the manager must respawn the rig before the pump looks like a bare block. */
+    public boolean alive() {
+        Interaction interaction = interaction();
+        return interaction != null && interaction.isValid();
+    }
+
     public Interaction interaction() {
         return interaction;
     }
@@ -264,7 +355,26 @@ public final class GasPumpRig {
 
     public boolean valid() {
         return interaction.isValid() && bottom.isValid() && top.isValid() && nozzle.isValid()
-                && hose.stream().allMatch(Entity::isValid);
+                && hose.stream().allMatch(Entity::isValid)
+                && holderTail.stream().allMatch(Entity::isValid);
+    }
+
+    /** Hand-end shared-chain segments, hidden from the holder while they hold the nozzle. */
+    public List<ItemDisplay> holderCoveredTail() {
+        return hose.subList(HOSE_SEGMENTS - HOLDER_HIDDEN_SEGMENTS, HOSE_SEGMENTS);
+    }
+
+    /** Spare segments kept parked and strictly invisible (legacy of the FP tail experiment). */
+    public List<ItemDisplay> holderTail() {
+        return holderTail;
+    }
+
+    public UUID tailViewerId() {
+        return tailViewerId;
+    }
+
+    public void setTailViewerId(UUID tailViewerId) {
+        this.tailViewerId = tailViewerId;
     }
 
     public void remove() {

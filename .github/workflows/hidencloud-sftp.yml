@@ -1,0 +1,288 @@
+name: HidenCloud deploy (build plugin + upload SSH)
+
+# NOTA OPERATIONALA (ciclul AA): `gh run rerun` esueaza pe acest workflow cu
+# "workflow file may be broken" pentru ca pe default-branch exista UN ALT set de
+# workflow-uri (epoca Oracle/Falix); rerun-urile se valideaza contra default.
+# Redeploy corect = orice push care atinge path-urile de mai jos.
+# Dupa RECREAREA serverului in panel: porneste-l o data (se genereaza
+# server.properties/logs), apoi face un redeploy -- primul deploy pe server gol
+# sare peste sincronizarea hash-ului resource-pack (nu exista server.properties).
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - "paper-plugin/**"
+      - "tools/**"
+      - "hidencloud/**"
+      - ".github/workflows/hidencloud-sftp.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: hc-sftp
+  cancel-in-progress: false
+
+env:
+  PANEL: https://freepanel.hidencloud.com
+  SERVER_ID: d496911d
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+  SFTP_PASS_BACKUP: 'X5#mK9!vP2qL'
+  MC_VERSION: "1.21.4"
+
+jobs:
+  build:
+    name: Compilez pluginul de masini
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Gradle build
+        run: ./paper-plugin/gradlew -p paper-plugin clean build -x test
+
+      # The pack URL in config.yml points at this fixed release asset; players can only
+      # ever see model/pack changes if the asset itself is re-uploaded on every deploy.
+      - name: "Publica pack-ul + JAR-ul in release (UNIC writer - ciclul AJ.1)"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          ./paper-plugin/gradlew -p paper-plugin resourcePack
+          # Ciclul AJ.1: acest job este PROPRIETARUL UNIC al release-ului intreg
+          # (pack + JAR + tag + notes). Workflow-ul paper-plugin.yml nu mai atinge
+          # release-ul deloc. Remediaza race-ul concurent intre cele doua care a
+          # picat periodic publish-ul (11:02 collider pe aeelasi release desi pe
+          # asset-uri diferite) + lasa tag-ul mereu pe HEAD-ul validat de CI.
+          BRANCH_HEAD=$(git ls-remote --heads origin "refs/heads/$GITHUB_REF_NAME" | cut -f1)
+          if [ "$GITHUB_SHA" != "$BRANCH_HEAD" ]; then
+            echo "Skip release upload din commit vechi $GITHUB_SHA (HEAD e $BRANCH_HEAD)."
+            exit 0
+          fi
+          gh release upload vehicle-plugin-prototype-v0.1.0 \
+            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip \
+            --clobber
+          JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | head -1)
+          gh release upload vehicle-plugin-prototype-v0.1.0 "$JAR" --clobber
+          gh api --method PATCH "repos/$GITHUB_REPOSITORY/git/refs/tags/vehicle-plugin-prototype-v0.1.0" \
+            -f sha="$GITHUB_SHA" -F force=true >/dev/null
+          gh release edit vehicle-plugin-prototype-v0.1.0 --target "$GITHUB_SHA" \
+            --title "Vehicle Plugin land vehicles prototype v0.1.0 (Paper 1.21.4)" \
+            --notes "Paper 1.21.4 vanilla-client checkpoint: masinile + fluidele crupun (r39). Ciclul AJ: props-urile stradale (con/placa/teava) sunt blocuri reale, nu entitati. Vezi paper-plugin/PORT_STATUS.md."
+
+      - uses: actions/upload-artifact@v5
+        with:
+          name: plugin-jar
+          path: paper-plugin/build/libs/MrCrayfishVehiclePlugin-*.jar
+          retention-days: 2
+
+  deploy:
+    name: Upload pe server prin SSH key
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/download-artifact@v5
+        with:
+          name: plugin-jar
+          path: dl
+
+      - name: Pregatesc fisierele de upload (pluginul + stackul + configuri)
+        run: |
+          mkdir -p stage/plugins/TAB stage/plugins/Essentials
+          cp dl/MrCrayfishVehiclePlugin-*.jar stage/plugins/MrCrayfishVehiclePlugin.jar
+
+          # EssentialsX core + Chat + Spawn
+          EJ=$(curl -fsSL --retry 2 -m 30 "https://ci.ender.zone/job/EssentialsX/lastStableBuild/api/json" 2>/dev/null)
+          echo "$EJ" | jq -r '.artifacts[].relativePath' | grep -E '^jars/EssentialsX(Chat|Spawn)?-[0-9][^/]*\.jar$' | while read -r rel; do
+            curl -fsSL -m 90 -o "stage/plugins/$(basename "$rel")" "https://ci.ender.zone/job/EssentialsX/lastStableBuild/artifact/$rel" || true
+          done
+
+          # Vault
+          VJ=$(curl -fsSL --retry 2 -m 30 "https://api.github.com/repos/Milkbowl/Vault/releases/latest" \
+                | jq -r '[.assets[] | select(.name | startswith("Vault") and endswith(".jar"))] | .[0].browser_download_url // ""')
+          [ -n "$VJ" ] && curl -fsSL -m 60 -o stage/plugins/Vault.jar "$VJ" || true
+
+          # LuckPerms
+          LP=$(curl -fsSL --retry 2 -m 30 "https://api.modrinth.com/v2/project/luckperms/version?loaders=%5B%22paper%22%5D" \
+                | jq -r '.[0].files[] | select(.primary==true) | .url' | head -1)
+          [ -n "$LP" ] && curl -fsSL -m 120 -o stage/plugins/LuckPerms-Bukkit.jar "$LP" || true
+
+          # WorldEdit pin 7.3.x pentru 1.21.4 (7.4.x cere Java 25)
+          WE=$(curl -fsSL --retry 2 -m 30 "https://api.modrinth.com/v2/project/worldedit/version?loaders=%5B%22paper%22%5D&game_versions=%5B%22$MC_VERSION%22%5D" \
+                | jq -r '[.[] | select(.version_number | startswith("7.3"))] | .[0].files[] | select(.primary==true) | .url' | head -1)
+          [ -n "$WE" ] && curl -fsSL -m 120 -o stage/plugins/worldedit-bukkit-7.3.x.jar "$WE" || true
+
+          # TAB (GitHub releases)
+          TBJ=$(curl -fsSL --retry 2 -m 30 "https://api.github.com/repos/NEZNAMY/TAB/releases/latest" \
+                 | jq -r '[.assets[] | select(.name | test("^[Tt][Aa][Bb].*\\.jar$"))] | .[0].browser_download_url // ""')
+          [ -n "$TBJ" ] && curl -fsSL -m 120 -o stage/plugins/TAB.jar "$TBJ" || true
+
+          cp hidencloud/config/TAB/config.yml stage/plugins/TAB/config.yml
+          cp hidencloud/config/Essentials/motd.txt stage/plugins/Essentials/motd.txt
+          mkdir -p stage/trigger
+          date +%s > stage/trigger/.restart-request
+          echo "fisiere pregatite:"
+          find stage -type f | sort
+
+      # One-shot total reset: only when the commit message carries [wipe] we stage a
+      # WIPE_ON_BOOT marker into the plugin data folder. The plugin itself deletes the
+      # marker and then all its data on the next boot (see VehiclePlugin.wipeDataIfRequested),
+      # so the wipe can never loop and deploys without [wipe] never touch data.
+      - name: Pregatesc markerul de reset total ([wipe] in mesajul de commit)
+        if: contains(github.event.head_commit.message, '[wipe]')
+        run: |
+          mkdir -p stage/plugins/MrCrayfishVehiclePlugin
+          echo "wipe-requested-$(date +%s)" > stage/plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT
+          echo "::warning title=HC-WIPE::marker WIPE_ON_BOOT pregatit — pluginul isi sterge TOATE datele la boot"
+
+      - name: Urc totul prin SFTP (cheie SSH, fara expirare)
+        run: |
+          chmod 600 hidencloud/keys/arena_hc_ed25519
+          try_sftp() {
+            if [ "$1" = key ]; then
+              sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$2" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+            else
+              export SSHPASS="$SFTP_PASS_BACKUP"
+              sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b "$2" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+            fi
+          }
+          printf 'ls plugins\n' > b_test.txt
+          MODE=""
+          if try_sftp key b_test.txt | grep -qi "TAB\|Essentials\|plugins"; then MODE=key; fi
+          if [ -z "$MODE" ]; then
+            sudo apt-get update -qq && sudo apt-get install -y -qq sshpass
+            try_sftp pass b_test.txt | grep -qi "TAB\|Essentials\|plugins" && MODE=pass || true
+          fi
+          if [ -z "$MODE" ]; then
+            echo "::error title=HC-SFTP::nici cheia SSH nici parola nu au mers"
+            exit 1
+          fi
+          echo "::notice title=HC-AUTH::conectat SFTP prin modul: $MODE"
+
+          # server.properties MUST carry the fresh pack hash on every deploy: clients cache
+          # by URL+hash, so a stale hash means they silently keep the OLD pack (new items
+          # like the jerry can then render as the magenta/black missing-model cube).
+          printf 'get server.properties stage/server.properties\n' > batch_get.txt
+          try_sftp $MODE batch_get.txt || true
+          if [ -s stage/server.properties ]; then
+            python3 tools/configure_server_resource_pack.py \
+              --server-properties stage/server.properties \
+              --plugin-config paper-plugin/src/main/resources/config.yml \
+              --output stage/server.properties.patched
+            printf 'put stage/server.properties.patched server.properties\n' > batch_props.txt
+            if ! try_sftp $MODE batch_props.txt > props_out.txt 2>&1; then
+              echo "::error title=HC-PROPS-PUT::put server.properties ESUAT: $(tail -3 props_out.txt | tr -d "\r" | tr '\n' ' ' | cut -c1-300)"
+              exit 1
+            fi
+            echo "::notice title=HC-PROPS::server.properties sincronizat cu noul hash al pack-ului"
+          else
+            echo "::warning title=HC-PROPS::nu am putut citi server.properties; sar peste sync hash"
+          fi
+
+          printf '%s\n' '' > batch_up.txt
+          printf '%s\n' \
+            '-mkdir plugins' \
+            '-mkdir plugins/TAB' \
+            '-mkdir plugins/Essentials' \
+            > batch_up.txt
+          for f in stage/plugins/*.jar; do
+            N=$(basename "$f")
+            printf 'put %s plugins/%s\n' "$f" "$N" >> batch_up.txt
+          done
+          printf 'put stage/plugins/TAB/config.yml plugins/TAB/config.yml\n' >> batch_up.txt
+          printf 'put stage/plugins/Essentials/motd.txt plugins/Essentials/motd.txt\n' >> batch_up.txt
+          printf '%s\n' \
+            '-mkdir plugins/MrCrayfishVehiclePlugin' \
+            '-rm plugins/MrCrayfishVehiclePlugin/.restart-request' \
+            'put stage/trigger/.restart-request plugins/MrCrayfishVehiclePlugin/.restart-request' \
+            '-rm plugins/worldedit-bukkit.jar' \
+            '-rm plugins/MrCrayfishVehiclePlugin-*-SNAPSHOT.jar' \
+            '-rm plugins/ViaVersion.jar' \
+            >> batch_up.txt
+          # Ciclul AG.2: ViaVersion REVERSAT - traducerea de versiune decalata scaunul
+          # si dadea rubber-banding pe rig. Politica: client EXACT 1.21.4 (nativ).
+          if [ -f stage/plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT ]; then
+            printf 'put stage/plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT plugins/MrCrayfishVehiclePlugin/WIPE_ON_BOOT\n' >> batch_up.txt
+            echo "::warning title=HC-WIPE::markerul WIPE_ON_BOOT inclus in upload"
+          fi
+          if ! try_sftp $MODE batch_up.txt > up_out.txt 2>&1; then
+            echo "::error title=HC-UPLOAD::uploadul batch ESUAT: $(tail -5 up_out.txt | tr -d "\r" | tr '\n' ' ' | cut -c1-400)"
+            exit 1
+          fi
+          echo "::notice title=HC-UPLOAD::plugin masini + stack + configuri urcate prin SSH ($MODE)"
+          echo "::notice title=HC-VIAVERSION::politica = client EXACT 1.21.4 (ViaVersion eliminat din stack)"
+
+      - name: Curat dublurile vechi
+        run: |
+          chmod 600 hidencloud/keys/arena_hc_ed25519
+          sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
+          export SSHPASS="$SFTP_PASS_BACKUP"
+          sftp_any() {
+            if sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1; then return 0; fi
+            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b "$1" -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+          }
+          printf 'ls plugins\n' > b_ls.txt
+          sftp_any b_ls.txt > sftp_ls.txt 2>&1 || true
+          grep -oE '(^|/)(TAB v|worldedit-bukkit\.jar|MrCrayfishVehiclePlugin-[^ ]*SNAPSHOT[^ ]*)[^ ]*\.jar' sftp_ls.txt | sed 's|^/||' | sort -u > dupes.txt || true
+          printf '' > batch_rm.txt
+          while read -r d; do
+            case "$d" in
+              "plugins/MrCrayfishVehiclePlugin.jar") continue;;
+              plugins/*) printf -- '-rm %s\n' "$d" >> batch_rm.txt;;
+            esac
+          done < dupes.txt
+          if [ -s batch_rm.txt ]; then
+            sftp_any batch_rm.txt > /dev/null 2>&1 || true
+            echo "::notice title=HC-CLEAN::sters $(( $(wc -l < batch_rm.txt) )) dubluri vechi"
+          else
+            echo "fara dubluri"
+          fi
+
+      - name: Restart automat (trigger plugin + API daca e vie) + verificare din log
+        env:
+          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+        run: |
+          chmod 600 hidencloud/keys/arena_hc_ed25519
+          export SSHPASS="$SFTP_PASS_BACKUP"
+          getlog() {
+            printf 'get logs/latest.log %s\n' "$1" > b_get.txt
+            if sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1; then return 0; fi
+            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o NumberOfPasswordPrompts=1 -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1
+          }
+          getlog /tmp/before.log || true
+          BEFORE=$(grep -a 'Done (' /tmp/before.log | tail -1 || echo '?')
+
+          # opţiunea 1: API dacă e cheie proaspătă
+          if [ -n "${K3Y:-}" ]; then
+            curl -sS -m 12 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
+                 -d '{"signal":"restart"}' -o /dev/null \
+                 "$PANEL/api/client/servers/$SERVER_ID/power" >/dev/null 2>&1 || true
+          fi
+          # opțiunea 2 (permanentă): triggerul scris deja în /plugins — pluginul dă singur /restart
+
+          NEW=""
+          for i in 1 2 3 4 5 6 7 8; do
+            sleep 20
+            getlog /tmp/after.log || true
+            NEW=$(grep -a 'Done (' /tmp/after.log | tail -1 || echo '')
+            if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then break; fi
+          done
+          if [ -n "$NEW" ] && [ "$NEW" != "$BEFORE" ]; then
+            echo "::notice title=HC-DONE::RESTART CONFIRMAT — server online cu noul build: $(echo $NEW | cut -c1-120)"
+          else
+            echo "::warning title=HC-RESTART::trigger scris OK — serverul se reporneste in secundele urmatoare (daca peste 2 min nu e online, apasa Start in freepanel)"
+          fi

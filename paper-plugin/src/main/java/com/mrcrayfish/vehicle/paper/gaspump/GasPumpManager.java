@@ -1,5 +1,17 @@
 package com.mrcrayfish.vehicle.paper.gaspump;
 
+// ============================================================================
+// [NU SCHIMBA - VERSIUNE INGHETATA V2, VALIDATA DE UTILIZATOR 2026-10-18, commit e5b122f]
+// Pompa docata: PERFECTA (v1). Pistol flutant ținut: rotație pe privire, furtunul
+// intră 0.22 în corp, ultimele 2 segmente ascunse doar pentru holder (FP curat).
+// Limită cunoscută și ACCEPTATĂ: unirea furtun-pistol nu e pixel-perfect.
+// + LOGISTICĂ (acord explicit 2026-10-18, după înghețarea V2): click pe vehicul cu
+//   duza ținută NU mai urcă în vehicul (doar alimentează); maxim 1 duză per jucător.
+// Orice schimbare în acest pachet cere acordul EXPLICIT al utilizatorului.
+// Restaurare instant: git checkout gaspump-perfect-v2 -- paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/gaspump/
+// Vezi paper-plugin/SNAPSHOT_GAS_PUMP_OK.md pentru constantele exacte.
+// ============================================================================
+
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
 import com.mrcrayfish.vehicle.paper.persistence.GasPumpStore;
 import com.mrcrayfish.vehicle.paper.persistence.StoredGasPump;
@@ -11,7 +23,9 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Entity;
+import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Vector;
 
@@ -48,6 +62,8 @@ public final class GasPumpManager {
     private final Map<UUID, GasPump> byInteraction = new HashMap<>();
     private BukkitTask tickTask;
     private BukkitTask saveTask;
+    private int healCounter;
+    private static final int HEAL_EVERY = 40; // 2 secunde - pompa nu trebuie verificata la fiecare tick
 
     public GasPumpManager(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -144,14 +160,43 @@ public final class GasPumpManager {
         return Collections.unmodifiableCollection(pumps.values());
     }
 
+    /**
+     * Nozzle as a FLOATING display welded to the hose end (user decision 2026-10-18: no
+     * inventory item at all). The display and the shared chain terminate at the same world
+     * point, so the hose-nozzle junction can never split; the holder additionally has the
+     * near-face chain segments hidden so first person stays clean.
+     */
     public void pickUpNozzle(Player player, GasPump pump) {
         pump.setHolderId(player.getUniqueId());
         Location location = pump.location();
         player.playSound(Sound.sound(Key.key("vehicle:block.gas_pump.nozzle_pick_up"),
                 Sound.Source.BLOCK, 1.0F, 1.0F), location.getX(), location.getY(), location.getZ());
+
+        // Per-viewer hiding: the holder does NOT see the hose segments parked right in front
+        // of their face (first person shows just the floating nozzle); everyone else sees
+        // the full chain welded into it.
+        GasPumpRig rig = pump.rig();
+        rig.setTailViewerId(player.getUniqueId());
+        for (ItemDisplay hidden : rig.holderCoveredTail()) {
+            player.hideEntity(plugin, hidden);
+        }
     }
 
+    /** Puts the nozzle back on the pump and removes the hand item from the holder (anti-dupe). */
     public void putDownNozzle(GasPump pump) {
+        Player holder = pump.holderId() == null ? null : Bukkit.getPlayer(pump.holderId());
+        if (holder != null) {
+            removeNozzleItems(holder);
+            // Undo the per-viewer tail swap.
+            GasPumpRig rig = pump.rig();
+            for (ItemDisplay shown : rig.holderCoveredTail()) {
+                holder.showEntity(plugin, shown);
+            }
+            for (ItemDisplay tail : rig.holderTail()) {
+                holder.hideEntity(plugin, tail);
+            }
+            rig.setTailViewerId(null);
+        }
         pump.setHolderId(null);
         pump.rig().update(pump.location(), null, null);
         Location soundLocation = pump.location();
@@ -164,7 +209,58 @@ public final class GasPumpManager {
         }
     }
 
+    /** Removes every nozzle item from the player's inventory incl. hands/armor slots (anti-dupe). */
+    public static void removeNozzleItems(Player player) {
+        for (ItemStack stack : player.getInventory().getContents()) {
+            if (NozzleItem.isNozzle(stack)) {
+                stack.setAmount(0);
+            }
+        }
+    }
+
+    /** Player quit: pump gets its nozzle back even though the holder is offline now. */
+    public void handleQuit(Player player) {
+        removeNozzleItems(player);
+        for (GasPump pump : new ArrayList<>(pumps.values())) {
+            if (player.getUniqueId().equals(pump.holderId())) {
+                putDownNozzle(pump);
+            }
+        }
+    }
+
+    /** True when this player already holds ANY pump's nozzle (one nozzle per player rule). */
+    public boolean isHoldingNozzle(java.util.UUID playerId) {
+        for (GasPump pump : pumps.values()) {
+            if (playerId.equals(pump.holderId())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private void tick() {
+        // Auto-heal: a pump whose rig vanished (chunk unload / relog / restart) comes back the
+        // moment its chunk is loaded again - never leaves a naked block behind.
+        // Perf: runs every HEAL_EVERY ticks (called every tick by the timer).
+        if (++healCounter % HEAL_EVERY == 0) {
+            for (GasPump pump : new ArrayList<>(pumps.values())) {
+            if (pump.rig().alive() || !pump.location().isChunkLoaded()) {
+                continue;
+            }
+            UUID oldInteraction = null;
+            try {
+                oldInteraction = pump.rig().interaction().getUniqueId();
+            } catch (Throwable ignored) {
+            }
+            if (oldInteraction != null) {
+                byInteraction.remove(oldInteraction);
+            }
+            pump.rig().remove();
+            GasPumpRig freshRig = GasPumpRig.spawn(pump.id(), pump.location());
+            pumps.put(pump.id(), new GasPump(pump.id(), pump.location(), freshRig));
+            byInteraction.put(freshRig.interaction().getUniqueId(), pumps.get(pump.id()));
+            }
+        }
         double maxHoseDistance = plugin.getConfig().getDouble("gas-pump.max-hose-distance", DEFAULT_MAX_HOSE_DISTANCE);
         double fillSeconds = Math.max(1.0D, plugin.getConfig().getDouble("gas-pump.fill-seconds", DEFAULT_FILL_SECONDS));
         for (GasPump pump : new ArrayList<>(pumps.values())) {
@@ -182,8 +278,10 @@ public final class GasPumpManager {
                 continue;
             }
 
-            Location nozzleLocation = handHeldNozzleLocation(holder);
-            pump.rig().update(pump.location(), nozzleLocation, holder.getEyeLocation().getDirection());
+            // Hose chain AND floating nozzle share the identical world point every tick:
+            // the welded look holds from every viewing angle, no matter how the holder moves.
+            pump.rig().update(pump.location(), handHeldNozzleLocation(holder),
+                    holder.getEyeLocation().getDirection(), holder);
 
             fuel(pump, holder, fillSeconds);
         }
@@ -228,7 +326,10 @@ public final class GasPumpManager {
         return eye.clone()
                 .subtract(0.0D, 0.4D, 0.0D)
                 .add(direction.clone().multiply(0.35D))
-                .add(right.multiply(0.3D));
+                .add(right.multiply(0.3D))
+                // Movement prediction (~2 ticks): entity sync latency would otherwise pin the
+                // hose tail to where the head WAS, so sprinting left the hose trailing behind.
+                .add(player.getVelocity().multiply(2.0D));
     }
 
     /** Snaps an arbitrary yaw to the nearest cardinal direction, package-visible for testing. */

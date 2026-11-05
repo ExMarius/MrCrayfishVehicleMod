@@ -4,6 +4,7 @@ import com.mrcrayfish.vehicle.paper.gaspump.GasPump;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpItem;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpManager;
 import com.mrcrayfish.vehicle.paper.gaspump.GasPumpRig;
+import com.mrcrayfish.vehicle.paper.gaspump.NozzleItem;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.GameMode;
@@ -19,8 +20,14 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryDragEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
+import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.ItemStack;
 
@@ -35,9 +42,12 @@ import java.util.Optional;
  */
 public final class GasPumpListener implements Listener {
     private final GasPumpManager gasPumps;
+    private final com.mrcrayfish.vehicle.paper.vehicle.VehicleManager vehicles;
 
-    public GasPumpListener(GasPumpManager gasPumps) {
+    public GasPumpListener(GasPumpManager gasPumps,
+                           com.mrcrayfish.vehicle.paper.vehicle.VehicleManager vehicles) {
         this.gasPumps = gasPumps;
+        this.vehicles = vehicles;
     }
 
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
@@ -96,6 +106,13 @@ public final class GasPumpListener implements Listener {
             }
             return;
         }
+        // One nozzle per player at a time; putting it down is a click on ITS pump.
+        if (gasPumps.isHoldingNozzle(player.getUniqueId())) {
+            player.sendActionBar(Component.text(
+                    "Ții deja o duză de la altă pompă - pune-o la loc mai întâi.",
+                    NamedTextColor.YELLOW));
+            return;
+        }
         gasPumps.pickUpNozzle(player, pump);
     }
 
@@ -110,10 +127,94 @@ public final class GasPumpListener implements Listener {
             return;
         }
         gasPumps.byEntity(entity).ifPresent(pump -> {
+            if (pump.hasHolder()) {
+                // Snatch the nozzle back from whoever holds it before the pump disappears.
+                gasPumps.putDownNozzle(pump);
+            }
             World world = pump.location().getWorld();
             world.dropItemNaturally(pump.location(), GasPumpItem.create());
             world.playSound(pump.location(), Sound.BLOCK_METAL_BREAK, 1.0F, 0.8F);
             gasPumps.remove(pump);
         });
+    }
+
+    /**
+     * Logistics rule (user request): clicking a vehicle WHILE HOLDING the nozzle must never
+     * board it - the click is fuel-only (fuelling flows by proximity anyway). Pump entities
+     * are exempt so putting the nozzle back keeps working.
+     */
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onVehicleClickWhileHoldingNozzle(org.bukkit.event.player.PlayerInteractAtEntityEvent event) {
+        cancelVehicleEnterWhileHolding(event.getPlayer(), event.getRightClicked(), event);
+    }
+
+    @EventHandler(priority = EventPriority.NORMAL)
+    public void onVehicleClickWhileHoldingNozzleParent(PlayerInteractEntityEvent event) {
+        if (event instanceof org.bukkit.event.player.PlayerInteractAtEntityEvent) {
+            return;
+        }
+        cancelVehicleEnterWhileHolding(event.getPlayer(), event.getRightClicked(), event);
+    }
+
+    private void cancelVehicleEnterWhileHolding(Player player, Entity target, PlayerInteractEntityEvent event) {
+        if (!gasPumps.isHoldingNozzle(player.getUniqueId())) {
+            return;
+        }
+        if (gasPumps.byEntity(target).isPresent()) {
+            return; // the pump itself stays clickable (put the nozzle back)
+        }
+        if (vehicles.byEntity(target).isEmpty()) {
+            return; // only vehicles are finger-proofed
+        }
+        event.setCancelled(true);
+    }
+
+    // ---------------- Nozzle item protections (anti-dupe / anti-loss) ----------------
+
+    /** The nozzle is pump property: it can never be thrown away. */
+    @EventHandler(ignoreCancelled = true)
+    public void onNozzleDrop(PlayerDropItemEvent event) {
+        if (NozzleItem.isNozzle(event.getItemDrop().getItemStack())) {
+            event.setCancelled(true);
+        }
+    }
+
+    /** Nozzle can never be moved into another inventory (chest, hopper, armor stand, ...). */
+    @EventHandler(ignoreCancelled = true)
+    public void onNozzleInventoryMove(InventoryClickEvent event) {
+        if (event.getView().getTopInventory() != null
+                && event.getClickedInventory() == event.getView().getTopInventory()
+                && (NozzleItem.isNozzle(event.getCurrentItem()) || NozzleItem.isNozzle(event.getCursor()))) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onNozzleInventoryDrag(InventoryDragEvent event) {
+        if (event.getOldCursor() != null && NozzleItem.isNozzle(event.getOldCursor())) {
+            // Only allow drags fully inside the player's own inventory.
+            if (event.getView().getTopInventory() == null) {
+                return;
+            }
+            for (int raw : event.getRawSlots()) {
+                if (raw < event.getView().getTopInventory().getSize()) {
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+        }
+    }
+
+    /** On quit the nozzle teleports back onto its pump, then the item is scrubbed. */
+    @EventHandler
+    public void onQuit(PlayerQuitEvent event) {
+        gasPumps.handleQuit(event.getPlayer());
+    }
+
+    /** On death: nozzle goes back to the pump instead of dropping on the ground. */
+    @EventHandler
+    public void onDeath(PlayerDeathEvent event) {
+        event.getDrops().removeIf(NozzleItem::isNozzle);
+        gasPumps.handleQuit(event.getEntity());
     }
 }

@@ -14,7 +14,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Display;
 import org.bukkit.entity.Entity;
-import org.bukkit.entity.Pig;
+import org.bukkit.entity.Horse;
 import org.bukkit.entity.Interaction;
 import org.bukkit.entity.ItemDisplay;
 import org.bukkit.entity.Player;
@@ -34,13 +34,24 @@ import java.util.concurrent.ThreadLocalRandom;
 
 /** Multipart vanilla-display rig driven by a generated land-vehicle definition. */
 public final class LandVehicleRig {
+    /** BM: true numai pe durata in care vehiculul se roteste/se misca
+     *  (A/D): serverul forteaza scaunul sa urmeze vehiculul. In repaus,
+     *  campul ramane false si clientul detine rotatia (rider vanilla). */
+    private boolean carryBody = false;
+
+    public void setSeatBodyCarry(boolean carryBody) {
+        this.carryBody = carryBody;
+    }
+
     public static final String ENTITY_TAG = "mcv_plugin_vehicle";
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
-    /* A minimum-scale invisible living carrier gives vanilla clients the same
-     * native seated rider pose and mount-heart HUD without using AbstractHorse's
-     * unsafe dismount-location search. */
+    /* Ciclul BL: scaunul este un cal la scara minima, invizibil, fara saua:
+     * acelasi rider pose + HUD de inimi, iar yaw-ul calareului este clamp-uit
+     * vanilla la yaw-ul vehiculului (corp blocat, cap liber). Entitatile sunt
+     * excluse din selectoarele /kill si sunt ejectate inainte de remove(), deci
+     * bucla din cautarea vanilla a locului de demontare nu apare. */
     private static final double SEAT_CARRIER_SCALE = 0.0625D;
-    private static final float PIG_PASSENGER_OFFSET = 0.7F * (float) SEAT_CARRIER_SCALE;
+    private static final float SEAT_PASSENGER_OFFSET = 0.7F * (float) SEAT_CARRIER_SCALE;
     private static final double SEAT_GAUGE_MAX_HEALTH = FuelGauge.MAX_HALF_HEARTS;
 
     private final UUID vehicleId;
@@ -49,8 +60,28 @@ public final class LandVehicleRig {
     private final ItemDisplay body;
     private final ItemDisplay engine;
     private final ItemDisplay steering;
-    private final ItemDisplay fuelFiller;
     private final ItemDisplay towBar;
+
+    /** A vanilla ItemDisplay draws an item's local +Z axis pointing AWAY from the entity's
+     * facing direction (items render 'into the screen'), i.e. turned 180 degrees versus
+     * how Minecraft entity models face. Every vehicle part therefore receives this one
+     * global yaw correction inside place(). */
+    private static final Quaternionf ITEM_DISPLAY_YAW_CORRECTION =
+            new Quaternionf().rotateY((float) Math.PI);
+
+    /* THE tow bar math that burned the six failed nudge rounds, written down exactly:
+     * tow_bar.json is AUTHORED pre-rotated - its drawbar arm already points at the car
+     * when rendered with NO net yaw. But place() applies ITEM_DISPLAY_YAW_CORRECTION (+180 grade) to everything. To exempt the tow bar, its SOURCE rotation must
+     * cancel that correction. The Part is created with rotationY = 180, and building the
+     * source rotation from the Part's own angles (like every other part does) yields
+     * rotateY(+pi); composed with the place() correction the net rotation is
+     * rotateY(+pi). mul rotateY(+pi) = rotateY(2*pi) = IDENTITY. The old hand-written code reached the same identity by
+     * stacking an unexplained second +pi, so any offset edit LOOKED like a no-op while we
+     * were actually editing - wrong file (TRACTOR vs SMART_CAR) - but also fighting an
+     * invisible double flip. From here on: ONE correction constant, ONE explicit source
+     * rotation built from the Part angles, zero hidden flips. */
+    private static final Quaternionf TOW_BAR_SOURCE_ROTATION = new Quaternionf()
+            .rotateY((float) Math.PI); // == Part rotationY = 180; place() adds +180 again -> net 0
     private final List<PartDisplay> chassisParts;
     private final List<PartDisplay> forkParts;
     private final ItemDisplay storageChest;
@@ -69,7 +100,7 @@ public final class LandVehicleRig {
 
     private LandVehicleRig(UUID vehicleId, LandVehicleSpec spec, Interaction interaction,
                            ItemDisplay body, ItemDisplay engine, ItemDisplay steering,
-                           ItemDisplay fuelFiller, ItemDisplay towBar,
+                           ItemDisplay towBar,
                            List<PartDisplay> chassisParts, List<PartDisplay> forkParts,
                            ItemDisplay storageChest, Interaction storageInteraction,
                            List<WheelDisplay> wheels, List<SeatCarrier> seats, List<Entity> entities) {
@@ -79,7 +110,6 @@ public final class LandVehicleRig {
         this.body = body;
         this.engine = engine;
         this.steering = steering;
-        this.fuelFiller = fuelFiller;
         this.towBar = towBar;
         this.chassisParts = chassisParts;
         this.forkParts = forkParts;
@@ -112,7 +142,6 @@ public final class LandVehicleRig {
 
         ItemDisplay engine = partDisplay(world, location, spec.engine(), vehicleId, all);
         ItemDisplay steering = partDisplay(world, location, spec.steering(), vehicleId, all);
-        ItemDisplay fuelFiller = partDisplay(world, location, spec.fuelFiller(), vehicleId, all);
         ItemDisplay towBar = spec.canTowTrailers()
                 ? partDisplay(world, location, new LandVehicleSpec.Part(spec.towBarModel(),
                 spec.towBarVisualCenter(), 1.0F, 0.0F, 180.0F, 0.0F), vehicleId, all)
@@ -173,7 +202,7 @@ public final class LandVehicleRig {
         }
 
         LandVehicleRig rig = new LandVehicleRig(vehicleId, spec, interaction, body, engine, steering,
-                fuelFiller, towBar, Collections.unmodifiableList(chassisParts),
+                towBar, Collections.unmodifiableList(chassisParts),
                 Collections.unmodifiableList(forkParts), storageChest, storageInteraction,
                 Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats), all);
         rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
@@ -205,10 +234,22 @@ public final class LandVehicleRig {
         });
     }
 
-    private static Pig pigCarrier(World world, Location location, UUID vehicleId) {
-        Pig pig = world.spawn(location, Pig.class, carrier -> {
-            carrier.setAdult();
-            carrier.setSaddle(true);
+    private static Horse seatCarrier(World world, Location location, UUID vehicleId) {
+        /* Ciclul BL (feedback user): scaun = cal FARA saua. Calul are clampa
+         * vanilla de riding: yaw-ul calareului este legat de yaw-ul vehiculului,
+         * deci corpul ramane blocat pe scaun si doar capul se roteste liber
+         * (~45 grade), exact ca in mod. Fara saua entitatea NU este
+         * "controllable" de catre client (era problema cu porcul cu saua:
+         * clientul ii impunea rotatia dupa camera si se batea cap in cap cu
+         * setRotation-ul server-ului -> corpul se invartea/oscila). */
+        Horse seat = world.spawn(location, Horse.class, carrier -> {
+            /* Ciclul BM (seattest a confirmat: varianta C tine corpul fix):
+             * cal CU saua + tamed => vanilla activeaza clampa de riding
+             * (yaw-ul calareului legat de yaw-ul monturii -> corp blocat,
+             * cap liber stanga-dreapta). MOVEMENT_SPEED 0 => jucatorul nu
+             * poate plimba montura cu WASD; rotatia prin mouse ramane. */
+            carrier.setTamed(true);
+            carrier.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
             carrier.setAI(false);
             carrier.setGravity(false);
             carrier.setCollidable(false);
@@ -221,45 +262,59 @@ public final class LandVehicleRig {
             if (scale != null) {
                 scale.setBaseValue(SEAT_CARRIER_SCALE);
             }
+            AttributeInstance speed = carrier.getAttribute(Attribute.MOVEMENT_SPEED);
+            if (speed != null) {
+                speed.setBaseValue(0.0D);
+            }
             AttributeInstance maximumHealth = carrier.getAttribute(Attribute.MAX_HEALTH);
             if (maximumHealth != null) {
                 maximumHealth.setBaseValue(SEAT_GAUGE_MAX_HEALTH);
             }
             carrier.setHealth(SEAT_GAUGE_MAX_HEALTH);
         });
-        mark(pig, vehicleId);
-        return pig;
+        mark(seat, vehicleId);
+        return seat;
     }
 
-    private Pig createPig(SeatCarrier carrier) {
+    private Horse createSeatMount(SeatCarrier carrier) {
         if (removed || !carrier.anchor.isValid()) {
             return null;
         }
         Location location = carrier.anchor.getLocation();
-        Pig pig = pigCarrier(location.getWorld(), location, vehicleId);
-        if (!carrier.anchor.addPassenger(pig)) {
-            pig.remove();
+        Horse seat = seatCarrier(location.getWorld(), location, vehicleId);
+        if (!carrier.anchor.addPassenger(seat)) {
+            seat.remove();
             return null;
         }
-        carrier.pig = pig;
-        entities.add(pig);
-        applySeatGauge(pig);
-        return pig;
+        carrier.mount = seat;
+        entities.add(seat);
+        applySeatGauge(seat);
+        return seat;
     }
 
-    private void discardPig(SeatCarrier carrier) {
-        Pig pig = carrier.pig;
-        carrier.pig = null;
-        if (pig != null) {
-            entities.remove(pig);
-            pig.remove();
+    private void discardSeat(SeatCarrier carrier) {
+        Horse seat = carrier.mount;
+        carrier.mount = null;
+        if (seat != null) {
+            entities.remove(seat);
+            seat.remove();
         }
     }
 
     private static ItemStack model(String name) {
-        ItemStack item = new ItemStack(Material.PAPER);
+        // Regresie dovedita live: stack-ul PAPER cu item_model nu mai randeaza pe
+        // acest server (vehiculele nevopsite erau invizibile; vopsitele - carefolosesc
+        // LEATHER_HORSE_ARMOR via coloredStack - apareau). Unificam pe materialul
+        // dovedit-vizibil. Culoarea ALBA explicita pune dyed_color pe stack: clientul
+        // tine din stack (calea dovedita la vopsire) si nu mai cade pe default-ul
+        // definitiei, pe care clientii noi il interpreteaza ARGB cu alpha 0 (fetele
+        // cu tintindex deveneau transparente - "gol la interior" la roti, body invizibil).
+        ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setColor(org.bukkit.Color.fromRGB(0xF9FFFE));
+        }
         item.setItemMeta(meta);
         return item;
     }
@@ -368,16 +423,13 @@ public final class LandVehicleRig {
             storageInteraction.setRotation(yaw, 0.0F);
         }
 
-        placePropertyPart(fuelFiller, spec.fuelFiller(), renderAnchor, driverSeat,
-                yaw, wheelieAngle, bodyRoll, chassisRotation);
-
         if (towBar != null) {
             /* AbstractLandVehicleRenderer renders the tow bar before applying the
              * axle/wheel translations and wheelie matrix. Keep its root-space
              * center and orientation fixed while the chassis wheelies. */
             Vector3f center = point(spec.towBarVisualCenter());
             place(towBar, renderAnchor, relativeToSeat(center, driverSeat), yaw, new Quaternionf(),
-                    new Vector3f(1.0F), new Quaternionf().rotateY((float) Math.PI));
+                    new Vector3f(1.0F), TOW_BAR_SOURCE_ROTATION);
         }
 
         for (WheelDisplay wheelDisplay : wheels) {
@@ -422,7 +474,7 @@ public final class LandVehicleRig {
                 carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
                 carrier.anchor.setRotation(yaw + carrier.properties.yawOffset(), 0.0F);
             }
-            maintainPig(carrier, yaw);
+            maintainSeat(carrier, yaw);
         }
     }
 
@@ -505,50 +557,57 @@ public final class LandVehicleRig {
                 new Vector3f(part.scale()), sourceRotation);
     }
 
-    private void maintainPig(SeatCarrier carrier, float yaw) {
+    private void maintainSeat(SeatCarrier carrier, float yaw) {
         float seatYaw = yaw + carrier.properties.yawOffset();
-        Pig pig = carrier.pig;
-        if (pig == null) {
+        Horse seat = carrier.mount;
+        if (seat == null) {
             return;
         }
-        if (!pig.isValid()) {
+        if (!seat.isValid()) {
             UUID riderId = carrier.rider;
-            entities.remove(pig);
-            carrier.pig = null;
+            entities.remove(seat);
+            carrier.mount = null;
             if (!removed && riderId != null) {
                 Player rider = Bukkit.getPlayer(riderId);
                 if (rider != null && rider.isOnline() && !rider.isDead()) {
-                    Pig replacement = createPig(carrier);
+                    Horse replacement = createSeatMount(carrier);
                     if (replacement != null && replacement.addPassenger(rider)) {
                         carrier.rider = riderId;
                         replacement.setRotation(seatYaw, 0.0F);
                         return;
                     }
-                    discardPig(carrier);
+                    discardSeat(carrier);
                 }
             }
             carrier.rider = null;
             return;
         }
 
-        Player rider = pig.getPassengers().stream()
+        Player rider = seat.getPassengers().stream()
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
         if (rider == null) {
             carrier.rider = null;
-            discardPig(carrier);
+            discardSeat(carrier);
             return;
         }
         carrier.rider = rider.getUniqueId();
-        pig.setRotation(seatYaw, 0.0F);
+        /* BM: scaunul are rider; cat timp vehiculul NU vireaza/se misca,
+         * rotatia ramane la client (clampa vanilla de riding blocheaza
+         * corpul pe scaun si lasa capul liber). In timpul virajelor/mersului
+         * serverul tine scaunul la yaw-ul vehiculului => corpul calatorul
+         * se misca o data cu masina. */
+        if (carryBody) {
+            seat.setRotation(seatYaw, 0.0F);
+        }
     }
 
     private void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
                        Quaternionf leftRotation, Vector3f scale, Quaternionf sourceRightRotation) {
         display.teleport(renderAnchor, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         display.setRotation(yaw, 0.0F);
-        Quaternionf itemDisplayCompensation = new Quaternionf(sourceRightRotation).rotateY((float) Math.PI);
+        Quaternionf itemDisplayCompensation = new Quaternionf(sourceRightRotation).mul(ITEM_DISPLAY_YAW_CORRECTION);
         display.setTransformation(new Transformation(translation, leftRotation, scale, itemDisplayCompensation));
     }
 
@@ -580,7 +639,7 @@ public final class LandVehicleRig {
     }
 
     private static Vector3f pigAnchor(Vector3f seatPoint) {
-        return new Vector3f(seatPoint).sub(0.0F, PIG_PASSENGER_OFFSET, 0.0F);
+        return new Vector3f(seatPoint).sub(0.0F, SEAT_PASSENGER_OFFSET, 0.0F);
     }
 
     private Vector3f chassis(Vector3f sourcePoint, float wheelieAngle, float bodyRoll) {
@@ -618,16 +677,16 @@ public final class LandVehicleRig {
     public void setSeatGauge(float fraction) {
         seatGauge = Float.isFinite(fraction) ? Math.max(0.0F, Math.min(1.0F, fraction)) : 1.0F;
         for (SeatCarrier carrier : seats) {
-            if (carrier.pig != null && carrier.pig.isValid()) {
-                applySeatGauge(carrier.pig);
+            if (carrier.mount != null && carrier.mount.isValid()) {
+                applySeatGauge(carrier.mount);
             }
         }
     }
 
-    private void applySeatGauge(Pig pig) {
+    private void applySeatGauge(Horse seat) {
         double health = FuelGauge.mountHealth(seatGauge);
-        if (Math.abs(pig.getHealth() - health) > 0.01D) {
-            pig.setHealth(health);
+        if (Math.abs(seat.getHealth() - health) > 0.01D) {
+            seat.setHealth(health);
         }
     }
 
@@ -636,7 +695,7 @@ public final class LandVehicleRig {
             return;
         }
         for (SeatCarrier carrier : seats) {
-            maintainPig(carrier, yaw);
+            maintainSeat(carrier, yaw);
         }
     }
 
@@ -654,8 +713,8 @@ public final class LandVehicleRig {
         double playerHalfHeight = player.getBoundingBox().getHeight() * 0.5D;
         Location playerLocation = player.getLocation();
         for (SeatCarrier carrier : seats) {
-            Pig pig = carrier.pig;
-            if (pig != null && pig.isValid() && !pig.getPassengers().isEmpty()) {
+            Horse seat = carrier.mount;
+            if (seat != null && seat.isValid() && !seat.getPassengers().isEmpty()) {
                 continue;
             }
             Location seatLocation = carrier.anchor.getLocation();
@@ -675,27 +734,27 @@ public final class LandVehicleRig {
             return false;
         }
 
-        if (closest.pig != null) {
-            discardPig(closest);
+        if (closest.mount != null) {
+            discardSeat(closest);
         }
-        Pig pig = createPig(closest);
-        if (pig != null && pig.addPassenger(player)) {
+        Horse seat = createSeatMount(closest);
+        if (seat != null && seat.addPassenger(player)) {
             closest.rider = player.getUniqueId();
             return true;
         }
-        discardPig(closest);
+        discardSeat(closest);
         return false;
     }
 
     public Entity driverSeat() {
         SeatCarrier driver = seats.stream().filter(seat -> seat.properties.driver())
                 .findFirst().orElseThrow();
-        return driver.pig != null && driver.pig.isValid() ? driver.pig : driver.anchor;
+        return driver.mount != null && driver.mount.isValid() ? driver.mount : driver.anchor;
     }
 
     public List<Entity> seatCarriers() {
         return seats.stream()
-                .map(SeatCarrier::pig)
+                .map(SeatCarrier::seat)
                 .filter(java.util.Objects::nonNull)
                 .filter(Entity::isValid)
                 .map(Entity.class::cast)
@@ -791,7 +850,6 @@ public final class LandVehicleRig {
         return interaction.isValid() && body.isValid()
                 && (engine == null || engine.isValid())
                 && (steering == null || steering.isValid())
-                && (fuelFiller == null || fuelFiller.isValid())
                 && (towBar == null || towBar.isValid())
                 && chassisParts.stream().allMatch(part -> part.entity.isValid())
                 && forkParts.stream().allMatch(part -> part.entity.isValid())
@@ -807,21 +865,21 @@ public final class LandVehicleRig {
          * Restoring an ordinary bounding box also keeps the fallback dismount
          * location independent of the carrier's minimum render scale. */
         for (SeatCarrier carrier : seats) {
-            Pig pig = carrier.pig;
-            if (pig == null || !pig.isValid() || pig.getPassengers().isEmpty()) {
+            Horse seat = carrier.mount;
+            if (seat == null || !seat.isValid() || seat.getPassengers().isEmpty()) {
                 continue;
             }
-            AttributeInstance scale = pig.getAttribute(Attribute.SCALE);
+            AttributeInstance scale = seat.getAttribute(Attribute.SCALE);
             if (scale != null) {
                 scale.setBaseValue(1.0D);
             }
-            pig.eject();
-            if (!pig.getPassengers().isEmpty()) {
+            seat.eject();
+            if (!seat.getPassengers().isEmpty()) {
                 /* Failing open is safer than deleting a still-ridden carrier. */
-                entities.remove(pig);
-                pig.setInvisible(false);
-                pig.setInvulnerable(false);
-                pig.setGravity(true);
+                entities.remove(seat);
+                seat.setInvisible(false);
+                seat.setInvulnerable(false);
+                seat.setGravity(true);
             }
         }
         for (Entity entity : new ArrayList<>(entities)) {
@@ -829,7 +887,7 @@ public final class LandVehicleRig {
         }
         entities.clear();
         for (SeatCarrier carrier : seats) {
-            carrier.pig = null;
+            carrier.mount = null;
             carrier.rider = null;
         }
     }
@@ -879,10 +937,99 @@ public final class LandVehicleRig {
                 + c1 * Math.pow(progress - 1.0D, 2.0D);
     }
 
+    /* ===== Sistem mecanic: schimbare model roti + vopsea caroserie ============= */
+
+    /** Cand slotul de motor e gol, piesa NU trebuie sa apara pe model (brief
+     *  2026-10-24): stack gol = ItemDisplay complet invizibil. Re-montarea se face
+     *  prin setEngineModel(...), care inlocuieste stack-ul - nu e nevoie de "show". */
+    public void hideEngine() {
+        if (!removed && engine != null && engine.isValid()) {
+            engine.setItemStack(new org.bukkit.inventory.ItemStack(org.bukkit.Material.AIR));
+        }
+    }
+
+    /** La fel ca motorul: rotile scoase din slot NU mai au voie sa apara pe model
+     *  (nici in lume, nici in GUI) pana la re-montare. Inversul = setWheelModel. */
+    public void hideWheels() {
+        if (removed) {
+            return;
+        }
+        org.bukkit.inventory.ItemStack empty =
+                new org.bukkit.inventory.ItemStack(org.bukkit.Material.AIR);
+        for (WheelDisplay wheel : wheels) {
+            if (wheel.entity != null && wheel.entity.isValid()) {
+                wheel.entity.setItemStack(empty);
+            }
+        }
+    }
+
+    /** Schimba si PART-ul vizual al motorului la upgrade (ex. iron_small_engine ->
+     *  diamond_small_engine), exact ca in mod, la schimbarea tier-ului. */
+    public void setEngineModel(String modelName) {
+        if (!removed && engine != null && engine.isValid()) {
+            engine.setItemStack(model(modelName));
+        }
+    }
+
+    /** Leaps rotile pe noul model (STANDARD/SPORTS/OFF_ROAD - roti schimbate la mecanic). */
+    public void setWheelModel(String modelName) {
+        if (removed) {
+            return;
+        }
+        ItemStack stack = model(modelName);
+        for (WheelDisplay wheel : wheels) {
+            if (wheel.entity != null && wheel.entity.isValid()) {
+                wheel.entity.setItemStack(stack);
+            }
+        }
+    }
+
+    /** Vopsire cu spray can: caroseria trece pe un stack vopsibil (dyed_color) purtand
+     *  acelasi model; tint-ul "dye" din definitia pack-ului recoloreaza fetele marcate.
+     *  rgb null = revine la modelul nevopsit (paper, default alb). */
+    public void applyColor(Integer rgb) {
+        if (removed) {
+            return;
+        }
+        if (body != null && body.isValid()) {
+            body.setItemStack(coloredStack(spec.bodyModel(), rgb));
+        }
+        // Modul inroseste TOATE partile caroseriei (capota/usile/acoperisul etc.), nu
+        // doar corpul principal: replicam acelasi comportament ca sa nu ramana masina
+        // vopsita "pe jumatate".
+        for (PartDisplay part : chassisParts) {
+            if (part.entity != null && part.entity.isValid()) {
+                part.entity.setItemStack(coloredStack(part.properties.model(), rgb));
+            }
+        }
+        for (PartDisplay part : forkParts) {
+            if (part.entity != null && part.entity.isValid()) {
+                part.entity.setItemStack(coloredStack(part.properties.model(), rgb));
+            }
+        }
+    }
+
+    /** Stack vopsit (dyed_color) pentru un model de caroserie; stack normal cand rgb e
+     *  null (nevopsit). Pack-ul are pentru modelele de caroserie definitie cu tint
+     *  "dye" implicit alb, deci pe stack-uri nevopsite nu se schimba NIMIC vizual. */
+    private static ItemStack coloredStack(String modelName, Integer rgb) {
+        if (rgb == null) {
+            return model(modelName);
+        }
+        ItemStack stack = new ItemStack(Material.LEATHER_HORSE_ARMOR);
+        ItemMeta meta = stack.getItemMeta();
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setItemModel(new NamespacedKey("vehicle", modelName));
+            armor.setColor(org.bukkit.Color.fromRGB(rgb));
+        }
+        stack.setItemMeta(meta);
+        return stack;
+    }
+
     private static final class SeatCarrier {
         private final ItemDisplay anchor;
         private final LandVehicleSpec.Seat properties;
-        private Pig pig;
+        private Horse mount;
         private UUID rider;
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
@@ -890,8 +1037,8 @@ public final class LandVehicleRig {
             this.properties = properties;
         }
 
-        private Pig pig() {
-            return pig;
+        private Horse seat() {
+            return mount;
         }
     }
 }

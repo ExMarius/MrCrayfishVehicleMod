@@ -695,7 +695,7 @@ public record LandVehicleSpec(
             /* Nudged from -20.8 to -19.6 (~1.5px closer at this body's 1.25x scale)
              * per live playtesting feedback: the hitch/jack sat visibly detached
              * behind the ATV's rear bumper. */
-            true, "tow_bar", new Point(0.0F, 0.0F, -19.6F), new Point(0.0F, 0.0F, -0.55F),
+            true, "tow_bar", new Point(0.0F, 0.0F, -16.5F), new Point(0.0F, 0.0F, -0.55F),
             null, null, List.of(), false
     );
 
@@ -716,7 +716,7 @@ public record LandVehicleSpec(
             true, new Point(0.0F, 0.55F, 0.0F),
             itemPart("iron_small_engine", 0.0F, 1.0F, 2.5F,
                     0.7F, 0.0F, 180.0F, 0.0F, 1.05F, -1.7F, 4.12F),
-            itemPart("mini_bike_handles", 0.0F, 8.65F, 17.9F,
+            itemPart("mini_bike_handles", 0.0F, 0.0F, 0.0F,
                     1.0F, 0.0F, 0.0F, 0.0F, 1.05F, -1.7F, 4.12F),
             null, null,
             List.of(),
@@ -754,7 +754,7 @@ public record LandVehicleSpec(
                     wheel(1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.25F, -1.7F, 3.752F)
             ),
             List.of(seat(true, 0.0F, 0.5F, -2.0F, 1.25F, -1.7F, 3.752F)),
-            true, "tow_bar", new Point(0.0F, 0.0F, -24.5F), new Point(0.0F, 0.0F, 0.0F),
+            true, "tow_bar", new Point(0.0F, 0.0F, -20.3F), new Point(0.0F, 0.0F, 0.0F),
             null, null, List.of(), false
     );
 
@@ -959,6 +959,68 @@ public record LandVehicleSpec(
             case AIR -> new Point(0.0F, 0.0F, -0.5F);
             case LAND, HELICOPTER -> new Point(0.0F, 0.0F, 0.0F);
         };
+    }
+
+    /** Orice vehicul cu tip de motor porneste CU motorul cel mai slab montat
+     *  (functional, ca in mod: "spawn-ul ti-l da pe cel mai prost"). Piesa se vede
+     *  doar acolo unde exista si MONTURA vizuala (vezi engine()). */
+    public boolean factoryInstalledEngine() {
+        return defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE;
+    }
+
+    /** Ce familie de motor accepta vehiculul (derivat din part-ul de motor montat
+     *  la fabrica in spec; NONE = vehicul fara motor, nu primeste upgrade-uri). */
+    public com.mrcrayfish.vehicle.paper.mechanic.EngineType defaultEngineType() {
+        /* ATV si Dune Buggy au motorul functional din nastere chiar daca NU au
+         *  montura vizuala de motor pe model (brief: "motorul exista deja" - tipul
+         *  e trecut explicit aici, nu derivat dintr-un Part lipsa intentionat). */
+        if ("atv".equals(id) || "dune_buggy".equals(id)) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR;
+        }
+        Part part = engine();
+        if (part == null || part.model() == null) {
+            /* Mod-paritate (ciclul S): orice vehicul condusibil are motor din fabrica,
+             *  chiar daca montura vizuala nu e definita in spec - tipul default se
+             *  atribuie dupa familie. Exceptie: shopping_cart (in mod nu are motor,
+             *  e vehiculul-gluma care se rostogoleste), ramane fara. */
+            if ("shopping_cart".equals(id)) {
+                return com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE;
+            }
+            switch (id) {
+                // Grele/mari = LARGE_MOTOR (off_roader, sporturile, utilitarele):
+                case "off_roader", "sports_car", "mini_bus", "tractor", "speed_boat",
+                        "sports_plane", "compact_helicopter" -> {
+                    return com.mrcrayfish.vehicle.paper.mechanic.EngineType.LARGE_MOTOR;
+                }
+                // Restul (kart/moped/scooter/barci mici/utilitare usoare) = SMALL.
+                default -> { return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR; }
+            }
+        }
+        String model = part.model();
+        if (model.contains("small_engine")) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR;
+        }
+        if (model.contains("large_engine")) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.LARGE_MOTOR;
+        }
+        if (model.contains("electric_engine")) {
+            return com.mrcrayfish.vehicle.paper.mechanic.EngineType.ELECTRIC_MOTOR;
+        }
+        return com.mrcrayfish.vehicle.paper.mechanic.EngineType.SMALL_MOTOR;
+    }
+
+    public boolean hasWheels() {
+        return wheels() != null && !wheels().isEmpty();
+    }
+
+    /** Vehiculele JOASE (cerinta user): ele vad cricul ca pe un slab solid -
+     *  urca pe el cu step-up-ul normal (altfel jucaria trece prin el si nu mai
+     *  poate fi „parcata" curat pe placa). Restul vehiculelor trec prin statii. */
+    private static final java.util.Set<String> STATION_CLIMBING_IDS = java.util.Set.of(
+            "bumper_car", "go_kart", "dune_buggy", "lawn_mower", "moped");
+
+    public boolean climbsStationSlabs() {
+        return STATION_CLIMBING_IDS.contains(id);
     }
 
     public MotionType motionType() {

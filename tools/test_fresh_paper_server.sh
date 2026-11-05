@@ -35,6 +35,14 @@ fail() {
     echo "----- server log -----" >&2
     tail -n 300 "$SERVER_LOG" >&2
     echo "----------------------" >&2
+    # Surface the failure + log tail as check-run annotations so the reason is
+    # visible via the GitHub API (run logs are not reachable from everywhere).
+    printf '::error title=FRESH-PAPER FAIL::%s\n' "$*" >&2
+    { tail -n 80 "$SERVER_LOG" \
+      | sed -e 's/%/%25/g' -e 's/\x5b/&#91;/g' -e 's/\r$//' \
+      | awk 'BEGIN{ORS="%0A"} {print}' \
+      | cut -c1-6000 \
+      | sed '1s/^/::notice title=server-log-tail::/' ; } >&2
   fi
   exit 1
 }
@@ -135,16 +143,20 @@ DATA_DIR="$SERVER_DIR/plugins/MrCrayfishVehiclePlugin"
 test -s "$DATA_DIR/config.yml" || fail "default config.yml was not generated"
 test -f "$DATA_DIR/vehicles.yml" || fail "vehicles.yml was not created on shutdown"
 test -f "$DATA_DIR/trailers.yml" || fail "trailers.yml was not created on shutdown"
-grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip' "$DATA_DIR/config.yml" \
-  || fail "generated config does not select resource pack r38"
-grep -Fq 'e93439ee85ea8b0e19b0fa78ea1dd540df6a27f4' "$DATA_DIR/config.yml" \
-  || fail "generated config does not contain the verified r38 SHA-1"
+grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip' "$DATA_DIR/config.yml" \
+  || fail "generated config does not select resource pack r39"
+# Pin tracks the currently verified r39 pack (deterministic rebuild; matches the live
+# server + players). MUST be refreshed whenever pack contents change on purpose.
+# Ciclul BK (curatenie pre-beta) => d1b55da2...
+grep -Fq 'd1b55da29e79f91f2299c40c3f7413656f349ff4' "$DATA_DIR/config.yml" \
+  || fail "generated config does not contain the verified r39 SHA-1"
 
 run_server_cycle 2
 
 [ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -eq 2 ] \
   || fail "plugin did not enable exactly once per startup"
-[ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred for unavailable worlds/types.' "$SERVER_LOG")" -eq 2 ] \
+# Message gained garage counts when the garage feature shipped; fresh boot logs exactly this.
+[ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred, 0 stored in garages.' "$SERVER_LOG")" -eq 2 ] \
   || fail "empty vehicle persistence did not load on both starts"
 [ "$(grep -Fc 'Loaded 0 trailer(s).' "$SERVER_LOG")" -eq 2 ] \
   || fail "empty trailer persistence did not load on both starts"

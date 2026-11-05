@@ -167,9 +167,15 @@ public final class TrailerRig {
     }
 
     private static ItemStack model(String name) {
-        ItemStack item = new ItemStack(Material.PAPER);
+        // PAPER + item_model nu mai randeaza pe server (regresie live - vehicule
+        // nevopsite invizibile). LEATHER_HORSE_ARMOR + alb explicit: dyed_color pe
+        // stack => tint din stack (opac pe orice client), aspect = albul din backup.
+        ItemStack item = new ItemStack(Material.LEATHER_HORSE_ARMOR);
         ItemMeta meta = item.getItemMeta();
         meta.setItemModel(new NamespacedKey("vehicle", name));
+        if (meta instanceof org.bukkit.inventory.meta.LeatherArmorMeta armor) {
+            armor.setColor(org.bukkit.Color.fromRGB(0xF9FFFE));
+        }
         item.setItemMeta(meta);
         return item;
     }

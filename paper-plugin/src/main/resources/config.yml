@@ -1,14 +1,57 @@
-# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip.
+# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip.
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
-  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip"
-  sha1: "e93439ee85ea8b0e19b0fa78ea1dd540df6a27f4"
+  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
+  # Ciclul AH: pack-ul s-a schimbat (con de trafic + placa de boost) => hash nou;
+  # server.properties il primeste automat la fiecare deploy.
+  sha1: "d1b55da29e79f91f2299c40c3f7413656f349ff4"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
+  # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
+  # pe clienti slabi). Pack-ul vine oricum din server.properties la login.
+  # Foloseste manual /vehicle pack ca admin daca un jucator ramane fara pack.
+  resend-on-join: false
 
 physics:
   global-speed-limit: 100.0
   fuel-consumption-factor: 1.0
+  # Consum dinamic: la ralanti (motor pornit, fara viteza, fara acceleratie) se arde doar
+  # acest procent din rata; in miscare formula este idle + speed-weight*viteza/top +
+  # accel-weight*acceleratie, saturand la 100% la viteza maxima cu acceleratie plina.
+  fuel-idle-ratio: 0.1
+  fuel-speed-weight: 0.6
+  fuel-accel-weight: 0.4
+  # Viteza (blocuri/secunda) la care termenul de viteza e saturat (consum maxim).
+  fuel-full-burn-speed: 18.0
+  # Multiplicator global pentru unghiul maxim de virare al tuturor vehiculelor (1.0 = ca in mod).
+  steering-angle-multiplier: 1.0
+  # Ciclul AH - placa de boost (bloc real, fara coliziune; masina trece peste):
+  # impulsul per contact (blocuri/tick) si viteza orizontala maxima rezultata.
+  boost-pad-accel: 0.06
+  boost-pad-max-speed: 1.6
+  # Ciclul AO - rampa de boost abrupta (SteepBoostRampBlock din mod): in mod tile-ul
+  # ei e BoostTileEntity(1.0F) = EXACT dublul placii (0.5F) => accel 0.12. Capul de
+  # viteza e acelasi boost-pad-max-speed (in mod limita vine din motor, nu din rampa).
+  boost-ramp-accel: 0.12
+  # Lift vertical continuu cat timp masina e pe rampa si merge pe directia de
+  # urcare - inlocuieste planul inclinat din mod ("sends your vehicle high into
+  # the air", en_us.lang). Valori mai mari = lansari mai spectaculoase.
+  boost-ramp-lift: 0.38
+
+# Ciclul BG (forma finala agreta de user, beta-ready): inimile de cal RĂMAN
+# postul de COMBUSTIBIL - vanilla, neatins, functioneaza in orice gamemode.
+# HUD-ul nostru (font propriu vehicle:hud_speed, bold LCD) = DOAR viteza
+# (km/h) + odometru (km/m) in STANGA randului inimilor de cal, centrat pe
+# columnul din stanga al GUI-ului cu spatii binare la 182px.
+# Viteza = miscarea REALA a masinii (aceeasi sursa ca odometrul) x factorul
+# cosmetic hud.speed-display-factor; plafonta la scala maxima.
+hud:
+  speedo: true
+  # Scala maxima a cadranului (150 = masina normala): viteza afisata nu o depaseste.
+  speed-fullscale-kmh: 150
+  # Factor COSMETIC de afisaj - viteza reala masurata (ca la odometru)
+  # e ~40 km/h pe paduri; userul a cerut ca maximul sa arate ~70. Fizica neschimbata.
+  speed-display-factor: 1.75
 
 performance:
   # Parked vehicles farther away are serialized and respawn when a player approaches.
@@ -23,3 +66,145 @@ gas-pump:
 
 persistence:
   autosave-seconds: 300
+# Dealer auto (FiveM): preturi pe tip de vehicul. Banii vin din Vault + economie
+# (EssentialsX). Editeaza si ruleaza /vehicle save + restart ca sa se aplice.
+dealership:
+  prices:
+    shopping_cart: 100
+    go_kart: 2000
+    lawn_mower: 2000
+    bumper_car: 2000
+    mini_bike: 2000
+    moped: 5000
+    dirt_bike: 5000
+    golf_cart: 5000
+    atv: 5000
+    quad_bike: 8000
+    jet_ski: 8000
+    dune_buggy: 12000
+    aluminum_boat: 10000
+    tractor: 15000
+    smart_car: 18000
+    speed_boat: 20000
+    off_roader: 25000
+    mini_bus: 40000
+    sports_car: 60000
+    compact_helicopter: 250000
+    sports_plane: 500000
+
+# Global garage economy (ONE list under garage.<uuid>.*, price decided by location)
+economy:
+  # Fee charged when taking ANY vehicle out of the global garage at a PUBLIC spot.
+  # At the personal spot the same list always leaves for FREE (0$).
+  public-garage-retrieval-fee: 500.0
+  # Parking spots are PHYSICAL circles of exactly 2 blocks (the spark ring).
+  # On quit every owned vehicle is stored, no flags, no differentiation.
+
+# Ciclul AF - parcare cu timer: masina GOALA sta intr-un cerc marcat mai mult de
+# atatea minute => intra SINGURA in garajul proprietarului (anti-blocare locuri).
+# La scoaterea unei masini, orice blocant gol e mutat la fel (tow automat).
+# 0 = dezactivat complet.
+garage:
+  auto-store-park-minutes: 5.0
+
+# ===== Sistem mecanic (motoare/roti/reparatii/vopsire/cric) ==================
+workstation:
+  # Bancul de lucru se pune doar langa un cric (relatie 1:1 cu cel mai apropiat).
+  max-distance-to-jack: 5
+  # Cate chei de mecanic poate da un banc (2 mecanici, cate o singura cheie).
+  max-wrenches: 2
+  # Peste aceasta distanta de banc cheia lui dispare din inventar (zona de service).
+  service-radius: 10
+
+jack:
+  # Inaltimea ABSOLUTA a masinii RIDICATE, peste blocul cricului (calibrat pe
+  # off_roader: 0.75 = capul ridicat intra exact sub roti, fara sa atinga caroseria
+  # si fara plutire). Mai aproape de mod nu conteaza - masinile joase raman ok la
+  # aceeasi valoare pentru ca originea tuturor e contactul roata-sol.
+  lifted-offset: 0.75
+  # Timpul urcarii/coborarii, in tick-uri (20 = 1 secunda).
+  lift-speed-ticks: 50
+  # Distanta minima intre doua cricuri - zonele de service nu se intersecteaza.
+  min-distance: 10.0
+  # Cat sta masina peste blocul cricului cand e JOS (1/16 = rotile ating pamantul,
+  # placa impaturita e aproape de sol). Era 0.5 - masina plutea dupa coborare.
+  rest-offset: 0.0625
+  # (vechiul lift-visual-correction a fost inlocuit de modelul absolut lifted-offset:
+  #  reglezi o singura valoare si primesti EXACT inaltimea finala de sus)
+  # Calibrare PER VEHICUL: masinile JOASE (garda mica la sol) stau direct pe placa
+  # cricului cand cricul e jos (rest 0.5 = fata de sus a placii), ca in mod; restul
+  # vehiculelor (garda mare: off_roader etc.) au rotile pe pamant (globalul 0.0625).
+  # Ridicat = acelasi 0.75 pentru toate (capul ridicat e fata unica).
+  # (1 pixel = 0.0625 ; reglaj live fara rebuild.)
+  # NOTA (ciclul X): clasele default (joase = PE PLACA 0.5, garda mare = pe pamant)
+  #  sunt HARDCODATE in cod - liniile de sub offsets: sunt OVERRIDE-uri explicite
+  #  si au intaietate; le poti edita indiferent ca configu e vechi sau nu.
+  offsets:
+    go_kart: { rest: 0.5, lifted: 0.75 }
+    bumper_car: { rest: 0.5, lifted: 0.75 }
+    shopping_cart: { rest: 0.5, lifted: 0.75 }
+    smart_car: { rest: 0.5, lifted: 0.75 }
+    dune_buggy: { rest: 0.5, lifted: 0.75 }
+    couch: { rest: 0.5, lifted: 0.75 }
+    mini_bike: { rest: 0.5, lifted: 0.75 }
+    moped: { rest: 0.5, lifted: 0.75 }
+    dirt_bike: { rest: 0.5, lifted: 0.75 }
+
+mechanic:
+  # Capacitatea spray-ului (Config.SERVER.sprayCanCapacity din mod: 20 pulverizari).
+  spray-capacity: 20
+  # Paleta noastra de vopsea (sistem PROPRU, diferit de spray-ul 1:1 din mod):
+  # GRATUITA - nu consuma niciun item. O deschizi cu /vehicle paint langa o
+  # masina proprie/trusted, sau din butonul VOPSESTE al bancului de mecanic.
+  paint-menu:
+    enabled: true
+    # Distanta maxima (blocuri) pana la masina vizata de /vehicle paint.
+    radius: 6.0
+  # Cat toarna o galetusa cu fluid in rezervor (mB echivalent).
+  fluid-bucket-amount: 1000
+  # Mixerul de fluide (FluidMixerBlock din mod): Blaze Juice + Ender Sap = Fuellium.
+  # input-amount + input-amount (cate o galeata din fiecare) = output-amount Fuellium.
+  fluid-mixer:
+    input-amount: 1000
+    output-amount: 1000
+    input-capacity: 5000
+    output-capacity: 5000
+  # Reparatiile cer masina ridicata pe cric (recomandat pentre RP de service).
+  require-lift: true
+  # Itemele consumate la o reparatie completa (format MATERIAL:cantitate).
+  # BANII NU se deduc automat - pretul in bani se negociaza intre jucatori (RP).
+  repair-items:
+    - "IRON_INGOT:2"
+    - "REDSTONE:1"
+  damage:
+    # Dezactivate TEMPORAR (cerere jucator): masinile nu se strica deloc.
+    # Reparatia din banc ramane, dar nu are ce repara cat e false.
+    enabled: false
+    # Impacturi sub aceasta viteza (blocuri/secunda) nu avariaza.
+    collision-speed-threshold: 3.0
+    # Cat de mult se inmulteste viteza de impact in puncte de daune.
+    multiplier: 4.0
+  # Preturile pieselor in magazinul de piese (tab-ul Piese din /vehicle shop).
+  parts:
+    prices:
+      engine_iron_small: 3000
+      engine_iron_large: 4000
+      engine_iron_electric: 5000
+      engine_gold_small: 6000
+      engine_gold_large: 7000
+      engine_gold_electric: 8000
+      engine_diamond_small: 12000
+      engine_diamond_large: 14000
+      engine_diamond_electric: 16000
+      engine_netherite_small: 22000
+      engine_netherite_large: 25000
+      engine_netherite_electric: 30000
+      industrial_jerry_can: 3500
+      panel: 500
+      fuelium_bucket: 800
+      ender_sap_bucket: 1500
+      blaze_juice_bucket: 1500
+      wheel_standard: 1500
+      wheel_sports: 6000
+      wheel_off_road: 4500
+      spray_can: 1200

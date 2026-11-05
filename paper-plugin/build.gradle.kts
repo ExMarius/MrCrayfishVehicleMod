@@ -8,10 +8,12 @@ version = "0.1.0-SNAPSHOT"
 repositories {
     mavenCentral()
     maven("https://repo.papermc.io/repository/maven-public/")
+    maven("https://jitpack.io")
 }
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
+    compileOnly("com.github.MilkBowl:VaultAPI:1.7.1")
     testImplementation("io.papermc.paper:paper-api:1.21.4-R0.1-SNAPSHOT")
     testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -54,6 +56,6 @@ tasks.register<Exec>("resourcePack") {
         "python3",
         "tools/build_resource_pack.py",
         "--output",
-        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-1.21.4-r38.zip").get().asFile.absolutePath
+        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip").get().asFile.absolutePath
     )
 }

@@ -27,6 +27,43 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
+    def test_hud_speed_font_present(self):
+        """Ciclul BA: fontul HUD sta IN STANGA la randul inimilor (viteza +
+        odometru); glife bitmap ascent -12 + provider 'space' cu avansii de
+        completare binari 64/32/16/8/4/2/1 pentru alinierea la 182px."""
+        import zipfile
+        import json as _json
+        with zipfile.ZipFile(self.pack) as pack:
+            names = set(pack.namelist())
+            self.assertIn("assets/vehicle/font/hud_speed.json", names)
+            digest = _json.loads(pack.read("assets/vehicle/font/hud_speed.json"))
+        bitmaps = [p for p in digest["providers"] if p["type"] == "bitmap"]
+        space = next(p for p in digest["providers"] if p["type"] == "space")
+        files = {provider["file"] for provider in bitmaps}
+        self.assertEqual({f"vehicle:font/hud/digit_{d}.png" for d in "0123456789"} |
+                         {"vehicle:font/hud/kmh.png", "vehicle:font/hud/km.png",
+                          "vehicle:font/hud/m.png", "vehicle:font/hud/dot.png"},
+                         files)
+        chars = "".join(provider["chars"][0] for provider in bitmaps)
+        self.assertIn(chr(0xE200), chars)  # E200 = cifra 0
+        self.assertIn(chr(0xE209), chars)  # E209 = cifra 9
+        self.assertIn(chr(0xE20A), chars)  # E20A = eticheta km/h
+        self.assertIn(chr(0xE20D), chars)  # E20D = eticheta km (odometru)
+        self.assertNotIn(chr(0xE210), chars)  # BK: pompa din BC s-a sters
+        self.assertNotIn(chr(0xE211), chars)  # BK: celulele din BD/BE s-au sters
+        self.assertNotIn(chr(0xE212), chars)
+        self.assertTrue(all(provider["ascent"] == -12 for provider in bitmaps))
+        self.assertEqual({advance for advance in space["advances"].values()},
+                         {64, 32, 16, 8, 4, 2, 1})
+        # Ciclul BH: aceeasi varianta de font, offset 10px mai jos, pentru modurile
+        # fara status-bars (creative/spectator) unde inimile monturii ii coboara.
+        with zipfile.ZipFile(self.pack) as pack:
+            self.assertIn("assets/vehicle/font/hud_speed_creative.json", set(pack.namelist()))
+            digest_creative = _json.loads(pack.read("assets/vehicle/font/hud_speed_creative.json"))
+        self.assertEqual(len(digest_creative["providers"]), len(digest["providers"]))
+        self.assertTrue(all(provider["ascent"] == -22 for provider in digest_creative["providers"]
+                            if provider["type"] == "bitmap"))
+
     def test_configured_sha1_matches_deterministic_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)
@@ -38,18 +75,40 @@ class ResourcePackBuildTest(unittest.TestCase):
         for entry in sorted(path for path in self.entries
                             if path.startswith("assets/vehicle/items/") and path.endswith(".json")):
             item = self.read_json(entry)
-            model = item["model"]["model"]
-            namespace, model_path = model.split(":", 1)
-            self.assertEqual("vehicle", namespace, entry)
-            model_entry = f"assets/vehicle/models/{model_path}.json"
-            self.assertIn(model_entry, self.entries, entry)
-            model_json = self.read_json(model_entry)
-            for texture in model_json.get("textures", {}).values():
-                if not texture.startswith("vehicle:"):
+            # Preview-ul live foloseste range_dispatch (cadru = custom_model_data);
+            # aceleasi reguli de rezolvare se aplica fiecarei intrari + fallback-ului.
+            variants = []
+            if item["model"].get("type") == "minecraft:range_dispatch":
+                if item["model"].get("fallback") is not None:
+                    variants.append(item["model"]["fallback"])
+                variants.extend(variant["model"] for variant in item["model"]["entries"])
+            else:
+                variants.append(item["model"])
+            for variant in variants:
+                model = variant["model"]
+                namespace, model_path = model.split(":", 1)
+                # Galetile cu fluid refolosesc modelul vanilie (minecraft:item/bucket +
+                # tints constante generate), asa cum face modul (parent forge:item/bucket).
+                if model == "minecraft:item/bucket":
+                    self.assertTrue(entry.endswith("_bucket.json"), entry)
                     continue
-                _, texture_path = texture.split(":", 1)
-                self.assertIn(f"assets/vehicle/textures/{texture_path}.png", self.entries,
-                              f"{model_entry}: {texture}")
+                self.assertEqual("vehicle", namespace, entry)
+                model_entry = f"assets/vehicle/models/{model_path}.json"
+                self.assertIn(model_entry, self.entries, entry)
+                model_json = self.read_json(model_entry)
+                # Cadrele wrapper au doar parent+display; geometria+texturile stau in parinte.
+                textures = model_json.get("textures", {})
+                if not textures and "parent" in model_json:
+                    parent_ns, parent_path = model_json["parent"].split(":", 1)
+                    parent_entry = f"assets/{parent_ns}/models/{parent_path}.json"
+                    self.assertIn(parent_entry, self.entries, model_entry)
+                    textures = self.read_json(parent_entry).get("textures", {})
+                for texture in textures.values():
+                    if not texture.startswith("vehicle:"):
+                        continue
+                    _, texture_path = texture.split(":", 1)
+                    self.assertIn(f"assets/vehicle/textures/{texture_path}.png", self.entries,
+                                  f"{model_entry}: {texture}")
 
     def test_every_generated_element_stays_inside_vanilla_model_bounds(self):
         for entry in sorted(path for path in self.entries
@@ -423,14 +482,14 @@ class ResourcePackBuildTest(unittest.TestCase):
 
         mini_bike_body = self.read_json("assets/vehicle/models/item/mini_bike_body.json")
         self.assertEqual(33, len(mini_bike_body["elements"]))
-        self.assertEqual("minecraft:block/red_concrete", mini_bike_body["textures"]["body"])
+        self.assertEqual("minecraft:block/white_concrete", mini_bike_body["textures"]["body"])  # user rule: white
         mini_bike_handles = self.read_json("assets/vehicle/models/item/mini_bike_handles.json")
         self.assertEqual(16, len(mini_bike_handles["elements"]))
-        self.assertEqual("minecraft:block/red_concrete", mini_bike_handles["textures"]["handles"])
+        self.assertEqual("minecraft:block/white_concrete", mini_bike_handles["textures"]["handles"])  # user rule: white
 
         smart_car_body = self.read_json("assets/vehicle/models/item/smart_car_body.json")
         self.assertEqual(109, len(smart_car_body["elements"]))
-        self.assertEqual("minecraft:block/cyan_concrete", smart_car_body["textures"]["base"])
+        self.assertEqual("minecraft:block/white_concrete", smart_car_body["textures"]["base"])  # user rule: white
 
         speed_boat_body = self.read_json("assets/vehicle/models/item/speed_boat_body.json")
         self.assertEqual(67, len(speed_boat_body["elements"]))
@@ -524,6 +583,156 @@ class ResourcePackBuildTest(unittest.TestCase):
         if offset != len(data) or granule is None:
             raise AssertionError("truncated Ogg stream")
         return granule
+
+    def test_traffic_props_blockstates_are_fully_partitioned(self):
+        """Ciclul AI/AJ/AN: con, placa si teava sunt partitii disjuncte de tripwire;
+        separatorul vanilla (disarmed=false) NU se poate compune peste ele. In AN
+        conul a REVENIT pe fir (zero culling garantat) dupa excursia AL/AM pe gazde
+        solide care ocoleau fata blocului de dedesubt ("gaura in jos")."""
+        parts = self.read_json("assets/minecraft/blockstates/tripwire.json")["multipart"]
+        vanilla = [p for p in parts if p.get("when") == {"disarmed": "false"}]
+        self.assertEqual(1, len(vanilla))
+        # Ciclul AK: modelul vanilla real e block/tripwire_ns (fara underscore)
+        self.assertEqual("minecraft:block/tripwire_ns", vanilla[0]["apply"]["model"])
+        # Ciclul AN: conul e DIN NOU in tripwire - regula cu toate fetele false,
+        # disarmed=true, attached=false (fix starea coneData() din TrafficProps).
+        cone = [p for p in parts if "mcv_traffic_cone" in p["apply"]["model"]]
+        self.assertEqual(1, len(cone))
+        self.assertEqual({"disarmed": "true", "attached": "false", "north": "false",
+                          "east": "false", "south": "false", "west": "false"},
+                         cone[0]["when"])
+        boost = [p for p in parts
+                 if p["apply"]["model"] == "vehicle:block/mcv_boost_pad"]
+        self.assertEqual(4, len(boost))
+        # Ciclul AO: rampa abrupta = 3 laturi active + attached=false; latura lipsa
+        # este sensul urcarii (aceeasi conventie de rotatie ca la placa).
+        ramp = [p for p in parts if "mcv_steep_boost_ramp" in p["apply"]["model"]]
+        self.assertEqual(4, len(ramp))
+        self.assertTrue(all(p["when"].get("attached") == "false" for p in ramp))
+        self.assertTrue(all(p["when"].get("disarmed") == "true" for p in ramp))
+        for missing, y in (("north", 0), ("east", 90), ("south", 180), ("west", 270)):
+            rule = [p for p in ramp if p["when"][missing] == "false"]
+            self.assertEqual(1, len(rule))
+            self.assertEqual(y, rule[0]["apply"].get("y", 0))
+            others = [f for f in ("north", "east", "south", "west") if f != missing]
+            self.assertTrue(all(rule[0]["when"][f] == "true" for f in others))
+        # Ciclul AJ: teava de fluid = attached=true (orfana pt firul vanilla).
+        pipe = [p for p in parts if "mcv_fluid_pipe" in p["apply"]["model"]]
+        self.assertEqual(2, len(pipe))
+        self.assertTrue(all(p["when"].get("attached") == "true" for p in pipe))
+        self.assertTrue(all(p["when"].get("disarmed") == "true" for p in pipe))
+        self.assertEqual([0, 90], sorted(p["apply"].get("y", 0) for p in pipe))
+        # Ciclul AP: pompa = 2 laturi ADIACENTE neatasate (perechea {facing,
+        # urmatorul-orar}); modelul e nativ sud, de aici y = {N:180, E:270, S:0, W:90}.
+        pump = [p for p in parts if "mcv_fluid_pump" in p["apply"]["model"]]
+        self.assertEqual(4, len(pump))
+        self.assertTrue(all(p["when"].get("attached") == "false" for p in pump))
+        pump_expect = {frozenset(("north", "east")): 180, frozenset(("east", "south")): 270,
+                       frozenset(("south", "west")): 0, frozenset(("west", "north")): 90}
+        for faces_pair, y in pump_expect.items():
+            rule = [p for p in pump
+                    if all(p["when"][f] == "true" for f in faces_pair)
+                    and all(p["when"][f] == "false"
+                            for f in ("north", "east", "south", "west") if f not in faces_pair)]
+            self.assertEqual(1, len(rule), f"pompa: perechea {faces_pair}")
+            self.assertEqual(y, rule[0]["apply"].get("y", 0))
+        # Extractorul = 2 laturi OPUSE neatasate (disjunct de teava: attached=false).
+        extractor = [p for p in parts if "mcv_fluid_extractor" in p["apply"]["model"]]
+        self.assertEqual(2, len(extractor))
+        self.assertTrue(all(p["when"].get("attached") == "false" for p in extractor))
+        self.assertEqual([0, 90], sorted(p["apply"].get("y", 0) for p in extractor))
+        self.assertIn("assets/vehicle/models/block/mcv_fluid_pipe.json", self.entries)
+        self.assertIn("assets/vehicle/items/fluid_pipe.json", self.entries)
+        for _name in ("fluid_pump", "fluid_extractor"):
+            self.assertIn(f"assets/vehicle/models/block/mcv_{_name}.json", self.entries)
+            self.assertIn(f"assets/vehicle/models/item/{_name}.json", self.entries)
+            self.assertIn(f"assets/vehicle/items/{_name}.json", self.entries)
+        self.assertIn("assets/vehicle/models/block/mcv_steep_boost_ramp.json", self.entries)
+        self.assertIn("assets/vehicle/models/item/steep_boost_ramp.json", self.entries)
+        self.assertIn("assets/vehicle/items/steep_boost_ramp.json", self.entries)
+        # simularea exacta a rezolutiei clientului: fiecare stare hijack-uita
+        # randeaza EXACT un model (niciun element de compunere vanilla peste ele).
+        def resolve(state):
+            return [p["apply"] for p in parts
+                    if all(state.get(k) in v.split("|") for k, v in p["when"].items())]
+        base = {"powered": "false"}
+
+        self.assertEqual([{"model": "vehicle:block/mcv_traffic_cone"}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "false", "east": "false",
+                                  "south": "false", "west": "false"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_boost_pad"}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "true", "east": "false",
+                                  "south": "false", "west": "false"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_fluid_pipe"}],
+                         resolve({**base, "attached": "true", "disarmed": "true",
+                                  "north": "true", "south": "true",
+                                  "east": "false", "west": "false"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_steep_boost_ramp", "y": 90}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "true", "east": "false",
+                                  "south": "true", "west": "true"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_fluid_pump", "y": 270}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "false", "east": "true",
+                                  "south": "true", "west": "false"}))
+        self.assertEqual([{"model": "vehicle:block/mcv_fluid_extractor"}],
+                         resolve({**base, "attached": "false", "disarmed": "true",
+                                  "north": "true", "east": "false",
+                                  "south": "true", "west": "false"}))
+        # Ciclul AQ: partitia e EXHAUSTIVA - fiecare din cele 64 de combinatii
+        # logice ale firului (4 fete x attached x disarmed; powered nu apare in
+        # nicio regula) rezolva EXACT un model. Niciun mozaic de fire forfecate
+        # nu poate ajunge vreodata la "nimic invizibil".
+        for disarmed in ("false", "true"):
+            for attached in ("false", "true"):
+                for n in ("false", "true"):
+                    for e in ("false", "true"):
+                        for s in ("false", "true"):
+                            for w in ("false", "true"):
+                                hits = resolve({"disarmed": disarmed, "attached": attached,
+                                                "north": n, "east": e, "south": s,
+                                                "west": w, "powered": "false"})
+                                self.assertEqual(1, len(hits),
+                                                 f"starea d={disarmed} a={attached} "
+                                                 f"{n}{e}{s}{w} -> {len(hits)} reguli")
+        self.assertEqual([{"model": "minecraft:block/tripwire_ns"}],
+                         resolve({**base, "attached": "false", "disarmed": "false",
+                                  "north": "false", "east": "false",
+                                  "south": "false", "west": "false"}))
+        # Ciclul AN: relicvele solide din AL/AM randeaza TOT conul (nu cuburi de
+        # oak_planks) pana la conversia lazy in fir; jackurile raman intacte.
+        slab = self.read_json("assets/minecraft/blockstates/petrified_oak_slab.json")["variants"]
+        self.assertEqual("vehicle:block/mcv_traffic_cone",
+                         slab["type=double,waterlogged=false"]["model"])
+        self.assertEqual("vehicle:block/mcv_traffic_cone",
+                         slab["type=double,waterlogged=true"]["model"])
+        self.assertEqual("vehicle:block/mcv_jack_down", slab["type=bottom,waterlogged=false"]["model"])
+        lectern = self.read_json("assets/minecraft/blockstates/lectern.json")["variants"]
+        for f in ("north", "east", "south", "west"):
+            self.assertEqual("vehicle:block/mcv_traffic_cone",
+                             lectern[f"facing={f},has_book=false,powered=true"]["model"])
+            # 12 combination legitime vanilla: pupitru randeaza pupitru
+            for book, pw in (("false", "false"), ("true", "false"), ("true", "true")):
+                self.assertEqual("minecraft:block/lectern",
+                                 lectern[f"facing={f},has_book={book},powered={pw}"]["model"])
+        # particulele de spargere = textura proprie, la toate props-urile de drum
+        # (rampa: sagetile de boost ca in mod; pompa/extractor: dark_metal/metal,
+        # fix alegerile texturilor "particle" din modelele originale ale modului)
+        for name, tex_path in (("mcv_traffic_cone", "item/traffic_cone"),
+                               ("mcv_boost_pad", "item/boost_pad"),
+                               ("mcv_fluid_pipe", "item/fluid_pipe"),
+                               ("mcv_steep_boost_ramp", "item/boost_pad"),
+                               ("mcv_fluid_pump", "item/dark_metal"),
+                               ("mcv_fluid_extractor", "item/metal")):
+            model = self.read_json(f"assets/vehicle/models/block/{name}.json")
+            particle = model.get("textures", {}).get("particle")
+            self.assertIsNotNone(particle, f"{name} nu are cheia particle")
+            self.assertIn(f"assets/vehicle/textures/{particle.split(':', 1)[1]}.png",
+                          self.entries, f"particula {name} trimite la textura lipsa")
+
+
 
 
 if __name__ == "__main__":

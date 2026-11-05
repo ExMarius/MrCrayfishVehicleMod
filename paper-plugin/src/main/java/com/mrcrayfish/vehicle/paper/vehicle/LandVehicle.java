@@ -65,16 +65,34 @@ public final class LandVehicle {
     private float traction;
     private float throttle;
     private float steeringAngle;
+    /** Config multiplier (physics.steering-angle-multiplier) applied to
+     * spec.maxSteeringAngle(); refreshed every tick from DriveTuning. */
+    private double steeringMultiplier = 1.0D;
     private float renderWheelAngle;
     private float frontWheelRotationSpeed;
     private float frontWheelRotation;
     private float rearWheelRotationSpeed;
     private float rearWheelRotation;
     private float fuel;
+    private java.util.UUID ownerId;
     private float speedMultiplier;
     private float boostStrength;
     private float chargingAmount;
     private double verticalVelocity;
+    /** Odometru: metrii (blocuri) parcursi cumulativ - persistat in vehicles.yml. */
+    private double odometerMeters;
+    /** Ciclul AW: viteza reala neteda (blocuri/secunda), aceeasi baza ca odometrul. */
+    private double smoothedSpeedBps;
+
+    /** CICLUL AX: o singura sursa de adevar pentru "metri" si "km/h" pe TOATE
+     *  caile de miscare (land, apa, avion, elicopter - inainte track-urile se
+     *  faceau doar pe land, deci elicopterul avea odometru si vitezometru oprite).
+     *  Cumulam odometrul si netezim viteza (EMA ~4 tick) din miscarea REALA. */
+    private void trackRealTravel(Vector travel) {
+        double delta = Math.hypot(travel.getX(), travel.getZ());
+        odometerMeters += delta;
+        smoothedSpeedBps += (delta * 20.0D - smoothedSpeedBps) * 0.25D;
+    }
     private boolean onGround = true;
     private boolean handbraking;
     private boolean charging;
@@ -83,6 +101,38 @@ public final class LandVehicle {
     private int wheelieCount;
     private int age;
     private boolean transported;
+    /** Showroom podium car: display-only - never saved, never parkable, never driven.
+     *  Clicking it runs the purchase flow instead of mounting. */
+    private boolean showcase;
+
+    /* ===== Sistem mecanic (motoare/roti/daune/vopsea/incuiere/cric) ========== */
+    /** Starea fata de cric: NONE = fizica normala; LIFTING/LIFTED/LOWERING =
+     *  fizica inghetata, pozitia verticala dictata de JackManager (ca la 'transported'). */
+    public enum JackState { NONE, LIFTING, LIFTED, LOWERING }
+
+    private com.mrcrayfish.vehicle.paper.mechanic.EngineTier engineTier =
+            com.mrcrayfish.vehicle.paper.mechanic.EngineTier.IRON;
+    private com.mrcrayfish.vehicle.paper.mechanic.WheelType wheelType =
+            com.mrcrayfish.vehicle.paper.mechanic.WheelType.STANDARD;
+    private double health = 100.0D;
+    /** -1 = nevopsit; altfel RGB 0xRRGGBB din spray can (persistent). */
+    private int paintColor = -1;
+    /** Piesa de motor este MONTATA fizic? false -> slotul de motor ramane functional
+     *  (virtual), dar piesa NU apare pe model (nici in lume, nici in GUI-ul cricului)
+     *  pana la instalarea unui motor - regula brief 2026-10-24 (ATV/Dune Buggy
+     *  pornesc fara motor "din fabrica"). */
+    private boolean engineInstalled = true;
+    /** True cat timp motorul e cel din fabrica (virtual - fara item) sau unul
+     *  montat virtual de admini; false dupa prima instalare din item REAL. */
+    private boolean engineVirtual = true;
+    /** Rotile sunt MONTE fizic? false = vehiculul ramane fara roti (nu porneste
+     *  si nu poate fi coborat de pe cric) - fluxul din mod dupa brief 2026-10-24. */
+    private boolean wheelsInstalled = true;
+    private JackState jackState = JackState.NONE;
+    private java.util.UUID jackId;
+    /** Cate tick-uri mai lasam fara a reaplica damage de coliziune (anti-spam per impact). */
+    private int damageCooldown;
+
     private boolean chestAttached;
     /* ShoppingCartEntity#tick replaces normal driving with position-following
      * whenever a player is pushing it from behind; null means nobody is pushing. */
@@ -118,6 +168,10 @@ public final class LandVehicle {
                     compartment.size(), Component.text(compartment.title())));
         }
         this.fuel = spec.energyCapacity();
+        this.engineInstalled = spec.factoryInstalledEngine();
+        // Motorul din fabrica (IRON de baza) e VIRTUAL: nu a fost niciodata un item
+        // fizic in inventar => la demontare NU devine item (nu printezi motoare).
+        this.engineVirtual = this.engineInstalled;
     }
 
     public static LandVehicle spawn(VehiclePlugin plugin, UUID id, Location location, LandVehicleSpec spec,
@@ -130,13 +184,35 @@ public final class LandVehicle {
         return new LandVehicle(plugin, id, root, spec, trailers, rig);
     }
 
-    public void tick(double globalSpeedLimit, double fuelConsumptionFactor) {
+    public void tick(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning) {
         age++;
+        // Showcase podium car: a pure static display. Run the first ticks so parts settle,
+        // then skip ALL physics/render work - a showroom on a weak host costs ~nothing.
+        if (showcase && age > 10) {
+            return;
+        }
+        double globalSpeedLimit = tuning.globalSpeedLimit();
+        steeringMultiplier = tuning.steeringAngleMultiplier();
         boolean openablesChanged = rig.tickOpenables(location);
         updateSeatGauge();
+        rig.setSeatBodyCarry(false);
         rig.tickSeats(location.getYaw());
         if (age % 10 == 0) {
             showFuelOverlay();
+        }
+        // Resting pe placa JOS (ciclul W): masina coborata asta PINUITA pe cric ca
+        // pe un slab (exact ca la inceput/mod). Cand SOFERUL urca, se desprinde si
+        // pleaca normal - JackManager isi curata legatura singur la tick-ul lui.
+        if (jackId != null && jackState == JackState.NONE && driver().isPresent()) {
+            setJackId(null);
+        }
+        // Pe cric (sau pinuit pe placa jos): aceeasi inghetare ca la 'transported'
+        // (sunet idle + rig refresh); pozitia verticala dicteaza JackManager.
+        if (jackState != JackState.NONE || jackId != null) {
+            soundController.tick(location, false, spec.minEnginePitch(), List.of());
+            rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                    0.0F, spec.bodyRoll(steeringAngle, 0.0F), false, age);
+            return;
         }
         if (transported) {
             soundController.tick(location, false, spec.minEnginePitch(), List.of());
@@ -151,17 +227,19 @@ public final class LandVehicle {
             return;
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.WATER) {
-            tickWater(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            tickWater(tuning, openablesChanged);
             return;
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.AIR) {
-            tickPlane(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            tickPlane(tuning, openablesChanged);
             return;
         }
         if (spec.motionType() == LandVehicleSpec.MotionType.HELICOPTER) {
-            tickHelicopter(globalSpeedLimit, fuelConsumptionFactor, openablesChanged);
+            tickHelicopter(tuning, openablesChanged);
             return;
         }
+        sanitizeMotion();
+
         Player driver = driver().orElse(null);
 
         /* LandVehicleEntity#onClientUpdate runs before onUpdateVehicle. */
@@ -181,7 +259,7 @@ public final class LandVehicle {
             if (Math.abs(renderWheelAngle) < 0.001F) {
                 renderWheelAngle = 0.0F;
             }
-            traction = LandVehicleSpec.STANDARD_TRACTION;
+            traction = wheelType.baseTraction();
             if (openablesChanged || previousRenderAngle != renderWheelAngle) {
                 rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
                         0.0F, spec.bodyRoll(steeringAngle, horizontalSpeed()), false, age);
@@ -192,14 +270,20 @@ public final class LandVehicle {
         }
 
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         updateInput(driver);
         updateCharging(enginePowered);
         float targetRenderAngle = !charging && isSliding(forward(location.getYaw()))
-                ? -clamp(steeringAngle * 2.0F, -spec.maxSteeringAngle(), spec.maxSteeringAngle())
+                ? -clamp(steeringAngle * 2.0F, (float) (-spec.maxSteeringAngle() * steeringMultiplier),
+                        (float) (spec.maxSteeringAngle() * steeringMultiplier))
                 : steeringAngle;
         renderWheelAngle += (targetRenderAngle - renderWheelAngle) * 0.3F;
+        if (!stationaryWithIdleInput(driver)) {
+            updateWheelPositions();
+        }
         updateVehicleMotion(globalSpeedLimit, enginePowered);
+        trackRealTravel(motion);
 
         verticalVelocity -= 0.08D;
         Vector requestedMovement = new Vector(motion.getX(), verticalVelocity + motion.getY(), motion.getZ());
@@ -208,15 +292,34 @@ public final class LandVehicle {
             return;
         }
 
-        /* The original updates wheel contact positions after yaw, but before Entity#move. */
-        updateWheelPositions();
+        /* The original updates wheel contact positions after yaw, but before Entity#move.
+         * Same stationary gate: contact positions cannot change on an unmoved car. */
+        if (!stationaryWithIdleInput(driver)) {
+            updateWheelPositions();
+        }
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         if (collision.verticalCollision()) {
             verticalVelocity = 0.0D;
+        }
+        // Daune la impact: mersul blocat orizontal la viteza avariaza proportional si
+        // avertizeaza soferul; formula e a portului (modul nu avea valori exacte ale
+        // impactului, doar health + drop la 0), pragul porneste de la viteza de mers.
+        if (damageCooldown > 0) {
+            damageCooldown--;
+        }
+        double blockedX = requestedMovement.getX() - collision.movement().getX();
+        double blockedZ = requestedMovement.getZ() - collision.movement().getZ();
+        double blockedSpeed = Math.hypot(blockedX, blockedZ) * 20.0D; // blocuri/secunda
+        if (driver != null && damageCooldown <= 0 && plugin.mechanic() != null
+                && plugin.mechanic().damageEnabled()
+                && blockedSpeed >= plugin.mechanic().collisionSpeedThreshold()) {
+            applyDamage(blockedSpeed * plugin.mechanic().collisionDamageMultiplier(), driver);
+            damageCooldown = 15;
         }
 
         if (boostTimer > 0 && throttle > 0.0F) {
@@ -228,11 +331,18 @@ public final class LandVehicle {
         }
 
         if (driver != null && !creativeDriver && enginePowered) {
-            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+            double effort = !handbraking && !charging ? Math.abs(clamp(throttle, -1.0F, 1.0F)) : 0.0D;
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick()
+                    * tuning.fuelConsumptionFactor()
+                    * fuelLoad(tuning, horizontalSpeed(), effort)));
         }
         updateSeatGauge();
 
         updateWheelRotations();
+        /* BM: vehiculul vireaza/se misca => scaunele urmeaza yaw-ul vehiculului
+         * (corpul merge o data cu masina); in repaus clientul controleaza
+         * rotatia scaunului (corp blocat + cap liber, validat prin seattest). */
+        rig.setSeatBodyCarry(horizontalSpeed() > 0.02D || Math.abs(steeringAngle) > 1.0F);
         float wheelieAngle = -30.0F * boostStrength * wheelieProgress();
         float bodyRoll = spec.bodyRoll(steeringAngle, horizontalSpeed());
         rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
@@ -290,15 +400,18 @@ public final class LandVehicle {
      * water/air transition momentum, speed damping, and steering rather than inventing
      * land behavior for the Jet Ski.
      */
-    private void tickWater(double globalSpeedLimit, double fuelConsumptionFactor,
+    private void tickWater(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
                            boolean openablesChanged) {
+        sanitizeMotion();
+        double globalSpeedLimit = tuning.globalSpeedLimit();
         Player driver = driver().orElse(null);
         WaterStatus status = waterStatus();
         previousWaterState = waterState;
         waterState = status.state();
 
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         updateInput(driver);
         renderWheelAngle += (steeringAngle - renderWheelAngle) * 0.3F;
         if (Math.abs(renderWheelAngle) < 0.001F) {
@@ -357,9 +470,11 @@ public final class LandVehicle {
             return;
         }
         Vector requestedMovement = velocity.clone().add(motion);
+        trackRealTravel(requestedMovement); // CICLUL AX: barca/planiau fara odometru/vitezometru
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         if (collision.verticalCollision()) {
@@ -375,7 +490,9 @@ public final class LandVehicle {
         verticalVelocity = velocity.getY();
 
         if (driver != null && !creativeDriver && enginePowered) {
-            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick()
+                    * tuning.fuelConsumptionFactor()
+                    * fuelLoad(tuning, Math.abs(waterSpeed), Math.abs(clamp(throttle, -1.0F, 1.0F)))));
         }
         updateSeatGauge();
         rig.update(location, renderWheelAngle, 0.0F, 0.0F,
@@ -387,15 +504,17 @@ public final class LandVehicle {
     }
 
     /** Direct server-side translation of HelicopterEntity#updateVehicleMotion. */
-    private void tickHelicopter(double globalSpeedLimit, double fuelConsumptionFactor,
-                                boolean openablesChanged) {
+    private void tickHelicopter(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
+                           boolean openablesChanged) {
+        double globalSpeedLimit = tuning.globalSpeedLimit();
         LandVehicleSpec.Helicopter helicopter = spec.helicopter();
         if (helicopter == null) {
             throw new IllegalStateException("Helicopter is missing HelicopterProperties: " + spec.id());
         }
         Player driver = driver().orElse(null);
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         boolean operating = driver != null && enginePowered;
         VehicleInput input = driver == null ? VehicleInput.idle()
                 : VehicleInput.from(driver.getCurrentInput());
@@ -446,6 +565,7 @@ public final class LandVehicle {
         heading.multiply(0.05D);
         velocity = lerp(velocity, heading, helicopter.movementStrength());
         motion.add(velocity);
+        trackRealTravel(motion); // CICLUL AX: elicopterul avea odometru/vitezometru oprite
 
         Vector requestedMovement = motion.clone();
         if (!operating) {
@@ -457,7 +577,8 @@ public final class LandVehicle {
         }
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         verticalVelocity = velocity.getY();
@@ -484,7 +605,10 @@ public final class LandVehicle {
 
         if (driver != null && !creativeDriver && enginePowered) {
             fuel = Math.max(0.0F,
-                    fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+                    fuel - (float) (spec.energyPerTick()
+                            * tuning.fuelConsumptionFactor()
+                            * fuelLoad(tuning, velocity.length() * 20.0D,
+                                    Math.abs(clamp(throttle, -1.0F, 1.0F)))));
         }
         updateSeatGauge();
         helicopterEffects(driver, enginePowered);
@@ -595,15 +719,17 @@ public final class LandVehicle {
     }
 
     /** Direct server-side translation of PlaneEntity#updateVehicleMotion. */
-    private void tickPlane(double globalSpeedLimit, double fuelConsumptionFactor,
+    private void tickPlane(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
                            boolean openablesChanged) {
+        double globalSpeedLimit = tuning.globalSpeedLimit();
         LandVehicleSpec.Plane plane = spec.plane();
         if (plane == null) {
             throw new IllegalStateException("Aircraft is missing PlaneProperties: " + spec.id());
         }
         Player driver = driver().orElse(null);
         boolean creativeDriver = driver != null && driver.getGameMode() == GameMode.CREATIVE;
-        boolean enginePowered = creativeDriver || fuel > 0.0F;
+        boolean enginePowered = mechanicallyDrivable()
+                && (creativeDriver || fuel > 0.0F) && !engineBroken();
         VehicleInput input = driver == null ? VehicleInput.idle()
                 : VehicleInput.from(driver.getCurrentInput());
 
@@ -613,7 +739,8 @@ public final class LandVehicle {
         float liftInput = driver == null ? 0.0F
                 : (input.handbrake() ? 1.0F : 0.0F) + (input.sprint() ? -1.0F : 0.0F);
         float steeringStrength = sideInput != 0.0F ? 0.05F : 0.2F;
-        steeringAngle += (spec.maxSteeringAngle() * sideInput - steeringAngle) * steeringStrength;
+        steeringAngle += (spec.maxSteeringAngle() * (float) steeringMultiplier * sideInput
+                - steeringAngle) * steeringStrength;
         float targetRenderAngle = onGround ? steeringAngle : 0.0F;
         renderWheelAngle += (targetRenderAngle - renderWheelAngle) * 0.3F;
 
@@ -708,9 +835,11 @@ public final class LandVehicle {
             return;
         }
         Vector requestedMovement = motion.clone();
+        trackRealTravel(requestedMovement); // CICLUL AX: avionul avea odometru/vitezometru oprite
         VehicleCollisionMover.Result collision = VehicleCollisionMover.move(
                 world, location, requestedMovement, onGround,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight());
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs());
         location.add(collision.movement());
         onGround = collision.onGround();
         verticalVelocity = velocity.getY();
@@ -720,10 +849,14 @@ public final class LandVehicle {
             motion.zero();
         }
         if (driver != null && !creativeDriver && enginePowered) {
-            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick() * fuelConsumptionFactor));
+            fuel = Math.max(0.0F, fuel - (float) (spec.energyPerTick()
+                    * tuning.fuelConsumptionFactor()
+                    * fuelLoad(tuning, velocity.length() * 20.0D,
+                            Math.abs(clamp(throttle, -1.0F, 1.0F)))));
         }
         updateSeatGauge();
         updateWheelRotations();
+        rig.setSeatBodyCarry(velocity.length() > 0.02D || Math.abs(steeringAngle) > 1.0F);
 
         if (!onGround) {
             bodyPitch = location.getPitch();
@@ -861,18 +994,30 @@ public final class LandVehicle {
                     rotateYLikeMinecraft(frontWheel, Math.toRadians(steeringAngle)));
             motion.add(nextPosition.multiply(speed));
             location.setYaw(normalizeYaw(location.getYaw() - steeringAngle * speed));
-            float forwardForce = clamp(throttle, -1.0F, 1.0F); // Iron engine multiplier is 1.0.
+            // Iron engine multiplier is 1.0; engine tier aplicat exact ca in mod.
+            float forwardForce = clamp(throttle, -1.0F, 1.0F) * engineTier.powerMultiplier();
             chargingAmount = clamp(chargingAmount + forwardForce * 0.025F, 0.0F, 1.0F);
         } else {
             chargingAmount = 0.0F;
         }
 
-        SurfaceProfile surface = surfaceProfile();
+        Player idleDriver = driver().orElse(null);
+        boolean stationary = stationaryWithIdleInput(idleDriver);
+        SurfaceProfile surface = stationary ? null : surfaceProfile();
+        if (!stationary && surface != null) {
+            lastSurfaceFriction = surface.friction();
+        }
+        float surfaceFriction = stationary ? (float) lastSurfaceFriction : surface.friction();
+        float surfaceTractionFactor = stationary ? (float) lastSurfaceTractionFactor : surface.tractionFactor();
+        if (!stationary && surface != null) {
+            lastSurfaceTractionFactor = surface.tractionFactor();
+        }
         float enginePower = onGround ? spec.enginePower() : 0.0F;
         float brakePower = onGround ? BRAKE_POWER : 0.0F;
 
         float effectiveThrottle = !enginePowered || handbraking || charging ? 0.0F : throttle;
-        float forwardForce = enginePower * clamp(effectiveThrottle, -1.0F, 1.0F);
+        float forwardForce = enginePower * clamp(effectiveThrottle, -1.0F, 1.0F)
+                * engineTier.powerMultiplier();
         if (boosting) {
             forwardForce += forwardForce * speedMultiplier;
         }
@@ -885,18 +1030,18 @@ public final class LandVehicle {
             velocity.zero();
         }
         Vector handbrakeForce = velocity.clone().multiply((handbraking ? brakePower : 0.0F) * 0.05D);
-        Vector frictionForce = velocity.clone().multiply(-surface.friction() * 0.05D);
+        Vector frictionForce = velocity.clone().multiply(-surfaceFriction * 0.05D);
         Vector dragForce = velocity.clone().multiply(velocity.length()).multiply(-DRAG * 0.05D);
         acceleration.add(dragForce).add(frictionForce).add(handbrakeForce);
         velocity.add(acceleration);
         clampLength(velocity, Math.max(0.0D, globalSpeedLimit));
 
         if (isSliding(forward) && throttle > 0.0F) {
-            traction = LandVehicleSpec.SLIDE_TRACTION;
+            traction = wheelType.slideTraction();
         } else if (handbraking) {
             traction = 0.05F;
         } else {
-            float targetTraction = LandVehicleSpec.STANDARD_TRACTION;
+            float targetTraction = wheelType.baseTraction();
             if (acceleration.length() > 0.0D) {
                 targetTraction *= clamp((float) (velocity.length() / acceleration.length()), 0.0F, 1.0F);
             }
@@ -918,7 +1063,7 @@ public final class LandVehicle {
         Vector nextPosition = worldRearWheel.clone().add(heading.clone().multiply(-spec.rearAxleOffset()));
         motion.add(nextPosition.subtract(position));
 
-        float surfaceTraction = surface.tractionFactor() * traction;
+        float surfaceTraction = surfaceTractionFactor * traction;
         if (heading.dot(normalized(velocity)) > 0.0D) {
             velocity = lerp(velocity, heading.clone().multiply(velocity.length()), surfaceTraction);
         } else {
@@ -946,7 +1091,7 @@ public final class LandVehicle {
     private SurfaceProfile surfaceProfile() {
         World world = location.getWorld();
         if (world == null) {
-            return new SurfaceProfile(0.0F, 1.0F);
+            return new SurfaceProfile(SurfaceProfile.Category.NONE, 0.0F, 1.0F);
         }
 
         float friction = 0.0F;
@@ -960,14 +1105,15 @@ public final class LandVehicle {
             if (profile.friction() == 0.0F) {
                 continue;
             }
-            friction += profile.friction();
+            friction += profile.friction() * wheelType.surfaceModifier(profile.category());
             tractionFactor += profile.tractionFactor();
             wheelCount++;
         }
         if (wheelCount == 0) {
-            return new SurfaceProfile(0.0F, 1.0F);
+            return new SurfaceProfile(SurfaceProfile.Category.NONE, 0.0F, 1.0F);
         }
-        return new SurfaceProfile(friction / wheelCount, tractionFactor / wheelCount);
+        return new SurfaceProfile(SurfaceProfile.Category.ROAD,
+                friction / wheelCount, tractionFactor / wheelCount);
     }
 
     private void updateWheelRotations() {
@@ -1020,8 +1166,107 @@ public final class LandVehicle {
         return 1.0F - (1.0F - progress) * (1.0F - progress);
     }
 
-    private double horizontalSpeed() {
+    /** Corrupted-vector shield: teleports into absence, collision glitches or other
+     * plugins can poison motion/velocity with NaN or Infinity. Java lets those values
+     * propagate silently into the stored location (bricking the vehicle AND writing
+     * NaN into vehicles.yml). Zeroing any non-finite component once per tick keeps
+     * the whole pipeline finite. Called from every live physics branch. */
+    private void sanitizeMotion() {
+        if (!Double.isFinite(motion.getX()) || !Double.isFinite(motion.getY()) || !Double.isFinite(motion.getZ())) {
+            motion = new Vector();
+        }
+        if (!Double.isFinite(velocity.getX()) || !Double.isFinite(velocity.getY()) || !Double.isFinite(velocity.getZ())) {
+            velocity = new Vector();
+        }
+        if (!Double.isFinite(verticalVelocity)) {
+            verticalVelocity = 0.0D;
+        }
+    }
+
+    /** Dynamic fuel load. Engine on but standing still (speed ~0, no throttle):
+     * idleRatio (default 10%). Moving under power: idle + speedWeight*speedRatio +
+     * accelWeight*throttleRatio, saturating at exactly 1.0 at full-burn speed with
+     * full throttle. Engine off / no driver / resting / showcase: callers never reach
+     * this method, so consumption is strictly 0. */
+    static double fuelLoad(com.mrcrayfish.vehicle.paper.vehicle.DriveTuning tuning,
+                           double speedBlocksPerSec, double throttleRatio) {
+        /* Production hardening: NaN/Infinity can leak in through teleports, collision
+         * bugs or other plugins corrupting the motion vector. Java's Math.min/max
+         * PROPAGATE NaN, which would write NaN into the tank and brick refueling
+         * forever. Any non-finite input is treated as "no effort" (idle burn). */
+        if (!Double.isFinite(speedBlocksPerSec)) {
+            speedBlocksPerSec = 0.0D;
+        }
+        if (!Double.isFinite(throttleRatio)) {
+            throttleRatio = 0.0D;
+        }
+        double speedRatio = Math.min(1.0D, Math.max(0.0D,
+                speedBlocksPerSec / tuning.fuelFullBurnSpeed()));
+        double throttle = Math.min(1.0D, Math.max(0.0D, throttleRatio));
+        double effort = tuning.fuelSpeedWeight() * speedRatio + tuning.fuelAccelWeight() * throttle;
+        return tuning.fuelIdleRatio()
+                + (1.0D - tuning.fuelIdleRatio()) * Math.min(1.0D, Math.max(0.0D, effort));
+    }
+
+    /** Repacks and resends the ENTIRE rig (teleport + transformation packets for every
+     * part, tow bar included) immediately, outside the normal tick path. TrailerManager
+     * calls this on hitch state changes so a resting/parked car can never keep a
+     * visually locked tow bar or stale part transforms while its physics is asleep. */
+    public void forceVisualSync() {
+        if (!rig.valid()) {
+            return;
+        }
+        boolean engineRunning = driver()
+                .map(d -> d.getGameMode() == org.bukkit.GameMode.CREATIVE || fuel > 0.0F)
+                .orElse(false);
+        rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                0.0F, spec.bodyRoll(steeringAngle, horizontalSpeed()), engineRunning, age);
+    }
+
+    private double lastSurfaceFriction = 1.0D;
+    private double lastSurfaceTractionFactor = LandVehicleSpec.STANDARD_TRACTION;
+
+    /** Viteza orizontala in blocuri/secunda (public - o foloseste si TrafficProps/boost pad). */
+    public double horizontalSpeed() {
         return Math.hypot(motion.getX(), motion.getZ()) * 20.0D;
+    }
+
+    /** Kilometraj (odometru): metri parcursi cumulat de la prima miscare. */
+    public double odometerMeters() {
+        return odometerMeters;
+    }
+
+    /** Ciclul AW: viteza reala neteda in blocuri/secunda (aceeasi sursa ca odometrul,
+     *  NU velocity-ul pad-urilor). Folosita de vitezometru (bari + text). */
+    public double smoothedSpeedBps() {
+        return smoothedSpeedBps;
+    }
+
+    public void restoreOdometer(double meters) {
+        if (Double.isFinite(meters) && meters >= 0.0D) {
+            odometerMeters = meters;
+        }
+    }
+
+    /** Eticheta scurta pentru overlay: „248 m" sub 1 km, apoi „1,3 km". */
+    private String odometerLabel() {
+        if (odometerMeters < 1000.0D) {
+            return (int) Math.round(odometerMeters) + " m";
+        }
+        String text = String.format(java.util.Locale.forLanguageTag("ro-RO"),
+                "%.1f", odometerMeters / 1000.0D);
+        return text + " km";
+    }
+
+    /** True when the vehicle stands still on the ground with no drive demand this
+     * tick: no throttle, no handbrake, no charging, horizontal speed ~0. In this
+     * state the friction value cannot influence anything (motion is already zero),
+     * so the ground-block raycasts behind updateWheelPositions()/surfaceProfile()
+     * are skipped and the last measured friction is reused instead. */
+    private boolean stationaryWithIdleInput(Player driver) {
+        return driver != null && onGround && !charging && !handbraking
+                && Math.abs(clamp(throttle, -1.0F, 1.0F)) < 1.0E-4F
+                && horizontalSpeed() < 1.0E-4D;
     }
 
     private boolean isSliding(Vector forward) {
@@ -1376,8 +1621,42 @@ public final class LandVehicle {
     private record WaterStatus(WaterVehiclePhysics.State state, double waterLevel) {
     }
 
+    public boolean showcase() {
+        return showcase;
+    }
+
+    public void setShowcase(boolean showcase) {
+        this.showcase = showcase;
+    }
+
     public boolean mount(Player player) {
-        return !transported && rig.mount(player);
+        // ANTI-FURT PERMANENT (podium): a showroom car can never be mounted by ANYONE,
+        // ever - the flag is re-asserted on boot (DealerStationManager.rebuild) and this
+        // gate sits below every interaction, so restart or listener order cannot reopen it.
+        if (showcase && !player.isOp()) {
+            player.sendActionBar(net.kyori.adventure.text.Component.text(
+                    "\ud83d\ude97 Vehicul de SHOWROOM - nu se conduce; doar se cump\u0103r\u0103 (click drept).",
+                    net.kyori.adventure.text.format.NamedTextColor.RED));
+            return false;
+        }
+        if (transported) {
+            return false;
+        }
+        boolean result = rig.mount(player);
+        // DRIVER seat privilege (user design): post-mount gate - if the player ended up at
+        // the wheel without the owner's permission, eject them politely. Passenger seats
+        // untouched, exactly like FiveM.
+        if (result && !canDrive(player)) {
+            List<Entity> wheel = rig.driverSeat().getPassengers();
+            if (wheel.contains(player)) {
+                player.leaveVehicle();
+                player.sendActionBar(net.kyori.adventure.text.Component.text(
+                        "🚗 La volan doar cu permisiunea proprietarului! Pasagerul e liber oricui.",
+                        net.kyori.adventure.text.format.NamedTextColor.RED));
+                return false;
+            }
+        }
+        return result;
     }
 
     public Optional<Player> driver() {
@@ -1454,11 +1733,51 @@ public final class LandVehicle {
         return spec;
     }
 
+    /** FiveM-foundation: every vehicle has (or can claim) an owner; null = public/unowned. */
+    public java.util.Optional<java.util.UUID> owner() {
+        return java.util.Optional.ofNullable(ownerId);
+    }
+
+    public void setOwner(java.util.UUID ownerId) {
+        this.ownerId = ownerId;
+    }
+
+    /** Command-system (user design): the WHEEL belongs to the owner + the players he
+     *  explicitly trusts via /vehicle trust. Ownerless vehicles = public taxis for anyone.
+     *  Passengers always ride free, no matter what. */
+    private final java.util.Set<java.util.UUID> trustedDrivers = new java.util.HashSet<>();
+
+    public boolean canDrive(Player player) {
+        java.util.Optional<java.util.UUID> owner = owner();
+        return owner.isEmpty() || owner.get().equals(player.getUniqueId())
+                || trustedDrivers.contains(player.getUniqueId());
+    }
+
+    public boolean trust(java.util.UUID playerId) {
+        return trustedDrivers.add(playerId);
+    }
+
+    public boolean untrust(java.util.UUID playerId) {
+        return trustedDrivers.remove(playerId);
+    }
+
+    public java.util.Set<java.util.UUID> trustedDrivers() {
+        return java.util.Collections.unmodifiableSet(trustedDrivers);
+    }
+
+    public void restoreTrustedDrivers(java.util.Collection<java.util.UUID> drivers) {
+        trustedDrivers.clear();
+        trustedDrivers.addAll(drivers);
+    }
+
     public float fuel() {
         return fuel;
     }
 
     public void setFuel(float fuel) {
+        if (!Float.isFinite(fuel)) {
+            fuel = 0.0F;
+        }
         this.fuel = clamp(fuel, 0.0F, spec.energyCapacity());
         updateSeatGauge();
     }
@@ -1468,16 +1787,118 @@ public final class LandVehicle {
         rig.setSeatGauge(fuel / capacity);
     }
 
-    /** Vanilla replacement for the original mod's continuously updated fuel overlay. */
+    /** Vanilla replacement for the original mod's continuously updated fuel overlay.
+     *  CICLUL AV (forma finala ceruta de user): deasupra hotbar-ului sta bara de
+     *  XP goala umpluta proportional (VehicleManager.tickSpeedo, nivel 0 = fara
+     *  cifra verde), iar SCRISUL vitezei il deseneaza pluginul aici, in action
+     *  bar: "Viteza: x km/h (bps)" in fata cadranului clasic Fuel + odometru.
+     *  CICLUL AW: viteza = miscarea REALA a masinii (aceeasi sursa ca odometrul,
+     *  EMA ~4 tick), limitata la scala maxima (default 150) - niciodata citiri
+     *  aberante gen 800; unitatea bps e cea a modului. */
     private void showFuelOverlay() {
-        Component overlay = Component.text(FuelGauge.overlay(fuel, spec.energyCapacity()), NamedTextColor.GOLD);
+        // CICLUL BF: mesajul se construieste PER JUCATOR (pozitia/stilul depind
+        // de gamemode - in creative/spectator GUI-ul nu mai arata inimile).
         for (Entity carrier : rig.seatCarriers()) {
             for (Entity passenger : carrier.getPassengers()) {
                 if (passenger instanceof Player player) {
-                    player.sendActionBar(overlay);
+                    player.sendActionBar(buildOverlay(player));
                 }
             }
         }
+    }
+
+    /** Construieste linia HUD pentru un jucator concret. */
+    private Component buildOverlay(Player player) {
+        String fuelPlusOdo = FuelGauge.overlay(fuel, spec.energyCapacity())
+                + "  |  " + odometerLabel();
+        Component overlay;
+        if (plugin.getConfig().getBoolean("hud.speedo", true)) {
+            // Ciclul AW: viteza = miscarea REALA (aceeasi sursa ca odometrul),
+            // deci cifra si kilometrajul nu se mai contrazic niciodata.
+            // Ciclul AY: factor cosmetic (default 1.75 ~ maxim 70 km/h cerut).
+            // CICLUL BA (feedback user): HUD-ul sta IN STANGA, la randul
+            // inimilor de cal, doar cu FONT PROPRIU (vehicle:hud_speed): viteza
+            // (cifre bold + "km/h") si odometrul (valoare + "m"/"km"). Bara XP
+            // ramane a jocului. Alinierea stanga: linia action bar e centrata
+            // pe ecran => completam la latimea hotbar-ului (182px) cu spatii
+            // de avans fix (F801..F807 = 64/32/16/8/4/2/1, descompunere binara);
+            // marginea stanga a liniei ajunge fix la coloana din stanga a GUI-ului.
+            // LATIMILE DE MAI JOS trebuie sa ramana sincronizate cu masca/fontul
+            // din tools/build_resource_pack.py#emit_hud_speed_font.
+            // CICLUL BG (feedback user, forma FINALA): inimile de cal raman
+            // POSTUL DE COMBUSTIBIL (song-ul vanilla neatimse); HUD-ul nostru
+            // = DOAR viteza (km/h) + odometrul (m/km), in STANGA inimilor.
+            // CICLUL BH (feedback user): inimile de cal isi muta randul odata
+            // cu gamemode (fara status-bars = creative/spectator, stiva coboara
+            // cu ~10px) -> alegem per-player fontul cu offsetul potrivit,
+            // asa textul ramane LIPIT de inimi in ambele moduri.
+            boolean survivalLike = player.getGameMode() == GameMode.SURVIVAL
+                    || player.getGameMode() == GameMode.ADVENTURE;
+            net.kyori.adventure.key.Key hudFont = net.kyori.adventure.key.Key.key(
+                    "vehicle", survivalLike ? "hud_speed" : "hud_speed_creative");
+            double bps = smoothedSpeedBps;
+            int fullScale = Math.max(60,
+                    plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
+            double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
+            int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
+
+            StringBuilder section = new StringBuilder();
+            int width = 0;
+            for (char digit : String.valueOf(kmh).toCharArray()) {
+                section.append((char) (0xE200 + (digit - '0'))); // 8px
+                width += 8;
+            }
+            section.append('\uE20A'); // "km/h" (31px)
+            width += 31;
+            section.append('\uF804'); // spatiu 8px intre viteza si odometru
+            width += 8;
+            // odometrul, aceeasi fonta: "248 m..." sau "2.5 km"
+            String odo = odometerLabel();
+            for (int i = 0; i < odo.length(); i++) {
+                char c = odo.charAt(i);
+                if (c >= '0' && c <= '9') {
+                    section.append((char) (0xE200 + (c - '0'))); // 8px
+                    width += 8;
+                } else if (c == '.') {
+                    section.append('\uE20C'); // 3px
+                    width += 3;
+                } else if (c == 'k' && i + 1 < odo.length() && odo.charAt(i + 1) == 'm') {
+                    section.append('\uE20D'); // "km" (16px)
+                    width += 16;
+                    i++;
+                } else { // ' ' sau 'm' din "248 m"
+                    section.append(c == ' ' ? '\uF806' : '\uE20B'); // spatiu 2px / "m" (8px)
+                    width += c == ' ' ? 2 : 8;
+                }
+            }
+            Component leftPart = Component.text(section.toString(), NamedTextColor.GOLD)
+                    .font(hudFont);
+            section.setLength(0);
+
+            // CICLUL BI (feedback user): in survival textul statea PESTE inimile
+            // jucatorului (coloana stanga, x=centru-91). Trebuie LIPIT de inimile
+            // de cal (care incep la centru+10), deci marginea DREAPTA a textului
+            // = centru+6 (4px spatiu). Cu linia centrata vanilla: latimea totala
+            // trebuie 2*width - 12 => pad = width - 12.
+            int rest = survivalLike ? width - 12 : 182 - width;
+            if (rest < 0) {
+                rest = 0; // textul nu poate fi negativ-lung; case www default
+            }
+            while (rest > 0) {
+                for (int bit = 0; bit < 7; bit++) {
+                    int value = 64 >> bit;
+                    while (rest >= value) {
+                        section.append((char) (0xF800 + bit));
+                        rest -= value;
+                    }
+                }
+            }
+            overlay = leftPart.append(Component.text(section.toString(),
+                    NamedTextColor.WHITE).font(hudFont));
+        } else {
+            overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
+        }
+        return overlay;
     }
 
     public Vector velocity() {
@@ -1496,7 +1917,8 @@ public final class LandVehicle {
         }
         onGround = VehicleCollisionMover.move(world, location,
                 new Vector(0.0D, -0.001D, 0.0D), false,
-                spec.entityWidth(), spec.entityHeight(), spec.stepHeight()).onGround();
+                spec.entityWidth(), spec.entityHeight(), spec.stepHeight(),
+                !spec.climbsStationSlabs()).onGround();
     }
 
     public float traction() {
@@ -1835,5 +2257,207 @@ public final class LandVehicle {
 
     private static float clamp(float value, float minimum, float maximum) {
         return Math.max(minimum, Math.min(maximum, value));
+    }
+
+    /* ================= Sistem mecanic: stare + API pentru manageri ============== */
+
+    public com.mrcrayfish.vehicle.paper.mechanic.EngineTier engineTier() {
+        return engineTier;
+    }
+
+    /** True = motorul e montat si piesa se vede pe model; false = slot gol, vizual
+     *  curat (exact comportamentul din mod: piesa apare doar cu motor instalat). */
+    public boolean engineInstalled() {
+        return engineInstalled;
+    }
+
+    public boolean wheelsInstalled() {
+        return !spec.hasWheels() || wheelsInstalled;
+    }
+
+    /** Masina se misca doar CU motorul si rotile MONTE (brief: scoti una din ele,
+     *  masina nu mai porneste; fara roti nici coborârea de pe cric nu merge). */
+    public boolean mechanicallyDrivable() {
+        return (spec.defaultEngineType()
+                    == com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE || engineInstalled)
+                && wheelsInstalled();
+    }
+
+    /** Demontare/montare roți: world-sync urmeaza aceeasi regula ca motorul -
+     *  rotile dispar din rig (stack gol) pana la re-montare. */
+    public void setWheelsInstalled(boolean installed) {
+        this.wheelsInstalled = installed;
+        if (!installed) {
+            rig.hideWheels();
+        } else {
+            rig.setWheelModel(wheelType.model());
+        }
+    }
+
+    /** Demontare/montare: ascunde instant piesa in lume (stack gol pe display);
+     *  la montare se re-aplica modelul tier-ului curent (ca la setEngineTier). */
+    public boolean engineVirtual() {
+        return engineVirtual;
+    }
+
+    public void setEngineVirtual(boolean virtual) {
+        this.engineVirtual = virtual;
+    }
+
+    public void setEngineInstalled(boolean installed) {
+        this.engineInstalled = installed;
+        if (!installed) {
+            rig.hideEngine();
+            return;
+        }
+        if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+            rig.setEngineModel(engineTier.name().toLowerCase(java.util.Locale.ROOT)
+                    + "_" + spec.defaultEngineType().folder() + "_engine");
+        }
+    }
+
+    /** Tier NOU de motor (acelasi EngineType ca la spec - validarea tipului e in
+     *  MechanicManager). Fizica preia multiplicatorul chiar din urmatorul tick. */
+    public void setEngineTier(com.mrcrayfish.vehicle.paper.mechanic.EngineTier engineTier) {
+        this.engineTier = engineTier == null
+                ? com.mrcrayfish.vehicle.paper.mechanic.EngineTier.IRON : engineTier;
+        // part-ul vizual urmeaza tier-ul (iron_small_engine -> gold_small_engine etc.),
+        // DOAR daca motorul e montat - pe slot gol piesa ramane ascunsa.
+        if (engineInstalled
+                && spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+            rig.setEngineModel(this.engineTier.name().toLowerCase(java.util.Locale.ROOT)
+                    + "_" + spec.defaultEngineType().folder() + "_engine");
+        }
+    }
+
+    public com.mrcrayfish.vehicle.paper.mechanic.WheelType wheelType() {
+        return wheelType;
+    }
+
+    public void setWheelType(com.mrcrayfish.vehicle.paper.mechanic.WheelType wheelType) {
+        this.wheelType = wheelType == null
+                ? com.mrcrayfish.vehicle.paper.mechanic.WheelType.STANDARD : wheelType;
+        rig.setWheelModel(this.wheelType.model());
+    }
+
+    public double health() {
+        return health;
+    }
+
+    public double maxHealth() {
+        return 100.0D;
+    }
+
+    public boolean engineBroken() {
+        return health <= 0.0D;
+    }
+
+    /** Sistemul de daune (#9 din audit): impact aplica damage, la 0 motorul moare.
+     *  Mesajul merge la sofer (actiune audio-vizuala minima - fara efecte inventate). */
+    public void applyDamage(double amount, org.bukkit.entity.Player driver) {
+        if (amount <= 0.0D || showcase) {
+            return;
+        }
+        double previous = health;
+        health = Math.max(0.0D, health - amount);
+        if (driver != null && health < previous) {
+            driver.sendActionBar(net.kyori.adventure.text.Component.text(
+                    String.format(java.util.Locale.ROOT,
+                            "Daune: %.0f/100", health),
+                    health <= 25.0D ? net.kyori.adventure.text.format.NamedTextColor.RED
+                            : net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            if (previous > 0.0D && engineBroken()) {
+                driver.sendRichMessage("<red><bold>Motorul s-a distrus!</bold> "
+                        + "Tracteaz-o pe un cric si repar-o (cheia de mecanic).</red>");
+            }
+        }
+    }
+
+    public void repairFully() {
+        health = maxHealth();
+    }
+
+    public int paintColor() {
+        return paintColor;
+    }
+
+    public boolean painted() {
+        return paintColor >= 0;
+    }
+
+    /** Aplica imediat starea vizuala finala (model, pivoti, vopsea, piese) printr-un
+     *  update forțat al rig-ului - chemat dupa spawnul din cufar, ca primul frame sa
+     *  fie deja corect (spec final, bug 2a). */
+    public void settleVisualState() {
+        rig.applyColor(paintColor < 0 ? null : paintColor);
+        if (!wheelsInstalled) { rig.hideWheels(); } else { rig.setWheelModel(wheelType.model()); }
+        if (!engineInstalled) {
+            rig.hideEngine();
+        } else if (spec.defaultEngineType() != com.mrcrayfish.vehicle.paper.mechanic.EngineType.NONE) {
+            rig.setEngineModel(engineTier.name().toLowerCase(java.util.Locale.ROOT)
+                    + "_" + spec.defaultEngineType().folder() + "_engine");
+        }
+        rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
+                0.0F, spec.bodyRoll(steeringAngle, 0.0F), false, age);
+    }
+
+    public void setPaintColor(int rgb) {
+        paintColor = rgb;
+        rig.applyColor(rgb >= 0 ? Integer.valueOf(rgb) : null);
+    }
+
+    public void clearPaint() {
+        setPaintColor(-1);
+    }
+
+    public JackState jackState() {
+        return jackState;
+    }
+
+    public void setJackState(JackState jackState) {
+        this.jackState = jackState == null ? JackState.NONE : jackState;
+    }
+
+    public boolean onJack() {
+        return jackState != JackState.NONE;
+    }
+
+    public java.util.UUID jackId() {
+        return jackId;
+    }
+
+    public void setJackId(java.util.UUID jackId) {
+        this.jackId = jackId;
+    }
+
+    /** JackManager muta vehiculul pe verticala in timpul ridicarii/coborarii. */
+    public void setLiftedY(double y) {
+        Location moved = location.clone();
+        moved.setY(y);
+        location = moved;
+    }
+
+    /** Snap-ul cricului din mod (masina devine „pasagerul" cricului - aliniere exacta
+     *  la centrul blocului): trage vehiculul spre centru cu un factor pe tick.
+     *  Yaw-ul ramane neschimbat (id VehicleMod mount). */
+    public void snapToward(double centerX, double centerZ, double factor) {
+        Location moved = location.clone();
+        moved.setX(moved.getX() + (centerX - moved.getX()) * factor);
+        moved.setZ(moved.getZ() + (centerZ - moved.getZ()) * factor);
+        location = moved;
+    }
+
+    public double horizontalDistanceSquared(double x, double z) {
+        double dx = location.getX() - x;
+        double dz = location.getZ() - z;
+        return dx * dx + dz * dz;
+    }
+
+    /** Boost pad: intensifica temporar forta (acelasi tel ca rampota din mod). */
+    public void applyBoost(float strength, int ticks) {
+        boostStrength = strength;
+        speedMultiplier = Math.max(speedMultiplier, strength);
+        boostTimer = Math.max(boostTimer, ticks);
+        boosting = true;
     }
 }

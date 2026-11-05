@@ -1,0 +1,4 @@
+&d&lUKEMC &f&lROLEPLAY &7&l— &fPaper 1.21.4
+&7Salut, &d{PLAYER}&7!
+&bBani: &6{BALANCE} &8| &bHomes: &f/sethome &8| &bSpawn: &f/spawn
+&7Reguli: /rules &8| &7Ajutor: /help  &8| &7Magazin: /shop

@@ -1,0 +1,72 @@
+name: HidenCloud inspect server (prin cheia SSH)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/workflows/hc-inspect.yml"
+
+permissions:
+  contents: read
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  inspect:
+    name: "Inspectez serverul (SSH): fisiere, log, erori"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Conectez si colectez datele
+        run: |
+          chmod 600 hidencloud/keys/arena_hc_ed25519
+          sftp_go() { sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=15 -o BatchMode=yes -o IdentityFile=hidencloud/keys/arena_hc_ed25519 "$@"; }
+          # lista fişierelor din /plugins cu dimensiuni
+          printf 'ls -l plugins\n' > b_ls.txt
+          sftp_go -b b_ls.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > lsout.txt 2>&1 || true
+          echo "== /plugins =="
+          grep -E '(\.jar|drwx)' lsout.txt | awk '{printf "%-46s %8.2f KB\n", $NF, $5/1024}' | sort || cat lsout.txt
+          # verification probe: resource pack wiring state on the live server
+          printf 'get server.properties /tmp/server.properties\n' > b_props.txt
+          if sftp_go -b b_props.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 && [ -s /tmp/server.properties ]; then
+            URL=$(grep '^resource-pack=' /tmp/server.properties | cut -d= -f2- | tr -d '\')
+            echo "pack URL (unescaped): $URL"
+            echo "::notice title=HC-PACK-URL::$URL"
+            SHA=$(grep '^resource-pack-sha1=' /tmp/server.properties | cut -d= -f2-)
+            ID=$(grep '^resource-pack-id=' /tmp/server.properties | cut -d= -f2-)
+            echo "::notice title=HC-PACK-PROPS::sha1=$SHA id=$ID"
+            if [ -n "$URL" ]; then
+              curl -sfL "$URL" -o /tmp/served.zip && DL=$(sha1sum /tmp/served.zip | cut -d' ' -f1)
+              echo "::notice title=HC-PACK-DL::served pack sha1=$DL size=$(stat -c%s /tmp/served.zip)"
+              [ "$DL" = "$SHA" ] && echo "::notice title=HC-PACK-MATCH::DISPATCH-OK sha matches" || echo "::warning title=HC-PACK-MATCH::MISMATCH props=$SHA served=$DL"
+            fi
+          else
+            echo "::warning title=HC-PACK-PROPS::nu am putut citi server.properties"
+          fi
+          # ultimul log
+          printf 'get logs/latest.log /tmp/latest.log\n' > b_get.txt
+          if sftp_go -b b_get.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1; then
+            echo "log descarcat: $(wc -l < /tmp/latest.log) linii"
+            DONE=$(grep -a 'Done (' /tmp/latest.log | tail -1 | cut -c1-160)
+            [ -n "$DONE" ] && echo "::notice title=HC-INSPECT-BOOT::server pornit: $DONE"
+            NERR=$(grep -acE ' ERROR |FATAL|Caused by' /tmp/latest.log || echo 0)
+            if [ "$NERR" -gt 0 ]; then
+              TOP=$(grep -aE ' ERROR |FATAL|Caused by' /tmp/latest.log | tail -3 | cut -c1-150 | paste -sd'|' -)
+              echo "::warning title=HC-INSPECT-ERR::$NERR erori in log | ultimele: $TOP"
+            else
+              echo "::notice title=HC-INSPECT-ERR::0 erori in ultimul log — curat"
+            fi
+            ENAB=$(grep -aoE 'Enabling [A-Za-z]+ v[0-9][^ ]*' /tmp/latest.log | sed 's/Enabling //' | sort -u | paste -sd', ' - | cut -c1-800)
+            echo "::notice title=HC-INSPECT-PLUGINS::pluginuri incarcate: $ENAB"
+          else
+            echo "::warning title=HC-INSPECT::nu am putut descarca latest.log"
+          fi
+          JT=$(grep -c '\.jar' lsout.txt || echo 0)
+          echo "::notice title=HC-INSPECT-FILES::$JT fisiere .jar in /plugins (vezi pasul pentru lista completa)"

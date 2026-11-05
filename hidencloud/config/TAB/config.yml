@@ -1,0 +1,72 @@
+# TAB (NEZNAMY) — config pentru UKEMC ROLEPLAY
+# Instalat automat de workflow-ul hc-plugins; se rescrie la fiecare run.
+
+options:
+  use-primary-group: enabled
+
+header-footer:
+  enabled: true
+  header:
+    - "&d&lUKEMC ROLEPLAY"
+    - "&7Online: &f%online%&7/&f%maxplayers% &8| &7Ping: &f%ping% &8ms"
+  footer:
+    - "&fBani: &6%vault_balance%"
+    - "&fOra: &7%time% &8| &f%date%"
+
+tablist-name-formatting:
+  enabled: true
+  anti-override: true
+
+scoreboard:
+  enabled: true
+  toggle-command: /sb
+  remember-toggle-choice: false
+  respect-other-plugins: false
+  title: "&d&lUKEMC ROLEPLAY"
+  lines:
+    - "&7&m                  "
+    - "&fJucător: &d%essentials_nickname%"
+    - "&fGrad: &d%luckperms_prefix%"
+    - "&fBani: &e%vault_balance% &6⛁"
+    - ""
+    - "&fOnline: &b%online%&f/&b%maxplayers%"
+    - "&fPing: &b%ping% &3ms"
+    - "&7&m                  "
+
+placeholders:
+  placeholder-refresh-intervals:
+    default-refresh-interval: 500
+    server:
+      "%server_max_players%": 1000
+    relational:
+      "%rel_factions_relation_color%": 1000
+
+layout-feature:
+  enabled: false
+
+bossbar-feature:
+  enabled: false
+
+unlimited-nametag-mode:
+  enabled: false
+
+yellow-number:
+  enabled: true
+  value: "&e%vault_balance%"
+belowname-object:
+  enabled: true
+  property-name: health
+  npc-property-name: health
+  number-format: '&c❤'
+  text: ' <color:#ff6262>❤ HP</color>'
+  disable-condition: '%world%=world_the_end'
+  classic-text: ' <color:#ff6262>♡ HP</color>'
+
+prevent-spectator-effect:
+  enabled: true
+
+compensate-for-packetevents-bug:
+  enabled: false
+
+enable-friendly-fire-outside-region-worldguard-war:
+  enabled: false

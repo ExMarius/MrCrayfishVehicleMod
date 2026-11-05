@@ -2,6 +2,8 @@ package com.mrcrayfish.vehicle.paper.listener;
 
 import com.mrcrayfish.vehicle.paper.ResourcePackSender;
 import com.mrcrayfish.vehicle.paper.VehiclePlugin;
+import net.kyori.adventure.key.Key;
+import net.kyori.adventure.sound.Sound;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import com.mrcrayfish.vehicle.paper.render.LandVehicleRig;
@@ -26,6 +28,7 @@ import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerResourcePackStatusEvent;
@@ -39,8 +42,13 @@ import java.util.regex.Pattern;
 public final class VehicleListener implements Listener {
     private static final Pattern GLOBAL_ENTITY_KILL = Pattern.compile(
             "(?:^|[\\s/])(?:minecraft:)?kill\\s+@e(?:\\b|\\[)", Pattern.CASE_INSENSITIVE);
+    private static final Key HORN_SOUND = Key.key("vehicle:entity.vehicle.horn");
+
+    private static final long HORN_COOLDOWN_MS = 800L;
+
     private final VehiclePlugin plugin;
     private final VehicleManager vehicles;
+    private final java.util.Map<java.util.UUID, Long> hornCooldowns = new java.util.HashMap<>();
 
     public VehicleListener(VehiclePlugin plugin, VehicleManager vehicles) {
         this.plugin = plugin;
@@ -166,6 +174,19 @@ public final class VehicleListener implements Listener {
             event.setCancelled(true);
         } else if (vehicles.byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
+            com.mrcrayfish.vehicle.paper.vehicle.LandVehicle clickedVehicle =
+                    vehicles.byEntity(event.getRightClicked()).get();
+            if (clickedVehicle.showcase()) {
+                // FiveM podium: clicking the spinning car = buying it, never mounting.
+                com.mrcrayfish.vehicle.paper.shop.VehicleShop shopBooth =
+                        plugin.vehicleShop();
+                if (shopBooth != null) {
+                    // Pretul propriu al podiumului castiga in fata celui global din config.
+                    shopBooth.buy(event.getPlayer(), clickedVehicle.spec().id(),
+                            plugin.dealerStations().priceForVehicle(clickedVehicle.id()));
+                }
+                return;
+            }
             vehicles.handleInteraction(event.getPlayer(), event.getRightClicked());
         } else if (vehicles.trailers().byEntity(event.getRightClicked()).isPresent()) {
             event.setCancelled(true);
@@ -230,8 +251,25 @@ public final class VehicleListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         vehicles.trailers().hideWaterPlacementTargetsFrom(event.getPlayer());
+        if (!vehicles.garagedOf(event.getPlayer()).isEmpty()) {
+            event.getPlayer().sendRichMessage("<gray>🚗 Mai ai vehicule in garaj: "
+                    + "<gold>/vehicle garaj</gold>. La iesire de pe server intra singure inapoi.</gray>");
+        }
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (event.getPlayer().isOnline() && !ResourcePackSender.suppliedByServer(plugin)) {
+            // Default OFF: the login-time pack from server.properties is synced on
+            // every deploy, and an in-world resource reload is fragile (on weak
+            // clients it fails with the world renderer live and vanilla discards
+            // the whole pack, leaving magenta/black models). /vehicle pack resends
+            // manually with the same dedupe UUID when an admin really needs it.
+            // Randare: clientul primeste de la server entitatile display la incarcare,
+            // dar daca jucatorul intra cu vehicule deja urcate in chunk-uri vechi ele
+            // pot ajunge inaintea pachetelor metadate - forteaza starea vizuala (BUG 1).
+            if (plugin.mechanic() != null && event.getPlayer().isOnline()) {
+                vehicles.syncVisualsAround(event.getPlayer());
+            }
+            boolean resendOnJoin = plugin.getConfig().getBoolean("resource-pack.resend-on-join", false);
+            if (resendOnJoin && event.getPlayer().isOnline()
+                    && !ResourcePackSender.suppliedByServer(plugin)) {
                 ResourcePackSender.send(plugin, event.getPlayer());
             }
         }, 20L);
@@ -241,7 +279,7 @@ public final class VehicleListener implements Listener {
     public void onResourcePackStatus(PlayerResourcePackStatusEvent event) {
         switch (event.getStatus()) {
             case SUCCESSFULLY_LOADED -> event.getPlayer().sendRichMessage(
-                    "<green>[Vehicle] Resource pack-ul r27 a fost încărcat.</green>");
+                    "<green>[Vehicle] Resource pack-ul a fost încărcat.</green>");
             case DECLINED, FAILED_DOWNLOAD, FAILED_RELOAD, INVALID_URL, DISCARDED -> {
                 plugin.getLogger().warning("Resource pack " + event.getStatus() + " for "
                         + event.getPlayer().getName());
@@ -259,6 +297,32 @@ public final class VehicleListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         vehicles.trailers().onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
+        // QUIT: the ONE global garage - everything of his is stored on the spot.
+        // Price depends only on WHERE he pulls it out (/garaj): home = free, public = fee.
+        int stored = vehicles.parkAllOwnedBy(event.getPlayer().getUniqueId());
+        // Ciclul AD: si masinile ALTUIVA pe care le conducea cu trust intra instant
+        // in garajul PROPRIETARULUI (trust = doar volan, cu proprietarul in preajma).
+        stored += vehicles.parkDrivenByNonOwner(event.getPlayer().getUniqueId());
+        if (stored > 0) {
+            plugin.getLogger().info("[Garaj] " + event.getPlayer().getName() + " a iesit - "
+                    + stored + " vehicule au intrat in garajul global (zero consum).");
+        }
+    }
+
+    /** Stepping out inside a marked circle = parked: the car stays on the asphalt and
+     *  slips into resting (0 CPU) on the next tick when it settles. Anti-theft remains
+     *  the vehicle's own trust gate (canDrive: owner + trusted only). */
+    @EventHandler
+    public void onVehicleDismount(org.bukkit.event.entity.EntityDismountEvent event) {
+        if (!(event.getEntity() instanceof Player player)) {
+            return;
+        }
+        mountedVehicle(event.getDismounted()).ifPresent(vehicle -> {
+            if (plugin.garageStations().isLegallyParked(player.getUniqueId(), vehicle.location())) {
+                player.sendRichMessage("<green>\ud83c\udfc1 Ai parcat in zona marcata - "
+                        + "masina ramane pe asfalt (0 consum).</green>");
+            }
+        });
     }
 
     @EventHandler
@@ -285,4 +349,67 @@ public final class VehicleListener implements Listener {
     public void onWorldLoad(WorldLoadEvent event) {
         vehicles.onWorldLoaded(event.getWorld());
     }
+    /** Seats may be spawned outside the rig index depending on mount order, so accept the
+     *  direct match first and fall back to the nearest vehicle of our fleet. */
+    private java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> mountedVehicle(Entity ridden) {
+        java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> direct = vehicles.byEntity(ridden);
+        if (direct.isPresent()) {
+            return direct;
+        }
+        return vehicles.nearest(ridden.getLocation(), 6.0D);
+    }
+
+    /** The mod's horn key is H, but a vanilla client never sends H to the server at all.
+     *  F (swap hand items) IS sent: while riding one of our vehicles, cancel the swap (no
+     *  visual side-effect at all) and honk - the ONE dedicated horn key, user-approved. */
+    @EventHandler(ignoreCancelled = true)
+    public void onHornKey(org.bukkit.event.player.PlayerSwapHandItemsEvent event) {
+        Player player = event.getPlayer();
+        Entity ridden = player.getVehicle();
+        if (ridden == null) {
+            return;
+        }
+        java.util.Optional<com.mrcrayfish.vehicle.paper.vehicle.LandVehicle> maybeVehicle = mountedVehicle(ridden);
+        if (maybeVehicle.isEmpty()) {
+            return;
+        }
+        event.setCancelled(true);
+        // USER RULE: only the DRIVER honks - passengers pressing F get a nudge instead.
+        java.util.Optional<Player> driver = maybeVehicle.get().driver();
+        if (driver.isEmpty() || !driver.get().getUniqueId().equals(player.getUniqueId())) {
+            player.sendActionBar(Component.text("Doar șoferul claxonează!",
+                    net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            return;
+        }
+        honk(player, ridden);
+    }
+
+    private void honk(Player player, Entity ridden) {
+        long now = System.currentTimeMillis();
+        Long last = hornCooldowns.get(player.getUniqueId());
+        if (last != null && now - last < HORN_COOLDOWN_MS) {
+            return;
+        }
+        hornCooldowns.put(player.getUniqueId(), now);
+        // Predict ~2 ticks ahead (like the fuel chain tip) so a fast vehicle hears the horn
+        // centered on itself instead of trailing behind where the key was pressed.
+        Location at = ridden.getLocation();
+        org.bukkit.util.Vector vel = ridden.getVelocity();
+        at.add(vel.getX() * 2.0D, vel.getY() * 2.0D, vel.getZ() * 2.0D);
+        final java.util.List<Player> listeners = new java.util.ArrayList<>();
+        for (Player nearby : at.getWorld().getPlayers()) {
+            if (nearby.getLocation().distanceSquared(at) <= 20.0D * 20.0D) {
+                listeners.add(nearby);
+                nearby.playSound(Sound.sound(HORN_SOUND, Sound.Source.VOICE, 1.0F, 1.0F),
+                        at.getX(), at.getY(), at.getZ());
+            }
+        }
+        // Keep it a short honk: the mod's horn.ogg is a long-press sample.
+        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+            for (Player nearby : listeners) {
+                nearby.stopSound(HORN_SOUND.asString(), org.bukkit.SoundCategory.VOICE);
+            }
+        }, 10L);
+    }
+
 }

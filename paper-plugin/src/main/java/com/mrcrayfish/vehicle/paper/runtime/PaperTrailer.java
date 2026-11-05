@@ -33,7 +33,7 @@ public final class PaperTrailer {
     private final TrailerManager manager;
     private final UUID id;
     private final TrailerSpec spec;
-    private final TrailerRig rig;
+    private TrailerRig rig;
     private final Inventory inventory;
     private final Map<Integer, String> lastWorkedBlocks = new HashMap<>();
     private Location location;
@@ -132,7 +132,7 @@ public final class PaperTrailer {
             return;
         }
         VehicleCollisionMover.Result result = VehicleCollisionMover.move(world, location, requested, onGround,
-                spec.entityWidth(), spec.entityHeight(), 1.0D);
+                spec.entityWidth(), spec.entityHeight(), 1.0D, true);
         location.add(result.movement());
         onGround = result.onGround();
         verticalVelocity = result.verticalCollision() ? 0.0D : result.movement().getY();
@@ -337,14 +337,31 @@ public final class PaperTrailer {
         this.pullerType = type;
         this.pullerId = pullerId;
         this.verticalVelocity = 0.0D;
+        if (type == PullerType.VEHICLE) {
+            manager.onHitchChanged(pullerId);
+        }
     }
 
     public void detach(boolean sound) {
+        PullerType previousType = pullerType;
+        UUID previousPuller = pullerId;
         if (sound && location.getWorld() != null) {
             location.getWorld().playSound(location, Sound.ENTITY_ITEM_BREAK, SoundCategory.PLAYERS, 1.0F, 1.0F);
         }
         this.pullerType = PullerType.NONE;
         this.pullerId = null;
+        if (previousType == PullerType.VEHICLE && previousPuller != null) {
+            manager.onHitchChanged(previousPuller);
+        }
+    }
+
+    /** True while the trailer's root chunk is still loaded. Parked trailers sitting in
+     * unloaded chunks are skipped by TrailerManager.tick - they cannot move anyway, so
+     * they must cost exactly zero CPU. */
+    public boolean isInLoadedChunk() {
+        org.bukkit.World world = location.getWorld();
+        return world != null
+                && world.isChunkLoaded(location.getBlockX() >> 4, location.getBlockZ() >> 4);
     }
 
     public Location towBarLocation() {
@@ -427,6 +444,18 @@ public final class PaperTrailer {
 
     public TrailerRig rig() {
         return rig;
+    }
+
+    /** Ghost-proofing: trailer rig entities are non-persistent by design, so Minecraft
+     * deletes them silently when their chunk unloads. Vehicles recover through the
+     * hibernate/restore cycle; trailers never did, leaving an invisible, untickable
+     * ghost entry forever. TrailerManager rebuilds the display rig in place (same id,
+     * same inventory instance - the inventory lives on this object, not on the rig). */
+    void rebuildRig() {
+        // Chunk-boundary case: only SOME entities may have died with the unload.
+        // Despawn whatever survived before respawning or the trailer duplicates.
+        rig.remove();
+        rig = TrailerRig.spawn(id, spec, location.clone(), inventoryContents());
     }
 
     public enum PullerType {
