@@ -719,24 +719,6 @@ public final class LandVehicleRig {
         if (mountYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
         }
-        /* BL20: camera/privirea urmeaza vehiculul (mouse-ul nu mai roteste
-         * jucatorul). Pitch-ul rămâne liber - poti privi in sus/jos. */
-        if (lookLockTolerance < 999.0F) {
-            float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
-            if (deviation > lookLockTolerance) {
-                /* BL20a: NU teleportam jucatorul (teleportul pe un pasager il
-                 * da jos => "nu mai pot urca"). Fortam doar PRIVIREA: clientul
-                 * primeste un pachet de rotire a camerei, pozitia rămâne a
-                 * vehiculului, iar pitch-ul curent este pastrat. */
-                double radians = Math.toRadians(seatYaw);
-                double pitchRadians = Math.toRadians(rider.getPitch());
-                double horizontal = Math.cos(pitchRadians) * 5.0D;
-                Location origin = rider.getLocation();
-                rider.lookAt(origin.getX() - Math.sin(radians) * horizontal,
-                        origin.getY() - Math.sin(pitchRadians) * 5.0D,
-                        origin.getZ() + Math.cos(radians) * horizontal);
-            }
-        }
     }
 
     private void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
