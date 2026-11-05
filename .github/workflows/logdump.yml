@@ -34,9 +34,13 @@ jobs:
       - name: Download logs through SFTP
         run: |
           sudo apt-get update -qq && sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
+          chmod 600 hidencloud/keys/arena_hc_ed25519
           export SSHPASS="$SFTP_PASS_BACKUP"
           sftp_any() {
-            sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes \
+              -o ConnectTimeout=20 -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$1" \
+              -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1 \
+            || sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
               -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b "$1" \
               -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
           }
