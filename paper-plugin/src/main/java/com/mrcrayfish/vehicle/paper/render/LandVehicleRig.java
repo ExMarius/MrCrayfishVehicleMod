@@ -270,6 +270,113 @@ public final class LandVehicleRig {
         return lookLockTolerance;
     }
 
+    /** BL21: trimite clientului pachetul vanilla de "priveste spre punct"
+     *  (ClientboundPlayerLookAtPacket) - singura cale prin care camera poate fi
+     *  rotita din server FARA teleport (teleportul da jos pasagerul). Totul
+     *  este in try/catch: daca serverul nu permite reflectia, jocul merge
+     *  exact ca inainte, doar fara blocarea camerei. */
+    private static volatile boolean lookPacketFailed = false;
+    private static java.lang.reflect.Constructor<?> lookPacketCtor;
+    private static java.lang.reflect.Field connectionField;
+    private static java.lang.reflect.Method sendMethod;
+
+    private static void initLookPacket() {
+        try {
+            Class<?> packetClass = Class.forName(
+                    "net.minecraft.network.protocol.game.ClientboundPlayerLookAtPacket");
+            for (java.lang.reflect.Constructor<?> candidate : packetClass.getConstructors()) {
+                Class<?>[] types = candidate.getParameterTypes();
+                if (types.length < 5 || types.length > 6) {
+                    continue;
+                }
+                boolean usable = true;
+                for (Class<?> type : types) {
+                    if (type == double.class || type == float.class || type == int.class) {
+                        continue;
+                    }
+                    if (type.isEnum() && type.getSimpleName().contains("Anchor")) {
+                        continue;
+                    }
+                    if (type.isEnum() && type.getSimpleName().contains("Type")) {
+                        continue;
+                    }
+                    if (!type.isPrimitive()) {
+                        continue;
+                    }
+                    usable = false;
+                    break;
+                }
+                if (usable) {
+                    lookPacketCtor = candidate;
+                    break;
+                }
+            }
+            Class<?> serverPlayer = Class.forName("net.minecraft.server.level.ServerPlayer");
+            connectionField = serverPlayer.getField("connection");
+            Class<?> listener = Class.forName("net.minecraft.server.network.ServerGamePacketListenerImpl");
+            sendMethod = listener.getMethod("send", Class.forName("net.minecraft.network.protocol.Packet"));
+        } catch (Throwable error) {
+            Bukkit.getLogger().warning("[SEATLOOK] pachetul de rotire a camerei nu este disponibil: "
+                    + error.getClass().getSimpleName() + " " + error.getMessage());
+            lookPacketFailed = true;
+            lookPacketCtor = null;
+        }
+    }
+
+    /** Roteste camera jucatorului spre directia data (fara sa-l miste). */
+    private static void forceLook(Player player, float yaw, float pitch) {
+        if (lookPacketFailed) {
+            return;
+        }
+        if (lookPacketCtor == null) {
+            initLookPacket();
+            if (lookPacketCtor == null) {
+                return;
+            }
+        }
+        try {
+            double yawRadians = Math.toRadians(yaw);
+            double pitchRadians = Math.toRadians(pitch);
+            Location eye = player.getEyeLocation();
+            double x = eye.getX() - Math.sin(yawRadians) * Math.cos(pitchRadians) * 10.0D;
+            double y = eye.getY() - Math.sin(pitchRadians) * 10.0D;
+            double z = eye.getZ() + Math.cos(yawRadians) * Math.cos(pitchRadians) * 10.0D;
+            Class<?>[] types = lookPacketCtor.getParameterTypes();
+            Object[] args = new Object[types.length];
+            for (int index = 0; index < types.length; index++) {
+                Class<?> type = types[index];
+                if (type == double.class) {
+                    double value = index == 1 ? x : index == 2 ? y : z;
+                    args[index] = value;
+                } else if (type == float.class) {
+                    args[index] = index == 1 ? (float) x : index == 2 ? (float) y : (float) z;
+                } else if (type == int.class) {
+                    args[index] = 0;
+                } else if (type.isEnum()) {
+                    String constant = type.getSimpleName().contains("Anchor") ? "FEET" : "ABSOLUTE";
+                    Object value = null;
+                    for (Object candidate : type.getEnumConstants()) {
+                        if (((Enum<?>) candidate).name().equals(constant)) {
+                            value = candidate;
+                            break;
+                        }
+                    }
+                    args[index] = value != null ? value : type.getEnumConstants()[0];
+                } else {
+                    args[index] = null;
+                }
+            }
+            Object packet = lookPacketCtor.newInstance(args);
+            Object handle = player.getClass().getMethod("getHandle").invoke(player);
+            Object connection = connectionField.get(handle);
+            sendMethod.invoke(connection, packet);
+        } catch (Throwable error) {
+            lookPacketFailed = true;
+            Bukkit.getLogger().warning("[SEATLOOK] nu pot roti camera: "
+                    + error.getClass().getSimpleName() + " " + error.getMessage());
+        }
+    }
+
     private static float wrapDegrees(float value) {
         float wrapped = value % 360.0F;
         if (wrapped >= 180.0F) {
@@ -718,6 +825,14 @@ public final class LandVehicleRig {
         boolean mountYaw = "mount".equals(seatYawMode) || "both".equals(seatYawMode);
         if (mountYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
+        }
+        /* BL21: camera ramane pe directia vehiculului (mouse-ul nu mai roteste
+         * jucatorul). Pitch-ul rămâne liber. 999 = dezactivat. */
+        if (lookLockTolerance < 999.0F) {
+            float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
+            if (deviation > lookLockTolerance) {
+                forceLook(rider, seatYaw, rider.getPitch());
+            }
         }
     }
 
