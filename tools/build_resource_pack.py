@@ -2465,7 +2465,7 @@ def emit_hud_speed_font(namespace: Path) -> None:
 
     hud_dir = namespace / 'textures/font/hud'
     hud_dir.mkdir(parents=True, exist_ok=True)
-    ascent = -22  # BC->BD: -12 ramanea cu un rand DEASUPRA inimilor vanilla; coborat ~10px exact peste ele
+    ascent = -12  # BJ: textul sta DEASUPRA inimilor (un rand); -22 il punea PESTE inimi
     providers = [{'type': 'space', 'advances': {
         chr(0xF800 + i): advance
         for i, advance in enumerate((64, 32, 16, 8, 4, 2, 1))}}]
@@ -2501,7 +2501,7 @@ def emit_hud_speed_font(namespace: Path) -> None:
     for provider in providers:
         copy = dict(provider)
         if copy['type'] == 'bitmap':
-            copy['ascent'] = ascent - 10
+            copy['ascent'] = ascent - 10  # BH: creative/spectator = un rand mai jos
         creative_providers.append(copy)
     write_json(namespace / 'font/hud_speed_creative.json',
                {'providers': creative_providers})

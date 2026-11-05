@@ -147,8 +147,8 @@ grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip' "$DATA_DIR/confi
   || fail "generated config does not select resource pack r39"
 # Pin tracks the currently verified r39 pack (deterministic rebuild; matches the live
 # server + players). MUST be refreshed whenever pack contents change on purpose.
-# Ciclul BH (HUD per-gamemode, lipit de inimi) => a501cb51...
-grep -Fq 'a501cb517d43fbf38631ff8c084b952d1132cd9c' "$DATA_DIR/config.yml" \
+# Ciclul BJ (text deasupra inimilor, un rand) => 5df8980a...
+grep -Fq '5df8980a22785362933cd2508a6ec68000a867bd' "$DATA_DIR/config.yml" \
   || fail "generated config does not contain the verified r39 SHA-1"
 
 run_server_cycle 2
