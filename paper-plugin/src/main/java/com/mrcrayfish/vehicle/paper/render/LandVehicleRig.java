@@ -177,14 +177,14 @@ public final class LandVehicleRig {
         List<SeatCarrier> seats = new ArrayList<>();
         boolean bodyAssigned = false;
         for (LandVehicleSpec.Seat seat : spec.seats()) {
-            ItemDisplay anchor;
+            /* BL17: fiecare scaun are ancora LUI (display invizibil, item gol).
+             * Inainte scaunul soferului folosea display-ul corpului masinii, iar
+             * rotatia corpului se compunea cu rotatia scaunului => oscilatie. */
+            ItemDisplay anchor = display(world, location, new ItemStack(Material.AIR));
+            mark(anchor, vehicleId);
+            all.add(anchor);
             if (seat.driver() && !bodyAssigned) {
-                anchor = body;
                 bodyAssigned = true;
-            } else {
-                anchor = display(world, location, new ItemStack(Material.AIR));
-                mark(anchor, vehicleId);
-                all.add(anchor);
             }
             seats.add(new SeatCarrier(anchor, seat));
         }
@@ -228,7 +228,7 @@ public final class LandVehicleRig {
     /** BL16: scaunul poate fi si ARMOR STAND (entitate vie fara AI, deci nu se
      *  roteste dupa camera cum face calul). Implicit: calul = varianta C
      *  validata de user; comutabil live cu /vehicle seatkind. */
-    private static volatile boolean armorStandSeat = false;
+    private static volatile boolean armorStandSeat = true;
 
     public static void setArmorStandSeat(boolean armorStand) {
         armorStandSeat = armorStand;
@@ -507,13 +507,12 @@ public final class LandVehicleRig {
         }
 
         for (SeatCarrier carrier : seats) {
-            if (carrier.anchor != body) {
-                Vector3f seatPoint = pigAnchor(chassis(
-                        seatOffset(carrier.properties), wheelieAngle, bodyRoll));
-                Location seatLocation = local(root, seatPoint);
-                carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-                carrier.anchor.setRotation(yaw + carrier.properties.yawOffset(), 0.0F);
-            }
+            Vector3f seatPoint = pigAnchor(chassis(
+                    seatOffset(carrier.properties), wheelieAngle, bodyRoll));
+            Location seatLocation = local(root, seatPoint);
+            carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            /* BL17: ancora rămâne NEROTITA - yaw-ul il poarta doar scaunul. */
+            carrier.anchor.setRotation(0.0F, 0.0F);
             maintainSeat(carrier, yaw);
         }
     }
@@ -633,13 +632,13 @@ public final class LandVehicleRig {
             return;
         }
         carrier.rider = rider.getUniqueId();
-        /* CICLUL BL15 (revert la varianta C validata de user in seattest):
-         * cal cu saua, fara NICIUN setRotation din server. Clampa de riding
-         * vanilla tine corpul calareului lipit de vehicul (este tras odata cu
-         * masina la viraje), iar capul se roteste liber in limitele vanilla.
-         * Orice setRotation fortat producea oscilatie/rotire vizibila. */
-        if (!seat.isValid()) {
-            return;
+        /* CICLUL BL17 (cerinta user: "corpul fix pe scaun, sa se ia dupa masina
+         * cand fac cerculete"): scaunul este ROTIT de server la yaw-ul
+         * vehiculului in fiecare tick, deci corpul calareului sta lipit de
+         * masina si se roteste o data cu ea. Ancora rămâne nerotita, deci nu se
+         * mai compune nicio rotatie (cauza veche a oscilatiei). */
+        if (seat.getYaw() != seatYaw) {
+            seat.setRotation(seatYaw, 0.0F);
         }
     }
 
