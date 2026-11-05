@@ -81,9 +81,28 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "propsdebug" -> propsDebug(sender);
             case "seattest" -> seatTest(sender, args);
             case "seatkind" -> seatKindCmd(sender, args);
+            case "seatyaw" -> seatYawCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatyaw <anchor|mount|both|off>: alege CINE poarta rotatia
+     *  scaunului (test live pentru "corpul sa se invarta cu masina"). */
+    private void seatYawCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatyaw actual: "
+                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.seatYawMode()
+                    + " | folosire: /vehicle seatyaw <anchor|mount|both|off></yellow>");
+            return;
+        }
+        String mode = args[1].toLowerCase(java.util.Locale.ROOT);
+        if (!List.of("anchor", "mount", "both", "off").contains(mode)) {
+            sender.sendRichMessage("<red>Folosire: /vehicle seatyaw <anchor|mount|both|off></red>");
+            return;
+        }
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatYawMode(mode);
+        sender.sendRichMessage("<green>seatyaw = " + mode + "</green>");
     }
 
     /** /vehicle seatkind <cal|armorstand>: alege entitatea-scaun si o aplica
@@ -799,7 +818,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -812,6 +831,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 4 && args[0].equalsIgnoreCase("podium") && "set".equalsIgnoreCase(args[1])) {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("seatyaw")) {
+            return filter(List.of("anchor", "mount", "both", "off"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seatkind")) {
             return filter(List.of("cal", "armorstand"), args[1]);

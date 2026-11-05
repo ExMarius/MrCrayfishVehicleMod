@@ -238,6 +238,21 @@ public final class LandVehicleRig {
         return armorStandSeat;
     }
 
+    /** BL18: sursa rotatiei scaunului, comutabila live:
+     *  anchor = rotim doar ancora (scaunul fiind pasager, mosteneste rotatia)
+     *  mount  = rotim doar scaunul (ancora 0)
+     *  both   = ambele
+     *  off    = niciuna (scaunul rămâne cum e) */
+    private static volatile String seatYawMode = "anchor";
+
+    public static void setSeatYawMode(String mode) {
+        seatYawMode = mode;
+    }
+
+    public static String seatYawMode() {
+        return seatYawMode;
+    }
+
     /** Recreaza scaunele (calaretii sunt dati jos si trebuie sa urce din nou). */
     public void resetSeats() {
         for (SeatCarrier carrier : seats) {
@@ -511,8 +526,9 @@ public final class LandVehicleRig {
                     seatOffset(carrier.properties), wheelieAngle, bodyRoll));
             Location seatLocation = local(root, seatPoint);
             carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            /* BL17: ancora rămâne NEROTITA - yaw-ul il poarta doar scaunul. */
-            carrier.anchor.setRotation(0.0F, 0.0F);
+            /* BL18: modul alege cine poarta yaw-ul (ancora si/sau scaunul). */
+            boolean anchorYaw = "anchor".equals(seatYawMode) || "both".equals(seatYawMode);
+            carrier.anchor.setRotation(anchorYaw ? yaw + carrier.properties.yawOffset() : 0.0F, 0.0F);
             maintainSeat(carrier, yaw);
         }
     }
@@ -637,7 +653,8 @@ public final class LandVehicleRig {
          * vehiculului in fiecare tick, deci corpul calareului sta lipit de
          * masina si se roteste o data cu ea. Ancora rămâne nerotita, deci nu se
          * mai compune nicio rotatie (cauza veche a oscilatiei). */
-        if (seat.getYaw() != seatYaw) {
+        boolean mountYaw = "mount".equals(seatYawMode) || "both".equals(seatYawMode);
+        if (mountYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
         }
     }
