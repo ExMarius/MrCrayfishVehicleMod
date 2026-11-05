@@ -51,6 +51,19 @@ public final class LandVehicleRig {
         return seatLift;
     }
 
+    /** BL8: comutator pentru fortarea rotatiei scaunului la yaw-ul vehiculului.
+     *  true (default) = serverul roteste scaunul o data cu masina; false =
+     *  scaunul mosteneste rotatia ancorei (fara pachete de rotatie proprii). */
+    private static volatile boolean forceSeatYaw = true;
+
+    public static void setForceSeatYaw(boolean force) {
+        forceSeatYaw = force;
+    }
+
+    public static boolean forceSeatYaw() {
+        return forceSeatYaw;
+    }
+
     public static final String ENTITY_TAG = "mcv_plugin_vehicle";
     private static final int VANILLA_ENTITY_LERP_TICKS = 3;
     /* Ciclul BL: scaunul este un cal la scara minima, invizibil, fara saua:
@@ -605,7 +618,7 @@ public final class LandVehicleRig {
         /* BL5: serverul tine scaunul (barca) la yaw-ul vehiculului in FIECARE
          * tick, deci corpul calareului se roteste o data cu masina. Capul
          * ramane liber pentru ca barca are clampa de privire foarte larga. */
-        if (seat.getYaw() != seatYaw) {
+        if (forceSeatYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
         }
     }

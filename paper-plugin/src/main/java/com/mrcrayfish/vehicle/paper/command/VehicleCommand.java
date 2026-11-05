@@ -81,9 +81,25 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "propsdebug" -> propsDebug(sender);
             case "seattest" -> seatTest(sender, args);
             case "seatlift" -> seatLiftCmd(sender, args);
+            case "seatyaw" -> seatYawCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatyaw <on|off>: porneste/opreste fortarea rotatiei scaunului
+     *  (barca) la yaw-ul vehiculului. Diagnostic pentru "barca se invarte". */
+    private void seatYawCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatyaw actual: "
+                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.forceSeatYaw()
+                    + " | folosire: /vehicle seatyaw <on|off></yellow>");
+            return;
+        }
+        boolean force = !"off".equalsIgnoreCase(args[1]);
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setForceSeatYaw(force);
+        sender.sendRichMessage("<green>seatyaw = " + force + " (serverul "
+                + (force ? "roteste" : "NU mai roteste") + " scaunul)</green>");
     }
 
     /** /vehicle seatlift <blocuri>: reglaj fin pe verticala al pozitiei calareului
@@ -852,7 +868,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatlift"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatlift", "seatyaw"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -868,6 +884,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
             return filter(List.of("a", "b", "c", "e", "f", "g"), args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("seatyaw")) {
+            return filter(List.of("on", "off"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seatlift")) {
             return filter(List.of("-0.6", "-0.45", "-0.28", "-0.1", "0", "0.2", "0.4"), args[1]);
