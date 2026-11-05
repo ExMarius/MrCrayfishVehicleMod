@@ -260,7 +260,7 @@ public final class LandVehicleRig {
      *  Toleranta in grade: 0 = blocaj total, 45 = semnificativ liber,
      *  999 = dezactivat. Serverul retrimite rotatia jucatorului in fiecare tick
      *  cand abaterea depaseste toleranta, deci camera se roteste cu masina. */
-    private static volatile float lookLockTolerance = 999.0F;
+    private static volatile float lookLockTolerance = 1.0F;
 
     public static void setLookLockTolerance(float degrees) {
         lookLockTolerance = Math.max(0.0F, Math.min(999.0F, degrees));
@@ -270,111 +270,47 @@ public final class LandVehicleRig {
         return lookLockTolerance;
     }
 
-    /** BL21: trimite clientului pachetul vanilla de "priveste spre punct"
-     *  (ClientboundPlayerLookAtPacket) - singura cale prin care camera poate fi
-     *  rotita din server FARA teleport (teleportul da jos pasagerul). Totul
-     *  este in try/catch: daca serverul nu permite reflectia, jocul merge
-     *  exact ca inainte, doar fara blocarea camerei. */
-    private static volatile boolean lookPacketFailed = false;
-    private static java.lang.reflect.Constructor<?> lookPacketCtor;
-    private static java.lang.reflect.Field connectionField;
-    private static java.lang.reflect.Method sendMethod;
+    /** BL23: camera urmeaza vehiculul. Bukkit NU poate seta rotatia camerei
+     *  clientului, dar expune Player#lookAt(Entity) - exact pachetul vanilla
+     *  de "priveste spre entitate". tinem o entitate-tinta invizibila in fata
+     *  vehiculului si o folosim ca punct de mira. */
+    private Entity lookTarget;
 
-    private static void initLookPacket() {
-        try {
-            Class<?> packetClass = Class.forName(
-                    "net.minecraft.network.protocol.game.ClientboundPlayerLookAtPacket");
-            for (java.lang.reflect.Constructor<?> candidate : packetClass.getConstructors()) {
-                Class<?>[] types = candidate.getParameterTypes();
-                if (types.length < 5 || types.length > 6) {
-                    continue;
-                }
-                boolean usable = true;
-                for (Class<?> type : types) {
-                    if (type == double.class || type == float.class || type == int.class) {
-                        continue;
-                    }
-                    if (type.isEnum() && type.getSimpleName().contains("Anchor")) {
-                        continue;
-                    }
-                    if (type.isEnum() && type.getSimpleName().contains("Type")) {
-                        continue;
-                    }
-                    if (!type.isPrimitive()) {
-                        continue;
-                    }
-                    usable = false;
-                    break;
-                }
-                if (usable) {
-                    lookPacketCtor = candidate;
-                    break;
-                }
-            }
-            Class<?> serverPlayer = Class.forName("net.minecraft.server.level.ServerPlayer");
-            connectionField = serverPlayer.getField("connection");
-            Class<?> listener = Class.forName("net.minecraft.server.network.ServerGamePacketListenerImpl");
-            sendMethod = listener.getMethod("send", Class.forName("net.minecraft.network.protocol.Packet"));
-        } catch (Throwable error) {
-            Bukkit.getLogger().warning("[SEATLOOK] pachetul de rotire a camerei nu este disponibil: "
-                    + error.getClass().getSimpleName() + " " + error.getMessage());
-            lookPacketFailed = true;
-            lookPacketCtor = null;
+    private Entity lookTarget() {
+        if (lookTarget != null && lookTarget.isValid()) {
+            return lookTarget;
         }
+        World world = interaction.getWorld();
+        lookTarget = world.spawn(interaction.getLocation(),
+                org.bukkit.entity.ArmorStand.class, stand -> {
+            stand.setInvisible(true);
+            stand.setMarker(true);
+            stand.setGravity(false);
+            stand.setInvulnerable(true);
+            stand.setSilent(true);
+            stand.setPersistent(false);
+            stand.setRemoveWhenFarAway(false);
+        });
+        lookTarget.addScoreboardTag(ENTITY_TAG);
+        return lookTarget;
     }
 
-    /** Roteste camera jucatorului spre directia data (fara sa-l miste). */
-    private static void forceLook(Player player, float yaw, float pitch) {
-        if (lookPacketFailed) {
+    /** Asaza tinta la `distance` blocuri in fata scaunului, la inaltimea ochilor. */
+    private void aimAt(Player rider, float yaw, float pitch, double distance) {
+        Entity target = lookTarget();
+        if (target == null) {
             return;
         }
-        if (lookPacketCtor == null) {
-            initLookPacket();
-            if (lookPacketCtor == null) {
-                return;
-            }
-        }
-        try {
-            double yawRadians = Math.toRadians(yaw);
-            double pitchRadians = Math.toRadians(pitch);
-            Location eye = player.getEyeLocation();
-            double x = eye.getX() - Math.sin(yawRadians) * Math.cos(pitchRadians) * 10.0D;
-            double y = eye.getY() - Math.sin(pitchRadians) * 10.0D;
-            double z = eye.getZ() + Math.cos(yawRadians) * Math.cos(pitchRadians) * 10.0D;
-            Class<?>[] types = lookPacketCtor.getParameterTypes();
-            Object[] args = new Object[types.length];
-            for (int index = 0; index < types.length; index++) {
-                Class<?> type = types[index];
-                if (type == double.class) {
-                    double value = index == 1 ? x : index == 2 ? y : z;
-                    args[index] = value;
-                } else if (type == float.class) {
-                    args[index] = index == 1 ? (float) x : index == 2 ? (float) y : (float) z;
-                } else if (type == int.class) {
-                    args[index] = 0;
-                } else if (type.isEnum()) {
-                    String constant = type.getSimpleName().contains("Anchor") ? "FEET" : "ABSOLUTE";
-                    Object value = null;
-                    for (Object candidate : type.getEnumConstants()) {
-                        if (((Enum<?>) candidate).name().equals(constant)) {
-                            value = candidate;
-                            break;
-                        }
-                    }
-                    args[index] = value != null ? value : type.getEnumConstants()[0];
-                } else {
-                    args[index] = null;
-                }
-            }
-            Object packet = lookPacketCtor.newInstance(args);
-            Object handle = player.getClass().getMethod("getHandle").invoke(player);
-            Object connection = connectionField.get(handle);
-            sendMethod.invoke(connection, packet);
-        } catch (Throwable error) {
-            lookPacketFailed = true;
-            Bukkit.getLogger().warning("[SEATLOOK] nu pot roti camera: "
-                    + error.getClass().getSimpleName() + " " + error.getMessage());
-        }
+        double yawRadians = Math.toRadians(yaw);
+        double pitchRadians = Math.toRadians(pitch);
+        double horizontal = Math.cos(pitchRadians) * distance;
+        Location eyes = rider.getEyeLocation();
+        Location spot = eyes.clone().add(
+                -Math.sin(yawRadians) * horizontal,
+                -Math.sin(pitchRadians) * distance,
+                Math.cos(yawRadians) * horizontal);
+        target.teleport(spot);
+        rider.lookAt(target);
     }
 
     private static float wrapDegrees(float value) {
@@ -831,7 +767,7 @@ public final class LandVehicleRig {
         if (lookLockTolerance < 999.0F) {
             float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
             if (deviation > lookLockTolerance) {
-                forceLook(rider, seatYaw, rider.getPitch());
+                aimAt(rider, seatYaw, rider.getPitch(), 10.0D);
             }
         }
     }
@@ -1094,6 +1030,10 @@ public final class LandVehicleRig {
 
     public void remove() {
         removed = true;
+        if (lookTarget != null) {
+            lookTarget.remove();
+            lookTarget = null;
+        }
         /* Detach riders synchronously while the living carrier is still valid.
          * Restoring an ordinary bounding box also keeps the fallback dismount
          * location independent of the carrier's minimum render scale. */
