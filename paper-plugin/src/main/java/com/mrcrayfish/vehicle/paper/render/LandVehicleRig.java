@@ -834,12 +834,9 @@ public final class LandVehicleRig {
         }
         /* BL21: camera ramane pe directia vehiculului (mouse-ul nu mai roteste
          * jucatorul). Pitch-ul rămâne liber. 999 = dezactivat. */
-        if (lookLockTolerance < 999.0F) {
-            float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
-            if (deviation > lookLockTolerance) {
-                forceLook(rider, seatYaw);
-            }
-        }
+        // BL25: blocarea camerei din server este IMPOSIBILA cat timp jucatorul
+        // este pasager - clientul vanilla deconecteaza cu
+        // "Invalid move player packet received". Vezi /vehicle seatlook.
     }
 
     private void place(ItemDisplay display, Location renderAnchor, Vector3f translation, float yaw,
