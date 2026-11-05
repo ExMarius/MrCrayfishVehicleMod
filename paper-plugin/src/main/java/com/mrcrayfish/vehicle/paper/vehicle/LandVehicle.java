@@ -1814,19 +1814,18 @@ public final class LandVehicle {
             double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
             int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
 
-            /* CICLUL BC (feedback user): inimile de cal primesc ALT MODEL de
-             * combustibil EXACT pe locul lor - forme de inima LCD cu fundal opac,
-             * desenate in dreapta (x = jumatate ecran +10, identic cu pozitia
-             * inimilor vanilla de montura). Inimile cailor normali din joc raman
-             * NETANGIBILE (nu atingem nicio textura - la coborare glifele dispar
-             * si userul vede din nou inimile default ale monturii). STANGA:
-             * viteza (km/h) + odometru (m/km), tot in fontul propriu. */
+            /* CICLUL BE (feedback user): in locul formelor de inima -> BARA
+             * ROSIE de consum: 10 segmente LCD contigue cu fundal OPAC, peste
+             * pozitia exacta a inimilor de cal (dreapta, x = jumatate+10) -
+             * inimile vanilla nu se mai vad deloc, iar ale cailor reali din
+             * joc raman neatiginse (nu atingem nicio textura). Segmentul e
+             * deja ROSU in textura (ton-pe-ton cu highlight), deci componenta
+             * poarta ALB (= nu mai tintam peste). Golire = segmente negre. */
             double capacity = spec.energyCapacity();
             float fuelFraction = capacity > 0.0F
                     ? Math.max(0.0F, Math.min(1.0F, (float) (fuel / capacity)))
                     : 1.0F;
-            NamedTextColor fuelColor = fuelFraction >= 0.5F ? NamedTextColor.GREEN
-                    : (fuelFraction >= 0.2F ? NamedTextColor.YELLOW : NamedTextColor.RED);
+            NamedTextColor fuelColor = NamedTextColor.WHITE;
             int filledCells = (int) Math.round(fuelFraction * 10.0F);
 
             StringBuilder section = new StringBuilder();
@@ -1878,7 +1877,8 @@ public final class LandVehicle {
                     .font(hudFont);
             section.setLength(0);
 
-            // INIMILE-COMBUSTIBIL acopera pozitia exacta a inimilor vanilla
+            // BARA DE COMBUSTIBIL acopera zona inimilor vanilla (10 segmente
+            // de 8px contigui = 80px, identic latimii randul inimilor)
             for (int cell = 0; cell < 10; cell++) {
                 section.append(cell < filledCells ? '\uE211' : '\uE212'); // 8px fiecare
                 width += 8;
