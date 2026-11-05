@@ -1822,8 +1822,14 @@ public final class LandVehicle {
             // CICLUL BG (feedback user, forma FINALA): inimile de cal raman
             // POSTUL DE COMBUSTIBIL (song-ul vanilla neatimse); HUD-ul nostru
             // = DOAR viteza (km/h) + odometrul (m/km), in STANGA inimilor.
-            net.kyori.adventure.key.Key hudFont =
-                    net.kyori.adventure.key.Key.key("vehicle", "hud_speed");
+            // CICLUL BH (feedback user): inimile de cal isi muta randul odata
+            // cu gamemode (fara status-bars = creative/spectator, stiva coboara
+            // cu ~10px) -> alegem per-player fontul cu offsetul potrivit,
+            // asa textul ramane LIPIT de inimi in ambele moduri.
+            boolean survivalLike = player.getGameMode() == GameMode.SURVIVAL
+                    || player.getGameMode() == GameMode.ADVENTURE;
+            net.kyori.adventure.key.Key hudFont = net.kyori.adventure.key.Key.key(
+                    "vehicle", survivalLike ? "hud_speed" : "hud_speed_creative");
             double bps = smoothedSpeedBps;
             int fullScale = Math.max(60,
                     plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));

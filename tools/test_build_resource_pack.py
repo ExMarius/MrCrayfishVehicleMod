@@ -56,6 +56,14 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertTrue(all(provider["ascent"] == -22 for provider in bitmaps))
         self.assertEqual({advance for advance in space["advances"].values()},
                          {64, 32, 16, 8, 4, 2, 1})
+        # Ciclul BH: aceeasi varianta de font, offset 10px mai jos, pentru modurile
+        # fara status-bars (creative/spectator) unde inimile monturii ii coboara.
+        with zipfile.ZipFile(self.pack) as pack:
+            self.assertIn("assets/vehicle/font/hud_speed_creative.json", set(pack.namelist()))
+            digest_creative = _json.loads(pack.read("assets/vehicle/font/hud_speed_creative.json"))
+        self.assertEqual(len(digest_creative["providers"]), len(digest["providers"]))
+        self.assertTrue(all(provider["ascent"] == -32 for provider in digest_creative["providers"]
+                            if provider["type"] == "bitmap"))
 
     def test_configured_sha1_matches_deterministic_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()

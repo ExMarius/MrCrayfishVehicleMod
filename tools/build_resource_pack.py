@@ -2492,6 +2492,20 @@ def emit_hud_speed_font(namespace: Path) -> None:
                           'ascent': ascent, 'height': 9, 'chars': [char]})
     write_json(namespace / 'font/hud_speed.json', {'providers': providers})
 
+    # CICLUL BH (feedback user): inimile de cal stau la alt nivel cand GUI-ul
+    # nu mai are randul inimilor de jucator (creative/spectator -> status
+    # bars oprite => stiva de jos coboara cu ~10px / un rand de inimi).
+    # Replica de font identic, doar ascentul coboara cu inca ~10px (-22 -> -32),
+    # astfel randul ramane LIPIT de inimi indiferent de modul de joc.
+    creative_providers = []
+    for provider in providers:
+        copy = dict(provider)
+        if copy['type'] == 'bitmap':
+            copy['ascent'] = ascent - 10
+        creative_providers.append(copy)
+    write_json(namespace / 'font/hud_speed_creative.json',
+               {'providers': creative_providers})
+
 
 
 def main() -> None:
