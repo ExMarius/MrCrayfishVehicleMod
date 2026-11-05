@@ -228,7 +228,7 @@ public final class LandVehicleRig {
     /** BL16: scaunul poate fi si ARMOR STAND (entitate vie fara AI, deci nu se
      *  roteste dupa camera cum face calul). Implicit: calul = varianta C
      *  validata de user; comutabil live cu /vehicle seatkind. */
-    private static volatile String seatKind = "cal";
+    private static volatile String seatKind = "armorstand";
 
     public static void setSeatKind(String kind) {
         if (java.util.List.of("porc", "cal", "armorstand").contains(kind)) {
@@ -260,7 +260,7 @@ public final class LandVehicleRig {
      *  Toleranta in grade: 0 = blocaj total, 45 = semnificativ liber,
      *  999 = dezactivat. Serverul retrimite rotatia jucatorului in fiecare tick
      *  cand abaterea depaseste toleranta, deci camera se roteste cu masina. */
-    private static volatile float lookLockTolerance = 1.0F;
+    private static volatile float lookLockTolerance = 999.0F;
 
     public static void setLookLockTolerance(float degrees) {
         lookLockTolerance = Math.max(0.0F, Math.min(999.0F, degrees));
