@@ -2504,3 +2504,4 @@ if __name__ == "__main__":
 
 # noop: retrigger CI dupa ciclul BL (deploy verde, build a picat pe retea Maven)
 # noop: retrigger CI pentru ciclul BL3 (push nedeclansat)
+# noop 2: retrigger deploy pentru ciclul BL3 (release-publish a dat flake GitHub)
