@@ -52,14 +52,12 @@ public final class VehicleManager {
      *  accelereze la infinit. Cheile invechite se curata pasiv la re-intalnire. */
     /** Ciclul AL: edge-trigger pentru sunetul oficial de boost pad (la intrari). */
     private final Map<UUID, Integer> lastPadIngress = new HashMap<>();
-    /* CICLUL AU -> AV (user: "o bara frumos deasupra selectorului de iteme, sa nu
-     * se mai vada chestiile de acolo, iar scrisul il faci tu"): vitezometrul este
-     * bara de XP a jucatorului, dar cu NIVELUL TINUT PE 0 - vanilla nu deseneaza
-     * numarul verde cand nivelul e 0, deci ramane doar umplerea barei (frumos,
-     * nativ, zero conflict cu scoreboard-ul TAB din dreapta). Textul cu viteza il
-     * scrie pluginul in action bar (LandVehicle.showFuelOverlay). XP-ul REAL se
-     * salveaza in memorie + in PDC (anti-crash) si se restaureaza intocmai cand
-     * jucatorul coboara/delogheaza - nimeni nu pierde nivelele de enchanting. */
+    /* CICLURILE AU-AY scriveau viteza pe bara de XP a jucatorului; CICLUL AZ
+     * (feedback user) renunta complet la bara XP ("asa cum e in joc") - scrisul
+     * vitezei e acum FONT PROPRIU al pack-ului (vehicle:hud_speed), pozitionat
+     * deasupra inimilor, din LandVehicle.showFuelOverlay. XP-ul nu se mai atinge.
+     * Cheile/plasele de mai jos raman DOAR ca siguranta pentru sesiuni vechi:
+     * restoreXp + isXpHijacked sunt folosite de XpSpeedoListener. */
     private static final org.bukkit.NamespacedKey XP_HUD_BACKUP =
             new org.bukkit.NamespacedKey("vehicle", "xp_hud_backup");
     private final Map<UUID, double[]> hijackedXp = new HashMap<>();
@@ -571,65 +569,14 @@ public final class VehicleManager {
         ramp.getWorld().spawnParticle(org.bukkit.Particle.FLAME, at, 4, 0.35D, 0.1D, 0.35D, 0.01D);
     }
 
-    /* ============== CICLUL AU - vitezometrul pe bara de XP a jucatorului ==============
-     * Cerinta userului: ceas de viteza FRUMOS si nativ, fara sa atin
-     * scoreboard-ul serverului (TAB are sidebar-ul) si cu valori de o masina
-     * normala (max ~150 km/h). Solutia: NIVELUL de XP = km/h (numar mare, verde,
-     * deasupra hotbar-ului), iar bara de XP se umple pe scala configurabila.
-     * XP-ul adevarat nu se pierde: la prima urcare retinem nivel/progres/total si
-     * le restauream la coborare, delogare sau join dupa un crash (PDC backup). */
-
-    /** Ruleaza la fiecare 5 tick-uri pentru un vehicul activ. */
-    private void tickSpeedo(LandVehicle vehicle) {
-        if (!plugin.getConfig().getBoolean("hud.speedo", true)) {
-            return;
-        }
-        Player driver = vehicle.driver().orElse(null);
-        if (driver == null) {
-            return;
-        }
-        UUID id = driver.getUniqueId();
-        if (!hijackedXp.containsKey(id)) {
-            double level = driver.getLevel();
-            double progress = driver.getExp();
-            double total = driver.getTotalExperience();
-            hijackedXp.put(id, new double[]{level, progress, total});
-            driver.getPersistentDataContainer().set(XP_HUD_BACKUP,
-                    org.bukkit.persistence.PersistentDataType.STRING,
-                    level + "," + progress + "," + total);
-        }
-        // Ciclul AV->AW->AY: NIVELUL RAMANE 0 (fara cifra verde); umplerea barei =
-        // viteza REALA (aceeasi baza ca odometrul, via smoothedSpeedBps) x factorul
-        // cosmetic (default 1.75) pe scala maxima configurabila.
-        double bps = vehicle.smoothedSpeedBps();
-        int fullScale = Math.max(60,
-                plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
-        double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
-        int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
-        driver.setLevel(0);
-        driver.setExp((float) Math.max(0.0D, Math.min(1.0D, (double) kmh / fullScale)));
-    }
-
-    /** Scoate ceasul celor care au coborat/delogat intre doua curatenii (1s). */
-    private void cleanupXpHud() {
-        if (hijackedXp.isEmpty()) {
-            return;
-        }
-        java.util.Set<UUID> driving = new java.util.HashSet<>();
-        for (LandVehicle vehicle : vehicles.values()) {
-            vehicle.driver().ifPresent(driver -> driving.add(driver.getUniqueId()));
-        }
-        hijackedXp.keySet().removeIf(id -> {
-            if (driving.contains(id)) {
-                return false;
-            }
-            Player player = Bukkit.getPlayer(id);
-            if (player != null) {
-                restoreXp(player);
-            }
-            return true;
-        });
-    }
+    /* ============== CICLUL AZ (feedback user, forma finala) ==============
+     * Bara de XP NU se mai atinge deloc ("lasa bara de xp asa cum e in joc") -
+     * vitezometrul e desenat cu font propriu al pack-ului (vehicle:hud_speed,
+     * glife bitmap cu ascent negativ => scrisul coboara DEASUPRA INIMILOR),
+     * in action bar, din LandVehicle.showFuelOverlay.
+     * Raman pe server DOAR plasele de siguranță din ciclurile AU-AY:
+     * restoreXp (memorie + PDC anti-crash) + isXpHijacked, folosite de
+     * XpSpeedoListener pentru sesiuni vechi care au ramas cu ceasul pe XP. */
 
     /** Repune EXACT XP-ul de dinainte de urcare si sterge markerul de backup. */
     public void restoreXp(Player player) {
@@ -1453,10 +1400,6 @@ public final class VehicleManager {
                 } else {
                     updateChunkTicket(vehicle);
                     handleTrafficProps(vehicle);
-                    // Ciclul AU: vitezometrul XP la cadenta de 5 tick-uri.
-                    if (activationTick % 5 == 0) {
-                        tickSpeedo(vehicle);
-                    }
                 }
             } catch (RuntimeException exception) {
                 plugin.getLogger().log(Level.SEVERE, "Vehicle tick failed for " + vehicle.id(), exception);
@@ -1465,9 +1408,6 @@ public final class VehicleManager {
         }
         trailers.tick();
         handleBumperCarCollisions();
-        if (activationTick % 20 == 0) {
-            cleanupXpHud();
-        }
         } finally {
             com.mrcrayfish.vehicle.paper.runtime.PerfTracker.end(perfStart);
         }

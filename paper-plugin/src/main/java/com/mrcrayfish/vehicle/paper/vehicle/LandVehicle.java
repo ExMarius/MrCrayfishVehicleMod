@@ -1797,15 +1797,26 @@ public final class LandVehicle {
             // Ciclul AW: viteza = miscarea REALA (aceeasi sursa ca odometrul),
             // deci cifra si kilometrajul nu se mai contrazic niciodata.
             // Ciclul AY: factor cosmetic (default 1.75 ~ maxim 70 km/h cerut).
+            // Ciclul AZ (feedback user): bara XP ramane a jocului; viteza e
+            // desenata cu FONT PROPRIU al pack-ului (vehicle:hud_speed - cifre
+            // LCD bold 5x7, glife cu ascent negativ => scrisul coboara DEASUPRA
+            // INIMILOR, nu mai sus), iar Fuel+odo raman pe linia action bar.
+            net.kyori.adventure.key.Key hudFont =
+                    net.kyori.adventure.key.Key.key("vehicle", "hud_speed");
             double bps = smoothedSpeedBps;
             int fullScale = Math.max(60,
                     plugin.getConfig().getInt("hud.speed-fullscale-kmh", 150));
             double factor = plugin.getConfig().getDouble("hud.speed-display-factor", 1.75D);
             int kmh = Math.max(0, Math.min(fullScale, (int) Math.round(bps * 3.6D * factor)));
-            overlay = Component.text("Viteza: " + kmh + " km/h", NamedTextColor.AQUA)
-                    .append(Component.text(String.format(java.util.Locale.ROOT, " (%.1f bps)", bps),
-                            NamedTextColor.DARK_GRAY))
-                    .append(Component.text("  ·  " + fuelPlusOdo, NamedTextColor.GOLD));
+            StringBuilder glyphs = new StringBuilder();
+            for (char digit : String.valueOf(kmh).toCharArray()) {
+                glyphs.append((char) (0xE200 + (digit - '0'))); // E200..E209 = cifre 0..9
+            }
+            overlay = Component.text(glyphs.toString(), NamedTextColor.GOLD)
+                    .font(hudFont)
+                    .append(Component.text("\uE20A", NamedTextColor.GRAY)
+                            .font(hudFont))                             // E20A = "km/h"
+                    .append(Component.text("   " + fuelPlusOdo, NamedTextColor.GOLD));
         } else {
             overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
         }

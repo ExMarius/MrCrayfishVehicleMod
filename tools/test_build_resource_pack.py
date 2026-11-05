@@ -27,6 +27,24 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
+    def test_hud_speed_font_present(self):
+        """Ciclul AZ: fontul HUD (cifre LCD bold + km/h, ascent negativ deasupra
+        inimilor) trebuie sa existe in pack, cu toate cele 10 cifre E200..E209."""
+        import zipfile
+        import json as _json
+        with zipfile.ZipFile(self.pack) as pack:
+            names = set(pack.namelist())
+            self.assertIn("assets/vehicle/font/hud_speed.json", names)
+            digest = _json.loads(pack.read("assets/vehicle/font/hud_speed.json"))
+        files = {provider["file"] for provider in digest["providers"]}
+        self.assertEqual({f"vehicle:font/hud/digit_{d}.png" for d in "0123456789"} | {"vehicle:font/hud/kmh.png"},
+                         files)
+        chars = "".join(provider["chars"][0] for provider in digest["providers"])
+        self.assertIn(chr(0xE200), chars)  # E200 = cifra 0
+        self.assertIn(chr(0xE209), chars)  # E209 = cifra 9
+        self.assertIn(chr(0xE20A), chars)  # E20A = eticheta km/h
+        self.assertTrue(all(provider["ascent"] == -4 for provider in digest["providers"]))
+
     def test_configured_sha1_matches_deterministic_pack(self):
         config = (build_resource_pack.ROOT / "paper-plugin/src/main/resources/config.yml").read_text()
         configured = re.search(r'^\s*sha1:\s*"([0-9a-f]{40})"\s*$', config, re.MULTILINE)

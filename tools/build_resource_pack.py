@@ -1736,6 +1736,7 @@ def build(output: Path) -> tuple[Path, str]:
         emit_vehicle_icons(namespace)
         emit_vehicle_previews(namespace)
         emit_jack_gui_backdrop(namespace)
+        emit_hud_speed_font(namespace)
 
         if output.exists():
             output.unlink()
@@ -2380,6 +2381,68 @@ def emit_jack_gui_backdrop(namespace: Path) -> None:
              'ascent': 13, 'height': 222, 'chars': ['\ue700']},
         ],
     })
+
+
+def emit_hud_speed_font(namespace: Path) -> None:
+    """CICLUL AZ (feedback user): bara XP ramane EXACT ca in joc (nu o mai
+    atingem), iar viteza e SCRISA CU FONT PROPRIU, deasupra inimilor - glife
+    cu ascent NEGATIV (-4 coboara glifa sub linia action bar-ului cu ~12px,
+    fix in zona de deasupra inimilor). Cifre 5x7 bold (x2 = stroke gros),
+    plus eticheta 'km/h', ca un tablou de bord LCD. Numerele sunt invocate
+    din LandVehicle.showFuelOverlay cu chars E200..E209 (cifre) + E20A (km/h).
+
+    DOAR valoarea ascent din font/hud_speed.json muta randul vertical
+    (-1 joaca, +1 urca cu ~3px per unitate) - reglaj unic de pozitie."""
+    masks = {
+        '0': ("01110", "10001", "10011", "10101", "11001", "10001", "01110"),
+        '1': ("00100", "01100", "00100", "00100", "00100", "00100", "01110"),
+        '2': ("01110", "10001", "00001", "00010", "00100", "01000", "11111"),
+        '3': ("11110", "00001", "00001", "01110", "00001", "00001", "11110"),
+        '4': ("00010", "00110", "01010", "10010", "11111", "00010", "00010"),
+        '5': ("11111", "10000", "11110", "00001", "00001", "10001", "01110"),
+        '6': ("00110", "01000", "10000", "11110", "10001", "10001", "01110"),
+        '7': ("11111", "00001", "00010", "00100", "01000", "01000", "01000"),
+        '8': ("01110", "10001", "10001", "01110", "10001", "10001", "01110"),
+        '9': ("01110", "10001", "10001", "01111", "00001", "00010", "01100"),
+        'k': ("10000", "10010", "10100", "11000", "10100", "10010", "10001"),
+        'm': ("00000", "00000", "11010", "10101", "10101", "10101", "10101"),
+        '/': ("00001", "00001", "00010", "00100", "00100", "01000", "01000"),
+        'h': ("10000", "10000", "10110", "11001", "10001", "10001", "10001"),
+    }
+    scale = 2  # bold: fiecare pixel din masca => 2x2 pixeli in PNG (stroke gros)
+    white = (255, 255, 255, 255)
+
+    def render_png(rows: tuple) -> tuple:
+        cols = len(rows[0])
+        width, height = cols * scale + scale, len(rows) * scale  # +margine dreapta
+        buf = bytearray(width * height * 4)
+        for y, row in enumerate(rows):
+            for x, cell in enumerate(row):
+                if cell == '1':
+                    for dy in range(scale):
+                        for dx in range(scale):
+                            off = ((y * scale + dy) * width + x * scale + dx) * 4
+                            buf[off:off + 4] = bytes(white)
+        return _png_encode_rgba(width, height, bytes(buf))
+
+    hud_dir = namespace / 'textures/font/hud'
+    hud_dir.mkdir(parents=True, exist_ok=True)
+    providers = []  # cifrele sunt deja latime consecventa; nu e nevoie de offset-uri
+    for digit in '0123456789':
+        (hud_dir / f'digit_{digit}.png').write_bytes(render_png(masks[digit]))
+        providers.append({
+            'type': 'bitmap', 'file': f'vehicle:font/hud/digit_{digit}.png',
+            'ascent': -4, 'height': 9, 'chars': [chr(0xE200 + int(digit))]})
+    # Eticheta "km/h": patru masti lipite cu cate o coloana goala intre ele.
+    label_rows = [""] * 7
+    for i, letter in enumerate(('k', 'm', '/', 'h')):
+        for r in range(7):
+            label_rows[r] += masks[letter][r] + ("0" if i < 3 else "")
+    (hud_dir / 'kmh.png').write_bytes(render_png(tuple(label_rows)))
+    providers.append({'type': 'bitmap', 'file': 'vehicle:font/hud/kmh.png',
+                      'ascent': -4, 'height': 9, 'chars': ['\ue20a']})
+    write_json(namespace / 'font/hud_speed.json', {'providers': providers})
+
 
 
 def main() -> None:

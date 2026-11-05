@@ -4,7 +4,7 @@ resource-pack:
   url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/vehicle-plugin-prototype-v0.1.0/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip"
   # Ciclul AH: pack-ul s-a schimbat (con de trafic + placa de boost) => hash nou;
   # server.properties il primeste automat la fiecare deploy.
-  sha1: "f07cfd971de56fabc9350403fe7ae0db93c79eb4"
+  sha1: "e36f7f566b1c2e26b990f39da501655dac24c6f7"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
@@ -38,19 +38,18 @@ physics:
   # the air", en_us.lang). Valori mai mari = lansari mai spectaculoase.
   boost-ramp-lift: 0.38
 
-# Ciclul AW (forma finala ceruta de user): vitezometrul = bara de XP goala,
-# umpluta proportional cu viteza, DEASUPRA selectorului de iteme (nivelul e 0,
-# deci cifra verde nu apare deloc); scrisul vitezei e desenat de plugin in
-# action bar ("Viteza: x km/h (y bps)"), inaintea cadranului clasic Fuel+odo.
-# Viteza = miscarea REALA a masinii (aceeasi sursa ca odometrul/metrii, nu
-# inputul pad-urilor); afisarea nu depaseste scala maxima.
-# XP-ul real se salveaza la urcare si se restaureaza intocmai la
-# coborare/delogare/join-dupa-crash - nimeni nu pierde nivelele de enchanting.
+# Ciclul AZ (forma finala ceruta de user, beta-ready): BARA DE XP RAMANE EXACT
+# CA IN JOC - nu o mai atinge nimic. Viteza e SCRISA CU FONT PROPRIU al packelui
+# (vehicle:hud_speed - cifre LCD bold 5x7 desenate procedural in pack builder,
+# cu ascent negativ => scrisul sta DEASUPRA INIMILOR, sub linia action bar),
+# urmata de eticheta "km/h" si cadranul clasic Fuel + odometru.
+# Viteza = miscarea REALA a masinii (aceeasi sursa ca odometrul) x factorul
+# cosmetic hud.speed-display-factor; plafonta la scala maxima.
 hud:
   speedo: true
-  # Scala maxima a cadranului (150 = masina normala): bara de XP se umple spre ea.
+  # Scala maxima a cadranului (150 = masina normala): viteza afisata nu o depaseste.
   speed-fullscale-kmh: 150
-  # Ciclul AY: factor COSMETIC de afisaj - viteza reala masurata (ca la odometru)
+  # Factor COSMETIC de afisaj - viteza reala masurata (ca la odometru)
   # e ~40 km/h pe paduri; userul a cerut ca maximul sa arate ~70. Fizica neschimbata.
   speed-display-factor: 1.75
 
