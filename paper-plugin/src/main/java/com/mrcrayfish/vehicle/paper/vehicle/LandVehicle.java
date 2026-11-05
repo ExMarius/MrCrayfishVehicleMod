@@ -1790,6 +1790,19 @@ public final class LandVehicle {
      *  EMA ~4 tick), limitata la scala maxima (default 150) - niciodata citiri
      *  aberante gen 800; unitatea bps e cea a modului. */
     private void showFuelOverlay() {
+        // CICLUL BF: mesajul se construieste PER JUCATOR (pozitia/stilul depind
+        // de gamemode - in creative/spectator GUI-ul nu mai arata inimile).
+        for (Entity carrier : rig.seatCarriers()) {
+            for (Entity passenger : carrier.getPassengers()) {
+                if (passenger instanceof Player player) {
+                    player.sendActionBar(buildOverlay(player));
+                }
+            }
+        }
+    }
+
+    /** Construieste linia HUD pentru un jucator concret. */
+    private Component buildOverlay(Player player) {
         String fuelPlusOdo = FuelGauge.overlay(fuel, spec.energyCapacity())
                 + "  |  " + odometerLabel();
         Component overlay;
@@ -1806,6 +1819,10 @@ public final class LandVehicle {
             // marginea stanga a liniei ajunge fix la coloana din stanga a GUI-ului.
             // LATIMILE DE MAI JOS trebuie sa ramana sincronizate cu masca/fontul
             // din tools/build_resource_pack.py#emit_hud_speed_font.
+            // CICLUL BF: in CREATIVE/SPECTATOR clientul NU mai deseneaza
+            // inimile -> bara de consum se omite (rand compact: viteza + odo).
+            boolean survivalLike = player.getGameMode() == GameMode.SURVIVAL
+                    || player.getGameMode() == GameMode.ADVENTURE;
             net.kyori.adventure.key.Key hudFont =
                     net.kyori.adventure.key.Key.key("vehicle", "hud_speed");
             double bps = smoothedSpeedBps;
@@ -1861,6 +1878,23 @@ public final class LandVehicle {
                     .font(hudFont);
             section.setLength(0);
 
+            if (!survivalLike) {
+                // CICLUL BF: creative/spectator - completam direct pana la 182
+                // (fara bara de consum); randul ramane la aceeasi inaltime.
+                int rest = 182 - width;
+                while (rest > 0) {
+                    for (int bit = 0; bit < 7; bit++) {
+                        int value = 64 >> bit;
+                        while (rest >= value) {
+                            section.append((char) (0xF800 + bit));
+                            rest -= value;
+                        }
+                    }
+                }
+                return leftPart.append(Component.text(section.toString(),
+                        NamedTextColor.WHITE).font(hudFont));
+            }
+
             // spatiu gol pana la offsetul 101 (= coloana inimilor de cal,
             // jumatate ecran + 10px), minim 8px ramas dupa sectiunea din stanga
             int middleGap = Math.max(8, 101 - width);
@@ -1900,13 +1934,7 @@ public final class LandVehicle {
         } else {
             overlay = Component.text(fuelPlusOdo, NamedTextColor.GOLD);
         }
-        for (Entity carrier : rig.seatCarriers()) {
-            for (Entity passenger : carrier.getPassengers()) {
-                if (passenger instanceof Player player) {
-                    player.sendActionBar(overlay);
-                }
-            }
-        }
+        return overlay;
     }
 
     public Vector velocity() {
