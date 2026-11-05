@@ -195,7 +195,6 @@ public final class LandVehicle {
         steeringMultiplier = tuning.steeringAngleMultiplier();
         boolean openablesChanged = rig.tickOpenables(location);
         updateSeatGauge();
-        rig.setSeatBodyCarry(false);
         rig.tickSeats(location.getYaw());
         if (age % 10 == 0) {
             showFuelOverlay();
@@ -342,7 +341,6 @@ public final class LandVehicle {
         /* BM: vehiculul vireaza/se misca => scaunele urmeaza yaw-ul vehiculului
          * (corpul merge o data cu masina); in repaus clientul controleaza
          * rotatia scaunului (corp blocat + cap liber, validat prin seattest). */
-        rig.setSeatBodyCarry(horizontalSpeed() > 0.02D || Math.abs(steeringAngle) > 1.0F);
         float wheelieAngle = -30.0F * boostStrength * wheelieProgress();
         float bodyRoll = spec.bodyRoll(steeringAngle, horizontalSpeed());
         rig.update(location, renderWheelAngle, frontWheelRotation, rearWheelRotation,
@@ -856,7 +854,6 @@ public final class LandVehicle {
         }
         updateSeatGauge();
         updateWheelRotations();
-        rig.setSeatBodyCarry(velocity.length() > 0.02D || Math.abs(steeringAngle) > 1.0F);
 
         if (!onGround) {
             bodyPitch = location.getPitch();

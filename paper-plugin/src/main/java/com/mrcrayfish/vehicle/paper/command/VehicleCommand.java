@@ -80,9 +80,35 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "propsdebug" -> propsDebug(sender);
             case "seattest" -> seatTest(sender, args);
+            case "seatlift" -> seatLiftCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatlift <blocuri>: reglaj fin pe verticala al pozitiei calareului
+     *  pe scaun (valoarea se aplica instant, fara restart). Se foloseste o
+     *  singura data pentru a potrivi sezutul pe modele, apoi valoarea se
+     *  fixeaza in LandVehicleRig. */
+    private void seatLiftCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatlift actual: "
+                    + String.format(java.util.Locale.ROOT, "%.3f", com.mrcrayfish.vehicle.paper.render.LandVehicleRig.seatLift())
+                    + " | folosire: /vehicle seatlift <" + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.SEAT_LIFT_MIN
+                    + ".." + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.SEAT_LIFT_MAX + "></yellow>");
+            return;
+        }
+        double value;
+        try {
+            value = Double.parseDouble(args[1].replace(',', '.'));
+        } catch (NumberFormatException error) {
+            sender.sendRichMessage("<red>Numar invalid.</red>");
+            return;
+        }
+        float lift = (float) value;
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatLift(lift);
+        sender.sendRichMessage("<green>seatlift = " + String.format(java.util.Locale.ROOT, "%.3f", lift)
+                + " (negativ = mai jos, pozitiv = mai sus)</green>");
     }
 
     /** /vehicle creative (mcv.creative): meniul complet al sistemului mecanic. */
@@ -826,7 +852,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatlift"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -842,6 +868,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
             return filter(List.of("a", "b", "c", "e", "f", "g"), args[1]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("seatlift")) {
+            return filter(List.of("-0.6", "-0.45", "-0.28", "-0.1", "0", "0.2", "0.4"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);
