@@ -684,7 +684,6 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         Entity seat;
         if (kind == SeatKind.BOAT) {
             seat = location.getWorld().spawn(location, org.bukkit.entity.Boat.class, boat -> {
-                boat.setCollidable(false);
                 boat.setInvulnerable(true);
                 boat.setSilent(true);
                 boat.setPersistent(false);
