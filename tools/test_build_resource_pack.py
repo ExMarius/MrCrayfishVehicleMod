@@ -53,7 +53,7 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertIn(chr(0xE211), chars)  # E211 = inima-combustibil plina
         self.assertIn(chr(0xE212), chars)  # E212 = inima-combustibil goala
         self.assertNotIn(chr(0xE210), chars)  # BC: pompa a disparut - inimile sunt peste
-        self.assertTrue(all(provider["ascent"] == -12 for provider in bitmaps))
+        self.assertTrue(all(provider["ascent"] == -22 for provider in bitmaps))
         self.assertEqual({advance for advance in space["advances"].values()},
                          {64, 32, 16, 8, 4, 2, 1})
 

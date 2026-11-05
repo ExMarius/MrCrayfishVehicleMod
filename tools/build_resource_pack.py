@@ -2462,7 +2462,7 @@ def emit_hud_speed_font(namespace: Path) -> None:
 
     hud_dir = namespace / 'textures/font/hud'
     hud_dir.mkdir(parents=True, exist_ok=True)
-    ascent = -12  # CICLUL BA: randul INIMILOR (AZ cu -4 era "prea sus")
+    ascent = -22  # BC->BD: -12 ramanea cu un rand DEASUPRA inimilor vanilla; coborat ~10px exact peste ele
     providers = [{'type': 'space', 'advances': {
         chr(0xF800 + i): advance
         for i, advance in enumerate((64, 32, 16, 8, 4, 2, 1))}}]
