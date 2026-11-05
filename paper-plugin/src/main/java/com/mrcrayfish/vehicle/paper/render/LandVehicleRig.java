@@ -69,7 +69,7 @@ public final class LandVehicleRig {
      *  masina). MINECART = acelasi comportament de riding (corp blocat, cap
      *  liber), dar NU are niciun input de la calaret, deci rotatia ei vine
      *  exclusiv de la server. Comutabil live cu /vehicle seatkind. */
-    private static volatile org.bukkit.entity.EntityType seatType = org.bukkit.entity.EntityType.MINECART;
+    private static volatile org.bukkit.entity.EntityType seatType = org.bukkit.entity.EntityType.OAK_BOAT;
 
     public static void setSeatType(org.bukkit.entity.EntityType type) {
         if (type == org.bukkit.entity.EntityType.MINECART || type == org.bukkit.entity.EntityType.OAK_BOAT) {
@@ -639,8 +639,14 @@ public final class LandVehicleRig {
         /* BL10: pozitia scaunului vine EXCLUSIV de la vehicul (entitatea nu mai
          * are parinte-display, deci o teleportam noi in fiecare tick). */
         Location seatLocation = carrier.anchor.getLocation();
-        if (seat.getLocation().distanceSquared(seatLocation) > 1.0E-6D) {
-            seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        seatLocation.setYaw(seatYaw);
+        seatLocation.setPitch(0.0F);
+        /* BL11: scaunul este LIPIT de vehicul: pozitia si orientarea vin de la
+         * vehicul in fiecare tick, fara praguri - orice deviere (inclusiv o
+         * rotire venita din client) este anulata in acelasi tick. */
+        seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        if (seat.getYaw() != seatYaw || seat.getPitch() != 0.0F) {
+            seat.setRotation(seatYaw, 0.0F);
         }
         /* BM: scaunul are rider; cat timp vehiculul NU vireaza/se misca,
          * rotatia ramane la client (clampa vanilla de riding blocheaza
