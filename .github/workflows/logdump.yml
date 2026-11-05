@@ -1,0 +1,58 @@
+name: Log dump (diagnostic)
+
+# Unealta de diagnostic: aduce ultimele linii din logs/latest.log ale serverului
+# HidenCloud in output-ul actiunii (si ca artefact), ca sa putem citi erorile
+# reale fara sa cerem jucatorului sa copieze din consola.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/logdump-request"
+
+permissions:
+  contents: read
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+  SFTP_PASS_BACKUP: 'X5#mK9!vP2qL'
+
+jobs:
+  dump:
+    name: Aduc latest.log
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download log through SFTP
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
+          export SSHPASS="$SFTP_PASS_BACKUP"
+          printf 'get logs/latest.log /tmp/latest.log\n' > b_get.txt
+          ok=0
+          for i in 1 2 3; do
+            if sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+                 -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b b_get.txt \
+                 -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"; then ok=1; break; fi
+            sleep 5
+          done
+          if [ "$ok" != "1" ]; then echo "::error title=SFTP::nu am putut descarca logs/latest.log"; exit 1; fi
+          ls -la /tmp/latest.log
+      - name: Rezumat
+        run: |
+          echo "===== SEATDBG (ultimele 40) ====="
+          grep -a "SEATDBG" /tmp/latest.log | tail -40 || echo "(niciun SEATDBG)"
+          echo "===== Exceptii / erori plugin (ultimele 60) ====="
+          grep -anE "Exception|ERROR|Could not pass|MrCrayfishVehicle" /tmp/latest.log | tail -60 || echo "(nimic)"
+          echo "===== Ultimele 25 linii ====="
+          tail -25 /tmp/latest.log
+      - name: Upload log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: latest-log
+          path: /tmp/latest.log
+          if-no-files-found: warn

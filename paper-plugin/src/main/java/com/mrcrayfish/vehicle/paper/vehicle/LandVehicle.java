@@ -305,6 +305,24 @@ public final class LandVehicle {
         if (collision.verticalCollision()) {
             verticalVelocity = 0.0D;
         }
+        /* BL6 diagnoza temporara: de ce nu se deplaseaza masina cu scaun-barca. */
+        if (age % 20 == 0) {
+            org.bukkit.Input in = driver == null ? null : driver.getCurrentInput();
+            Bukkit.getLogger().info("[SEATDBG2] id=" + spec.id()
+                    + " driver=" + (driver == null ? "-" : driver.getName())
+                    + " input=" + (in == null ? "-" : ("f=" + in.isForward() + " b=" + in.isBackward()
+                            + " l=" + in.isLeft() + " r=" + in.isRight() + " jump=" + in.isJump()))
+                    + " throttle=" + String.format(java.util.Locale.ROOT, "%.2f", throttle)
+                    + " steer=" + String.format(java.util.Locale.ROOT, "%.2f", steeringAngle)
+                    + " speed=" + String.format(java.util.Locale.ROOT, "%.2f", horizontalSpeed())
+                    + " req=" + String.format(java.util.Locale.ROOT, "%.3f/%.3f/%.3f",
+                            requestedMovement.getX(), requestedMovement.getY(), requestedMovement.getZ())
+                    + " got=" + String.format(java.util.Locale.ROOT, "%.3f/%.3f/%.3f",
+                            collision.movement().getX(), collision.movement().getY(), collision.movement().getZ())
+                    + " loc=" + String.format(java.util.Locale.ROOT, "%.2f/%.2f/%.2f",
+                            location.getX(), location.getY(), location.getZ())
+                    + " onGround=" + onGround);
+        }
         // Daune la impact: mersul blocat orizontal la viteza avariaza proportional si
         // avertizeaza soferul; formula e a portului (modul nu avea valori exacte ale
         // impactului, doar health + drop la 0), pragul porneste de la viteza de mers.

@@ -243,8 +243,11 @@ public final class LandVehicleRig {
     }
 
     private static Entity seatCarrier(World world, Location location, UUID vehicleId) {
-        /* BL5: barca invizibila = scaun. Nu are AI, nu se scalaeaza, nu are
-         * viata; doar transporta calareaul cu clamp-ul larg de privire. */
+        /* BL5/BL6: barca invizibila = scaun. Nu are AI, nu se scalaeaza, nu are
+         * viata; doar transporta calareaul cu clamp-ul larg de privire.
+         * BL6: flagul de invizibilitate NU este respectat de randarea barcii in
+         * 1.21.4 (barca se vedea pe masina), deci o ascundem explicit din
+         * client pentru fiecare jucator (Paper hideEntity). */
         Entity seat = world.spawnEntity(location, org.bukkit.entity.EntityType.OAK_BOAT);
         seat.setInvisible(true);
         seat.setInvulnerable(true);
@@ -252,7 +255,27 @@ public final class LandVehicleRig {
         seat.setPersistent(false);
         seat.setGravity(false);
         mark(seat, vehicleId);
+        hideSeatFromPlayers(seat);
         return seat;
+    }
+
+    /** BL6: ascunde scaunul-barca de toti jucatorii din lume (si de cei care
+     *  apar ulterior - re-apelat periodic din tickSeats). */
+    private static void hideSeatFromPlayers(Entity seat) {
+        org.bukkit.plugin.Plugin plugin = Bukkit.getPluginManager().getPlugin("MrCrayfishVehiclePlugin");
+        if (plugin == null || seat == null || !seat.isValid()) {
+            return;
+        }
+        World world = seat.getWorld();
+        if (world == null) {
+            return;
+        }
+        for (Player player : world.getPlayers()) {
+            if (player.equals(seat)) {
+                continue;
+            }
+            player.hideEntity(plugin, seat);
+        }
     }
 
     private Entity createSeatMount(SeatCarrier carrier) {
@@ -668,7 +691,31 @@ public final class LandVehicleRig {
         for (SeatCarrier carrier : seats) {
             maintainSeat(carrier, yaw);
         }
+        /* BL6: re-ascundem barcile (jucatori intrati ulterior) + diagnoza. */
+        seatDebugTicks++;
+        if (seatDebugTicks % 20 == 0) {
+            for (SeatCarrier carrier : seats) {
+                Entity seat = carrier.mount;
+                if (seat == null || !seat.isValid()) {
+                    continue;
+                }
+                hideSeatFromPlayers(seat);
+                if (!seat.getPassengers().isEmpty()) {
+                    Location anchorLocation = carrier.anchor.getLocation();
+                    org.bukkit.util.Vector delta = seat.getLocation().toVector()
+                            .subtract(anchorLocation.toVector());
+                    Bukkit.getLogger().info("[SEATDBG] mount=" + seat.getType()
+                            + " passengers=" + seat.getPassengers().size()
+                            + " seatYaw=" + String.format(java.util.Locale.ROOT, "%.1f", seat.getYaw())
+                            + " wantYaw=" + String.format(java.util.Locale.ROOT, "%.1f", yaw + carrier.properties.yawOffset())
+                            + " delta=" + String.format(java.util.Locale.ROOT, "%.3f/%.3f/%.3f",
+                                    delta.getX(), delta.getY(), delta.getZ()));
+                }
+            }
+        }
     }
+
+    private int seatDebugTicks;
 
     public boolean mount(Player player) {
         if (removed || !valid()) {
@@ -710,6 +757,7 @@ public final class LandVehicleRig {
         }
         Entity seat = createSeatMount(closest);
         if (seat != null && seat.addPassenger(player)) {
+            hideSeatFromPlayers(seat);
             closest.rider = player.getUniqueId();
             return true;
         }
