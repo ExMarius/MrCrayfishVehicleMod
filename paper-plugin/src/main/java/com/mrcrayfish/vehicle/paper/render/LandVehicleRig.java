@@ -228,7 +228,7 @@ public final class LandVehicleRig {
     /** BL16: scaunul poate fi si ARMOR STAND (entitate vie fara AI, deci nu se
      *  roteste dupa camera cum face calul). Implicit: calul = varianta C
      *  validata de user; comutabil live cu /vehicle seatkind. */
-    private static volatile String seatKind = "porc";
+    private static volatile String seatKind = "cal";
 
     public static void setSeatKind(String kind) {
         if (java.util.List.of("porc", "cal", "armorstand").contains(kind)) {
@@ -253,6 +253,32 @@ public final class LandVehicleRig {
 
     public static String seatYawMode() {
         return seatYawMode;
+    }
+
+    /** BL20 (cerinta user: "sa nu ma lase sa ma invart cu mouse-ul ... calul una
+     *  cu masina"): privirea calareului este tinuta pe directia vehiculului.
+     *  Toleranta in grade: 0 = blocaj total, 45 = semnificativ liber,
+     *  999 = dezactivat. Serverul retrimite rotatia jucatorului in fiecare tick
+     *  cand abaterea depaseste toleranta, deci camera se roteste cu masina. */
+    private static volatile float lookLockTolerance = 1.0F;
+
+    public static void setLookLockTolerance(float degrees) {
+        lookLockTolerance = Math.max(0.0F, Math.min(999.0F, degrees));
+    }
+
+    public static float lookLockTolerance() {
+        return lookLockTolerance;
+    }
+
+    private static float wrapDegrees(float value) {
+        float wrapped = value % 360.0F;
+        if (wrapped >= 180.0F) {
+            wrapped -= 360.0F;
+        }
+        if (wrapped < -180.0F) {
+            wrapped += 360.0F;
+        }
+        return wrapped;
     }
 
     /** Recreaza scaunele (calaretii sunt dati jos si trebuie sa urce din nou). */
@@ -692,6 +718,16 @@ public final class LandVehicleRig {
         boolean mountYaw = "mount".equals(seatYawMode) || "both".equals(seatYawMode);
         if (mountYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
+        }
+        /* BL20: camera/privirea urmeaza vehiculul (mouse-ul nu mai roteste
+         * jucatorul). Pitch-ul rămâne liber - poti privi in sus/jos. */
+        if (lookLockTolerance < 999.0F) {
+            float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
+            if (deviation > lookLockTolerance) {
+                Location locked = rider.getLocation();
+                locked.setYaw(seatYaw);
+                rider.teleport(locked);
+            }
         }
     }
 

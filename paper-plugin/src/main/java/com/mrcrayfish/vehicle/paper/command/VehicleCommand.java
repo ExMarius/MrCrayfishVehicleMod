@@ -82,9 +82,30 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "seattest" -> seatTest(sender, args);
             case "seatkind" -> seatKindCmd(sender, args);
             case "seatyaw" -> seatYawCmd(sender, args);
+            case "seatlook" -> seatLookCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatlook <grade>: cat de tare este tinuta privirea pe directia
+     *  vehiculului (0 = blocaj total, 45 = liber, 999 = dezactivat). */
+    private void seatLookCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatlook actual: "
+                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.lookLockTolerance()
+                    + " grade | folosire: /vehicle seatlook <0..999></yellow>");
+            return;
+        }
+        try {
+            float degrees = Float.parseFloat(args[1].replace(',', '.'));
+            com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setLookLockTolerance(degrees);
+            sender.sendRichMessage("<green>seatlook = "
+                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.lookLockTolerance()
+                    + " grade (999 = dezactivat)</green>");
+        } catch (NumberFormatException error) {
+            sender.sendRichMessage("<red>Folosire: /vehicle seatlook <0..999></red>");
+        }
     }
 
     /** /vehicle seatyaw <anchor|mount|both|off>: alege CINE poarta rotatia
@@ -815,7 +836,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -828,6 +849,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 4 && args[0].equalsIgnoreCase("podium") && "set".equalsIgnoreCase(args[1])) {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("seatlook")) {
+            return filter(List.of("0", "1", "5", "15", "45", "999"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seatyaw")) {
             return filter(List.of("anchor", "mount", "both", "off"), args[1]);
