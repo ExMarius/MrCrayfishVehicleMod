@@ -591,8 +591,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <b|c></red>"
-                    + " b=cal fara saua (acum), c=cal cu saua (vanilla clasic).");
+            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <b|c|e></red>"
+                    + " b=fara saua, c=cu saua, e=cu saua + serverul roteste scaunul la fiecare tick.");
             return;
         }
         // curata randul vechi (daca exista)
@@ -614,8 +614,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         double rx = Math.cos(radians), rz = Math.sin(radians);
 
         java.util.List<Entity> spawned = new java.util.ArrayList<>();
-        spawned.add(spawnSeatTest(base.clone().add(rx * -1.5D, 0, rz * -1.5D), "B cal fara saua", SeatKind.HORSE_BARE));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 1.5D, 0, rz * 1.5D), "C cal cu saua", SeatKind.HORSE_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * -3.0D, 0, rz * -3.0D), "B cal fara saua", SeatKind.HORSE_BARE));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 0.0D, 0, rz * 0.0D), "C cal cu saua", SeatKind.HORSE_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 3.0D, 0, rz * 3.0D), "E cal cu saua + rotire server/tick", SeatKind.HORSE_SADDLED));
         for (Entity entity : spawned) {
             seatTestEntities.add(entity.getUniqueId());
         }
@@ -623,6 +624,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         int index = switch (args[1].toLowerCase(Locale.ROOT)) {
             case "b" -> 0;
             case "c" -> 1;
+            case "e" -> 2;
             default -> -1;
         };
         if (index < 0) {
@@ -634,6 +636,21 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         if (!seat.addPassenger(player)) {
             sender.sendRichMessage("<red>Nu te-a putut urca (permisiuni/protectie?).</red>");
             return;
+        }
+        if (args[1].equalsIgnoreCase("e")) {
+            final float fixedYaw = seat.getYaw();
+            final java.util.UUID seatId = seat.getUniqueId();
+            final Object[] holder = new Object[1];
+            holder[0] = plugin.getServer().getScheduler().runTaskTimer(plugin, () -> {
+                Entity entity = Bukkit.getEntity(seatId);
+                if (entity == null || !entity.isValid() || entity.getPassengers().isEmpty()) {
+                    if (holder[0] instanceof org.bukkit.scheduler.BukkitTask task) {
+                        task.cancel();
+                    }
+                    return;
+                }
+                entity.setRotation(fixedYaw, 0.0F);
+            }, 1L, 1L);
         }
         sender.sendRichMessage("<gold>[SeatTest]</gold> " + spawnedLabels()[index]
                 + " - apasa F5, lasa tastele si invarte doar mouse-ul: uita-te daca corpul sta blocat si doar capul se roteste.");
@@ -652,7 +669,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private enum SeatKind { HORSE_BARE, HORSE_SADDLED }
 
     private static String[] spawnedLabels() {
-        return new String[] {"B cal fara saua", "C cal cu saua (vanilla clasic)"};
+        return new String[] {"B cal fara saua", "C cal cu saua (vanilla clasic)", "E C + rotire fortata la yaw fix in fiecare tick (modelul masini)"};
     }
 
     private Horse spawnSeatTest(Location location, String label, SeatKind kind) {
@@ -787,7 +804,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
-            return filter(List.of("b", "c"), args[1]);
+            return filter(List.of("b", "c", "e"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);
