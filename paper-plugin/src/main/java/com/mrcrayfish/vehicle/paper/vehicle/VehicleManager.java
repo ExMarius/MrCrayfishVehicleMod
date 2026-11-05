@@ -860,6 +860,17 @@ public final class VehicleManager {
         return Optional.ofNullable(nearest);
     }
 
+    /** BL16: recreatea scaunele tuturor vehiculelor (dupa schimbarea tipului de
+     *  scaun); calaretii sunt dati jos ca sa fie re-asezati. */
+    public int resetAllSeats() {
+        int count = 0;
+        for (LandVehicle vehicle : vehicles()) {
+            vehicle.rig().resetSeats();
+            count++;
+        }
+        return count;
+    }
+
     public Collection<LandVehicle> vehicles() {
         return java.util.Collections.unmodifiableCollection(vehicles.values());
     }

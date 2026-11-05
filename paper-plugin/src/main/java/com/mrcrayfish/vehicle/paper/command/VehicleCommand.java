@@ -80,9 +80,36 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "propsdebug" -> propsDebug(sender);
             case "seattest" -> seatTest(sender, args);
+            case "seatkind" -> seatKindCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatkind <cal|armorstand>: alege entitatea-scaun si o aplica
+     *  imediat tuturor vehiculelor (te da jos; urci din nou). */
+    private void seatKindCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatkind actual: "
+                    + (com.mrcrayfish.vehicle.paper.render.LandVehicleRig.armorStandSeat()
+                        ? "armorstand" : "cal")
+                    + " | folosire: /vehicle seatkind <cal|armorstand></yellow>");
+            return;
+        }
+        String kind = args[1].toLowerCase(java.util.Locale.ROOT);
+        boolean stand;
+        if (kind.equals("armorstand") || kind.equals("armura")) {
+            stand = true;
+        } else if (kind.equals("cal") || kind.equals("horse")) {
+            stand = false;
+        } else {
+            sender.sendRichMessage("<red>Folosire: /vehicle seatkind <cal|armorstand></red>");
+            return;
+        }
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setArmorStandSeat(stand);
+        int reset = plugin.vehicles().resetAllSeats();
+        sender.sendRichMessage("<green>seatkind = " + (stand ? "armorstand" : "cal")
+                + " (scaune recreate: " + reset + "). Urcă-te din nou în mașină.</green>");
     }
 
     /** /vehicle creative (mcv.creative): meniul complet al sistemului mecanic. */
@@ -772,7 +799,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
@@ -785,6 +812,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         if (args.length == 4 && args[0].equalsIgnoreCase("podium") && "set".equalsIgnoreCase(args[1])) {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
+        }
+        if (args.length == 2 && args[0].equalsIgnoreCase("seatkind")) {
+            return filter(List.of("cal", "armorstand"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
             return filter(List.of("b", "c"), args[1]);

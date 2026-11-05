@@ -225,7 +225,52 @@ public final class LandVehicleRig {
         });
     }
 
-    private static Horse seatCarrier(World world, Location location, UUID vehicleId) {
+    /** BL16: scaunul poate fi si ARMOR STAND (entitate vie fara AI, deci nu se
+     *  roteste dupa camera cum face calul). Implicit: calul = varianta C
+     *  validata de user; comutabil live cu /vehicle seatkind. */
+    private static volatile boolean armorStandSeat = false;
+
+    public static void setArmorStandSeat(boolean armorStand) {
+        armorStandSeat = armorStand;
+    }
+
+    public static boolean armorStandSeat() {
+        return armorStandSeat;
+    }
+
+    /** Recreaza scaunele (calaretii sunt dati jos si trebuie sa urce din nou). */
+    public void resetSeats() {
+        for (SeatCarrier carrier : seats) {
+            discardSeat(carrier);
+            carrier.rider = null;
+        }
+    }
+
+    private static Entity armStandCarrier(World world, Location location, UUID vehicleId) {
+        org.bukkit.entity.ArmorStand stand = world.spawn(location,
+                org.bukkit.entity.ArmorStand.class, carrier -> {
+            carrier.setInvisible(true);
+            carrier.setMarker(false);
+            carrier.setGravity(false);
+            carrier.setInvulnerable(true);
+            carrier.setSilent(true);
+            carrier.setPersistent(false);
+            carrier.setRemoveWhenFarAway(false);
+            AttributeInstance scale = carrier.getAttribute(Attribute.SCALE);
+            if (scale != null) {
+                scale.setBaseValue(SEAT_CARRIER_SCALE);
+            }
+            AttributeInstance maximumHealth = carrier.getAttribute(Attribute.MAX_HEALTH);
+            if (maximumHealth != null) {
+                maximumHealth.setBaseValue(SEAT_GAUGE_MAX_HEALTH);
+            }
+            carrier.setHealth(SEAT_GAUGE_MAX_HEALTH);
+        });
+        mark(stand, vehicleId);
+        return stand;
+    }
+
+    private static Entity seatCarrier(World world, Location location, UUID vehicleId) {
         /* Ciclul BL (feedback user): scaun = cal FARA saua. Calul are clampa
          * vanilla de riding: yaw-ul calareului este legat de yaw-ul vehiculului,
          * deci corpul ramane blocat pe scaun si doar capul se roteste liber
@@ -267,24 +312,28 @@ public final class LandVehicleRig {
         return seat;
     }
 
-    private Horse createSeatMount(SeatCarrier carrier) {
+    private Entity createSeatMount(SeatCarrier carrier) {
         if (removed || !carrier.anchor.isValid()) {
             return null;
         }
         Location location = carrier.anchor.getLocation();
-        Horse seat = seatCarrier(location.getWorld(), location, vehicleId);
+        Entity seat = armorStandSeat
+                ? armStandCarrier(location.getWorld(), location, vehicleId)
+                : seatCarrier(location.getWorld(), location, vehicleId);
         if (!carrier.anchor.addPassenger(seat)) {
             seat.remove();
             return null;
         }
         carrier.mount = seat;
         entities.add(seat);
-        applySeatGauge(seat);
+        if (seat instanceof org.bukkit.entity.LivingEntity living) {
+            applySeatGauge(living);
+        }
         return seat;
     }
 
     private void discardSeat(SeatCarrier carrier) {
-        Horse seat = carrier.mount;
+        Entity seat = carrier.mount;
         carrier.mount = null;
         if (seat != null) {
             entities.remove(seat);
@@ -550,7 +599,7 @@ public final class LandVehicleRig {
 
     private void maintainSeat(SeatCarrier carrier, float yaw) {
         float seatYaw = yaw + carrier.properties.yawOffset();
-        Horse seat = carrier.mount;
+        Entity seat = carrier.mount;
         if (seat == null) {
             return;
         }
@@ -561,7 +610,7 @@ public final class LandVehicleRig {
             if (!removed && riderId != null) {
                 Player rider = Bukkit.getPlayer(riderId);
                 if (rider != null && rider.isOnline() && !rider.isDead()) {
-                    Horse replacement = createSeatMount(carrier);
+                    Entity replacement = createSeatMount(carrier);
                     if (replacement != null && replacement.addPassenger(rider)) {
                         carrier.rider = riderId;
                         replacement.setRotation(seatYaw, 0.0F);
@@ -668,13 +717,13 @@ public final class LandVehicleRig {
     public void setSeatGauge(float fraction) {
         seatGauge = Float.isFinite(fraction) ? Math.max(0.0F, Math.min(1.0F, fraction)) : 1.0F;
         for (SeatCarrier carrier : seats) {
-            if (carrier.mount != null && carrier.mount.isValid()) {
-                applySeatGauge(carrier.mount);
+            if (carrier.mount instanceof org.bukkit.entity.LivingEntity living && living.isValid()) {
+                applySeatGauge(living);
             }
         }
     }
 
-    private void applySeatGauge(Horse seat) {
+    private void applySeatGauge(org.bukkit.entity.LivingEntity seat) {
         double health = FuelGauge.mountHealth(seatGauge);
         if (Math.abs(seat.getHealth() - health) > 0.01D) {
             seat.setHealth(health);
@@ -704,7 +753,7 @@ public final class LandVehicleRig {
         double playerHalfHeight = player.getBoundingBox().getHeight() * 0.5D;
         Location playerLocation = player.getLocation();
         for (SeatCarrier carrier : seats) {
-            Horse seat = carrier.mount;
+            Entity seat = carrier.mount;
             if (seat != null && seat.isValid() && !seat.getPassengers().isEmpty()) {
                 continue;
             }
@@ -728,7 +777,7 @@ public final class LandVehicleRig {
         if (closest.mount != null) {
             discardSeat(closest);
         }
-        Horse seat = createSeatMount(closest);
+        Entity seat = createSeatMount(closest);
         if (seat != null && seat.addPassenger(player)) {
             closest.rider = player.getUniqueId();
             return true;
@@ -856,13 +905,15 @@ public final class LandVehicleRig {
          * Restoring an ordinary bounding box also keeps the fallback dismount
          * location independent of the carrier's minimum render scale. */
         for (SeatCarrier carrier : seats) {
-            Horse seat = carrier.mount;
+            Entity seat = carrier.mount;
             if (seat == null || !seat.isValid() || seat.getPassengers().isEmpty()) {
                 continue;
             }
-            AttributeInstance scale = seat.getAttribute(Attribute.SCALE);
-            if (scale != null) {
-                scale.setBaseValue(1.0D);
+            if (seat instanceof org.bukkit.entity.LivingEntity living) {
+                AttributeInstance scale = living.getAttribute(Attribute.SCALE);
+                if (scale != null) {
+                    scale.setBaseValue(1.0D);
+                }
             }
             seat.eject();
             if (!seat.getPassengers().isEmpty()) {
@@ -1020,7 +1071,7 @@ public final class LandVehicleRig {
     private static final class SeatCarrier {
         private final ItemDisplay anchor;
         private final LandVehicleSpec.Seat properties;
-        private Horse mount;
+        private Entity mount;
         private UUID rider;
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
@@ -1028,7 +1079,7 @@ public final class LandVehicleRig {
             this.properties = properties;
         }
 
-        private Horse seat() {
+        private Entity seat() {
             return mount;
         }
     }
