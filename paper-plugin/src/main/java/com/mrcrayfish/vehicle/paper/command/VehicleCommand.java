@@ -655,31 +655,25 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         return new String[] {"B cal fara saua", "C cal cu saua (vanilla clasic)"};
     }
 
-    private Entity spawnSeatTest(Location location, String label, SeatKind kind) {
-        Entity entity;
-        if (kind == SeatKind.HORSE_BARE) {
-            Horse horse = location.getWorld().spawn(location, Horse.class);
-            horse.setTamed(true);
-            entity = horse;
-        } else {
-            Horse horse = location.getWorld().spawn(location, Horse.class);
-            horse.setTamed(true);
-            Horse saddleHorse = horse;
-            saddleHorse.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
-            entity = saddleHorse;
+    private Horse spawnSeatTest(Location location, String label, SeatKind kind) {
+        /* Tipizat Horse de la cap la coada - exact constructia din
+         * LandVehicleRig # seatCarrier care se stie ca compileaza in CI. */
+        Horse seat = location.getWorld().spawn(location, Horse.class, carrier -> {
+            carrier.setTamed(true);
+            carrier.setAI(false);
+            carrier.setGravity(false);
+            carrier.setCollidable(false);
+            carrier.setInvulnerable(true);
+            carrier.setSilent(true);
+            carrier.setPersistent(false);
+        });
+        if (kind == SeatKind.HORSE_SADDLED) {
+            seat.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
         }
-        entity.setInvulnerable(true);
-        entity.setSilent(true);
-        entity.setCollidable(false);
-        entity.setPersistent(false);
-        entity.setGravity(false);
-        entity.customName(net.kyori.adventure.text.Component.text(label));
-        entity.setCustomNameVisible(true);
-        entity.addScoreboardTag("mcv_seat_test");
-        if (entity instanceof org.bukkit.entity.Animals animals) {
-            animals.setAI(false);
-        }
-        return entity;
+        seat.customName(net.kyori.adventure.text.Component.text(label));
+        seat.setCustomNameVisible(true);
+        seat.addScoreboardTag("mcv_seat_test");
+        return seat;
     }
 
     private void propsDebug(CommandSender sender) {
