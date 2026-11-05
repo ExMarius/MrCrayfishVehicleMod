@@ -1,10 +1,10 @@
-# Extract log server - 2026-11-05T17:02:25Z
+# Extract log server - 2026-11-05T17:08:38Z
 
 ## fisiere in logs/
-logs/2026-11-05-20.log.gz
 logs/2026-11-05-21.log.gz
 logs/2026-11-05-22.log.gz
 logs/2026-11-05-23.log.gz
+logs/2026-11-05-24.log.gz
 logs/2026-11-05-3.log.gz
 logs/2026-11-05-4.log.gz
 logs/2026-11-05-5.log.gz
@@ -17,101 +17,101 @@ logs/latest.log
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
 sftp> get logs/latest.log /tmp/latest.log
 
-==================== /tmp/latest.log (685 linii) ====================
+==================== /tmp/latest.log (272 linii) ====================
 ---- SEATDBG / SEATDBG2 (ultimele 60) ----
-[17:01:26] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:01:26] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=9.66 req=0.482/-0.080/0.039 got=0.000/0.000/0.000 loc=77.90/63.00/-38.04 onGround=true
-[17:01:27] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:01:27] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=true throttle=1.00 steer=0.00 speed=4.08 req=0.203/-0.080/0.016 got=0.000/0.000/0.000 loc=77.90/63.00/-38.04 onGround=true
-[17:01:28] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:01:28] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=2.13 req=0.106/-0.080/0.009 got=0.000/0.000/0.000 loc=77.90/63.00/-38.04 onGround=true
-[17:01:29] [Server thread/INFO]: [SEATDBG2] id=atv driver=- input=- throttle=0.00 steer=0.00 speed=3.92 req=0.196/-0.080/0.016 got=0.196/0.000/0.016 loc=80.31/63.00/-37.85 onGround=true
-[17:01:30] [Server thread/INFO]: [SEATDBG2] id=atv driver=- input=- throttle=0.00 steer=0.00 speed=0.89 req=0.044/-0.080/0.004 got=0.044/0.000/0.004 loc=82.27/63.00/-37.69 onGround=true
-[17:01:31] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:01:31] [Server thread/INFO]: [SEATDBG2] id=atv driver=- input=- throttle=0.00 steer=0.00 speed=0.20 req=0.010/-0.080/0.001 got=0.000/0.000/0.000 loc=82.70/63.00/-37.65 onGround=true
-[17:01:32] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:01:32] [Server thread/INFO]: [SEATDBG2] id=atv driver=- input=- throttle=0.00 steer=0.00 speed=0.00 req=0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=82.70/63.00/-37.65 onGround=true
-[17:01:33] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:01:34] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:01:35] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-85.4 wantYaw=-85.4 delta=0.000/0.000/0.000
-[17:02:02] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=66.0 wantYaw=66.0 delta=0.000/0.000/0.000
-[17:02:03] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=66.0 wantYaw=66.0 delta=0.000/0.000/0.000
-[17:02:03] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=4.25 req=-0.194/-0.080/0.086 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:04] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=66.0 wantYaw=66.0 delta=0.000/0.000/0.000
-[17:02:04] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=9.04 req=-0.413/-0.080/0.184 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:05] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=66.0 wantYaw=66.0 delta=0.000/0.000/0.000
-[17:02:05] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=10.11 req=-0.462/-0.080/0.205 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:06] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=66.0 wantYaw=66.0 delta=0.000/0.000/0.000
-[17:02:06] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=10.35 req=-0.473/-0.080/0.210 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:07] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=144.8 wantYaw=144.8 delta=0.000/0.000/0.000
-[17:02:07] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-22.45 speed=10.24 req=-0.228/-0.080/-0.459 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:08] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-50.4 wantYaw=-50.4 delta=0.000/0.000/0.000
-[17:02:08] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-30.50 speed=9.96 req=0.309/-0.080/0.390 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:09] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=128.0 wantYaw=128.0 delta=0.000/0.000/0.000
-[17:02:09] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=false jump=false throttle=0.00 steer=-13.53 speed=7.19 req=-0.263/-0.080/-0.245 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:10] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=139.6 wantYaw=139.6 delta=0.000/0.000/0.000
-[17:02:10] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-3.63 speed=3.07 req=-0.096/-0.080/-0.120 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:11] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-156.3 wantYaw=-156.3 delta=0.000/0.000/0.000
-[17:02:11] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-23.76 speed=8.72 req=0.240/-0.080/-0.364 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:12] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-62.9 wantYaw=-62.9 delta=0.000/0.000/0.000
-[17:02:12] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=true jump=false throttle=0.00 steer=-30.97 speed=2.54 req=0.096/-0.080/0.083 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:13] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-37.8 wantYaw=-37.8 delta=0.000/0.000/0.000
-[17:02:13] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=true jump=false throttle=0.00 steer=-33.55 speed=0.58 req=0.011/-0.080/0.027 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:14] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-34.5 wantYaw=-34.5 delta=0.000/0.000/0.000
-[17:02:14] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=true r=false jump=false throttle=0.00 steer=7.71 speed=0.13 req=0.004/-0.080/0.005 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:15] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-34.9 wantYaw=-34.9 delta=0.000/0.000/0.000
-[17:02:15] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=true r=false jump=true throttle=0.00 steer=25.22 speed=0.00 req=0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:16] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-34.9 wantYaw=-34.9 delta=0.000/0.000/0.000
-[17:02:16] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=true r=true jump=true throttle=0.00 steer=0.37 speed=0.00 req=0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:17] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-36.7 wantYaw=-36.7 delta=0.000/0.000/0.000
-[17:02:17] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=true throttle=1.00 steer=2.56 speed=0.07 req=-0.003/-0.080/0.002 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:18] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-37.9 wantYaw=-37.9 delta=0.000/0.000/0.000
-[17:02:18] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=true throttle=1.00 steer=0.03 speed=0.00 req=-0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:19] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-38.0 wantYaw=-38.0 delta=0.000/0.000/0.000
-[17:02:19] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=7.04 req=0.216/-0.080/0.277 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:20] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-38.0 wantYaw=-38.0 delta=0.000/0.000/0.000
-[17:02:20] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=false jump=false throttle=0.00 steer=0.00 speed=6.05 req=0.186/-0.080/0.239 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:21] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-38.5 wantYaw=-38.5 delta=0.000/0.000/0.000
-[17:02:21] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=true throttle=1.00 steer=4.99 speed=1.16 req=0.032/-0.080/0.048 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:22] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-68.4 wantYaw=-68.4 delta=0.000/0.000/0.000
-[17:02:22] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=24.24 speed=5.08 req=0.248/-0.080/0.054 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:23] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-132.3 wantYaw=-132.3 delta=0.000/0.000/0.000
-[17:02:23] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=1.19 speed=9.64 req=0.354/-0.080/-0.327 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:24] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-116.6 wantYaw=-116.6 delta=0.000/0.000/0.000
-[17:02:24] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-19.38 speed=1.07 req=0.027/-0.080/-0.046 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
+[17:08:09] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=false jump=false throttle=0.00 steer=0.00 speed=0.00 req=0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:10] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-99.9 wantYaw=-99.9 delta=0.000/0.000/0.000
+[17:08:10] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=false jump=false throttle=0.00 steer=0.00 speed=0.00 req=0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:11] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-96.2 wantYaw=-96.2 delta=0.000/0.000/0.000
+[17:08:11] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-9.27 speed=5.85 req=0.293/-0.080/-0.010 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:12] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-4.5 wantYaw=-4.5 delta=0.000/0.000/0.000
+[17:08:12] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-25.78 speed=9.27 req=-0.047/-0.080/0.461 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:12] [Server thread/INFO]: [SEATDBG3] box=74.07..75.57/64.00..65.00/-50.56..-49.06 w=1.5 h=1.0 climbStations=false blocker(hasCollisionsIn)=true blocks=[]
+[17:08:13] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=121.0 wantYaw=121.0 delta=0.000/0.000/0.000
+[17:08:13] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-3.99 speed=9.95 req=-0.420/-0.080/-0.267 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:14] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=176.1 wantYaw=176.1 delta=0.000/0.000/0.000
+[17:08:14] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-20.32 speed=5.10 req=-0.044/-0.080/-0.251 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:15] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-130.7 wantYaw=-130.7 delta=0.000/0.000/0.000
+[17:08:15] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-29.74 speed=1.08 req=-0.014/-0.080/-0.052 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:16] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-75.6 wantYaw=-75.6 delta=0.000/0.000/0.000
+[17:08:16] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=-10.41 speed=6.50 req=0.310/-0.080/0.098 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:17] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-92.9 wantYaw=-92.9 delta=0.000/0.000/0.000
+[17:08:17] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=true throttle=1.00 steer=18.72 speed=2.52 req=0.122/-0.080/0.033 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:17] [Server thread/INFO]: [SEATDBG3] box=74.07..75.57/64.00..65.00/-50.56..-49.06 w=1.5 h=1.0 climbStations=false blocker(hasCollisionsIn)=true blocks=[]
+[17:08:18] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-142.0 wantYaw=-142.0 delta=0.000/0.000/0.000
+[17:08:18] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=true throttle=1.00 steer=29.16 speed=0.93 req=0.044/-0.080/0.014 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:19] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=158.8 wantYaw=158.8 delta=0.000/0.000/0.000
+[17:08:19] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=17.07 speed=0.49 req=0.021/-0.080/-0.012 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:20] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=162.0 wantYaw=162.0 delta=0.000/0.000/0.000
+[17:08:20] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-16.33 speed=0.47 req=-0.023/-0.080/0.004 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:21] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-152.0 wantYaw=-152.0 delta=0.000/0.000/0.000
+[17:08:21] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-28.31 speed=0.80 req=-0.030/-0.080/-0.027 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:22] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-79.2 wantYaw=-79.2 delta=0.000/0.000/0.000
+[17:08:22] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-32.60 speed=8.06 req=0.374/-0.080/0.150 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:22] [Server thread/INFO]: [SEATDBG3] box=74.07..75.57/64.00..65.00/-50.56..-49.06 w=1.5 h=1.0 climbStations=false blocker(hasCollisionsIn)=true blocks=[]
+[17:08:23] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=132.3 wantYaw=132.3 delta=0.000/0.000/0.000
+[17:08:23] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-34.14 speed=10.38 req=-0.297/-0.080/-0.426 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:24] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-62.5 wantYaw=-62.5 delta=0.000/0.000/0.000
+[17:08:24] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-34.69 speed=2.91 req=0.141/-0.080/-0.035 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:25] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=3.2 wantYaw=3.2 delta=0.000/0.000/0.000
+[17:08:25] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-34.89 speed=2.75 req=-0.039/-0.080/0.132 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:26] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=145.6 wantYaw=145.6 delta=0.000/0.000/0.000
+[17:08:26] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-34.96 speed=8.72 req=-0.157/-0.080/-0.407 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:27] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-67.0 wantYaw=-67.0 delta=0.000/0.000/0.000
+[17:08:27] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-4.69 speed=9.74 req=0.443/-0.080/0.204 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:27] [Server thread/INFO]: [SEATDBG3] box=74.07..75.57/64.00..65.00/-50.56..-49.06 w=1.5 h=1.0 climbStations=false blocker(hasCollisionsIn)=true blocks=[]
+[17:08:28] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-60.0 wantYaw=-60.0 delta=0.000/0.000/0.000
+[17:08:28] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.05 speed=10.26 req=0.444/-0.080/0.257 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:29] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-59.9 wantYaw=-59.9 delta=0.000/0.000/0.000
+[17:08:29] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.00 speed=10.38 req=0.449/-0.080/0.260 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:30] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-59.9 wantYaw=-59.9 delta=0.000/0.000/0.000
+[17:08:30] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.00 speed=10.41 req=0.450/-0.080/0.261 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:31] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-59.9 wantYaw=-59.9 delta=0.000/0.000/0.000
+[17:08:31] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.00 speed=10.41 req=0.450/-0.080/0.261 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:32] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-58.3 wantYaw=-58.3 delta=0.000/0.000/0.000
+[17:08:32] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-4.99 speed=10.41 req=0.432/-0.080/0.291 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:32] [Server thread/INFO]: [SEATDBG3] box=74.07..75.57/64.00..65.00/-50.56..-49.06 w=1.5 h=1.0 climbStations=false blocker(hasCollisionsIn)=true blocks=[]
+[17:08:33] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=25.6 wantYaw=25.6 delta=0.000/0.000/0.000
+[17:08:33] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-24.24 speed=4.15 req=-0.016/-0.080/0.207 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:34] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=81.2 wantYaw=81.2 delta=0.000/0.000/0.000
+[17:08:34] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=-3.55 speed=7.43 req=-0.365/-0.080/0.069 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:35] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=23.4 wantYaw=23.4 delta=0.000/0.000/0.000
+[17:08:35] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=21.18 speed=9.64 req=-0.126/-0.080/0.465 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:36] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-131.9 wantYaw=-131.9 delta=0.000/0.000/0.000
+[17:08:36] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=30.05 speed=9.86 req=0.292/-0.080/-0.398 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
 ---- Exceptii / erori (ultimele 80) ----
-70:[16:54:08] [Server thread/ERROR]: [Essentials] You are running an unsupported server version!
+69:[17:06:44] [Server thread/ERROR]: [Essentials] You are running an unsupported server version!
 ---- Ultimele 30 linii ----
-[17:02:10] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=139.6 wantYaw=139.6 delta=0.000/0.000/0.000
-[17:02:10] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-3.63 speed=3.07 req=-0.096/-0.080/-0.120 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:11] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-156.3 wantYaw=-156.3 delta=0.000/0.000/0.000
-[17:02:11] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-23.76 speed=8.72 req=0.240/-0.080/-0.364 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:12] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-62.9 wantYaw=-62.9 delta=0.000/0.000/0.000
-[17:02:12] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=true jump=false throttle=0.00 steer=-30.97 speed=2.54 req=0.096/-0.080/0.083 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:13] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-37.8 wantYaw=-37.8 delta=0.000/0.000/0.000
-[17:02:13] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=true jump=false throttle=0.00 steer=-33.55 speed=0.58 req=0.011/-0.080/0.027 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:14] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-34.5 wantYaw=-34.5 delta=0.000/0.000/0.000
-[17:02:14] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=true r=false jump=false throttle=0.00 steer=7.71 speed=0.13 req=0.004/-0.080/0.005 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:15] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-34.9 wantYaw=-34.9 delta=0.000/0.000/0.000
-[17:02:15] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=true r=false jump=true throttle=0.00 steer=25.22 speed=0.00 req=0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:16] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-34.9 wantYaw=-34.9 delta=0.000/0.000/0.000
-[17:02:16] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=true r=true jump=true throttle=0.00 steer=0.37 speed=0.00 req=0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:17] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-36.7 wantYaw=-36.7 delta=0.000/0.000/0.000
-[17:02:17] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=true throttle=1.00 steer=2.56 speed=0.07 req=-0.003/-0.080/0.002 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:18] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-37.9 wantYaw=-37.9 delta=0.000/0.000/0.000
-[17:02:18] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=true throttle=1.00 steer=0.03 speed=0.00 req=-0.000/-0.080/0.000 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:19] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-38.0 wantYaw=-38.0 delta=0.000/0.000/0.000
-[17:02:19] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=0.00 speed=7.04 req=0.216/-0.080/0.277 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:20] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-38.0 wantYaw=-38.0 delta=0.000/0.000/0.000
-[17:02:20] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=false b=false l=false r=false jump=false throttle=0.00 steer=0.00 speed=6.05 req=0.186/-0.080/0.239 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:21] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-38.5 wantYaw=-38.5 delta=0.000/0.000/0.000
-[17:02:21] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=true throttle=1.00 steer=4.99 speed=1.16 req=0.032/-0.080/0.048 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:22] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-68.4 wantYaw=-68.4 delta=0.000/0.000/0.000
-[17:02:22] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=24.24 speed=5.08 req=0.248/-0.080/0.054 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:23] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-132.3 wantYaw=-132.3 delta=0.000/0.000/0.000
-[17:02:23] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=1.19 speed=9.64 req=0.354/-0.080/-0.327 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
-[17:02:24] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-116.6 wantYaw=-116.6 delta=0.000/0.000/0.000
-[17:02:24] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-19.38 speed=1.07 req=0.027/-0.080/-0.046 got=0.000/0.000/0.000 loc=71.44/64.00/-39.59 onGround=true
+[17:08:23] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=132.3 wantYaw=132.3 delta=0.000/0.000/0.000
+[17:08:23] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-34.14 speed=10.38 req=-0.297/-0.080/-0.426 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:24] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-62.5 wantYaw=-62.5 delta=0.000/0.000/0.000
+[17:08:24] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-34.69 speed=2.91 req=0.141/-0.080/-0.035 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:25] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=3.2 wantYaw=3.2 delta=0.000/0.000/0.000
+[17:08:25] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-34.89 speed=2.75 req=-0.039/-0.080/0.132 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:26] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=145.6 wantYaw=145.6 delta=0.000/0.000/0.000
+[17:08:26] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-34.96 speed=8.72 req=-0.157/-0.080/-0.407 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:27] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-67.0 wantYaw=-67.0 delta=0.000/0.000/0.000
+[17:08:27] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-4.69 speed=9.74 req=0.443/-0.080/0.204 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:27] [Server thread/INFO]: [SEATDBG3] box=74.07..75.57/64.00..65.00/-50.56..-49.06 w=1.5 h=1.0 climbStations=false blocker(hasCollisionsIn)=true blocks=[]
+[17:08:28] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-60.0 wantYaw=-60.0 delta=0.000/0.000/0.000
+[17:08:28] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.05 speed=10.26 req=0.444/-0.080/0.257 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:29] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-59.9 wantYaw=-59.9 delta=0.000/0.000/0.000
+[17:08:29] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.00 speed=10.38 req=0.449/-0.080/0.260 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:30] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-59.9 wantYaw=-59.9 delta=0.000/0.000/0.000
+[17:08:30] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.00 speed=10.41 req=0.450/-0.080/0.261 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:31] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-59.9 wantYaw=-59.9 delta=0.000/0.000/0.000
+[17:08:31] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=false jump=false throttle=1.00 steer=-0.00 speed=10.41 req=0.450/-0.080/0.261 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:32] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-58.3 wantYaw=-58.3 delta=0.000/0.000/0.000
+[17:08:32] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=false throttle=1.00 steer=-4.99 speed=10.41 req=0.432/-0.080/0.291 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:32] [Server thread/INFO]: [SEATDBG3] box=74.07..75.57/64.00..65.00/-50.56..-49.06 w=1.5 h=1.0 climbStations=false blocker(hasCollisionsIn)=true blocks=[]
+[17:08:33] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=25.6 wantYaw=25.6 delta=0.000/0.000/0.000
+[17:08:33] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=false r=true jump=true throttle=1.00 steer=-24.24 speed=4.15 req=-0.016/-0.080/0.207 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:34] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=81.2 wantYaw=81.2 delta=0.000/0.000/0.000
+[17:08:34] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=-3.55 speed=7.43 req=-0.365/-0.080/0.069 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:35] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=23.4 wantYaw=23.4 delta=0.000/0.000/0.000
+[17:08:35] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=21.18 speed=9.64 req=-0.126/-0.080/0.465 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
+[17:08:36] [Server thread/INFO]: [SEATDBG] mount=OAK_BOAT passengers=1 seatYaw=-131.9 wantYaw=-131.9 delta=0.000/0.000/0.000
+[17:08:36] [Server thread/INFO]: [SEATDBG2] id=atv driver=ExMarius input=f=true b=false l=true r=false jump=false throttle=1.00 steer=30.05 speed=9.86 req=0.292/-0.080/-0.398 got=0.000/0.000/0.000 loc=74.82/64.00/-49.81 onGround=true
 
 ==================== /tmp/prev.log (214 linii) ====================
 ---- SEATDBG / SEATDBG2 (ultimele 60) ----
