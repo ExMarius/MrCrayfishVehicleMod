@@ -232,14 +232,17 @@ public final class LandVehicleRig {
         List<SeatCarrier> seats = new ArrayList<>();
         boolean bodyAssigned = false;
         for (LandVehicleSpec.Seat seat : spec.seats()) {
-            ItemDisplay anchor;
+            /* BL12: fiecare scaun primeste ancora LUI (display invizibil, item
+             * gol). Inainte scaunul soferului folosea chiar display-ul corpului
+             * masinii, iar rotatia acelei ancore se compunea cu rotatia
+             * scaunului => "barca se invarte pe masina". Ancora ramane acum
+             * NEROTITA (vezi update()), deci yaw-ul scaunului are o singura
+             * sursa: serverul. */
+            ItemDisplay anchor = display(world, location, new ItemStack(Material.AIR));
+            mark(anchor, vehicleId);
+            all.add(anchor);
             if (seat.driver() && !bodyAssigned) {
-                anchor = body;
                 bodyAssigned = true;
-            } else {
-                anchor = display(world, location, new ItemStack(Material.AIR));
-                mark(anchor, vehicleId);
-                all.add(anchor);
             }
             seats.add(new SeatCarrier(anchor, seat));
         }
@@ -509,13 +512,12 @@ public final class LandVehicleRig {
         }
 
         for (SeatCarrier carrier : seats) {
-            if (carrier.anchor != body) {
-                Vector3f seatPoint = pigAnchor(chassis(
-                        seatOffset(carrier.properties), wheelieAngle, bodyRoll));
-                Location seatLocation = local(root, seatPoint);
-                carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-                carrier.anchor.setRotation(yaw + carrier.properties.yawOffset(), 0.0F);
-            }
+            Vector3f seatPoint = pigAnchor(chassis(
+                    seatOffset(carrier.properties), wheelieAngle, bodyRoll));
+            Location seatLocation = local(root, seatPoint);
+            carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            /* BL12: ancora rămâne NEROTITA - rotatia o poarta doar scaunul. */
+            carrier.anchor.setRotation(0.0F, 0.0F);
             maintainSeat(carrier, yaw);
         }
     }
@@ -636,15 +638,9 @@ public final class LandVehicleRig {
         }
         carrier.rider = rider.getUniqueId();
         hideSeatFromPlayers(seat);
-        /* BL10: pozitia scaunului vine EXCLUSIV de la vehicul (entitatea nu mai
-         * are parinte-display, deci o teleportam noi in fiecare tick). */
-        Location seatLocation = carrier.anchor.getLocation();
-        seatLocation.setYaw(seatYaw);
-        seatLocation.setPitch(0.0F);
-        /* BL11: scaunul este LIPIT de vehicul: pozitia si orientarea vin de la
-         * vehicul in fiecare tick, fara praguri - orice deviere (inclusiv o
-         * rotire venita din client) este anulata in acelasi tick. */
-        seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        /* BL12: pozitia vine de la ancora (scaunul este pasagerul ei, deci
+         * urmeaza automat vehiculul si clientul nu poate conduce scaunul);
+         * serverul impune doar yaw-ul vehiculului, in fiecare tick. */
         if (seat.getYaw() != seatYaw || seat.getPitch() != 0.0F) {
             seat.setRotation(seatYaw, 0.0F);
         }
