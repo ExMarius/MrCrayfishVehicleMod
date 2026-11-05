@@ -591,8 +591,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return;
         }
         if (args.length < 2) {
-            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <b|c|e></red>"
-                    + " b=fara saua, c=cu saua, e=cu saua + serverul roteste scaunul la fiecare tick.");
+            sender.sendRichMessage("<red>Folosire: /" + "vehicle seattest <a|b|c|e|f|g></red>"
+                    + " a=barca, b=cal fara saua, c=cal cu saua, e=cal cu saua + server roteste, f=strider, g=camel.");
             return;
         }
         // curata randul vechi (daca exista)
@@ -614,17 +614,23 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         double rx = Math.cos(radians), rz = Math.sin(radians);
 
         java.util.List<Entity> spawned = new java.util.ArrayList<>();
+        spawned.add(spawnSeatTest(base.clone().add(rx * -6.0D, 0, rz * -6.0D), "A barca (clamp larg, corp lipit)", SeatKind.BOAT));
         spawned.add(spawnSeatTest(base.clone().add(rx * -3.0D, 0, rz * -3.0D), "B cal fara saua", SeatKind.HORSE_BARE));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 0.0D, 0, rz * 0.0D), "C cal cu saua", SeatKind.HORSE_SADDLED));
-        spawned.add(spawnSeatTest(base.clone().add(rx * 3.0D, 0, rz * 3.0D), "E cal cu saua + rotire server/tick", SeatKind.HORSE_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 0.0D, 0, rz * -3.0D), "C cal cu saua", SeatKind.HORSE_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 3.0D, 0, rz * 3.0D), "E C + rotire server/tick", SeatKind.HORSE_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 6.0D, 0, rz * 6.0D), "F strider cu saua", SeatKind.STRIDER_SADDLED));
+        spawned.add(spawnSeatTest(base.clone().add(rx * 9.0D, 0, rz * 9.0D), "G camel cu saua", SeatKind.CAMEL_SADDLED));
         for (Entity entity : spawned) {
             seatTestEntities.add(entity.getUniqueId());
         }
 
         int index = switch (args[1].toLowerCase(Locale.ROOT)) {
-            case "b" -> 0;
-            case "c" -> 1;
-            case "e" -> 2;
+            case "a" -> 0;
+            case "b" -> 1;
+            case "c" -> 2;
+            case "e" -> 3;
+            case "f" -> 4;
+            case "g" -> 5;
             default -> -1;
         };
         if (index < 0) {
@@ -666,26 +672,59 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }, 20L * 300);
     }
 
-    private enum SeatKind { HORSE_BARE, HORSE_SADDLED }
+    private enum SeatKind { BOAT, HORSE_BARE, HORSE_SADDLED, STRIDER_SADDLED, CAMEL_SADDLED }
 
     private static String[] spawnedLabels() {
-        return new String[] {"B cal fara saua", "C cal cu saua (vanilla clasic)", "E C + rotire fortata la yaw fix in fiecare tick (modelul masini)"};
+        return new String[] {"A barca (corp lipit ~105 grade cap liber)", "B cal fara saua (cap liber total, corp se invarte)",
+                "C cal cu saua (corp fix, cap ~45 grade)", "E C + rotire fortata server/tick",
+                "F strider cu saua", "G camel cu saua"};
     }
 
-    private Horse spawnSeatTest(Location location, String label, SeatKind kind) {
-        /* Tipizat Horse de la cap la coada - exact constructia din
-         * LandVehicleRig # seatCarrier care se stie ca compileaza in CI. */
-        Horse seat = location.getWorld().spawn(location, Horse.class, carrier -> {
-            carrier.setTamed(true);
-            carrier.setAI(false);
-            carrier.setGravity(false);
-            carrier.setCollidable(false);
-            carrier.setInvulnerable(true);
-            carrier.setSilent(true);
-            carrier.setPersistent(false);
-        });
-        if (kind == SeatKind.HORSE_SADDLED) {
-            seat.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
+    private Entity spawnSeatTest(Location location, String label, SeatKind kind) {
+        Entity seat;
+        if (kind == SeatKind.BOAT) {
+            seat = location.getWorld().spawn(location, org.bukkit.entity.Boat.class, boat -> {
+                boat.setCollidable(false);
+                boat.setInvulnerable(true);
+                boat.setSilent(true);
+                boat.setPersistent(false);
+            });
+        } else if (kind == SeatKind.HORSE_BARE || kind == SeatKind.HORSE_SADDLED) {
+            Horse horse = location.getWorld().spawn(location, Horse.class, carrier -> {
+                carrier.setTamed(true);
+                carrier.setAI(false);
+                carrier.setGravity(false);
+                carrier.setCollidable(false);
+                carrier.setInvulnerable(true);
+                carrier.setSilent(true);
+                carrier.setPersistent(false);
+            });
+            if (kind == SeatKind.HORSE_SADDLED) {
+                horse.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
+            }
+            seat = horse;
+        } else if (kind == SeatKind.STRIDER_SADDLED) {
+            org.bukkit.entity.Strider strider = location.getWorld().spawn(location, org.bukkit.entity.Strider.class, carrier -> {
+                carrier.setSaddle(true);
+                carrier.setAI(false);
+                carrier.setGravity(false);
+                carrier.setCollidable(false);
+                carrier.setInvulnerable(true);
+                carrier.setSilent(true);
+                carrier.setPersistent(false);
+            });
+            seat = strider;
+        } else {
+            org.bukkit.entity.Camel camel = location.getWorld().spawn(location, org.bukkit.entity.Camel.class, carrier -> {
+                carrier.setAI(false);
+                carrier.setGravity(false);
+                carrier.setCollidable(false);
+                carrier.setInvulnerable(true);
+                carrier.setSilent(true);
+                carrier.setPersistent(false);
+            });
+            camel.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
+            seat = camel;
         }
         seat.customName(net.kyori.adventure.text.Component.text(label));
         seat.setCustomNameVisible(true);
@@ -804,7 +843,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             return filter(java.util.List.of("10000", "25000", "60000", "100000"), args[3]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("seattest")) {
-            return filter(List.of("b", "c", "e"), args[1]);
+            return filter(List.of("a", "b", "c", "e", "f", "g"), args[1]);
         }
         if (args.length == 2 && args[0].equalsIgnoreCase("jerrycan")) {
             return filter(List.of("normal", "industrial"), args[1]);
