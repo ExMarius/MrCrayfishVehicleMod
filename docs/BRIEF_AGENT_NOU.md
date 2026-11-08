@@ -1,6 +1,6 @@
 # BRIEF PENTRU AGENT NOU — proiectul „MrCrayfish Vehicle Mod" (plugin Paper)
 
-> Versiune 3.11.2026. Acest fisier traieste in repo (docs/) ca sa supravietuiasca
+> Versiune 17.11.2026 (ciclul BL27). Acest fisier traieste in repo (docs/) ca sa supravietuiasca
 > reseturilor de sandbox; copiile din afara repo-ului se PIERD intre ture.
 
 ## 1. UNDE SE AFLĂ PROIECTUL
@@ -50,12 +50,71 @@ Istoric complet în `docs/GUI_CRIC_original_vs_implementare.md`, audit arhitectu
 6. **Nu dezvălui credențiale în chat** dincolo de ce a dat userul deja (parola SFTP e deja plaintext în workflow — starea actuală acceptată de user).
 7. **Documente de ghidaj:** `docs/AUDIT_TOTAL.md` (verdict/subsistem + nice-to-have rămas: seeder/fertilizer funcționalitate, props cu preț, announce lobby la restart, teste unitare în CI), `docs/GUI_CRIC...` (changelog E→AA), `docs/GHID_FINAL_SISTEM.md` (ghid jucători), `paper-plugin/DEPLOY-LOG.md` (lecții deploy).
 
-## 6. STAREA MOMENTULUI (3 Nov 2026)
+## 6. STAREA MOMENTULUI (17 Nov 2026, ciclul BL27)
 
-- **Deploy reparat și VERDE (AA.5)** — auth prin cheie pe serverul nou (cheia e per-cont HidenCloud!), upload OK. Atenție: serverul e PROASPĂT recreat → `server.properties` lipsea la deploy → pack-hash nesincronizat încă; după ce userul pornește serverul prima dată, orice redeploy sincronizează hash-ul.
-- Ciclul AA proaspăt: curățenie repo (șterse Untitled.zip, kenney_car-kit.zip, probe-result.txt, oracle-panel/, oracle-vm/; rămân în history) + reparații post-Z (mesaj untrust fără cheie, ghid elevator/trust realist, README build corect) + **rotație credențiale SFTP** (nile.a4e04808 → jacob.d496911d).
-- Nicio lucrare deschisă; sistemul e producție-ready.
-- Nice-to-have (doar la cerere): seeder/fertilizer, props economic, announce restart, teste în CI, cheie SSH nouă autorizată în panel.
+- **Tot ce exista in §4 functioneaza si este LIVE.** Deploy + build verzi pe `5359504`.
+- **Singura lucrare deschisa:** comportamentul scaunului/camerei (vezi §9). Nimic rupt: camera e libera (vanilla), montura + corpul se rotesc cu masina.
+- BL27 a scos complet mecanismul de camera din server (vezi tabelul din §9) — daca un agent viitor vrea sa-l reintroduca, citeste intai deconectarile dovedite.
+
+## 7. TON
+
+Userul e direct, romana, apreciaza structura + actiune; testeaza LIVE pe server si raporteaza ce vede. Nu intreba „vrei sa fac X?" daca X e clar cerut — fa si raporteaza. Cand ceva e imposibil tehnic, spune-i scurt de ce + ce alternative reale exista (funcționeaza mai bine decat inca o incercare oarba).
+
+## 8. CONECTARE / ACCES (pentru agentul urmator)
+
+**Agentul NU se conecteaza direct la server**: sandbox-ul are allowlist doar pe `github.com`, `codeload.github.com`, `api.github.com`, `registry.npmjs.org`, `pypi.org`, `files.pythonhosted.org`. `jacob.hidencloud.com` nu este accesibil. Totul trece prin GitHub Actions:
+
+| Ce vrei | Cum |
+|---|---|
+| Deploy (plugin + resource pack + server.properties) | push care atinge `paper-plugin/**`, `tools/**`, `hidencloud/**` sau workflow-ul de deploy → ruleaza `HidenCloud deploy` |
+| Log-ul serverului | `date -u +"dump %Y-%m-%dT%H:%M:%SZ" > .github/logdump-request` + commit + push → workflow `Log dump` publica `diagnostics/last-log-excerpt.txt` (citibil cu `git show origin/<branch>:diagnostics/last-log-excerpt.txt`) |
+| Inspectie SFTP ad-hoc | workflow manual `hc-inspect.yml` |
+| Verificare CI | `gh run list --limit 2`, `gh run watch <id> --exit-status`; erorile: `gh api repos/ExMarius/MrCrayfishVehicleMod/check-runs/<jobId>/annotations` (logurile de job nu se descarca din sandbox) |
+
+Credentiale SFTP (sursa de adevar: `env:` din `.github/workflows/hidencloud-sftp.yml` si `logdump.yml`):
+
+- host `jacob.hidencloud.com`, port `2022`, user `mariusuke-184939.d496911d`, SERVER_ID `d496911d`, panel `https://freepanel.hidencloud.com`
+- parola: `SFTP_PASS_BACKUP` din cele doua workflow-uri (plaintext, acceptat explicit de user)
+- cheia `hidencloud/keys/arena_hc_ed25519` NU e autorizata pe serverul nou → deploy-ul merge pe parola (fallback automat in workflow)
+- la recrearea serverului in panel credentele se ROTESC → userul le da din panel, se actualizeaza in AMBELE workflow-uri
+
+## 9. SAGA SCAUN + CAMERA (BL7 → BL27) — CE E DOVEDIT
+
+Cerinta userului, in cuvintele lui: scaunul sa fie **calul** („imi place cea de cal"), corpul **fix pe masina**, rotit odata cu ea („sa fie calul una cu masina"), iar **mouse-ul sa nu-l poata roti**, nici cand sta pe loc si masina vireaza. In final a clarificat: „tot ce m-ar interesa e ca HUD-ul [vederea/camera] sa se tina dupa masina cand virez; pozitia nu ma intereseaza".
+
+### Ce functioneaza (LIVE)
+- Scaun = entitate-montura (`cal` / `porc` / `armorstand`; implicit `armorstand` din BL22, comutabil cu `/vehicle seatkind <porc|cal|armorstand>`). Armor stand-ul e pasiv, deci clientul nu il roteste dupa camera asa cum face cu calul.
+- Montura e rotita de **server** pe yaw-ul vehiculului in fiecare tick (`/vehicle seatyaw <anchor|mount|both|off>`, implicit `mount`) ⇒ corpul se roteste o data cu masina la cerculete.
+- Urcarea functioneaza (BL20c: `teleport` pe pasager il da jos).
+
+### Ce e IMPOSIBIL din server — fiecare incercare a produs deconectare sau zero efect
+| Metoda | Rezultat |
+|---|---|
+| `Player#teleport` / pachet de pozitionare | pasager dat jos; trimis ca pachet brut: **`Invalid move player packet received`** (deconectare) |
+| `ClientboundPlayerLookAtPacket` (reflexie, BL21) | zero efect pe client |
+| camera legata de o entitate auxiliara (`ClientboundSetCameraPacket`, BL26) | **`Cannot interact with self!`** (deconectare) |
+| `Player#lookAt(Location/double,double,double)` | nu exista in API-ul Paper 1.21.4 (nu compileaza) |
+
+Concluzie: **clientul vanilla refuza orice control al camerei cat timp jucatorul e pasager**. Modul original poate face asta pentru ca ruleaza pe client (modul Framework + Vehicle sunt cod client; repo-ul Framework nu contine logica de scaune — verificat integral).
+
+### Alternative reale, in ordinea propusa userului
+1. **A (live acum):** camera libera, corpul/montura rotite cu masina. Zero risc.
+2. **B — „sofer fara calarie":** jucatorul nu mai e pasager, este tinut pe masina prin pozitionare din server; atunci clientul ACCEPTA pachetele si camera se poate bloca pe yaw-ul masinii (pitch liber). Cost: nu mai sta asezat, micro-tremur, rescrierea detectarii soferului (`LandVehicle.driver()` citeste pasagerii scaunului), 1-2h + risc.
+3. **C — client mod pentru 1.21.4** (ca originalul): singura varianta 1:1, proiect separat mare.
+4. **D — indicator de viraj in HUD** (action bar / font propriu) care se misca cu volanul: fezabil server-side, rapid.
+
+### Capcane dovedite (nu le reincerca)
+- `Player#teleport` pe un pasager il da jos de pe scaun („nu merge sa urc").
+- Pachete de pozitionare/rotatie pe un pasager = deconectare imediata.
+- `ClientboundSetCameraPacket` spre o entitate auxiliara in timpul calariei = deconectare.
+- `setCollidable` nu exista pe Boat; `EntityType.BOAT`→`OAK_BOAT`; `World#hasCollisionsIn()`; `setInvisible` pe `OAK_BOAT`; `hideEntity` pe entitatea calarita.
+- Build-ul „fresh server" poate pica pe timeout de infrastructura (`cycle 1 did not become ready within 240 seconds`) chiar cu cod bun — verifica anotarile inainte sa consideri regresie.
+
+### Comenzi de test inca prezente (se sterg dupa validarea finala)
+`/vehicle seatkind`, `/vehicle seatyaw`, `/vehicle seatlook`, `/vehicle seatlift`, `/vehicle seattest`. Dupa validare: hardcode `seatKind`/`seatYawMode`, sterge comenzile.
+
+### Backlog user (nepornit)
+„sloturi" (nedetaliat), vitezometru HUD (font propriu, langa inimile de cal, in stanga — formele agreate), indicator combustibil. Bara XP = 100% vanilla, fara sidebar/scoreboard.
 
 ## 7. TON
 
