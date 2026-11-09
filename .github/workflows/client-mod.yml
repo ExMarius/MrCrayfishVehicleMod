@@ -33,7 +33,22 @@ jobs:
       - uses: gradle/actions/setup-gradle@v5
 
       - name: Gradle build (Fabric Loom)
-        run: ./client-mod/gradlew -p client-mod build --no-daemon
+        run: |
+          set +e
+          ./client-mod/gradlew -p client-mod build --no-daemon --stacktrace > client-mod/build.log 2>&1
+          status=$?
+          echo "exit=$status"
+          tail -n 60 client-mod/build.log || true
+          if [ "$status" -ne 0 ]; then
+            tail -c 7000 client-mod/build.log > client-mod/BUILD-ERROR.txt
+            git config user.name "arena-bot"
+            git config user.email "bot@arena.local"
+            git add client-mod/BUILD-ERROR.txt
+            git commit -m "Diagnostic: eroare build mod client (automat)" || true
+            git pull --rebase -q || true
+            git push || true
+            exit "$status"
+          fi
 
       - name: Publicez jar-ul in release
         env:
