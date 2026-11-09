@@ -228,7 +228,7 @@ public final class LandVehicleRig {
     /** BL16: scaunul poate fi si ARMOR STAND (entitate vie fara AI, deci nu se
      *  roteste dupa camera cum face calul). Implicit: calul = varianta C
      *  validata de user; comutabil live cu /vehicle seatkind. */
-    private static volatile String seatKind = "armorstand";
+    private static volatile String seatKind = "barca";
 
     public static void setSeatKind(String kind) {
         if (java.util.List.of("porc", "cal", "armorstand", "barca").contains(kind)) {
@@ -520,6 +520,25 @@ public final class LandVehicleRig {
         return boat;
     }
 
+    /** BL30: barca vanilla cu un jucator in ea este CONDUSA DE CLIENT (clientul
+     *  o roteste dupa camera si serverul doar corecteaza -> tremura si nu sta
+     *  pe directia masinii). Punem pe primul loc de pasager o entitate-neutra
+     *  invizibila, iar jucatorul urca pe al doilea -> barca nu mai are
+     *  getControllingPassenger(), deci serverul ramane singurul care o roteste. */
+    private static Entity boatBlocker(World world, Location location, UUID vehicleId) {
+        org.bukkit.entity.ArmorStand blocker = world.spawn(location,
+                org.bukkit.entity.ArmorStand.class, stand -> {
+            stand.setInvisible(true);
+            stand.setMarker(true);
+            stand.setGravity(false);
+            stand.setInvulnerable(true);
+            stand.setSilent(true);
+            stand.setPersistent(false);
+        });
+        mark(blocker, vehicleId);
+        return blocker;
+    }
+
     private Entity createSeatMount(SeatCarrier carrier) {
         if (removed || !carrier.anchor.isValid()) {
             return null;
@@ -531,6 +550,15 @@ public final class LandVehicleRig {
             case "barca" -> boatCarrier(location.getWorld(), location, vehicleId);
             default -> pigCarrier(location.getWorld(), location, vehicleId);
         };
+        if (seat instanceof org.bukkit.entity.Boat) {
+            Entity blocker = boatBlocker(location.getWorld(), location, vehicleId);
+            if (seat.addPassenger(blocker)) {
+                carrier.boatBlocker = blocker;
+                entities.add(blocker);
+            } else {
+                blocker.remove();
+            }
+        }
         if (!carrier.anchor.addPassenger(seat)) {
             seat.remove();
             return null;
@@ -546,6 +574,11 @@ public final class LandVehicleRig {
     private void discardSeat(SeatCarrier carrier) {
         Entity seat = carrier.mount;
         carrier.mount = null;
+        if (carrier.boatBlocker != null) {
+            entities.remove(carrier.boatBlocker);
+            carrier.boatBlocker.remove();
+            carrier.boatBlocker = null;
+        }
         if (seat != null) {
             entities.remove(seat);
             seat.remove();
@@ -852,6 +885,22 @@ public final class LandVehicleRig {
         boolean mountYaw = "mount".equals(seatYawMode) || "both".equals(seatYawMode);
         if (mountYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
+        }
+        /* BL30: barca trebuie sa aiba mereu entitatea-neutra pe primul loc de
+         * pasager, altfel redevine condusa de client (rotire dupa camera). */
+        if (seat instanceof org.bukkit.entity.Boat && carrier.boatBlocker != null) {
+            List<Entity> passengers = seat.getPassengers();
+            if (passengers.isEmpty() || !passengers.getFirst().equals(carrier.boatBlocker)) {
+                carrier.boatBlocker.remove();
+                Entity blocker = boatBlocker(seat.getWorld(), seat.getLocation(), vehicleId);
+                if (seat.addPassenger(blocker)) {
+                    carrier.boatBlocker = blocker;
+                    entities.add(blocker);
+                } else {
+                    blocker.remove();
+                    carrier.boatBlocker = null;
+                }
+            }
         }
         /* BL21: camera ramane pe directia vehiculului (mouse-ul nu mai roteste
          * jucatorul). Pitch-ul rămâne liber. 999 = dezactivat. */
@@ -1290,6 +1339,9 @@ public final class LandVehicleRig {
         private final LandVehicleSpec.Seat properties;
         private Entity mount;
         private UUID rider;
+        /** BL30: entitate-neutra pe PRIMUL loc de pasager al barcii, ca barca
+         *  sa nu aiba "sofer" si deci sa nu fie controlata de client. */
+        private Entity boatBlocker;
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
             this.anchor = anchor;
