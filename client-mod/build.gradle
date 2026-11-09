@@ -46,3 +46,22 @@ tasks.register('printCp') {
         }
     }
 }
+
+tasks.register('printJar') {
+    doLast {
+        def jar = configurations.compileClasspath.files.find { it.name.contains('minecraft') && it.name.endsWith('.jar') }
+        println "JAR=${jar}"
+        if (jar != null) {
+            def zip = new java.util.zip.ZipFile(jar)
+            try {
+                def names = zip.entries().toList().collect { it.name }
+                println "ENTRIES=${names.size()}"
+                println "CLIENT_PKG=${names.count { it.startsWith('net/minecraft/client/') }}"
+                println "SERVER_PKG=${names.count { it.startsWith('net/minecraft/server/') }}"
+                println "HAS_LOCALPLAYER=${names.any { it.contains('LocalPlayer') }}"
+            } finally {
+                zip.close()
+            }
+        }
+    }
+}
