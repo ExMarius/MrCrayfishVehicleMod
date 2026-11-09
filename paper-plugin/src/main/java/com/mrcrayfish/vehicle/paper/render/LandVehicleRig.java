@@ -509,15 +509,19 @@ public final class LandVehicleRig {
      *  Atentie: la Boat NU exista setCollidable (verificat in BL7) si
      *  setInvisible nu are efect pe barci - modelul barcii se vede. */
     private static Entity boatCarrier(World world, Location location, UUID vehicleId) {
-        org.bukkit.entity.Boat boat = world.spawn(location,
-                org.bukkit.entity.Boat.class, carrier -> {
-            carrier.setGravity(false);
-            carrier.setInvulnerable(true);
-            carrier.setSilent(true);
-            carrier.setPersistent(false);
-        });
-        mark(boat, vehicleId);
-        return boat;
+        /* BL32: in 1.21.4 NU exista EntityType.BOAT (barcile sunt OAK_BOAT,
+         * BIRCH_BOAT...) - world.spawn(..., Boat.class) arunca
+         * "Cannot spawn an entity for org.bukkit.entity.Boat" si scaunul nu
+         * aparea deloc. Spawnam pe tipul concret si il configuram apoi. */
+        Entity spawned = world.spawnEntity(location, org.bukkit.entity.EntityType.OAK_BOAT);
+        if (spawned instanceof org.bukkit.entity.Boat boat) {
+            boat.setGravity(false);
+            boat.setInvulnerable(true);
+            boat.setSilent(true);
+            boat.setPersistent(false);
+        }
+        mark(spawned, vehicleId);
+        return spawned;
     }
 
     /* BL31: barca are UN SINGUR loc de pasager in vanilla, deci nu putem pune
