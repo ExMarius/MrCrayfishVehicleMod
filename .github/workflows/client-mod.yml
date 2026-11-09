@@ -32,6 +32,14 @@ jobs:
 
       - uses: gradle/actions/setup-gradle@v5
 
+      - name: Diagnostic classpath
+        run: |
+          ./client-mod/gradlew -p client-mod printCp --no-daemon > client-mod/cp.log 2>&1 || true
+          { echo "=== CLASSPATH ==="; grep -a "^CP:" client-mod/cp.log | head -40; echo "=== LOOM ==="; grep -a -i -E "loom|mappings|minecraft" client-mod/cp.log | head -20; } > client-mod/BUILD-ERROR.txt
+          git config user.name "arena-bot"; git config user.email "bot@arena.local"
+          git add client-mod/BUILD-ERROR.txt; git commit -m "Diagnostic: classpath mod client (automat)" || true
+          git pull --rebase -q || true; git push || true
+
       - name: Gradle build (Fabric Loom)
         run: |
           set +e

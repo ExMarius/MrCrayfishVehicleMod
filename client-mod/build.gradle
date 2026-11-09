@@ -38,3 +38,11 @@ jar {
     from("LICENSE") {
     }
 }
+
+tasks.register('printCp') {
+    doLast {
+        configurations.compileClasspath.each { file ->
+            println "CP: ${file}"
+        }
+    }
+}
