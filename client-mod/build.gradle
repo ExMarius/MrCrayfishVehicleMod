@@ -14,7 +14,8 @@ repositories {
 
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    // Mojang official mappings: 1:1 cu jar-ul oficial, fara diferente de build.
+    mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
 }
 
@@ -59,6 +60,8 @@ tasks.register('printJar') {
                 println "CLIENT_PKG=${names.count { it.startsWith('net/minecraft/client/') }}"
                 println "SERVER_PKG=${names.count { it.startsWith('net/minecraft/server/') }}"
                 println "HAS_LOCALPLAYER=${names.any { it.contains('LocalPlayer') }}"
+                println "SAMPLE_CLIENT=" + names.findAll { it.startsWith('net/minecraft/client/') }.take(8)
+                println "SAMPLE_ANY=" + names.take(8)
             } finally {
                 zip.close()
             }
