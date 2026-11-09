@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "mcv-seatlock",
+  "version": "${version}",
+  "name": "MCV Seat Lock",
+  "description": "Tine corpul jucatorului lipit de vehicul (scaun), in timp ce capul si camera raman libere la mouse. Parte din pluginul MrCrayfish Vehicle (Paper).",
+  "authors": ["ExMarius"],
+  "environment": "client",
+  "mixins": ["mcv-seatlock.mixins.json"],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21.4"
+  }
+}

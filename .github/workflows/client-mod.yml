@@ -1,0 +1,52 @@
+name: Client mod (MCV Seat Lock)
+
+# Construieste modul de client (Fabric 1.21.4) care tine corpul jucatorului
+# lipit de vehicul; capul/camera raman libere la mouse. Serverul (pluginul) nu
+# poate face asta: clientul refuza pachetele de rotatie cat timp esti pasager
+# ("Invalid move player packet received" / "Cannot interact with self!").
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - "client-mod/**"
+      - ".github/workflows/client-mod.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Compilez modul de client
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Gradle build (Fabric Loom)
+        run: ./client-mod/gradlew -p client-mod build --no-daemon
+
+      - name: Publicez jar-ul in release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="vehicle-plugin-prototype-v0.1.0"
+          JAR=$(ls client-mod/build/libs/*.jar | grep -v sources | head -1)
+          echo "Jar: $JAR"
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "Vehicle plugin prototype" --notes "Build automat"
+          gh release upload "$TAG" "$JAR" --clobber
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mcv-seatlock
+          path: client-mod/build/libs/*.jar
