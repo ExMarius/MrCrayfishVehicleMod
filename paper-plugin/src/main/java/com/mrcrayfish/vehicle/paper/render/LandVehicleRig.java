@@ -540,6 +540,32 @@ public final class LandVehicleRig {
             case "barca" -> boatCarrier(location.getWorld(), location, vehicleId);
             default -> pigCarrier(location.getWorld(), location, vehicleId);
         };
+        if (seat instanceof org.bukkit.entity.Boat) {
+            /* Barca are UN singur loc de pasager si, daca pe el sta un jucator,
+             * clientul conduce barca (rotire dupa camera). Punem pe locul ei un
+             * suport invizibil, iar jucatorul sta pe suport -> barca ramane
+             * "nemiscata, ca si cum ar fi pe masina". */
+            Entity support = location.getWorld().spawnEntity(location, org.bukkit.entity.EntityType.ARMOR_STAND);
+            if (support instanceof org.bukkit.entity.ArmorStand stand) {
+                stand.setInvisible(true);
+                stand.setMarker(false);
+                stand.setGravity(false);
+                stand.setInvulnerable(true);
+                stand.setSilent(true);
+                stand.setPersistent(false);
+                AttributeInstance scale = stand.getAttribute(Attribute.SCALE);
+                if (scale != null) {
+                    scale.setBaseValue(SEAT_CARRIER_SCALE);
+                }
+            }
+            mark(support, vehicleId);
+            if (seat.addPassenger(support)) {
+                carrier.riderMount = support;
+                entities.add(support);
+            } else {
+                support.remove();
+            }
+        }
         if (!carrier.anchor.addPassenger(seat)) {
             seat.remove();
             return null;
@@ -555,6 +581,11 @@ public final class LandVehicleRig {
     private void discardSeat(SeatCarrier carrier) {
         Entity seat = carrier.mount;
         carrier.mount = null;
+        if (carrier.riderMount != null) {
+            entities.remove(carrier.riderMount);
+            carrier.riderMount.remove();
+            carrier.riderMount = null;
+        }
         if (seat != null) {
             entities.remove(seat);
             seat.remove();
@@ -831,7 +862,7 @@ public final class LandVehicleRig {
                 Player rider = Bukkit.getPlayer(riderId);
                 if (rider != null && rider.isOnline() && !rider.isDead()) {
                     Entity replacement = createSeatMount(carrier);
-                    if (replacement != null && replacement.addPassenger(rider)) {
+                    if (replacement != null && carrier.riderMount().addPassenger(rider)) {
                         carrier.rider = riderId;
                         replacement.setRotation(seatYaw, 0.0F);
                         return;
@@ -843,7 +874,8 @@ public final class LandVehicleRig {
             return;
         }
 
-        Player rider = seat.getPassengers().stream()
+        Entity riderSeat = carrier.riderMount();
+        Player rider = riderSeat.getPassengers().stream()
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
@@ -1004,7 +1036,7 @@ public final class LandVehicleRig {
             discardSeat(closest);
         }
         Entity seat = createSeatMount(closest);
-        if (seat != null && seat.addPassenger(player)) {
+        if (seat != null && closest.riderMount().addPassenger(player)) {
             closest.rider = player.getUniqueId();
             return true;
         }
@@ -1015,7 +1047,8 @@ public final class LandVehicleRig {
     public Entity driverSeat() {
         SeatCarrier driver = seats.stream().filter(seat -> seat.properties.driver())
                 .findFirst().orElseThrow();
-        return driver.mount != null && driver.mount.isValid() ? driver.mount : driver.anchor;
+        Entity seat = driver.riderMount();
+        return seat != null && seat.isValid() ? seat : driver.anchor;
     }
 
     public List<Entity> seatCarriers() {
@@ -1131,6 +1164,10 @@ public final class LandVehicleRig {
          * Restoring an ordinary bounding box also keeps the fallback dismount
          * location independent of the carrier's minimum render scale. */
         for (SeatCarrier carrier : seats) {
+            if (carrier.riderMount != null && carrier.riderMount.isValid()
+                    && !carrier.riderMount.getPassengers().isEmpty()) {
+                carrier.riderMount.eject();
+            }
             Entity seat = carrier.mount;
             if (seat == null || !seat.isValid() || seat.getPassengers().isEmpty()) {
                 continue;
@@ -1299,6 +1336,13 @@ public final class LandVehicleRig {
         private final LandVehicleSpec.Seat properties;
         private Entity mount;
         private UUID rider;
+        /** BL33: pentru barca - suportul invizibil pe care sta jucatorul, ca
+         *  barca sa nu aiba jucator pasager (altfel clientul o conduce). */
+        private Entity riderMount;
+
+        private Entity riderMount() {
+            return riderMount != null && riderMount.isValid() ? riderMount : mount;
+        }
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
             this.anchor = anchor;
