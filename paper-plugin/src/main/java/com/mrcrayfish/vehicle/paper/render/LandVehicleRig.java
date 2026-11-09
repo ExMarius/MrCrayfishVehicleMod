@@ -230,6 +230,19 @@ public final class LandVehicleRig {
      *  validata de user; comutabil live cu /vehicle seatkind. */
     private static volatile String seatKind = "barca";
 
+    /** BL34: mod "tinut pe scaun de server" (nu pasager). Doar asa serverul
+     *  poate roti si CORPUL si PRIVIREA odata cu vehiculul; pretul: jucatorul
+     *  nu mai este pasager, deci nu are pose-ul de barca. */
+    private static volatile boolean seatRide = true;
+
+    public static boolean seatRide() {
+        return seatRide;
+    }
+
+    public static void setSeatRide(boolean value) {
+        seatRide = value;
+    }
+
     public static void setSeatKind(String kind) {
         if (java.util.List.of("porc", "cal", "armorstand", "barca").contains(kind)) {
             seatKind = kind;
@@ -848,10 +861,66 @@ public final class LandVehicleRig {
                 new Vector3f(part.scale()), sourceRotation);
     }
 
+    /** BL34: tine jucatorul pe scaun fara sa fie pasager: il aseaza in fiecare
+     *  tick la pozitia scaunului, cu yaw-ul vehiculului - deci se roteste cu
+     *  masina, iar mouse-ul nu il mai poate intoarce. Coborare = Shift. */
+    private void holdRider(SeatCarrier carrier, float seatYaw) {
+        Player rider = Bukkit.getPlayer(carrier.rider);
+        if (rider == null || !rider.isOnline() || rider.isDead()) {
+            carrier.rider = null;
+            return;
+        }
+        if (rider.isSneaking()) {
+            carrier.rider = null;
+            rider.sendActionBar(net.kyori.adventure.text.Component.text("Ai coborat din vehicul",
+                    net.kyori.adventure.text.format.NamedTextColor.YELLOW));
+            return;
+        }
+        Location target = carrier.anchor.getLocation().clone();
+        target.setYaw(seatYaw);
+        target.setPitch(rider.getPitch());
+        rider.teleport(target);
+        rider.setVelocity(new org.bukkit.util.Vector());
+    }
+
+    /** Elibereaza un jucator tinut pe scaun (modul fara calarie). */
+    public void releaseRider(Player player) {
+        for (SeatCarrier carrier : seats) {
+            if (player.getUniqueId().equals(carrier.rider)) {
+                carrier.rider = null;
+            }
+        }
+    }
+
+    /** Soferul tinut pe scaun (modul fara calarie), sau null. */
+    public Player seatedDriver() {
+        if (seatRide) {
+            return null;
+        }
+        for (SeatCarrier carrier : seats) {
+            if (!carrier.properties.driver() || carrier.rider == null) {
+                continue;
+            }
+            Player rider = Bukkit.getPlayer(carrier.rider);
+            if (rider == null || !rider.isOnline() || rider.isDead() || rider.isSneaking()) {
+                return null;
+            }
+            if (!rider.getWorld().equals(carrier.anchor.getWorld())
+                    || rider.getLocation().distanceSquared(carrier.anchor.getLocation()) > 9.0D) {
+                return null;
+            }
+            return rider;
+        }
+        return null;
+    }
+
     private void maintainSeat(SeatCarrier carrier, float yaw) {
         float seatYaw = yaw + carrier.properties.yawOffset();
         Entity seat = carrier.mount;
         if (seat == null) {
+            if (!seatRide && carrier.rider != null) {
+                holdRider(carrier, seatYaw);
+            }
             return;
         }
         if (!seat.isValid()) {
@@ -1012,6 +1081,9 @@ public final class LandVehicleRig {
         Location playerLocation = player.getLocation();
         for (SeatCarrier carrier : seats) {
             Entity seat = carrier.mount;
+            if (!seatRide && carrier.rider != null) {
+                continue;
+            }
             if (seat != null && seat.isValid() && !seat.getPassengers().isEmpty()) {
                 continue;
             }
@@ -1034,6 +1106,10 @@ public final class LandVehicleRig {
 
         if (closest.mount != null) {
             discardSeat(closest);
+        }
+        if (!seatRide) {
+            closest.rider = player.getUniqueId();
+            return true;
         }
         Entity seat = createSeatMount(closest);
         if (seat != null && closest.riderMount().addPassenger(player)) {

@@ -1644,6 +1644,14 @@ public final class LandVehicle {
         // the wheel without the owner's permission, eject them politely. Passenger seats
         // untouched, exactly like FiveM.
         if (result && !canDrive(player)) {
+            Player seatedDriver = rig.seatedDriver();
+            if (seatedDriver != null && seatedDriver.equals(player)) {
+                rig.releaseRider(player);
+                player.sendActionBar(net.kyori.adventure.text.Component.text(
+                        "\ud83d\ude97 La volan doar cu permisiunea proprietarului! Pasagerul e liber oricui.",
+                        net.kyori.adventure.text.format.NamedTextColor.RED));
+                return false;
+            }
             List<Entity> wheel = rig.driverSeat().getPassengers();
             if (wheel.contains(player)) {
                 player.leaveVehicle();
@@ -1657,6 +1665,12 @@ public final class LandVehicle {
     }
 
     public Optional<Player> driver() {
+        /* BL34: modul "tinut pe scaun de server" (nu pasager) - soferul este
+         * inregistrat in rig, nu se afla printre pasageri. */
+        Player seated = rig.seatedDriver();
+        if (seated != null) {
+            return Optional.of(seated);
+        }
         List<Entity> passengers = rig.driverSeat().getPassengers();
         if (passengers.isEmpty() || !(passengers.getFirst() instanceof Player player)) {
             return Optional.empty();
