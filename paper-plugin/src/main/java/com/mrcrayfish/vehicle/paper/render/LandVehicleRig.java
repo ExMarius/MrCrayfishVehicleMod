@@ -963,6 +963,21 @@ public final class LandVehicleRig {
         if (mountYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
         }
+        /* BL36: barca are fizica ei si primeste input de la client (A/D o misca
+         * pe scaun). O fortam rigid in fiecare tick: pozitia scaunului, yaw-ul
+         * vehiculului si viteza ZERO - deci sta ca si cum ar fi sudata pe masina. */
+        if (seat instanceof org.bukkit.entity.Boat boat) {
+            boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+            Location seatLocation = carrier.anchor.getLocation();
+            Location boatLocation = boat.getLocation();
+            if (!boatLocation.getWorld().equals(seatLocation.getWorld())
+                    || boatLocation.distanceSquared(seatLocation) > 1.0E-4D) {
+                boat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            }
+            if (boat.getYaw() != seatYaw || boat.getPitch() != 0.0F) {
+                boat.setRotation(seatYaw, 0.0F);
+            }
+        }
         /* BL21: camera ramane pe directia vehiculului (mouse-ul nu mai roteste
          * jucatorul). Pitch-ul rămâne liber. 999 = dezactivat. */
         // BL25: blocarea camerei din server este IMPOSIBILA cat timp jucatorul
