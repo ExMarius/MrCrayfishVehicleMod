@@ -1,0 +1,44 @@
+=== CLASSPATH ===
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/org.jetbrains/annotations/25.0.0/c1e6b966db352094ac3bf7f88f3bdef332fe43f0/annotations-25.0.0.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/org.ow2.asm/asm/9.7.1/f0ed132a49244b042cd0e15702ab9f2ce3cc8436/asm-9.7.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/org.ow2.asm/asm-analysis/9.7.1/f97a3b319f0ed6a8cd944dc79060d3912a28985f/asm-analysis-9.7.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/org.ow2.asm/asm-commons/9.7.1/406c6a2225cfe1819f102a161e54cc16a5c24f75/asm-commons-9.7.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/org.ow2.asm/asm-tree/9.7.1/3a53139787663b139de76b627fca0084ab60d32c/asm-tree-9.7.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/org.ow2.asm/asm-util/9.7.1/9e23359b598ec6b74b23e53110dd5c577adf2243/asm-util-9.7.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.15.4+mixin.0.8.7/6a12aacc794f1078458433116e9ed42c1cc98096/sponge-mixin-0.15.4+mixin.0.8.7.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/io.github.llamalad7/mixinextras-fabric/0.4.1/8d1a9e96afb990367fa1f904d17580d164da72e3/mixinextras-fabric-0.4.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/net.fabricmc/yarn/1.21.4+build.8/2ad14aed781c4a73ed4dbb421966d408a0a06686/yarn-1.21.4+build.8-constants.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-annotations/2.13.4/858c6cc78e1f08a885b1613e1d817c829df70a6e/jackson-annotations-2.13.4.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-core/2.13.4/cf934c681294b97ef6d80082faeefbe1edadf56/jackson-core-2.13.4.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.fasterxml.jackson.core/jackson-databind/2.13.4.2/325c06bdfeb628cfb80ebaaf1a26cc1eb558a585/jackson-databind-2.13.4.2.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.github.oshi/oshi-core/6.6.5/e1099981fd15dc4236c4499d82aba1276fb43a9a/oshi-core-6.6.5.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.github.stephenc.jcip/jcip-annotations/1.0-1/ef31541dd28ae2cefdd17c7ebf352d93e9058c63/jcip-annotations-1.0-1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/2.11.0/527175ca6d81050b53bdd4c457a6d6e017626b0e/gson-2.11.0.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.google.guava/failureaccess/1.0.2/c4a06a64e650562f30b7bf9aaec1bfed43aca12b/failureaccess-1.0.2.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.google.guava/guava/33.3.1-jre/852f8b363da0111e819460021ca693cacca3e8db/guava-33.3.1-jre.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.ibm.icu/icu4j/76.1/215f3a8e936d4069344bd75f2b1368fd58112894/icu4j-76.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.microsoft.azure/msal4j/1.17.2/a6211e3d71d0388929babaa0ff0951b30d001852/msal4j-1.17.2.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/authlib/6.0.57/bded3161a7346de32213da750388ec6529fe4f6b/authlib-6.0.57.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/blocklist/1.0.10/5c685c5ffa94c4cd39496c7184c1d122e515ecef/blocklist-1.0.10.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/brigadier/1.3.10/d15b53a14cf20fdcaa98f731af5dda654452c010/brigadier-1.3.10.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/datafixerupper/8.0.16/67d4de6d7f95d89bcf5862995fb854ebaec02a34/datafixerupper-8.0.16.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/jtracy/1.0.29/6f07dcb6a2e595c7ee2ca43b67e5d1c018ca0770/jtracy-1.0.29.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/logging/1.5.10/9ab1202793717af9df9c1704d0a02892067001eb/logging-1.5.10.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/patchy/2.2.10/da05971b07cbb379d002cf7eaec6a2048211fefc/patchy-2.2.10.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.mojang/text2speech/1.17.9/3cad216e3a7f0c19b4b394388bc9ffc446f13b14/text2speech-1.17.9.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.nimbusds/content-type/2.3/e3aa0be212d7a42839a8f3f506f5b990bcce0222/content-type-2.3.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.nimbusds/lang-tag/1.7/97c73ecd70bc7e8eefb26c5eea84f251a63f1031/lang-tag-1.7.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.nimbusds/nimbus-jose-jwt/9.40/42b1dfa0360e4062951b070bac52dd8d96fd7b38/nimbus-jose-jwt-9.40.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/com.nimbusds/oauth2-oidc-sdk/11.18/7c7ec4f4066625ff07a711ad856fa04da1ff9de/oauth2-oidc-sdk-11.18.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/commons-codec/commons-codec/1.17.1/973638b7149d333563584137ebf13a691bb60579/commons-codec-1.17.1.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/commons-io/commons-io/2.17.0/ddcc8433eb019fb48fe25207c0278143f3e1d7e2/commons-io-2.17.0.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/commons-logging/commons-logging/1.3.4/b9fc14968d63a8b8a8a2c1885fe3e90564239708/commons-logging-1.3.4.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/io.netty/netty-buffer/4.1.115.Final/d5daf1030e5c36d198caf7562da2441a97ec0df6/netty-buffer-4.1.115.Final.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/io.netty/netty-codec/4.1.115.Final/d326bf3a4c785b272da3db6941779a1bd5448378/netty-codec-4.1.115.Final.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/io.netty/netty-common/4.1.115.Final/9da10a9f72e3f87e181d91b525174007a6fc4f11/netty-common-4.1.115.Final.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/io.netty/netty-handler/4.1.115.Final/d54dbf68b9d88a98240107758c6b63da5e46e23a/netty-handler-4.1.115.Final.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/io.netty/netty-resolver/4.1.115.Final/e33b4d476c03975957f5d8d0319d592bf2bc5e96/netty-resolver-4.1.115.Final.jar
+CP: /home/runner/.gradle/caches/modules-2/files-2.1/io.netty/netty-transport-classes-epoll/4.1.115.Final/11fea00408ecbd8b8d1f0698d708e37db4a01841/netty-transport-classes-epoll-4.1.115.Final.jar
+=== LOOM ===
+Fabric Loom: 1.9.2
+CP: /home/runner/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged/1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2/minecraft-merged-1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.jar
