@@ -1,10 +1,57 @@
-=== JAR ===
-/home/runner/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged/1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2/minecraft-merged-1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.jar
--rw-r--r-- 1 runner runner 30326826 Nov  9 13:58 /home/runner/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged/1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2/minecraft-merged-1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.jar
-=== CONTINE CLIENT? ===
-0
-unzip fail
-9136
-=== LOOM ===
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: Mixin has no targets
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:3: error: package net.minecraft.client.player does not exist
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:5: error: cannot find symbol
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: cannot find symbol
+FAILURE: Build failed with an exception.
+* What went wrong:
+  /home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: cannot find symbol
+    symbol: class LocalPlayer/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:3: error: package net.minecraft.client.player does not exist
+                                    ^/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:5: error: cannot find symbol
+    location: package net.minecraft.world.entity/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: Mixin has no targets
+Caused by: org.gradle.api.internal.tasks.compile.CompilationFailedException: Compilation failed; see the compiler output below.
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: cannot find symbol
+  symbol: class LocalPlayer/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:3: error: package net.minecraft.client.player does not exist
+                                  ^/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:5: error: cannot find symbol
+  location: package net.minecraft.world.entity/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: Mixin has no targets
+BUILD FAILED in 13s
+---- PRIMELE 40 LINII ----
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.12/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon will be stopped at the end of the build 
+
+> Configure project :
 Fabric Loom: 1.9.2
-CP: /home/runner/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged/1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2/minecraft-merged-1.21.4-net.fabricmc.yarn.1_21_4.1.21.4+build.8-v2.jar
+
+> Task :compileJava
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: Mixin has no targets
+@Mixin(LocalPlayer.class)
+^
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:3: error: package net.minecraft.client.player does not exist
+import net.minecraft.client.player.LocalPlayer;
+                                  ^
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:5: error: cannot find symbol
+import net.minecraft.world.entity.Entity;
+                                 ^
+  symbol:   class Entity
+  location: package net.minecraft.world.entity
+/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: cannot find symbol
+@Mixin(LocalPlayer.class)
+       ^
+  symbol: class LocalPlayer
+4 errors
+
+> Task :compileJava FAILED
+gradle/actions: Writing build results to /home/runner/work/_temp/.gradle-actions/build-results/__run_2-1794232719409.json
+
+[Incubating] Problems report is available at: file:///home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':compileJava'.
+> Compilation failed; see the compiler output below.
+  /home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:24: error: cannot find symbol
+  @Mixin(LocalPlayer.class)
+         ^
+    symbol: class LocalPlayer/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:3: error: package net.minecraft.client.player does not exist
+  import net.minecraft.client.player.LocalPlayer;
+                                    ^/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/client-mod/src/main/java/ro/mcv/seatlock/mixin/LocalPlayerMixin.java:5: error: cannot find symbol
