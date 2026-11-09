@@ -1672,10 +1672,14 @@ public final class LandVehicle {
             return Optional.of(seated);
         }
         List<Entity> passengers = rig.driverSeat().getPassengers();
-        if (passengers.isEmpty() || !(passengers.getFirst() instanceof Player player)) {
-            return Optional.empty();
+        /* BL35: la barca, primul pasager al scaunului este suportul invizibil,
+         * deci soferul se cauta printre pasageri, nu pe prima pozitie. */
+        for (Entity passenger : passengers) {
+            if (passenger instanceof Player player) {
+                return Optional.of(player);
+            }
         }
-        return Optional.of(player);
+        return Optional.empty();
     }
 
     public void remove() {
