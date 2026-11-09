@@ -40,7 +40,7 @@ jobs:
           echo "exit=$status"
           tail -n 60 client-mod/build.log || true
           if [ "$status" -ne 0 ]; then
-            { grep -a -E "error:|Caused by:|What went wrong|Could not|FAILURE:|Could not resolve|BUILD FAILED" client-mod/build.log | head -40; echo "---- ultimele linii ----"; tail -n 20 client-mod/build.log; } > client-mod/BUILD-ERROR.txt
+            { grep -a -E "error:|Caused by:|What went wrong|Could not|FAILURE:|Could not resolve|BUILD FAILED|mappings|Minecraft" client-mod/build.log | head -60; echo "---- PRIMELE 40 LINII ----"; head -n 40 client-mod/build.log; } > client-mod/BUILD-ERROR.txt
             git config user.name "arena-bot"
             git config user.email "bot@arena.local"
             git add client-mod/BUILD-ERROR.txt
