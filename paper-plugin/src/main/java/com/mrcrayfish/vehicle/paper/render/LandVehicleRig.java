@@ -967,16 +967,25 @@ public final class LandVehicleRig {
          * pe scaun). O fortam rigid in fiecare tick: pozitia scaunului, yaw-ul
          * vehiculului si viteza ZERO - deci sta ca si cum ar fi sudata pe masina. */
         if (seat instanceof org.bukkit.entity.Boat boat) {
-            boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
             Location seatLocation = carrier.anchor.getLocation();
+            if (!carrier.boatDelayReady) {
+                carrier.boatDelayLocation = seatLocation.clone();
+                carrier.boatDelayYaw = seatYaw;
+                carrier.boatDelayReady = true;
+            }
+            boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+            Location target = carrier.boatDelayLocation.clone();
+            float targetYaw = carrier.boatDelayYaw;
             Location boatLocation = boat.getLocation();
-            if (!boatLocation.getWorld().equals(seatLocation.getWorld())
-                    || boatLocation.distanceSquared(seatLocation) > 1.0E-4D) {
-                boat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            if (!boatLocation.getWorld().equals(target.getWorld())
+                    || boatLocation.distanceSquared(target) > 1.0E-4D) {
+                boat.teleport(target, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             }
-            if (boat.getYaw() != seatYaw || boat.getPitch() != 0.0F) {
-                boat.setRotation(seatYaw, 0.0F);
+            if (boat.getYaw() != targetYaw || boat.getPitch() != 0.0F) {
+                boat.setRotation(targetYaw, 0.0F);
             }
+            carrier.boatDelayLocation = seatLocation.clone();
+            carrier.boatDelayYaw = seatYaw;
         }
         /* BL21: camera ramane pe directia vehiculului (mouse-ul nu mai roteste
          * jucatorul). Pitch-ul rămâne liber. 999 = dezactivat. */
@@ -1427,6 +1436,12 @@ public final class LandVehicleRig {
          *  ca barca sa nu fie condusa de client; jucatorul urca pe al doilea
          *  loc, deci are vizualul si pose-ul normal de barca. */
         private Entity support;
+        /** BL37: intarziere de 1 tick pentru barca (display-urile vehiculului au
+         *  interpolationDuration=1, deci masina se deseneaza cu un tick mai
+         *  tarziu; barca teleportata instant pare sa "o ia inainte"). */
+        private Location boatDelayLocation;
+        private float boatDelayYaw;
+        private boolean boatDelayReady;
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
             this.anchor = anchor;
