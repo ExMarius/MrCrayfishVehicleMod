@@ -515,7 +515,6 @@ public final class LandVehicleRig {
             carrier.setInvulnerable(true);
             carrier.setSilent(true);
             carrier.setPersistent(false);
-            carrier.setRemoveWhenFarAway(false);
         });
         mark(boat, vehicleId);
         return boat;
