@@ -35,7 +35,8 @@ jobs:
       - name: Diagnostic classpath
         run: |
           ./client-mod/gradlew -p client-mod printCp --no-daemon > client-mod/cp.log 2>&1 || true
-          { echo "=== CLASSPATH ==="; grep -a "^CP:" client-mod/cp.log | head -40; echo "=== LOOM ==="; grep -a -i -E "loom|mappings|minecraft" client-mod/cp.log | head -20; } > client-mod/BUILD-ERROR.txt
+          CJ=$(grep -a "^CP:" client-mod/cp.log | grep "minecraft-merged" | head -1 | sed 's/^CP: //')
+          { echo "=== JAR ==="; echo "$CJ"; ls -l "$CJ" 2>/dev/null; echo "=== CONTINE CLIENT? ==="; unzip -l "$CJ" 2>/dev/null | grep -c "net/minecraft/client/player/LocalPlayer" || echo "unzip fail"; unzip -l "$CJ" 2>/dev/null | grep -c "net/minecraft/" || true; echo "=== LOOM ==="; grep -a -i -E "loom|mappings" client-mod/cp.log | head -10; } > client-mod/BUILD-ERROR.txt
           git config user.name "arena-bot"; git config user.email "bot@arena.local"
           git add client-mod/BUILD-ERROR.txt; git commit -m "Diagnostic: classpath mod client (automat)" || true
           git pull --rebase -q || true; git push || true
