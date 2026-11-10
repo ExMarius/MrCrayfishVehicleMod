@@ -485,18 +485,50 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 org.bukkit.Input input = driver.getCurrentInput();
                 float throttle = input.isForward() ? 1.0F : (input.isBackward() ? -1.0F : 0.0F);
                 float steer = input.isLeft() ? 1.0F : (input.isRight() ? -1.0F : 0.0F);
-                demo.speed += throttle * 0.045F;
-                demo.speed *= 0.93F;
-                if (input.isJump()) {
-                    demo.speed *= 0.80F;
+                /* BL67 (cerinta user: "fa demo-ul o masina reala"): fizica de
+                 * masina - acceleratie, frana de motor, rezistenta, viteza
+                 * maxima reala si viraje proportionale cu viteza (nu rotire pe
+                 * loc). */
+                float maxSpeed = 1.25F;          // ~25 blocuri/secunda
+                float acceleration = 0.030F;
+                float brakeForce = 0.060F;
+                float drag = 0.962F;
+                if (throttle != 0.0F) {
+                    boolean sameDirection = demo.speed == 0.0F || Math.signum(demo.speed) == throttle;
+                    demo.speed += throttle * (sameDirection ? acceleration : brakeForce);
+                } else {
+                    demo.speed *= drag;          // frana de motor
                 }
-                demo.speed = Math.max(-0.35F, Math.min(1.1F, demo.speed));
-                float yaw = demo.boat.getYaw() + steer * Math.min(Math.abs(demo.speed), 0.8F) * 5.0F;
+                demo.speed *= 0.995F;
+                if (input.isJump()) {
+                    demo.speed *= 0.88F;         // frana de mana
+                }
+                demo.speed = Math.max(-0.45F, Math.min(maxSpeed, demo.speed));
+                if (Math.abs(demo.speed) < 0.004F) {
+                    demo.speed = 0.0F;
+                }
+                float speedRatio = Math.min(Math.abs(demo.speed) / maxSpeed, 1.0F);
+                float steerRate = (2.2F + 3.6F * (1.0F - speedRatio * 0.55F));
+                float yaw = demo.boat.getYaw()
+                        + steer * steerRate * Math.signum(demo.speed) * speedRatio;
                 Location target = demo.boat.getLocation().clone();
                 double radians = Math.toRadians(yaw);
                 target.add(-Math.sin(radians) * demo.speed, 0.0D, Math.cos(radians) * demo.speed);
+                /* tinem masina pe sol (nu pluteste, nu se afunda) */
+                org.bukkit.util.RayTraceResult ground = target.getWorld().rayTraceBlocks(
+                        target.clone().add(0, 1.5, 0), new org.bukkit.util.Vector(0, -1, 0), 4.0D,
+                        org.bukkit.FluidCollisionMode.NEVER, true);
+                if (ground != null) {
+                    target.setY(ground.getHitPosition().getY() + 0.05D);
+                }
                 target.setYaw(yaw);
                 target.setPitch(0.0F);
+                if (demo.age % 5 == 0) {
+                    float kmh = Math.abs(demo.speed) * 72.0F;
+                    driver.sendActionBar(net.kyori.adventure.text.Component.text(
+                            String.format(java.util.Locale.US, "%.0f km/h", kmh),
+                            net.kyori.adventure.text.format.NamedTextColor.GOLD));
+                }
                 demo.boat.teleport(target, io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
                 demo.boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
                 /* BL65: modelul masinii sta exact pe barca (pozitie + rotatie). */
