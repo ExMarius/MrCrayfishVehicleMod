@@ -279,6 +279,38 @@ public final class LandVehicleRig {
         return seatYawMode;
     }
 
+    /* BL51 (cerinta user: "o comanda care sa imi spawneze mai multe vehicule si
+     * variante pana dam de cea mai buna"): fiecare vehicul poate purta propria
+     * varianta de scaun, ca sa le testam una langa alta, simultan. null =
+     * mosteneste setarea globala (/vehicle seatkind etc.). */
+    private String variantName;
+    private String variantKind;
+    private Boolean variantRide;
+    private String variantYawMode;
+
+    public void applyVariant(String name, String kind, boolean ride, String yawMode) {
+        this.variantName = name;
+        this.variantKind = kind;
+        this.variantRide = ride;
+        this.variantYawMode = yawMode;
+    }
+
+    public String variantName() {
+        return variantName;
+    }
+
+    private String effSeatKind() {
+        return variantKind != null ? variantKind : seatKind;
+    }
+
+    private boolean effSeatRide() {
+        return variantRide != null ? variantRide : seatRide;
+    }
+
+    private String effSeatYawMode() {
+        return variantYawMode != null ? variantYawMode : seatYawMode;
+    }
+
     /** BL20 (cerinta user: "sa nu ma lase sa ma invart cu mouse-ul ... calul una
      *  cu masina"): privirea calareului este tinuta pe directia vehiculului.
      *  Toleranta in grade: 0 = blocaj total, 45 = semnificativ liber,
@@ -370,7 +402,7 @@ public final class LandVehicleRig {
         return stand;
     }
 
-    private static Entity seatCarrier(World world, Location location, UUID vehicleId) {
+    private static Entity seatCarrier(World world, Location location, UUID vehicleId, boolean saddled) {
         /* Ciclul BL (feedback user): scaun = cal FARA saua. Calul are clampa
          * vanilla de riding: yaw-ul calareului este legat de yaw-ul vehiculului,
          * deci corpul ramane blocat pe scaun si doar capul se roteste liber
@@ -391,6 +423,11 @@ public final class LandVehicleRig {
              * mai are controlling passenger, deci serverul e singurul care ii
              * da yaw-ul (yaw-ul masinii). */
             carrier.setTamed(true);
+            if (saddled) {
+                /* BL51: varianta "cal cu sa" - controlling passenger, adica
+                 * exact comportamentul din vanilla cand calaresti. */
+                carrier.getInventory().setItem(0, new ItemStack(Material.SADDLE));
+            }
             carrier.setAI(false);
             carrier.setGravity(false);
             carrier.setCollidable(false);
@@ -451,9 +488,10 @@ public final class LandVehicleRig {
             return null;
         }
         Location location = carrier.anchor.getLocation();
-        Entity seat = switch (seatKind) {
+        Entity seat = switch (effSeatKind()) {
             case "armorstand" -> armStandCarrier(location.getWorld(), location, vehicleId);
-            case "cal" -> seatCarrier(location.getWorld(), location, vehicleId);
+            case "cal" -> seatCarrier(location.getWorld(), location, vehicleId, false);
+            case "calsa" -> seatCarrier(location.getWorld(), location, vehicleId, true);
             case "barca" -> boatCarrier(location.getWorld(), location, vehicleId);
             default -> pigCarrier(location.getWorld(), location, vehicleId);
         };
@@ -682,7 +720,7 @@ public final class LandVehicleRig {
             Location seatLocation = local(root, seatPoint);
             carrier.anchor.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             /* BL18: modul alege cine poarta yaw-ul (ancora si/sau scaunul). */
-            boolean anchorYaw = "anchor".equals(seatYawMode) || "both".equals(seatYawMode);
+            boolean anchorYaw = "anchor".equals(effSeatYawMode()) || "both".equals(effSeatYawMode());
             carrier.anchor.setRotation(anchorYaw ? yaw + carrier.properties.yawOffset() : 0.0F, 0.0F);
             maintainSeat(carrier, yaw);
         }
@@ -813,7 +851,7 @@ public final class LandVehicleRig {
 
     /** Soferul tinut pe scaun (modul fara calarie), sau null. */
     public Player seatedDriver() {
-        if (seatRide) {
+        if (effSeatRide()) {
             return null;
         }
         for (SeatCarrier carrier : seats) {
@@ -837,7 +875,7 @@ public final class LandVehicleRig {
         float seatYaw = yaw + carrier.properties.yawOffset();
         Entity seat = carrier.mount;
         if (seat == null) {
-            if (!seatRide && carrier.rider != null) {
+            if (!effSeatRide() && carrier.rider != null) {
                 holdRider(carrier, seatYaw);
             }
             return;
@@ -897,7 +935,7 @@ public final class LandVehicleRig {
          * vehiculului in fiecare tick, deci corpul calareului sta lipit de
          * masina si se roteste o data cu ea. Ancora rămâne nerotita, deci nu se
          * mai compune nicio rotatie (cauza veche a oscilatiei). */
-        boolean mountYaw = "mount".equals(seatYawMode) || "both".equals(seatYawMode);
+        boolean mountYaw = "mount".equals(effSeatYawMode()) || "both".equals(effSeatYawMode());
         if (mountYaw && seat.getYaw() != seatYaw) {
             seat.setRotation(seatYaw, 0.0F);
         }
@@ -1047,7 +1085,7 @@ public final class LandVehicleRig {
         Location playerLocation = player.getLocation();
         for (SeatCarrier carrier : seats) {
             Entity seat = carrier.mount;
-            if (!seatRide && carrier.rider != null) {
+            if (!effSeatRide() && carrier.rider != null) {
                 continue;
             }
             if (seat != null && seat.isValid()
@@ -1074,7 +1112,7 @@ public final class LandVehicleRig {
         if (closest.mount != null) {
             discardSeat(closest);
         }
-        if (!seatRide) {
+        if (!effSeatRide()) {
             closest.rider = player.getUniqueId();
             return true;
         }

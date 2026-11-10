@@ -48,6 +48,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "spawn" -> spawn(sender, args);
+            case "variants", "variante" -> variants(sender);
             case "remove" -> remove(sender);
             case "refuel" -> refuel(sender);
             case "gaspump" -> gaspump(sender);
@@ -311,6 +312,60 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             player.sendRichMessage("<green>" + trailerSpec.displayName() + " creat.</green> <gray>ID: "
                     + trailer.id() + "</gray>");
         }
+    }
+
+
+    /* BL51 (cerinta user: "fai mai multe teste si o comanda ceva care sa imi
+     * spawneze mai multe vehicule si variante pana dam de cea mai buna"):
+     * spawneaza 4 masini la 4 metri una de alta, fiecare cu alt mod de scaun,
+     * ca sa le poti incerca pe rand pe serverul real si sa alegi varianta in
+     * care capul/corpul sta cel mai bine dupa masina la viraje. */
+    private record SeatVariant(String label, String kind, boolean ride, String yawMode) {
+    }
+
+    private void variants(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (!player.isOp() && !sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        LandVehicleSpec spec = LandVehicleSpec.byId("sports_car");
+        if (spec == null) {
+            sender.sendRichMessage("<red>Lipsește spec-ul sports_car.</red>");
+            return;
+        }
+        java.util.List<SeatVariant> variants = java.util.List.of(
+                new SeatVariant("A - cal fără șa (ce e acum)", "cal", true, "anchor"),
+                new SeatVariant("B - cal CU șa (controlling passenger)", "calsa", true, "anchor"),
+                new SeatVariant("C - barcă (poză de șezut vanilla)", "barca", true, "anchor"),
+                new SeatVariant("D - armor stand ținut de server", "armorstand", false, "anchor"));
+        Location base = player.getLocation();
+        org.bukkit.util.Vector dir = base.getDirection().setY(0);
+        if (dir.lengthSquared() < 1.0E-6D) {
+            dir = new org.bukkit.util.Vector(0, 0, 1);
+        }
+        dir.normalize();
+        org.bukkit.util.Vector right = new org.bukkit.util.Vector(-dir.getZ(), 0, dir.getX());
+        double[] spaces = {-6.0D, -2.0D, 2.0D, 6.0D};
+        for (int i = 0; i < variants.size(); i++) {
+            SeatVariant variant = variants.get(i);
+            Location location = base.clone()
+                    .add(right.clone().multiply(spaces[i]))
+                    .add(dir.clone().multiply(3.0D));
+            LandVehicle vehicle = vehicles.spawn(spec, location);
+            vehicle.setOwner(player.getUniqueId());
+            vehicle.rig().applyVariant(variant.label(), variant.kind(), variant.ride(), variant.yawMode());
+        }
+        vehicles.save();
+        player.sendRichMessage("<gold>[Variante]</gold> <white>4 mașini spawnate în fața ta, de la stânga la dreapta:</white>");
+        for (SeatVariant variant : variants) {
+            player.sendRichMessage("<yellow>" + variant.label() + "</yellow>");
+        }
+        player.sendRichMessage("<gray>Urcă-te pe rând în fiecare, fă o întoarcere de 180° și spune-mi "
+                + "litera la care capul se ține după mașină. Curățenie: <yellow>/vehicle remove</yellow> lângă fiecare.</gray>");
     }
 
     /** Forward spre comanda /garaj (aceeasi instanta de logica, fara duplicare). */
@@ -704,6 +759,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private void help(CommandSender sender, String label) {
         sender.sendRichMessage("<gold>Vehicle Plugin</gold> <gray>vehicule pentru clienți vanilla</gray>");
         sender.sendRichMessage("<yellow>/" + label + " spawn <tip></yellow> <gray>- creează un vehicul sau una dintre cele 5 remorci</gray>");
+        sender.sendRichMessage("<yellow>/" + label + " variants</yellow> <gray>- spawnează 4 mașini cu 4 moduri diferite de șezut (test A/B)</gray>");
         sender.sendRichMessage("<yellow>/" + label + " remove</yellow> <gray>- elimină vehiculul apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " refuel</yellow> <gray>- umple rezervorul vehiculului apropiat</gray>");
         sender.sendRichMessage("<yellow>/" + label + " gaspump</yellow> <gray>- primești o pompă de benzină plasabilă</gray>");
@@ -918,7 +974,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
+            return filter(List.of("spawn", "variants", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
