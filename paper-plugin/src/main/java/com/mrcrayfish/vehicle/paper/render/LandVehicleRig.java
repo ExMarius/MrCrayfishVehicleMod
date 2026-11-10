@@ -287,12 +287,19 @@ public final class LandVehicleRig {
     private String variantKind;
     private Boolean variantRide;
     private String variantYawMode;
+    private Boolean variantLookLock;
 
-    public void applyVariant(String name, String kind, boolean ride, String yawMode) {
+    public void applyVariant(String name, String kind, boolean ride, String yawMode, boolean lockLook) {
         this.variantName = name;
         this.variantKind = kind;
         this.variantRide = ride;
         this.variantYawMode = yawMode;
+        this.variantLookLock = lockLook;
+    }
+
+    /** BL52: fortarea privirii se poate activa si PER VEHICUL (testul A/B). */
+    private boolean effLookLock() {
+        return variantLookLock != null ? variantLookLock : lookLock();
     }
 
     public String variantName() {
@@ -830,14 +837,42 @@ public final class LandVehicleRig {
          * schimbe pozitia nici la viraje"): toleranta minima - corectam la
          * orice abatere de peste 2 cm sau 0.5 grade, deci corpul sta practic
          * sudat pe scaun. */
-        boolean needsMove = rider.getLocation().distanceSquared(target) > 0.0004D;
-        if (needsMove || yawDelta > 0.5F) {
+        /* BL52 (feedback user pe varianta D: "capul ramane cu masina dar tot
+         * dardaie"): praguri mai blande - teleport doar la deriva peste 8 cm
+         * sau 3 grade, deci fara un pachet in fiecare tick (asta dardaia). */
+        boolean needsMove = rider.getLocation().distanceSquared(target) > 0.0064D;
+        if (needsMove || yawDelta > 3.0F) {
             target.setYaw(seatYaw);
             target.setPitch(rider.getPitch());
             rider.teleport(target);
         }
         rider.setFallDistance(0.0F);
+        /* BL52: poza de sezut, best effort (clientul poate sa o ignore pentru
+         * propriul corp; nu strica nimic daca o ignora). */
+        if (rider.getTicksLived() % 10 == 0) {
+            applySitPose(rider);
+        }
         rider.setVelocity(new org.bukkit.util.Vector());
+    }
+
+    /** BL52: poza de sezut pentru modul "tinut pe scaun" (fara calarie). */
+    private static void applySitPose(Player player) {
+        try {
+            Class<?> poseClass = Class.forName("org.bukkit.entity.Pose");
+            Object sitting = null;
+            for (Object constant : poseClass.getEnumConstants()) {
+                if ("SITTING".equals(((Enum<?>) constant).name())) {
+                    sitting = constant;
+                    break;
+                }
+            }
+            if (sitting == null) {
+                return;
+            }
+            player.getClass().getMethod("setPose", poseClass).invoke(player, sitting);
+        } catch (Throwable ignored) {
+            // clientul decide poza proprie; lipsa metodei nu e o eroare de runtime
+        }
     }
 
     /** Elibereaza un jucator tinut pe scaun (modul fara calarie). */
@@ -915,7 +950,7 @@ public final class LandVehicleRig {
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
-        if (rider != null && lookLock()) {
+        if (rider != null && effLookLock()) {
             float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
             /* BL49 (cerinta user: "capul sa stea dupa vehicul"): toleranta 0.5
              * grade, deci capul/camera e tinut pe directia masinii. Pitch-ul
