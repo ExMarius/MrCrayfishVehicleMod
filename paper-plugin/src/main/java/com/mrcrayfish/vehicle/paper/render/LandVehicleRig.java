@@ -485,8 +485,13 @@ public final class LandVehicleRig {
              * (yaw-ul calareului legat de yaw-ul monturii -> corp blocat,
              * cap liber stanga-dreapta). MOVEMENT_SPEED 0 => jucatorul nu
              * poate plimba montura cu WASD; rotatia prin mouse ramane. */
+            /* BL41 (raport user: "dau viraj si eu raman intr-o pozitie"):
+             * calul CU sa este "controllable" de client - clientul ii impune
+             * rotatia dupa camera, deci serverul il roteste degeaba si calul
+             * ramane pe directia veche cand masina vireaza. FARA sa, calul nu
+             * mai are controlling passenger, deci serverul e singurul care ii
+             * da yaw-ul (yaw-ul masinii). */
             carrier.setTamed(true);
-            carrier.getInventory().setSaddle(new ItemStack(org.bukkit.Material.SADDLE));
             carrier.setAI(false);
             carrier.setGravity(false);
             carrier.setCollidable(false);
@@ -987,9 +992,7 @@ public final class LandVehicleRig {
                     || mountLocation.distanceSquared(seatLocation) > 0.0025D) {
                 seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             }
-            if (seat.getYaw() != seatYaw) {
-                seat.setRotation(seatYaw, 0.0F);
-            }
+            seat.setRotation(seatYaw, 0.0F);
         }
         if (seat instanceof org.bukkit.entity.Boat boat) {
             Location seatLocation = carrier.anchor.getLocation();
