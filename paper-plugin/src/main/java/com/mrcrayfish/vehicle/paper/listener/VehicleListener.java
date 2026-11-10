@@ -295,6 +295,9 @@ public final class VehicleListener implements Listener {
 
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
+        /* BL48: daca jucatorul cade imediat dupa pachetul de rotatie, opresc
+         * automat blocarea (nu mai primeste un al doilea kick la rejoin). */
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.noteQuit();
         vehicles.trailers().onPlayerQuit(event.getPlayer());
         // Bukkit removes the player from the seat. Vehicle tick resets its input on the next tick.
         // QUIT: the ONE global garage - everything of his is stored on the spot.

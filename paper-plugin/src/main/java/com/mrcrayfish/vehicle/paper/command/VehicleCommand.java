@@ -86,9 +86,26 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "inputtest" -> inputTestCmd(sender);
             case "seatride" -> seatRideCmd(sender, args);
             case "seatdebug" -> seatDebugCmd(sender);
+            case "seatlock" -> seatLockCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatlock <on|off>: forteaza corpul/camera pe directia masinii
+     *  prin pachetul de pozitionare absolut (experimental, auto-protectie). */
+    private void seatLockCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatlock: "
+                    + (com.mrcrayfish.vehicle.paper.render.LandVehicleRig.lookLock() ? "on" : "off")
+                    + (com.mrcrayfish.vehicle.paper.render.LandVehicleRig.lookLockAutoOff()
+                        ? " (oprit automat dupa un kick)" : "")
+                    + " | folosire: /vehicle seatlock <on|off></yellow>");
+            return;
+        }
+        boolean on = "on".equalsIgnoreCase(args[1]) || "1".equals(args[1]);
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setLookLock(on);
+        sender.sendRichMessage(on ? "<green>seatlock = on</green>" : "<yellow>seatlock = off</yellow>");
     }
 
     /** /vehicle seatdebug: logheaza 6 secunde yaw-urile (masina/ancora/scaun/jucator). */
@@ -901,7 +918,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

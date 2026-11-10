@@ -990,6 +990,12 @@ public final class LandVehicleRig {
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
+        if (rider != null && lookLock()) {
+            float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
+            if (deviation > 1.0F) {
+                forceLook(rider, seatYaw, rider.getPitch());
+            }
+        }
         if (rider == null) {
             carrier.rider = null;
             discardSeat(carrier);
@@ -1189,6 +1195,122 @@ public final class LandVehicleRig {
         }
         discardSeat(closest);
         return false;
+    }
+
+    /* BL48: ultima cale server-side pentru corp/camera pe directia masinii:
+     * pachetul de pozitionare ABSOLUT (pozitia curenta + yaw-ul vehiculului).
+     * Varianta RELATIVA (BL24) a fost respinsa de client ("Invalid move player
+     * packet received"); absoluta e alta cale. Daca clientul deconecteaza,
+     * feature-ul se dezactiveaza SINGUR (vezi noteQuit). */
+    private static volatile boolean lookLock = true;
+    private static volatile boolean lookLockAutoOff = false;
+    private static volatile long lookLockLastPacket;
+    private static java.lang.reflect.Constructor<?> lookPacketCtor;
+    private static java.lang.reflect.Constructor<?> lookMoveCtor;
+    private static java.lang.reflect.Constructor<?> lookVecCtor;
+    private static Object lookVecZero;
+    private static int lookYawIndex = 2;
+    private static java.lang.reflect.Field lookConnectionField;
+    private static java.lang.reflect.Method lookSendMethod;
+    private static final java.util.concurrent.atomic.AtomicInteger LOOK_PACKET_ID =
+            new java.util.concurrent.atomic.AtomicInteger(1000);
+
+    public static boolean lookLock() {
+        return lookLock && !lookLockAutoOff;
+    }
+
+    public static void setLookLock(boolean enabled) {
+        lookLock = enabled;
+        lookLockAutoOff = false;
+    }
+
+    public static boolean lookLockAutoOff() {
+        return lookLockAutoOff;
+    }
+
+    /** Apelat la deconectare: daca pachetul nostru tocmai a fost trimis, il oprim. */
+    public static void noteQuit() {
+        if (System.currentTimeMillis() - lookLockLastPacket < 10_000L && lookLock) {
+            lookLock = false;
+            lookLockAutoOff = true;
+            Bukkit.getLogger().warning("[SEATLOCK] Clientul a deconectat imediat dupa pachetul de "
+                    + "rotatie - opresc automat blocarea camerei/corpului.");
+        }
+    }
+
+    private static synchronized void initLookPacket() {
+        try {
+            Class<?> packetClass = Class.forName(
+                    "net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket");
+            for (java.lang.reflect.Constructor<?> candidate : packetClass.getConstructors()) {
+                Class<?>[] types = candidate.getParameterTypes();
+                if (types.length != 3 || types[0] != int.class || types[2] != java.util.Set.class) {
+                    continue;
+                }
+                Class<?> changeClass = types[1];
+                for (java.lang.reflect.Constructor<?> moveCtor : changeClass.getConstructors()) {
+                    Class<?>[] moveTypes = moveCtor.getParameterTypes();
+                    if (moveTypes.length == 4 && moveTypes[2] == float.class && moveTypes[3] == float.class) {
+                        lookMoveCtor = moveCtor;
+                        Class<?> vecClass = moveTypes[0];
+                        lookVecZero = vecClass.getField("ZERO").get(null);
+                        lookVecCtor = vecClass.getConstructor(double.class, double.class, double.class);
+                        lookYawIndex = 2;
+                        if (changeClass.isRecord()) {
+                            java.lang.reflect.RecordComponent[] parts = changeClass.getRecordComponents();
+                            for (int index = 0; index < parts.length; index++) {
+                                String name = parts[index].getName().toLowerCase(java.util.Locale.ROOT);
+                                if (name.contains("yrot") || name.contains("y_rot")) {
+                                    lookYawIndex = index;
+                                }
+                            }
+                        }
+                        break;
+                    }
+                }
+                if (lookMoveCtor != null) {
+                    lookPacketCtor = candidate;
+                    break;
+                }
+            }
+            Class<?> serverPlayer = Class.forName("net.minecraft.server.level.ServerPlayer");
+            lookConnectionField = serverPlayer.getField("connection");
+            lookSendMethod = Class.forName("net.minecraft.server.network.ServerGamePacketListenerImpl")
+                    .getMethod("send", Class.forName("net.minecraft.network.protocol.Packet"));
+        } catch (Throwable error) {
+            lookLockAutoOff = true;
+            Bukkit.getLogger().warning("[SEATLOCK] pachetul de rotatie nu este disponibil: "
+                    + error.getClass().getSimpleName() + " " + error.getMessage());
+        }
+    }
+
+    /** Trimite pozitia curenta + yaw-ul dorit (absolut), fara sa miste jucatorul. */
+    private static void forceLook(Player player, float yaw, float pitch) {
+        if (lookPacketCtor == null) {
+            initLookPacket();
+            if (lookPacketCtor == null) {
+                return;
+            }
+        }
+        try {
+            Object vec = lookVecCtor.newInstance(player.getX(), player.getY(), player.getZ());
+            Object[] change = new Object[4];
+            change[0] = vec;
+            change[1] = lookVecZero;
+            change[lookYawIndex] = yaw;
+            change[lookYawIndex == 2 ? 3 : 2] = pitch;
+            Object moveRotation = lookMoveCtor.newInstance(change);
+            Object packet = lookPacketCtor.newInstance(
+                    LOOK_PACKET_ID.getAndIncrement(), moveRotation, java.util.Set.of());
+            Object handle = player.getClass().getMethod("getHandle").invoke(player);
+            Object connection = lookConnectionField.get(handle);
+            lookSendMethod.invoke(connection, packet);
+            lookLockLastPacket = System.currentTimeMillis();
+        } catch (Throwable error) {
+            lookLockAutoOff = true;
+            Bukkit.getLogger().warning("[SEATLOCK] nu pot trimite rotatia: "
+                    + error.getClass().getSimpleName() + " " + error.getMessage());
+        }
     }
 
     /** BL47: diagnostic - yaw-ul ancorei, al scaunului si al calaretului,
