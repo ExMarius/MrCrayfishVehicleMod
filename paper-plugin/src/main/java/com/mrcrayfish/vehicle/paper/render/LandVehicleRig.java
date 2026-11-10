@@ -1061,6 +1061,17 @@ public final class LandVehicleRig {
         } else {
             carrier.lastSeatYawValid = false;
         }
+        if (boatShell && seat instanceof org.bukkit.entity.Boat diagBoat
+                && rider != null && rider.getTicksLived() % 40 == 0) {
+            StringBuilder types = new StringBuilder();
+            for (Entity pas : diagBoat.getPassengers()) {
+                types.append(pas.getType()).append("(").append(pas instanceof Player ? "jucator" : "nu").append(") ");
+            }
+            Bukkit.getLogger().info("[BOATSHELL] pasageri barca=[" + types.toString().trim()
+                    + "] distantaBarcaMasina=" + String.format("%.2f",
+                    diagBoat.getLocation().distance(carrier.anchor.getLocation()))
+                    + " suport=" + (carrier.support != null ? carrier.support.isValid() : false));
+        }
         if (rider == null) {
             carrier.rider = null;
             discardSeat(carrier);
