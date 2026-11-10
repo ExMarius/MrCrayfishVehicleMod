@@ -570,6 +570,16 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                             seatLocation.setPitch(0.0F);
                             demo.boat.teleport(seatLocation,
                                     io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                            if (demo.age % 40 == 0) {
+                                Bukkit.getLogger().info("[BOATDEMO] root=" + fmt(root.getX()) + ","
+                                        + fmt(root.getY()) + "," + fmt(root.getZ())
+                                        + " seat=" + fmt(seatLocation.getX()) + ","
+                                        + fmt(seatLocation.getY()) + "," + fmt(seatLocation.getZ())
+                                        + " boat=" + fmt(demo.boat.getX()) + ","
+                                        + fmt(demo.boat.getY()) + "," + fmt(demo.boat.getZ())
+                                        + " player=" + fmt(driver.getX()) + ","
+                                        + fmt(driver.getY()) + "," + fmt(driver.getZ()));
+                            }
                         }
                     }
                 }
