@@ -85,9 +85,30 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "seatlook" -> seatLookCmd(sender, args);
             case "inputtest" -> inputTestCmd(sender);
             case "seatride" -> seatRideCmd(sender, args);
+            case "seatdebug" -> seatDebugCmd(sender);
             default -> help(sender, label);
         }
         return true;
+    }
+
+    /** /vehicle seatdebug: logheaza 6 secunde yaw-urile (masina/ancora/scaun/jucator). */
+    private void seatDebugCmd(CommandSender sender) {
+        if (!(sender instanceof org.bukkit.entity.Player player)) {
+            sender.sendRichMessage("<red>Doar din joc.</red>");
+            return;
+        }
+        int task = org.bukkit.Bukkit.getScheduler().runTaskTimer(
+                org.bukkit.Bukkit.getPluginManager().getPlugin("MrCrayfishVehiclePlugin"), () -> {
+                    for (com.mrcrayfish.vehicle.paper.vehicle.LandVehicle vehicle
+                            : vehicles().vehiclesWithin(player.getLocation(), 20.0D)) {
+                        Bukkit.getLogger().info("[SEATDBG] "
+                                + vehicle.rig().debugSeats(vehicle.location().getYaw()));
+                    }
+                }, 1L, 10L).getTaskId();
+        org.bukkit.Bukkit.getScheduler().runTaskLater(
+                org.bukkit.Bukkit.getPluginManager().getPlugin("MrCrayfishVehiclePlugin"),
+                () -> org.bukkit.Bukkit.getScheduler().cancelTask(task), 120L);
+        player.sendRichMessage("<green>seatdebug: 6 secunde de log. Urcă-te și virează.</green>");
     }
 
     /** /vehicle seatride <on|off>: on = stai ca pasager (pose de barca, dar
@@ -876,7 +897,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride"), args[0]);
+            return filter(List.of("spawn", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

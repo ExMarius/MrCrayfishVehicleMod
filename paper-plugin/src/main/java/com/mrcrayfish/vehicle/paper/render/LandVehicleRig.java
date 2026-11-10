@@ -1191,6 +1191,31 @@ public final class LandVehicleRig {
         return false;
     }
 
+    /** BL47: diagnostic - yaw-ul ancorei, al scaunului si al calaretului,
+     *  ca sa stim daca serverul roteste corect (nu ghicim). */
+    public String debugSeats(float vehicleYaw) {
+        StringBuilder text = new StringBuilder("vehicleYaw=").append(String.format("%.1f", vehicleYaw));
+        for (SeatCarrier carrier : seats) {
+            text.append(" | anchor=").append(String.format("%.1f", carrier.anchor.getYaw()));
+            if (carrier.mount != null && carrier.mount.isValid()) {
+                text.append(" mount=").append(carrier.mount.getType())
+                        .append(" yaw=").append(String.format("%.1f", carrier.mount.getYaw()))
+                        .append(" pitch=").append(String.format("%.1f", carrier.mount.getPitch()))
+                        .append(" pass=").append(carrier.mount.getPassengers().size());
+            } else {
+                text.append(" mount=none");
+            }
+            if (carrier.rider != null) {
+                Player rider = Bukkit.getPlayer(carrier.rider);
+                if (rider != null) {
+                    text.append(" riderYaw=").append(String.format("%.1f", rider.getLocation().getYaw()))
+                            .append(" riding=").append(rider.isInsideVehicle());
+                }
+            }
+        }
+        return text.toString();
+    }
+
     public Entity driverSeat() {
         SeatCarrier driver = seats.stream().filter(seat -> seat.properties.driver())
                 .findFirst().orElseThrow();
