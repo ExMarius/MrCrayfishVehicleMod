@@ -879,7 +879,10 @@ public final class LandVehicleRig {
                 .findFirst().orElse(null);
         if (rider != null && lookLock()) {
             float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
-            if (deviation > 1.0F) {
+            /* BL49 (cerinta user: "capul sa stea dupa vehicul"): toleranta 0.5
+             * grade, deci capul/camera e tinut pe directia masinii. Pitch-ul
+             * ramane al jucatorului (sus/jos liber). */
+            if (deviation > 0.5F) {
                 forceLook(rider, seatYaw, rider.getPitch());
             }
         }
