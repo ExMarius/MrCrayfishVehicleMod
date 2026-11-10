@@ -321,7 +321,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
      * ca sa le poti incerca pe rand pe serverul real si sa alegi varianta in
      * care capul/corpul sta cel mai bine dupa masina la viraje. */
     private record SeatVariant(String label, String kind, boolean ride, String yawMode,
-                               boolean lockLook) {
+                               boolean lockLook, boolean keepPosition) {
     }
 
     private void variants(CommandSender sender) {
@@ -342,12 +342,14 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
          * sezut si zero dardait) SI capul e fortat pe directia masinii prin
          * pachetul absolut de pozitie. D = tinut pe scaun, cu praguri mai
          * blande (nu mai dardaie asa tare). */
+        /* BL55 (decizie user: "varianta b c d sunt excluse"; E e cea aproape,
+         * dar cu trepidatii): raman A (referinta), E (rotatie absoluta, cum a
+         * fost) si F (NOU - doar rotatie, pozitia nu e atinsa => ar trebui sa
+         * dispara trepidatia). */
         java.util.List<SeatVariant> variants = java.util.List.of(
-                new SeatVariant("A - cal fără șa (ce e acum)", "cal", true, "anchor", false),
-                new SeatVariant("B - cal CU șa (controlling passenger)", "calsa", true, "anchor", false),
-                new SeatVariant("C - barcă (poză de șezut vanilla)", "barca", true, "anchor", false),
-                new SeatVariant("D - armor stand ținut de server (fără sărituri)", "armorstand", false, "anchor", false),
-                new SeatVariant("E - cal + CAP FORȚAT după mașină (pasager: stai jos, capul urmează mașina)", "cal", true, "anchor", true));
+                new SeatVariant("A - referinta: cal fără șa, capul liber", "cal", true, "anchor", false, false),
+                new SeatVariant("E - cap forțat după mașină (varianta de dinainte)", "cal", true, "anchor", true, false),
+                new SeatVariant("F - NOU: cap forțat FĂRĂ să atingă poziția (fără trepidații)", "cal", true, "anchor", true, true));
         Location base = player.getLocation();
         org.bukkit.util.Vector dir = base.getDirection().setY(0);
         if (dir.lengthSquared() < 1.0E-6D) {
@@ -355,7 +357,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         dir.normalize();
         org.bukkit.util.Vector right = new org.bukkit.util.Vector(-dir.getZ(), 0, dir.getX());
-        double[] spaces = {-8.0D, -4.0D, 0.0D, 4.0D, 8.0D};
+        double[] spaces = {-5.0D, 0.0D, 5.0D};
         for (int i = 0; i < variants.size(); i++) {
             SeatVariant variant = variants.get(i);
             Location location = base.clone()
@@ -364,10 +366,10 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             LandVehicle vehicle = vehicles.spawn(spec, location);
             vehicle.setOwner(player.getUniqueId());
             vehicle.rig().applyVariant(variant.label(), variant.kind(), variant.ride(),
-                    variant.yawMode(), variant.lockLook());
+                    variant.yawMode(), variant.lockLook(), variant.keepPosition());
         }
         vehicles.save();
-        player.sendRichMessage("<gold>[Variante]</gold> <white>5 mașini spawnate în fața ta, de la stânga la dreapta:</white>");
+        player.sendRichMessage("<gold>[Variante]</gold> <white>3 mașini spawnate în fața ta (A, E, F), de la stânga la dreapta:</white>");
         for (SeatVariant variant : variants) {
             player.sendRichMessage("<yellow>" + variant.label() + "</yellow>");
         }

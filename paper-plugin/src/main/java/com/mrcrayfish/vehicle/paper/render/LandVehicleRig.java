@@ -288,13 +288,20 @@ public final class LandVehicleRig {
     private Boolean variantRide;
     private String variantYawMode;
     private Boolean variantLookLock;
+    private boolean variantKeepPosition;
 
     public void applyVariant(String name, String kind, boolean ride, String yawMode, boolean lockLook) {
+        this.applyVariant(name, kind, ride, yawMode, lockLook, false);
+    }
+
+    public void applyVariant(String name, String kind, boolean ride, String yawMode,
+                             boolean lockLook, boolean keepPosition) {
         this.variantName = name;
         this.variantKind = kind;
         this.variantRide = ride;
         this.variantYawMode = yawMode;
         this.variantLookLock = lockLook;
+        this.variantKeepPosition = keepPosition;
     }
 
     /** BL52: fortarea privirii se poate activa si PER VEHICUL (testul A/B). */
@@ -960,7 +967,7 @@ public final class LandVehicleRig {
              * grade, deci capul/camera e tinut pe directia masinii. Pitch-ul
              * ramane al jucatorului (sus/jos liber). */
             if (deviation > 0.25F) {
-                forceLook(rider, seatYaw, rider.getPitch());
+                forceLook(rider, seatYaw, rider.getPitch(), variantKeepPosition);
             }
         }
         if (rider == null) {
@@ -1184,6 +1191,11 @@ public final class LandVehicleRig {
     private static java.lang.reflect.Method lookSendMethod;
     private static final java.util.concurrent.atomic.AtomicInteger LOOK_PACKET_ID =
             new java.util.concurrent.atomic.AtomicInteger(1000);
+    /* BL55 (feedback user: "E e aproape dar tot are trepidatii"): pachetul
+     * absolut suprascrie si POZITIA, iar serverul e cu un tick in urma - deci
+     * corpul e tras inapoi de ~20 ori pe secunda. Varianta noua trimite pozitia
+     * RELATIV cu delta 0 (clientul isi pastreaza pozitia) si rotatia absoluta. */
+    private static java.util.Set<Object> lookRelativePosition;
 
     public static boolean lookLock() {
         return lookLock && !lookLockAutoOff;
@@ -1243,6 +1255,17 @@ public final class LandVehicleRig {
                     break;
                 }
             }
+            Class<?> relativeClass = Class.forName("net.minecraft.world.entity.Relative");
+            java.util.Set<Object> relativePosition = new java.util.HashSet<>();
+            for (Object constant : relativeClass.getEnumConstants()) {
+                String name = ((Enum<?>) constant).name();
+                if ("X".equals(name) || "Y".equals(name) || "Z".equals(name)) {
+                    relativePosition.add(constant);
+                }
+            }
+            if (!relativePosition.isEmpty()) {
+                lookRelativePosition = java.util.Collections.unmodifiableSet(relativePosition);
+            }
             Class<?> serverPlayer = Class.forName("net.minecraft.server.level.ServerPlayer");
             lookConnectionField = serverPlayer.getField("connection");
             lookSendMethod = Class.forName("net.minecraft.server.network.ServerGamePacketListenerImpl")
@@ -1256,6 +1279,12 @@ public final class LandVehicleRig {
 
     /** Trimite pozitia curenta + yaw-ul dorit (absolut), fara sa miste jucatorul. */
     private static void forceLook(Player player, float yaw, float pitch) {
+        forceLook(player, yaw, pitch, false);
+    }
+
+    /** BL55: cu keepPosition=true pozitia se trimite RELATIV (delta 0), deci
+     *  clientul isi pastreaza pozitia si primeste doar yaw-ul nou. */
+    private static void forceLook(Player player, float yaw, float pitch, boolean keepPosition) {
         if (lookPacketCtor == null) {
             initLookPacket();
             if (lookPacketCtor == null) {
@@ -1263,7 +1292,10 @@ public final class LandVehicleRig {
             }
         }
         try {
-            Object vec = lookVecCtor.newInstance(player.getX(), player.getY(), player.getZ());
+            boolean relative = keepPosition && lookRelativePosition != null;
+            Object vec = relative
+                    ? lookVecCtor.newInstance(0.0D, 0.0D, 0.0D)
+                    : lookVecCtor.newInstance(player.getX(), player.getY(), player.getZ());
             Object[] change = new Object[4];
             change[0] = vec;
             change[1] = lookVecZero;
@@ -1271,7 +1303,8 @@ public final class LandVehicleRig {
             change[lookYawIndex == 2 ? 3 : 2] = pitch;
             Object moveRotation = lookMoveCtor.newInstance(change);
             Object packet = lookPacketCtor.newInstance(
-                    LOOK_PACKET_ID.getAndIncrement(), moveRotation, java.util.Set.of());
+                    LOOK_PACKET_ID.getAndIncrement(), moveRotation,
+                    relative ? lookRelativePosition : java.util.Set.of());
             Object handle = player.getClass().getMethod("getHandle").invoke(player);
             Object connection = lookConnectionField.get(handle);
             lookSendMethod.invoke(connection, packet);
