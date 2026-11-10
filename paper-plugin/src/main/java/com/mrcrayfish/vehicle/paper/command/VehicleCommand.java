@@ -50,7 +50,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "spawn" -> spawn(sender, args);
             case "variants", "variante" -> variants(sender);
-            case "boatdemo" -> boatDemo(sender);
+            case "boatdemo" -> boatDemo(sender, args.length > 1 ? java.util.Arrays.copyOfRange(args, 1, args.length) : new String[0]);
             case "boatshell" -> boatShell(sender, args);
             case "remove" -> remove(sender);
             case "refuel" -> refuel(sender);
@@ -398,6 +398,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
      * - pluginul citeste tastele (Player#getCurrentInput) si muta barca.
      * Comanda e izolata: nu modifica vehiculele existente. */
     private static final java.util.Map<UUID, BoatDemo> BOAT_DEMOS = new java.util.HashMap<>();
+    /** BL69: reglaj fin pe ochi al pozitiei barcii fata de scaunul soferului.
+     *  x = dreapta/stanga, y = sus/jos, z = fata/spate (in raport cu masina). */
+    private static org.bukkit.util.Vector boatDemoOffset = new org.bukkit.util.Vector(0, 0, 0);
     private static boolean boatDemoTicking;
 
     private static final class BoatDemo {
@@ -417,6 +420,35 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     }
 
     private void boatDemo(CommandSender sender) {
+        boatDemo(sender, new String[0]);
+    }
+
+    private void boatDemo(CommandSender sender, String[] args) {
+        if (args.length >= 1 && "offset".equalsIgnoreCase(args[0])) {
+            if (!sender.isOp() && !sender.hasPermission("vehicle.admin")) {
+                sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+                return;
+            }
+            if (args.length < 4) {
+                sender.sendRichMessage("<yellow>Utilizare: /vehicle boatdemo offset <dreapta> <sus> <inainte></yellow> "
+                        + "<gray>(ex: 0.3 0.2 0 => mută barca 30 cm la dreapta și 20 cm în sus). "
+                        + "Acum: " + fmt(boatDemoOffset.getX()) + " " + fmt(boatDemoOffset.getY())
+                        + " " + fmt(boatDemoOffset.getZ()) + "</gray>");
+                return;
+            }
+            try {
+                boatDemoOffset = new org.bukkit.util.Vector(
+                        Double.parseDouble(args[1].replace(",", ".")),
+                        Double.parseDouble(args[2].replace(",", ".")),
+                        Double.parseDouble(args[3].replace(",", ".")));
+                sender.sendRichMessage("<green>Offset barcă setat:</green> <white>"
+                        + fmt(boatDemoOffset.getX()) + " " + fmt(boatDemoOffset.getY()) + " "
+                        + fmt(boatDemoOffset.getZ()) + "</white> <gray>(se aplică imediat)</gray>");
+            } catch (NumberFormatException error) {
+                sender.sendRichMessage("<red>Numere invalide.</red>");
+            }
+            return;
+        }
         if (!(sender instanceof Player player)) {
             sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
             return;
@@ -568,6 +600,18 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                             Location seatLocation = alignedSeat.getLocation().clone();
                             seatLocation.setYaw(yaw);
                             seatLocation.setPitch(0.0F);
+                            if (boatDemoOffset.lengthSquared() > 0.0D) {
+                                org.bukkit.util.Vector forward = seatLocation.getDirection().setY(0);
+                                if (forward.lengthSquared() < 1.0E-6D) {
+                                    forward = new org.bukkit.util.Vector(0, 0, 1);
+                                }
+                                forward.normalize();
+                                org.bukkit.util.Vector rightSide =
+                                        new org.bukkit.util.Vector(-forward.getZ(), 0, forward.getX());
+                                seatLocation.add(rightSide.multiply(boatDemoOffset.getX()));
+                                seatLocation.add(forward.multiply(boatDemoOffset.getZ()));
+                                seatLocation.add(0.0D, boatDemoOffset.getY(), 0.0D);
+                            }
                             demo.boat.teleport(seatLocation,
                                     io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
                             if (demo.age % 40 == 0) {
