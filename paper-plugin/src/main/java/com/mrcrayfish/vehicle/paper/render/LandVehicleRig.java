@@ -962,12 +962,20 @@ public final class LandVehicleRig {
          * doar la abateri mari => camera se rotea in TREPTE. Acum corectam in
          * fiecare tick, cu toleranta mica, deci urmarirea e continua. */
         if (rider != null && effLookLock()) {
-            float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
-            /* BL49 (cerinta user: "capul sa stea dupa vehicul"): toleranta 0.5
-             * grade, deci capul/camera e tinut pe directia masinii. Pitch-ul
-             * ramane al jucatorului (sus/jos liber). */
-            if (deviation > 0.25F) {
-                forceLook(rider, seatYaw, rider.getPitch(), variantKeepPosition);
+            /* BL56 (decizie user: "netezeste E/F pana nu mai tremura"):
+             * nu mai sarim direct pe yaw-ul masinii (salt = trepidatie), ci
+             * rotim camera GRADUAL, 60% din diferenta la fiecare tick. Asa
+             * urmarirea e continua si fara praguri vizibile. */
+            float currentYaw = rider.getLocation().getYaw();
+            float diff = wrapDegrees(seatYaw - currentYaw);
+            if (Math.abs(diff) > 0.1F) {
+                float step = diff * 0.6F;
+                if (Math.abs(step) < 0.35F) {
+                    step = Math.abs(diff) < 0.35F ? 0.0F : Math.signum(diff) * 0.35F;
+                }
+                if (Math.abs(step) > 0.0F) {
+                    forceLook(rider, currentYaw + step, rider.getPitch(), variantKeepPosition);
+                }
             }
         }
         if (rider == null) {
