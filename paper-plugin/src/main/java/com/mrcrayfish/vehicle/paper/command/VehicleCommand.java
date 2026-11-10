@@ -402,11 +402,14 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private static final class BoatDemo {
         private final org.bukkit.entity.Boat boat;
         private final UUID driver;
+        private final LandVehicle car;
         private float speed;
+        private int age;
 
-        private BoatDemo(org.bukkit.entity.Boat boat, UUID driver) {
+        private BoatDemo(org.bukkit.entity.Boat boat, UUID driver, LandVehicle car) {
             this.boat = boat;
             this.driver = driver;
+            this.car = car;
         }
     }
 
@@ -441,7 +444,16 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         boat.addPassenger(support);
         boat.addPassenger(player);
-        BOAT_DEMOS.put(boat.getUniqueId(), new BoatDemo(boat, player.getUniqueId()));
+        /* BL65 (cerinta user: "daca ai transforma-o in masina ar fi super"):
+         * peste barca punem MODELUL masinii (vehicul showcase = fara fizica si
+         * fara scaune proprii), pe care il mutam cu barca in fiecare tick. */
+        LandVehicle car = null;
+        LandVehicleSpec carSpec = LandVehicleSpec.byId("sports_car");
+        if (carSpec != null) {
+            car = vehicles.spawn(carSpec, location);
+            car.setShowcase(true);
+        }
+        BOAT_DEMOS.put(boat.getUniqueId(), new BoatDemo(boat, player.getUniqueId(), car));
         startBoatDemoTicker();
         player.sendRichMessage("<gold>[BoatDemo]</gold> <white>Aceasta mașină ESTE o barcă reală.</white> "
                 + "<gray>W/S = accelerează/frânează, A/D = virează, Shift = cobori.</gray>");
@@ -463,6 +475,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                         }
                         demo.boat.remove();
                     }
+                    if (demo.car != null) {
+                        vehicles.remove(demo.car);
+                    }
                     BOAT_DEMOS.remove(demo.boat.getUniqueId());
                     continue;
                 }
@@ -483,6 +498,17 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 target.setPitch(0.0F);
                 demo.boat.teleport(target, io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
                 demo.boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+                /* BL65: modelul masinii sta exact pe barca (pozitie + rotatie). */
+                if (demo.car != null) {
+                    demo.age++;
+                    Location root = demo.car.location();
+                    root.setX(demo.boat.getX());
+                    root.setY(demo.boat.getY());
+                    root.setZ(demo.boat.getZ());
+                    root.setYaw(demo.boat.getYaw());
+                    root.setPitch(0.0F);
+                    demo.car.rig().update(root, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, demo.age);
+                }
             }
         }, 1L, 1L);
     }
