@@ -258,7 +258,11 @@ public final class LandVehicleRig {
      *  mount  = rotim doar scaunul (ancora 0)
      *  both   = ambele
      *  off    = niciuna (scaunul rămâne cum e) */
-    private static volatile String seatYawMode = "mount";
+    /* BL42: sursa de rotatie implicita = ANCORA. Pasagerii (calul/barca/
+     * armor stand-ul) primesc in fiecare tick rotatia vehiculului-parinte, deci
+     * rotirea directa a scaunului era anulata ("dau viraj si raman in aceeasi
+     * pozitie"). Rotind ancora, scaunul si corpul merg cu masina. */
+    private static volatile String seatYawMode = "anchor";
 
     public static void setSeatYawMode(String mode) {
         seatYawMode = mode;
@@ -992,7 +996,6 @@ public final class LandVehicleRig {
                     || mountLocation.distanceSquared(seatLocation) > 0.0025D) {
                 seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             }
-            seat.setRotation(seatYaw, 0.0F);
         }
         if (seat instanceof org.bukkit.entity.Boat boat) {
             Location seatLocation = carrier.anchor.getLocation();
