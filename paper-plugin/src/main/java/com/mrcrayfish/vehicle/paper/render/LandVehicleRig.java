@@ -950,12 +950,16 @@ public final class LandVehicleRig {
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
-        if (rider != null && effLookLock() && (rider.getTicksLived() % 2 == 0)) {
+        /* BL54 (feedback user pe E: "aproape, dar tot are trepidatii"):
+         * trepidatia venea din faptul ca trimiteam rotirea din 2 in 2 ticki si
+         * doar la abateri mari => camera se rotea in TREPTE. Acum corectam in
+         * fiecare tick, cu toleranta mica, deci urmarirea e continua. */
+        if (rider != null && effLookLock()) {
             float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
             /* BL49 (cerinta user: "capul sa stea dupa vehicul"): toleranta 0.5
              * grade, deci capul/camera e tinut pe directia masinii. Pitch-ul
              * ramane al jucatorului (sus/jos liber). */
-            if (deviation > 3.0F) {
+            if (deviation > 0.25F) {
                 forceLook(rider, seatYaw, rider.getPitch());
             }
         }
