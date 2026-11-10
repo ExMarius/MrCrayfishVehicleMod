@@ -878,10 +878,25 @@ public final class LandVehicleRig {
             return;
         }
         Location target = carrier.anchor.getLocation().clone();
-        target.setYaw(seatYaw);
-        target.setPitch(rider.getPitch());
-        rider.teleport(target);
+        float currentYaw = rider.getLocation().getYaw();
+        float yawDelta = Math.abs(wrapDegrees(seatYaw - currentYaw));
+        /* BL39: teleport doar cand chiar e nevoie (deriva de pozitie peste 5 cm
+         * sau rotatie peste 1.5 grade). Teleportul in fiecare tick era cauza
+         * senzatiei de "buguit": pachete multe si micro-sacadari. */
+        boolean needsMove = rider.getLocation().distanceSquared(target) > 0.0025D;
+        if (needsMove || yawDelta > 1.5F) {
+            target.setYaw(seatYaw);
+            target.setPitch(rider.getPitch());
+            rider.teleport(target);
+        }
+        rider.setFallDistance(0.0F);
         rider.setVelocity(new org.bukkit.util.Vector());
+        /* Poza de SEZUT (cerinta user): fara sa fie pasager, o cerem explicit. */
+        try {
+            rider.setPose(org.bukkit.entity.EntityPose.SITTING);
+        } catch (Throwable ignored) {
+            // versiune fara suport pentru pose
+        }
     }
 
     /** Elibereaza un jucator tinut pe scaun (modul fara calarie). */
