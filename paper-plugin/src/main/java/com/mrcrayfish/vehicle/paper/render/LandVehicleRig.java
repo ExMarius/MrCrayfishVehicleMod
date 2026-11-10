@@ -506,7 +506,7 @@ public final class LandVehicleRig {
             case "armorstand" -> armStandCarrier(location.getWorld(), location, vehicleId);
             case "cal" -> seatCarrier(location.getWorld(), location, vehicleId, false);
             case "calsa" -> seatCarrier(location.getWorld(), location, vehicleId, true);
-            case "barca", "barcafixa" -> boatCarrier(location.getWorld(), location, vehicleId);
+            case "barca", "barcafixa", "barcah" -> boatCarrier(location.getWorld(), location, vehicleId);
             default -> pigCarrier(location.getWorld(), location, vehicleId);
         };
         if (seat instanceof org.bukkit.entity.Boat) {
@@ -545,6 +545,17 @@ public final class LandVehicleRig {
         entities.add(seat);
         if (seat instanceof org.bukkit.entity.LivingEntity living) {
             applySeatGauge(living);
+        }
+        return seat;
+    }
+
+    /** BL59: la barca "barcah" jucatorul NU sta direct pe barca (altfel clientul
+     *  poate conduce barca), ci pe suportul invizibil din interiorul ei. Barca
+     *  ramane complet sub controlul serverului. */
+    private Entity riderHost(SeatCarrier carrier, Entity seat) {
+        if ("barcah".equals(effSeatKind())
+                && carrier.support != null && carrier.support.isValid()) {
+            return carrier.support;
         }
         return seat;
     }
@@ -953,7 +964,7 @@ public final class LandVehicleRig {
         if (drift) {
             seat.teleport(seatTarget, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         }
-        Player rider = seat.getPassengers().stream()
+        Player rider = riderHost(carrier, seat).getPassengers().stream()
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
@@ -1193,7 +1204,8 @@ public final class LandVehicleRig {
             return true;
         }
         Entity seat = createSeatMount(closest);
-        if (seat != null && seat.addPassenger(player)) {
+        Entity host = seat == null ? null : riderHost(closest, seat);
+        if (host != null && host.addPassenger(player)) {
             closest.rider = player.getUniqueId();
             return true;
         }
