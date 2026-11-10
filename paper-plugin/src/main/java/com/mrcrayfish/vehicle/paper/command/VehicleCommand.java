@@ -361,11 +361,15 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         dir.normalize();
         org.bukkit.util.Vector right = new org.bukkit.util.Vector(-dir.getZ(), 0, dir.getX());
-        double[] spaces = {-5.0D, 0.0D, 5.0D};
-        for (int i = 0; i < variants.size(); i++) {
+        /* BL60: pozitiile se calculeaza din numarul de variante (inainte erau
+         * 3 pozitii fixe si a 4-a varianta arunca ArrayIndexOutOfBounds). */
+        int count = variants.size();
+        double spacing = 5.0D;
+        for (int i = 0; i < count; i++) {
             SeatVariant variant = variants.get(i);
+            double offset = (i - (count - 1) / 2.0D) * spacing;
             Location location = base.clone()
-                    .add(right.clone().multiply(spaces[i]))
+                    .add(right.clone().multiply(offset))
                     .add(dir.clone().multiply(3.0D));
             LandVehicle vehicle = vehicles.spawn(spec, location);
             vehicle.setOwner(player.getUniqueId());
