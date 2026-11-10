@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Optional;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public final class VehicleCommand implements CommandExecutor, TabCompleter {
     private final VehiclePlugin plugin;
@@ -49,6 +50,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         switch (args[0].toLowerCase(Locale.ROOT)) {
             case "spawn" -> spawn(sender, args);
             case "variants", "variante" -> variants(sender);
+            case "boatdemo" -> boatDemo(sender);
             case "remove" -> remove(sender);
             case "refuel" -> refuel(sender);
             case "gaspump" -> gaspump(sender);
@@ -384,6 +386,105 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         }
         player.sendRichMessage("<gray>Urcă-te pe rând în fiecare, fă o întoarcere de 180° și spune-mi "
                 + "litera la care capul se ține după mașină. Curățenie: <yellow>/vehicle remove</yellow> lângă fiecare.</gray>");
+    }
+
+
+    /* BL64 (cerinta user: "poti transforma barca in vehiculele noastre? gen sa fie
+     * cu totul"): DEMO - vehiculul este o BARCA REALA, condusa de plugin.
+     * - barca are pe primul loc un suport invizibil, deci clientul NU o conduce
+     *   (altfel s-ar bate cu noi);
+     * - jucatorul sta pe locul 2 => poza de sezut nativa, capul liber;
+     * - pluginul citeste tastele (Player#getCurrentInput) si muta barca.
+     * Comanda e izolata: nu modifica vehiculele existente. */
+    private static final java.util.Map<UUID, BoatDemo> BOAT_DEMOS = new java.util.HashMap<>();
+    private static boolean boatDemoTicking;
+
+    private static final class BoatDemo {
+        private final org.bukkit.entity.Boat boat;
+        private final UUID driver;
+        private float speed;
+
+        private BoatDemo(org.bukkit.entity.Boat boat, UUID driver) {
+            this.boat = boat;
+            this.driver = driver;
+        }
+    }
+
+    private void boatDemo(CommandSender sender) {
+        if (!(sender instanceof Player player)) {
+            sender.sendRichMessage("<red>Comanda trebuie executată de un jucător.</red>");
+            return;
+        }
+        if (!player.isOp() && !sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        org.bukkit.World world = player.getWorld();
+        Location location = player.getLocation();
+        Entity spawned = world.spawnEntity(location, org.bukkit.entity.EntityType.OAK_BOAT);
+        if (!(spawned instanceof org.bukkit.entity.Boat boat)) {
+            sender.sendRichMessage("<red>Nu pot crea barca.</red>");
+            return;
+        }
+        boat.setGravity(false);
+        boat.setInvulnerable(true);
+        boat.setSilent(true);
+        boat.setPersistent(false);
+        Entity support = world.spawnEntity(location, org.bukkit.entity.EntityType.ARMOR_STAND);
+        if (support instanceof org.bukkit.entity.ArmorStand stand) {
+            stand.setInvisible(true);
+            stand.setGravity(false);
+            stand.setSilent(true);
+            stand.setInvulnerable(true);
+            stand.setPersistent(false);
+            stand.setMarker(false);
+        }
+        boat.addPassenger(support);
+        boat.addPassenger(player);
+        BOAT_DEMOS.put(boat.getUniqueId(), new BoatDemo(boat, player.getUniqueId()));
+        startBoatDemoTicker();
+        player.sendRichMessage("<gold>[BoatDemo]</gold> <white>Aceasta mașină ESTE o barcă reală.</white> "
+                + "<gray>W/S = accelerează/frânează, A/D = virează, Shift = cobori.</gray>");
+    }
+
+    private void startBoatDemoTicker() {
+        if (boatDemoTicking) {
+            return;
+        }
+        boatDemoTicking = true;
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            for (BoatDemo demo : new ArrayList<>(BOAT_DEMOS.values())) {
+                Player driver = Bukkit.getPlayer(demo.driver);
+                if (demo.boat == null || !demo.boat.isValid() || driver == null
+                        || !driver.isOnline() || !demo.boat.equals(driver.getVehicle())) {
+                    if (demo.boat != null && demo.boat.isValid()) {
+                        for (Entity passenger : demo.boat.getPassengers()) {
+                            passenger.eject();
+                        }
+                        demo.boat.remove();
+                    }
+                    BOAT_DEMOS.remove(demo.boat.getUniqueId());
+                    continue;
+                }
+                org.bukkit.Input input = driver.getCurrentInput();
+                float throttle = input.isForward() ? 1.0F : (input.isBackward() ? -1.0F : 0.0F);
+                float steer = input.isLeft() ? 1.0F : (input.isRight() ? -1.0F : 0.0F);
+                demo.speed += throttle * 0.045F;
+                demo.speed *= 0.93F;
+                if (input.isJump()) {
+                    demo.speed *= 0.80F;
+                }
+                demo.speed = Math.max(-0.35F, Math.min(1.1F, demo.speed));
+                float yaw = demo.boat.getYaw() + steer * Math.min(Math.abs(demo.speed), 0.8F) * 5.0F;
+                Location target = demo.boat.getLocation().clone();
+                double radians = Math.toRadians(yaw);
+                target.add(-Math.sin(radians) * demo.speed, 0.0D, Math.cos(radians) * demo.speed);
+                target.setYaw(yaw);
+                target.setPitch(0.0F);
+                demo.boat.teleport(target, io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                demo.boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+            }
+        }, 1L, 1L);
     }
 
     /** Forward spre comanda /garaj (aceeasi instanta de logica, fara duplicare). */
@@ -992,7 +1093,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "variants", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
+            return filter(List.of("spawn", "variants", "boatdemo", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);
