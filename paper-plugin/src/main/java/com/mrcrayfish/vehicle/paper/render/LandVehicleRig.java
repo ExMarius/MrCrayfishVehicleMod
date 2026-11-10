@@ -1247,7 +1247,10 @@ public final class LandVehicleRig {
     /** BL47: diagnostic - yaw-ul ancorei, al scaunului si al calaretului,
      *  ca sa stim daca serverul roteste corect (nu ghicim). */
     public String debugSeats(float vehicleYaw) {
-        StringBuilder text = new StringBuilder("vehicleYaw=").append(String.format("%.1f", vehicleYaw));
+        /* BL51: fiecare vehicul de test isi spune varianta in log, ca sa stim
+         * exact care litera (A/B/C/D) a tinut capul dupa masina. */
+        StringBuilder text = new StringBuilder("vehicleYaw=").append(String.format("%.1f", vehicleYaw))
+                .append(" variant=").append(variantName == null ? "global" : variantName);
         for (SeatCarrier carrier : seats) {
             text.append(" | anchor=").append(String.format("%.1f", carrier.anchor.getYaw()));
             if (carrier.mount != null && carrier.mount.isValid()) {
