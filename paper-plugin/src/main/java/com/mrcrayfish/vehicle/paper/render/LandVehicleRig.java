@@ -293,6 +293,10 @@ public final class LandVehicleRig {
      *  devine PASAGER al corpului masinii, deci il urmeaza nativ (fara teleport
      *  in fiecare tick => fara tremurat si fara "moved too quickly"). */
     private boolean variantAttachToBody;
+    /** BL62 (clarificare user: "de lipit e lipit, dar trebuie lipit de tot, cu
+     *  tot cu pozitia masinii"): scaunul primeste pozitia + rotatia ancorei in
+     *  FIECARE tick, fara niciun prag - practic sudat pe masina. */
+    private boolean variantGlueEveryTick;
 
     public void applyVariant(String name, String kind, boolean ride, String yawMode, boolean lockLook) {
         this.applyVariant(name, kind, ride, yawMode, lockLook, false);
@@ -305,6 +309,13 @@ public final class LandVehicleRig {
 
     public void applyVariant(String name, String kind, boolean ride, String yawMode,
                              boolean lockLook, boolean keepPosition, boolean attachToBody) {
+        applyVariant(name, kind, ride, yawMode, lockLook, keepPosition, attachToBody, false);
+    }
+
+    public void applyVariant(String name, String kind, boolean ride, String yawMode,
+                             boolean lockLook, boolean keepPosition, boolean attachToBody,
+                             boolean glueEveryTick) {
+        this.variantGlueEveryTick = glueEveryTick;
         this.variantName = name;
         this.variantKind = kind;
         this.variantRide = ride;
@@ -973,7 +984,10 @@ public final class LandVehicleRig {
                 || Math.abs(wrapDegrees(seat.getYaw() - seatYaw)) > 0.5F;
         /* BL61: daca scaunul e pasager al corpului masinii, pozitia si rotatia
          * ii sunt date de parinte - nu-l mai teleportam (asta tremura). */
-        if (drift && !seat.isInsideVehicle()) {
+        if (variantGlueEveryTick && !seat.isInsideVehicle()) {
+            /* BL62: sudat pe masina - pozitia si rotatia ancorei in fiecare tick. */
+            seat.teleport(seatTarget, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        } else if (drift && !seat.isInsideVehicle()) {
             seat.teleport(seatTarget, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         }
         Player rider = riderHost(carrier, seat).getPassengers().stream()

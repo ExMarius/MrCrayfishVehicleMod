@@ -321,7 +321,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
      * ca sa le poti incerca pe rand pe serverul real si sa alegi varianta in
      * care capul/corpul sta cel mai bine dupa masina la viraje. */
     private record SeatVariant(String label, String kind, boolean ride, String yawMode,
-                               boolean lockLook, boolean keepPosition, boolean attachToBody) {
+                               boolean lockLook, boolean keepPosition, boolean attachToBody,
+                               boolean glueEveryTick) {
     }
 
     private void variants(CommandSender sender) {
@@ -350,9 +351,9 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
          * masinii, sa nu se invarta barca nici la A/D, doar masina sa se miste
          * si eu sa stau in barca normal". */
         java.util.List<SeatVariant> variants = java.util.List.of(
-                new SeatVariant("I - CAL LIPIT de mașină (pasager al corpului, fără teleportări)", "cal", true, "anchor", false, false, true),
-                new SeatVariant("J - BARCĂ LIPITĂ de mașină (pasager al corpului, fără teleportări)", "barca", true, "anchor", false, false, true),
-                new SeatVariant("A - referinta: cal fără șa, capul liber", "cal", true, "anchor", false, false, false));
+                new SeatVariant("K - CAL SUDAT pe poziția + rotația mașinii (în fiecare tick)", "cal", true, "anchor", false, false, false, true),
+                new SeatVariant("L - BARCĂ SUDATĂ pe poziția + rotația mașinii (în fiecare tick)", "barca", true, "anchor", false, false, false, true),
+                new SeatVariant("A - referinta: cal fără șa, capul liber", "cal", true, "anchor", false, false, false, false));
         Location base = player.getLocation();
         org.bukkit.util.Vector dir = base.getDirection().setY(0);
         if (dir.lengthSquared() < 1.0E-6D) {
@@ -374,7 +375,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             vehicle.setOwner(player.getUniqueId());
             vehicle.rig().applyVariant(variant.label(), variant.kind(), variant.ride(),
                     variant.yawMode(), variant.lockLook(), variant.keepPosition(),
-                    variant.attachToBody());
+                    variant.attachToBody(), variant.glueEveryTick());
         }
         vehicles.save();
         player.sendRichMessage("<gold>[Variante]</gold> <white>3 mașini spawnate în fața ta (A, E, F), de la stânga la dreapta:</white>");
