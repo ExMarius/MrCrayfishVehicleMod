@@ -51,6 +51,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "spawn" -> spawn(sender, args);
             case "variants", "variante" -> variants(sender);
             case "boatdemo" -> boatDemo(sender);
+            case "boatshell" -> boatShell(sender, args);
             case "remove" -> remove(sender);
             case "refuel" -> refuel(sender);
             case "gaspump" -> gaspump(sender);
@@ -511,6 +512,22 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 }
             }
         }, 1L, 1L);
+    }
+
+
+    /** BL66: scaun = barca reala pe TOATE masinile (metoda din demo, confirmata
+     *  de user ca arata 1 la 1 ca in mod). Fizica ramane a pluginului. */
+    private void boatShell(CommandSender sender, String[] args) {
+        if (!sender.isOp() && !sender.hasPermission("vehicle.admin")) {
+            sender.sendRichMessage("<red>Nu ai permisiunea vehicle.admin.</red>");
+            return;
+        }
+        boolean enable = args.length < 2 || !"off".equalsIgnoreCase(args[1]);
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setBoatShell(enable);
+        sender.sendRichMessage(enable
+                ? "<green>Modul barcă ACTIV.</green> <gray>Toate mașinile folosesc acum barca reală ca scaun "
+                  + "(urcă-te din nou în mașină ca să se aplice).</gray>"
+                : "<yellow>Modul barcă oprit.</yellow> <gray>Se revine la calul de dinainte.</gray>");
     }
 
     /** Forward spre comanda /garaj (aceeasi instanta de logica, fara duplicare). */
@@ -1119,7 +1136,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "variants", "boatdemo", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
+            return filter(List.of("spawn", "variants", "boatdemo", "boatshell", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

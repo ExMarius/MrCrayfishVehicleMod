@@ -230,6 +230,20 @@ public final class LandVehicleRig {
      *  validata de user; comutabil live cu /vehicle seatkind. */
     private static volatile String seatKind = "cal";
 
+    /* BL66 (confirmat de user: "/vehicle boatdemo face 1 la 1 vizualul din mod"):
+     * generalizam metoda la TOATE masinile - scaunul devine o barca reala (barca
+     * = corpul in care sta jucatorul), iar fizica ramane a pluginului, deci
+     * masina se misca pe uscat ca o masina. Comutator: /vehicle boatshell. */
+    private static volatile boolean boatShell = false;
+
+    public static boolean boatShell() {
+        return boatShell;
+    }
+
+    public static void setBoatShell(boolean enabled) {
+        boatShell = enabled;
+    }
+
     /** BL34: mod "tinut pe scaun de server" (nu pasager). Doar asa serverul
      *  poate roti si CORPUL si PRIVIREA odata cu vehiculul; pretul: jucatorul
      *  nu mai este pasager, deci nu are pose-ul de barca. */
@@ -335,6 +349,9 @@ public final class LandVehicleRig {
     }
 
     private String effSeatKind() {
+        if (boatShell) {
+            return "barca";
+        }
         return variantKind != null ? variantKind : seatKind;
     }
 
@@ -1080,11 +1097,9 @@ public final class LandVehicleRig {
             boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
             Location target = carrier.boatDelayLocation.clone();
             float targetYaw = carrier.boatDelayYaw;
-            Location boatLocation = boat.getLocation();
-            if (!boatLocation.getWorld().equals(target.getWorld())
-                    || boatLocation.distanceSquared(target) > 1.0E-4D) {
-                boat.teleport(target, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            }
+            /* BL66: teleport in fiecare tick (exact ca in demo, care merge) - nu
+             * mai asteptam driftul, altfel barca ramane in urma. */
+            boat.teleport(target, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             if (Math.abs(wrapDegrees(boat.getYaw() - targetYaw)) > 0.01F || boat.getPitch() != 0.0F) {
                 boat.setRotation(targetYaw, 0.0F);
             }
