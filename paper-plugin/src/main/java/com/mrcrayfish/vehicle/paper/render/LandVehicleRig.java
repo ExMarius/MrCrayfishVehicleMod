@@ -237,7 +237,10 @@ public final class LandVehicleRig {
      * capul acum, vreau sa reusim doar asta"): IMPLICIT = tinut pe scaun de
      * server, fara calarie. Corpul + privirea se rotesc cu masina, mouse-ul nu
      * te mai intoarce. /vehicle seatride on revine la calarie. */
-    private static volatile boolean seatRide = false;
+    /* BL45 (cerinta user: "vreau sezut si fara tremurat"): pasager din nou
+     * (doar asa exista poza de sezut), dar fara corectiile fortate care
+     * tremurau - calul e tinut de ancora scaunului. */
+    private static volatile boolean seatRide = true;
 
     public static boolean seatRide() {
         return seatRide;
@@ -432,14 +435,15 @@ public final class LandVehicleRig {
             carrier.setAI(false);
             carrier.setGravity(false);
             carrier.setCollidable(false);
-            carrier.setInvisible(true);
+            /* BL45: calul este VIZIBIL si la marime normala (cerinta user). */
+            carrier.setInvisible(false);
             carrier.setInvulnerable(true);
             carrier.setSilent(true);
             carrier.setPersistent(false);
             carrier.setRemoveWhenFarAway(false);
             AttributeInstance scale = carrier.getAttribute(Attribute.SCALE);
             if (scale != null) {
-                scale.setBaseValue(SEAT_CARRIER_SCALE);
+                scale.setBaseValue(1.0D);
             }
             AttributeInstance speed = carrier.getAttribute(Attribute.MOVEMENT_SPEED);
             if (speed != null) {
@@ -992,19 +996,10 @@ public final class LandVehicleRig {
         /* BL36: barca are fizica ei si primeste input de la client (A/D o misca
          * pe scaun). O fortam rigid in fiecare tick: pozitia scaunului, yaw-ul
          * vehiculului si viteza ZERO - deci sta ca si cum ar fi sudata pe masina. */
-        /* BL40: calul este "unit" cu vehiculul: viteza zero si pozitia ancorei
-         * in fiecare tick. Calul are clampa vanilla de riding, deci corpul
-         * calareului sta pe direcția monturii (masinii) si doar capul se
-         * roteste cu mouse-ul - exact comportamentul modului original. */
-        if (seat instanceof org.bukkit.entity.AbstractHorse) {
-            seat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
-            Location seatLocation = carrier.anchor.getLocation();
-            Location mountLocation = seat.getLocation();
-            if (!mountLocation.getWorld().equals(seatLocation.getWorld())
-                    || mountLocation.distanceSquared(seatLocation) > 0.0025D) {
-                seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
-            }
-        }
+        /* BL45: calul NU mai este fortat manual (teleport/viteza/rotire in plus
+         * = tremurat). Este pasager al ancorei, iar ancora este teleportata si
+         * rotita pe yaw-ul masinii in fiecare update, deci calul o urmeaza
+         * natural, fara corectii care sa se bata cu clientul. */
         if (seat instanceof org.bukkit.entity.Boat boat) {
             Location seatLocation = carrier.anchor.getLocation();
             if (!carrier.boatDelayReady) {
