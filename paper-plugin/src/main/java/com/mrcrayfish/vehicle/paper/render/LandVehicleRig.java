@@ -506,7 +506,7 @@ public final class LandVehicleRig {
             case "armorstand" -> armStandCarrier(location.getWorld(), location, vehicleId);
             case "cal" -> seatCarrier(location.getWorld(), location, vehicleId, false);
             case "calsa" -> seatCarrier(location.getWorld(), location, vehicleId, true);
-            case "barca" -> boatCarrier(location.getWorld(), location, vehicleId);
+            case "barca", "barcafixa" -> boatCarrier(location.getWorld(), location, vehicleId);
             default -> pigCarrier(location.getWorld(), location, vehicleId);
         };
         if (seat instanceof org.bukkit.entity.Boat) {
@@ -1025,6 +1025,10 @@ public final class LandVehicleRig {
                 carrier.boatDelayYaw = seatYaw;
                 carrier.boatDelayReady = true;
             }
+            /* BL58 (cerinta user): "barca fixata de masina, sa nu se invarta nici
+             * cand dai A/D; doar masina sa se miste, eu sa stau in barca normal".
+             * Viteza e zero in fiecare tick, iar rotatia se impune mereu (nu doar
+             * la abateri mari), deci barca nu are cum sa se rasuceasca singura. */
             boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
             Location target = carrier.boatDelayLocation.clone();
             float targetYaw = carrier.boatDelayYaw;
@@ -1033,7 +1037,7 @@ public final class LandVehicleRig {
                     || boatLocation.distanceSquared(target) > 1.0E-4D) {
                 boat.teleport(target, TeleportFlag.EntityState.RETAIN_PASSENGERS);
             }
-            if (boat.getYaw() != targetYaw || boat.getPitch() != 0.0F) {
+            if (Math.abs(wrapDegrees(boat.getYaw() - targetYaw)) > 0.01F || boat.getPitch() != 0.0F) {
                 boat.setRotation(targetYaw, 0.0F);
             }
             carrier.boatDelayLocation = seatLocation.clone();
