@@ -891,12 +891,6 @@ public final class LandVehicleRig {
         }
         rider.setFallDistance(0.0F);
         rider.setVelocity(new org.bukkit.util.Vector());
-        /* Poza de SEZUT (cerinta user): fara sa fie pasager, o cerem explicit. */
-        try {
-            rider.setPose(org.bukkit.entity.EntityPose.SITTING);
-        } catch (Throwable ignored) {
-            // versiune fara suport pentru pose
-        }
     }
 
     /** Elibereaza un jucator tinut pe scaun (modul fara calarie). */
