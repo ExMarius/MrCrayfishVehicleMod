@@ -100,7 +100,11 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         int task = org.bukkit.Bukkit.getScheduler().runTaskTimer(
                 org.bukkit.Bukkit.getPluginManager().getPlugin("MrCrayfishVehiclePlugin"), () -> {
                     for (com.mrcrayfish.vehicle.paper.vehicle.LandVehicle vehicle
-                            : vehicles().vehiclesWithin(player.getLocation(), 20.0D)) {
+                            : vehicles.vehicles()) {
+                        if (!vehicle.location().getWorld().equals(player.getWorld())
+                                || vehicle.location().distanceSquared(player.getLocation()) > 400.0D) {
+                            continue;
+                        }
                         Bukkit.getLogger().info("[SEATDBG] "
                                 + vehicle.rig().debugSeats(vehicle.location().getYaw()));
                     }
