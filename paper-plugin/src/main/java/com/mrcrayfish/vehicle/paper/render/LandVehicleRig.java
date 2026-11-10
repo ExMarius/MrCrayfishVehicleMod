@@ -597,10 +597,11 @@ public final class LandVehicleRig {
                 support.remove();
             }
         }
-        if (!carrier.anchor.addPassenger(seat)) {
-            seat.remove();
-            return null;
-        }
+        /* BL46 (cauza dovedita): daca scaunul este PASAGER al ancorei, Minecraft
+         * ii rescrie rotatia din parinte in fiecare tick, deci calul nu putea
+         * fi rotit de server si ramanea pe directia veche la viraje. Scaunul
+         * ramane entitate LIBERA: serverul il muta si il roteste el in fiecare
+         * tick (vezi maintainSeat), deci merge cu masina. */
         carrier.mount = seat;
         entities.add(seat);
         if (seat instanceof org.bukkit.entity.LivingEntity living) {
@@ -974,6 +975,17 @@ public final class LandVehicleRig {
             return;
         }
 
+        /* BL46: tinem scaunul liber lipit de ancora scaunului (pozitie + yaw),
+         * cu calareții pastrati pe el. */
+        Location seatTarget = carrier.anchor.getLocation().clone();
+        seatTarget.setYaw(wrapDegrees(seatYaw));
+        seatTarget.setPitch(0.0F);
+        boolean drift = !seat.getWorld().equals(seatTarget.getWorld())
+                || seat.getLocation().distanceSquared(seatTarget) > 1.0E-4D
+                || Math.abs(wrapDegrees(seat.getYaw() - seatYaw)) > 0.5F;
+        if (drift) {
+            seat.teleport(seatTarget, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        }
         Player rider = seat.getPassengers().stream()
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
