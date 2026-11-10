@@ -406,6 +406,8 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         private final LandVehicle car;
         private float speed;
         private int age;
+        private float wheelSpin;
+        private float steerAngle;
 
         private BoatDemo(org.bukkit.entity.Boat boat, UUID driver, LandVehicle car) {
             this.boat = boat;
@@ -514,33 +516,62 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 Location target = demo.boat.getLocation().clone();
                 double radians = Math.toRadians(yaw);
                 target.add(-Math.sin(radians) * demo.speed, 0.0D, Math.cos(radians) * demo.speed);
-                /* tinem masina pe sol (nu pluteste, nu se afunda) */
-                org.bukkit.util.RayTraceResult ground = target.getWorld().rayTraceBlocks(
-                        target.clone().add(0, 1.5, 0), new org.bukkit.util.Vector(0, -1, 0), 4.0D,
-                        org.bukkit.FluidCollisionMode.NEVER, true);
-                if (ground != null) {
-                    target.setY(ground.getHitPosition().getY() + 0.05D);
-                }
                 target.setYaw(yaw);
                 target.setPitch(0.0F);
+                /* BL68 (feedback user): rotile se invartesc dupa viteza si vireaza. */
+                demo.wheelSpin += demo.speed * 900.0F;
+                demo.wheelSpin %= 360.0F;
+                demo.steerAngle = steer * 26.0F;
                 if (demo.age % 5 == 0) {
                     float kmh = Math.abs(demo.speed) * 72.0F;
                     driver.sendActionBar(net.kyori.adventure.text.Component.text(
                             String.format(java.util.Locale.US, "%.0f km/h", kmh),
                             net.kyori.adventure.text.format.NamedTextColor.GOLD));
                 }
-                demo.boat.teleport(target, io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                if (demo.car == null) {
+                    demo.boat.teleport(target,
+                            io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                }
                 demo.boat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
                 /* BL65: modelul masinii sta exact pe barca (pozitie + rotatie). */
                 if (demo.car != null) {
                     demo.age++;
                     Location root = demo.car.location();
-                    root.setX(demo.boat.getX());
-                    root.setY(demo.boat.getY());
-                    root.setZ(demo.boat.getZ());
-                    root.setYaw(demo.boat.getYaw());
+                    root.setX(target.getX());
+                    root.setY(target.getY());
+                    root.setZ(target.getZ());
+                    root.setYaw(yaw);
                     root.setPitch(0.0F);
-                    demo.car.rig().update(root, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, true, demo.age);
+                    demo.car.rig().update(root, demo.steerAngle, demo.wheelSpin, demo.wheelSpin,
+                            0.0F, 0.0F, true, demo.age);
+                    /* BL68: caroseria se aliniaza astfel incat SCAUNUL SOFERULUI sa
+                     * fie exact pe barca - deci barca sta "in aer", in caroserie,
+                     * la locul soferului, nu pe jos sub masina. */
+                    Entity seat = demo.car.rig().driverSeat();
+                    if (seat != null) {
+                        org.bukkit.util.Vector offset = seat.getLocation().toVector()
+                                .subtract(root.toVector());
+                        root.setX(root.getX() - offset.getX());
+                        root.setY(root.getY() - offset.getY());
+                        root.setZ(root.getZ() - offset.getZ());
+                        /* masina sta pe sol */
+                        org.bukkit.util.RayTraceResult ground = root.getWorld().rayTraceBlocks(
+                                root.clone().add(0, 2.5, 0), new org.bukkit.util.Vector(0, -1, 0), 6.0D,
+                                org.bukkit.FluidCollisionMode.NEVER, true);
+                        if (ground != null) {
+                            root.setY(ground.getHitPosition().getY() + 0.02D);
+                        }
+                        demo.car.rig().update(root, demo.steerAngle, demo.wheelSpin, demo.wheelSpin,
+                                0.0F, 0.0F, true, demo.age);
+                        Entity alignedSeat = demo.car.rig().driverSeat();
+                        if (alignedSeat != null) {
+                            Location seatLocation = alignedSeat.getLocation().clone();
+                            seatLocation.setYaw(yaw);
+                            seatLocation.setPitch(0.0F);
+                            demo.boat.teleport(seatLocation,
+                                    io.papermc.paper.entity.TeleportFlag.EntityState.RETAIN_PASSENGERS);
+                        }
+                    }
                 }
             }
         }, 1L, 1L);
