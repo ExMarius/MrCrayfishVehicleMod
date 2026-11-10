@@ -349,7 +349,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         java.util.List<SeatVariant> variants = java.util.List.of(
                 new SeatVariant("A - referinta: cal fără șa, capul liber", "cal", true, "anchor", false, false),
                 new SeatVariant("E - cap forțat după mașină (varianta de dinainte)", "cal", true, "anchor", true, false),
-                new SeatVariant("F - NOU: cap forțat FĂRĂ să atingă poziția (fără trepidații)", "cal", true, "anchor", true, true));
+                new SeatVariant("F - cap LIBER la mouse + se rotește cu mașina la viraje (ca la barcă)", "cal", true, "anchor", true, true));
         Location base = player.getLocation();
         org.bukkit.util.Vector dir = base.getDirection().setY(0);
         if (dir.lengthSquared() < 1.0E-6D) {

@@ -962,21 +962,39 @@ public final class LandVehicleRig {
          * doar la abateri mari => camera se rotea in TREPTE. Acum corectam in
          * fiecare tick, cu toleranta mica, deci urmarirea e continua. */
         if (rider != null && effLookLock()) {
-            /* BL56 (decizie user: "netezeste E/F pana nu mai tremura"):
-             * nu mai sarim direct pe yaw-ul masinii (salt = trepidatie), ci
-             * rotim camera GRADUAL, 60% din diferenta la fiecare tick. Asa
-             * urmarirea e continua si fara praguri vizibile. */
-            float currentYaw = rider.getLocation().getYaw();
-            float diff = wrapDegrees(seatYaw - currentYaw);
-            if (Math.abs(diff) > 0.1F) {
-                float step = diff * 0.6F;
-                if (Math.abs(step) < 0.35F) {
-                    step = Math.abs(diff) < 0.35F ? 0.0F : Math.signum(diff) * 0.35F;
+            if (variantKeepPosition) {
+                /* BL57 (cerinta finala user, formulata clar): "jucatorul sa poata
+                 * misca capul din mouse ca la barca, iar daca ia viraje capul sa
+                 * ramana in aceeasi pozitie cu masina". Deci NU fortam camera pe
+                 * yaw-ul masinii - adaugam la privire doar CAT a virat masina in
+                 * acest tick. Mouse-ul ramane liber: te uiti unde vrei, iar la
+                 * viraje privirea se roteste odata cu masina. */
+                float delta = carrier.lastSeatYawValid
+                        ? wrapDegrees(seatYaw - carrier.lastSeatYaw) : 0.0F;
+                carrier.lastSeatYaw = seatYaw;
+                carrier.lastSeatYawValid = true;
+                if (Math.abs(delta) > 0.02F) {
+                    forceLook(rider, rider.getLocation().getYaw() + delta, rider.getPitch(), true);
                 }
-                if (Math.abs(step) > 0.0F) {
-                    forceLook(rider, currentYaw + step, rider.getPitch(), variantKeepPosition);
+            } else {
+                /* Modul "blocat": camera e tinuta pe yaw-ul masinii, gradual
+                 * (BL56) - nu mai sare, dar nici nu te mai lasa sa te uiti. */
+                carrier.lastSeatYaw = seatYaw;
+                carrier.lastSeatYawValid = true;
+                float currentYaw = rider.getLocation().getYaw();
+                float diff = wrapDegrees(seatYaw - currentYaw);
+                if (Math.abs(diff) > 0.1F) {
+                    float step = diff * 0.6F;
+                    if (Math.abs(step) < 0.35F) {
+                        step = Math.abs(diff) < 0.35F ? 0.0F : Math.signum(diff) * 0.35F;
+                    }
+                    if (Math.abs(step) > 0.0F) {
+                        forceLook(rider, currentYaw + step, rider.getPitch(), false);
+                    }
                 }
             }
+        } else {
+            carrier.lastSeatYawValid = false;
         }
         if (rider == null) {
             carrier.rider = null;
@@ -1652,6 +1670,10 @@ public final class LandVehicleRig {
         private Location boatDelayLocation;
         private float boatDelayYaw;
         private boolean boatDelayReady;
+        /** BL57: ultimul yaw al scaunului, ca sa stim cu CAT a virat masina
+         *  (rotatia se adauga la privire, nu o inlocuieste). */
+        private float lastSeatYaw;
+        private boolean lastSeatYawValid;
 
         private SeatCarrier(ItemDisplay anchor, LandVehicleSpec.Seat properties) {
             this.anchor = anchor;
