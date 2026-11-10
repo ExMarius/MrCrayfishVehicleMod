@@ -347,7 +347,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
                 new SeatVariant("B - cal CU șa (controlling passenger)", "calsa", true, "anchor", false),
                 new SeatVariant("C - barcă (poză de șezut vanilla)", "barca", true, "anchor", false),
                 new SeatVariant("D - armor stand ținut de server (fără sărituri)", "armorstand", false, "anchor", false),
-                new SeatVariant("E - cal + CAP FORȚAT după mașină (stai jos, fără dardait)", "cal", true, "anchor", true));
+                new SeatVariant("E - cal + CAP FORȚAT după mașină (pasager: stai jos, capul urmează mașina)", "cal", true, "anchor", true));
         Location base = player.getLocation();
         org.bukkit.util.Vector dir = base.getDirection().setY(0);
         if (dir.lengthSquared() < 1.0E-6D) {

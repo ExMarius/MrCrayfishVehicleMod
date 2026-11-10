@@ -950,12 +950,12 @@ public final class LandVehicleRig {
                 .filter(Player.class::isInstance)
                 .map(Player.class::cast)
                 .findFirst().orElse(null);
-        if (rider != null && effLookLock()) {
+        if (rider != null && effLookLock() && (rider.getTicksLived() % 2 == 0)) {
             float deviation = Math.abs(wrapDegrees(rider.getLocation().getYaw() - seatYaw));
             /* BL49 (cerinta user: "capul sa stea dupa vehicul"): toleranta 0.5
              * grade, deci capul/camera e tinut pe directia masinii. Pitch-ul
              * ramane al jucatorului (sus/jos liber). */
-            if (deviation > 0.5F) {
+            if (deviation > 3.0F) {
                 forceLook(rider, seatYaw, rider.getPitch());
             }
         }
@@ -1271,6 +1271,9 @@ public final class LandVehicleRig {
             Object handle = player.getClass().getMethod("getHandle").invoke(player);
             Object connection = lookConnectionField.get(handle);
             lookSendMethod.invoke(connection, packet);
+            /* BL53: oglindim yaw-ul si in starea serverului, ca diagnosticul
+             * (SEATDBG riderYaw) sa arate daca pachetele chiar pleaca. */
+            player.setRotation(yaw, pitch);
             lookLockLastPacket = System.currentTimeMillis();
         } catch (Throwable error) {
             lookLockAutoOff = true;
