@@ -289,6 +289,10 @@ public final class LandVehicleRig {
     private String variantYawMode;
     private Boolean variantLookLock;
     private boolean variantKeepPosition;
+    /** BL61 (cerinta user: "lipim entitatea de cal/barca de masina"): scaunul
+     *  devine PASAGER al corpului masinii, deci il urmeaza nativ (fara teleport
+     *  in fiecare tick => fara tremurat si fara "moved too quickly"). */
+    private boolean variantAttachToBody;
 
     public void applyVariant(String name, String kind, boolean ride, String yawMode, boolean lockLook) {
         this.applyVariant(name, kind, ride, yawMode, lockLook, false);
@@ -296,12 +300,18 @@ public final class LandVehicleRig {
 
     public void applyVariant(String name, String kind, boolean ride, String yawMode,
                              boolean lockLook, boolean keepPosition) {
+        this.applyVariant(name, kind, ride, yawMode, lockLook, keepPosition, false);
+    }
+
+    public void applyVariant(String name, String kind, boolean ride, String yawMode,
+                             boolean lockLook, boolean keepPosition, boolean attachToBody) {
         this.variantName = name;
         this.variantKind = kind;
         this.variantRide = ride;
         this.variantYawMode = yawMode;
         this.variantLookLock = lockLook;
         this.variantKeepPosition = keepPosition;
+        this.variantAttachToBody = attachToBody;
     }
 
     /** BL52: fortarea privirii se poate activa si PER VEHICUL (testul A/B). */
@@ -961,7 +971,9 @@ public final class LandVehicleRig {
         boolean drift = !seat.getWorld().equals(seatTarget.getWorld())
                 || seat.getLocation().distanceSquared(seatTarget) > 1.0E-4D
                 || Math.abs(wrapDegrees(seat.getYaw() - seatYaw)) > 0.5F;
-        if (drift) {
+        /* BL61: daca scaunul e pasager al corpului masinii, pozitia si rotatia
+         * ii sunt date de parinte - nu-l mai teleportam (asta tremura). */
+        if (drift && !seat.isInsideVehicle()) {
             seat.teleport(seatTarget, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         }
         Player rider = riderHost(carrier, seat).getPassengers().stream()
@@ -1029,7 +1041,7 @@ public final class LandVehicleRig {
          * = tremurat). Este pasager al ancorei, iar ancora este teleportata si
          * rotita pe yaw-ul masinii in fiecare update, deci calul o urmeaza
          * natural, fara corectii care sa se bata cu clientul. */
-        if (seat instanceof org.bukkit.entity.Boat boat) {
+        if (seat instanceof org.bukkit.entity.Boat boat && !variantAttachToBody) {
             Location seatLocation = carrier.anchor.getLocation();
             if (!carrier.boatDelayReady) {
                 carrier.boatDelayLocation = seatLocation.clone();
@@ -1204,6 +1216,11 @@ public final class LandVehicleRig {
             return true;
         }
         Entity seat = createSeatMount(closest);
+        if (seat != null && variantAttachToBody && !seat.isInsideVehicle()) {
+            /* BL61: "lipim" scaunul de masina - devine pasager al corpului, deci
+             * merge cu ea fara teleportari facute de noi. */
+            body.addPassenger(seat);
+        }
         Entity host = seat == null ? null : riderHost(closest, seat);
         if (host != null && host.addPassenger(player)) {
             closest.rider = player.getUniqueId();
