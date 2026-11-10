@@ -1092,7 +1092,10 @@ public final class LandVehicleRig {
      * Varianta RELATIVA (BL24) a fost respinsa de client ("Invalid move player
      * packet received"); absoluta e alta cale. Daca clientul deconecteaza,
      * feature-ul se dezactiveaza SINGUR (vezi noteQuit). */
-    private static volatile boolean lookLock = true;
+    /* BL50 (cerinta user: "il lasam asa"): opresc experimentalul prin care
+     * fortam capul/camera din server (risc de deconectare). Implicit OFF;
+     * se poate activa manual cu /vehicle seatlock on daca vreodata e nevoie. */
+    private static volatile boolean lookLock = false;
     private static volatile boolean lookLockAutoOff = false;
     private static volatile long lookLockLastPacket;
     private static java.lang.reflect.Constructor<?> lookPacketCtor;
