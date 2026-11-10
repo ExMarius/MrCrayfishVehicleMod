@@ -896,8 +896,12 @@ public final class LandVehicleRig {
         /* BL39: teleport doar cand chiar e nevoie (deriva de pozitie peste 5 cm
          * sau rotatie peste 1.5 grade). Teleportul in fiecare tick era cauza
          * senzatiei de "buguit": pachete multe si micro-sacadari. */
-        boolean needsMove = rider.getLocation().distanceSquared(target) > 0.0025D;
-        if (needsMove || yawDelta > 1.5F) {
+        /* BL44 (cerinta finala user: "corpul sa fie fixat pe scaun, sa nu isi
+         * schimbe pozitia nici la viraje"): toleranta minima - corectam la
+         * orice abatere de peste 2 cm sau 0.5 grade, deci corpul sta practic
+         * sudat pe scaun. */
+        boolean needsMove = rider.getLocation().distanceSquared(target) > 0.0004D;
+        if (needsMove || yawDelta > 0.5F) {
             target.setYaw(seatYaw);
             target.setPitch(rider.getPitch());
             rider.teleport(target);
