@@ -1,0 +1,9 @@
+Downloading https://services.gradle.org/distributions/gradle-8.12-bin.zip
+.............10%.............20%.............30%.............40%.............50%.............60%.............70%.............80%.............90%.............100%
+JAR=/home/runner/.gradle/caches/fabric-loom/minecraftMaven/net/minecraft/minecraft-merged/1.21.4-loom.mappings.1_21_4.layered+hash.2198-v2/minecraft-merged-1.21.4-loom.mappings.1_21_4.layered+hash.2198-v2.jar
+ENTRIES=26248
+CLIENT_PKG=2259
+SERVER_PKG=483
+HAS_LOCALPLAYER=true
+SAMPLE_CLIENT=[net/minecraft/client/, net/minecraft/client/particle/, net/minecraft/client/particle/PlayerCloudParticle$SneezeProvider.class, net/minecraft/client/particle/PlayerCloudParticle$Provider.class, net/minecraft/client/resources/, net/minecraft/client/resources/metadata/, net/minecraft/client/resources/metadata/gui/, net/minecraft/client/resources/metadata/gui/GuiSpriteScaling$NineSlice$Border.class]
+SAMPLE_ANY=[META-INF/MANIFEST.MF, version.json, pack.png, flightrecorder-config.jfc, data/, data/minecraft/, data/minecraft/worldgen/, data/minecraft/worldgen/world_preset/]
