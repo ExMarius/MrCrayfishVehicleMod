@@ -984,9 +984,20 @@ public final class LandVehicleRig {
                 || Math.abs(wrapDegrees(seat.getYaw() - seatYaw)) > 0.5F;
         /* BL61: daca scaunul e pasager al corpului masinii, pozitia si rotatia
          * ii sunt date de parinte - nu-l mai teleportam (asta tremura). */
-        if (variantGlueEveryTick && !seat.isInsideVehicle()) {
-            /* BL62: sudat pe masina - pozitia si rotatia ancorei in fiecare tick. */
-            seat.teleport(seatTarget, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+        /* BL63 (cauza dovedita de user: "barca pleaca pe alte locuri si masina pe
+         * altele"): corpul masinii este un ItemDisplay cu teleportDuration=1, deci
+         * clientul il deseneaza cu UN TICK MAI TARZIU. Daca scaunul il mutam pe
+         * pozitia de ACUM, apare cu un tick inaintea masinii => "pe alt loc".
+         * Solutie: scaunul primeste pozitia din tickul precedent (aceeasi
+         * intarziere ca desenul masinii). */
+        if (variantGlueEveryTick && !seat.isInsideVehicle() && !(seat instanceof org.bukkit.entity.Boat)) {
+            Location delayed = carrier.boatDelayReady
+                    ? carrier.boatDelayLocation.clone() : seatTarget.clone();
+            delayed.setYaw(carrier.boatDelayReady ? carrier.boatDelayYaw : seatTarget.getYaw());
+            seat.teleport(delayed, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            carrier.boatDelayLocation = seatTarget.clone();
+            carrier.boatDelayYaw = seatTarget.getYaw();
+            carrier.boatDelayReady = true;
         } else if (drift && !seat.isInsideVehicle()) {
             seat.teleport(seatTarget, TeleportFlag.EntityState.RETAIN_PASSENGERS);
         }
