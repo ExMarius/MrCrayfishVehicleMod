@@ -233,7 +233,11 @@ public final class LandVehicleRig {
     /** BL34: mod "tinut pe scaun de server" (nu pasager). Doar asa serverul
      *  poate roti si CORPUL si PRIVIREA odata cu vehiculul; pretul: jucatorul
      *  nu mai este pasager, deci nu are pose-ul de barca. */
-    private static volatile boolean seatRide = true;
+    /* BL43 (decizie user: "asa ar trebui sa faci si cu mine... nu conteaza
+     * capul acum, vreau sa reusim doar asta"): IMPLICIT = tinut pe scaun de
+     * server, fara calarie. Corpul + privirea se rotesc cu masina, mouse-ul nu
+     * te mai intoarce. /vehicle seatride on revine la calarie. */
+    private static volatile boolean seatRide = false;
 
     public static boolean seatRide() {
         return seatRide;
