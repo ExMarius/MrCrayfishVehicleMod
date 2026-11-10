@@ -145,3 +145,31 @@ Interpretare: **serverul face totul corect** (ancora si calul urmeaza yaw-ul mas
 **Mod de client (gata, optional):** `client-mod/` (Fabric 1.21.4, mixin pe `LocalPlayer#tick` prin reflexie, fara dependente de nume mapate). Jar publicat in release: `mcv-seatlock-1.0.0.jar`. CI: `.github/workflows/client-mod.yml` (build cu Mojang official mappings; **yarn 1.21.4 producea un jar fara clasele client** - nu reveni la yarn).
 
 **Comenzi de test prezente:** `seatkind`, `seatyaw`, `seatlook`, `seatride`, `seatdebug`, `seatlock`, `inputtest`, `seattest`, `seatlift`.
+
+## 11. Ciclul BL51-BL60 (test A/B pe serverul real, 2026-11-10)
+
+**Comanda de test:** `/vehicle variants` spawneaza 4 masini cu variante de scaun
+diferite, fiecare cu setari proprii (per-vehicul, nu globale):
+A = cal fara sa, F = cal + rotatie adaugata la privire, G = barca fixata,
+H = barca cu scaun interior (barca 100% server-side).
+
+**Rezultatul testelor (user):** A/B/C/D/G/H = "nu e bun"; E/F = "aproape, dar
+trepidaie"; dupa netezire (BL56/BL57) tot "niciunul nu e bun".
+
+**Ce s-a dovedit, cu log:**
+1. Calul/barca se rotesc perfect cu masina (`vehicleYaw` == `mount yaw`), dar
+   `riderYaw` ramane constant => clientul vanilla isi roteste corpul dupa
+   CAMERA, nu dupa vehicul. Rotirea scaunului nu poate rezolva asta.
+2. Trepidatia la variantele care forteaza camera vine din
+   `ClientboundPlayerPositionPacket`: (a) pozitia absoluta e cu un tick in urma
+   => corpul e tras inapoi; (b) salturile de yaw => mers in trepte. Fix-uri
+   aplicate: pozitie relativa (delta 0) + rotatie graduala (BL55/BL56).
+3. `moved too quickly` din log (anti-cheat-ul de miscare) explica tremuratul
+   la varianta "tinut pe scaun" (D).
+
+**Concluzie de produs:** "corp fix + cap liber" (ca in mod) NU se poate obtine
+server-side cu client vanilla. Singura cale completa ramane modul de client
+(`client-mod/`, publicat in release), care e optional pentru jucatori.
+
+**Starea implicita a serverului:** cal fara sa, pasager, fara fortarea camerei
+(`lookLock=false`), fara variante aplicate. Stabil.
