@@ -119,3 +119,29 @@ Concluzie: **clientul vanilla refuza orice control al camerei cat timp jucatorul
 ## 7. TON
 
 Userul e direct, română, apreciază structură + acțiune; testează LIVE pe server și raportează ce vede. Nu întreba „vrei să fac X?" dacă X e clar cerut — fă și raportează.
+
+## 10. ACTUALIZARE SCAUN/CAMERA (BL27 → BL48, 17-18 nov 2026)
+
+**Dovada masurata (/vehicle seatdebug, log real de pe server):**
+```
+vehicleYaw=-61.6 | anchor=-61.6 | mount=HORSE yaw=-61.6 pitch=0.0 pass=1 riderYaw=139.0 riding=true
+vehicleYaw= 39.1 | anchor= 39.1 | mount=HORSE yaw= 39.1 pitch=0.0 pass=1 riderYaw=139.0 riding=true
+vehicleYaw=140.4 | anchor=140.4 | mount=HORSE yaw=140.4 pitch=0.0 pass=1 riderYaw=139.0 riding=true
+```
+Interpretare: **serverul face totul corect** (ancora si calul urmeaza yaw-ul masinii la fiecare tick). Singura veriga care nu se roteste este `riderYaw` = propriul jucator, pentru ca **clientul isi deseneaza propriul corp dupa camera** si refuza orice pachet de pozitionare in timp ce este pasager.
+
+**Cauze dovedite in aceasta serie:**
+- scaunul PASAGER al ancorei primeste rotatia parintelui in fiecare tick → `setRotation` pe scaun era anulat (BL46: scaunul a devenit entitate libera, mutata/rotita de server);
+- calul CU sa = controlling passenger → clientul ii impune rotatia dupa camera (BL41: cal fara sa);
+- barca/cal fortate cu teleport+viteza per tick = tremurat (BL45: fara corectii manuale);
+- `EntityType.BOAT` nu exista in 1.21.4 (BL32: `EntityType.OAK_BOAT`);
+- `Boat` nu are `setCollidable`/`setRemoveWhenFarAway`, are un singur loc de pasager (BL31);
+- `Entity#setPose` nu exista in Paper 1.21.4 (BL39a).
+
+**Stare live (BL48a, `a609579`):** scaun = cal vizibil (marime 1.0), fara sa, fara corectii manuale; ancora scaunului primeste yaw-ul masinii. `seatRide=false` dezactivat (acum pasager).
+
+**BL48 (in test):** `/vehicle seatlock <on|off>` trimite pachetul de pozitionare ABSOLUT (pozitia curenta + yaw-ul masinii). Auto-protectie: daca jucatorul se deconecteaza in 10s dupa pachet, `noteQuit()` opreste automat feature-ul (`lookLockAutoOff`). Daca merge → corpul si camera se rotesc cu masina fara mod de client; daca nu → ramane modul de client.
+
+**Mod de client (gata, optional):** `client-mod/` (Fabric 1.21.4, mixin pe `LocalPlayer#tick` prin reflexie, fara dependente de nume mapate). Jar publicat in release: `mcv-seatlock-1.0.0.jar`. CI: `.github/workflows/client-mod.yml` (build cu Mojang official mappings; **yarn 1.21.4 producea un jar fara clasele client** - nu reveni la yarn).
+
+**Comenzi de test prezente:** `seatkind`, `seatyaw`, `seatlook`, `seatride`, `seatdebug`, `seatlock`, `inputtest`, `seattest`, `seatlift`.
