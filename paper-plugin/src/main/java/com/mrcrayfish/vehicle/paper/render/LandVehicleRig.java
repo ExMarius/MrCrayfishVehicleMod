@@ -228,7 +228,7 @@ public final class LandVehicleRig {
     /** BL16: scaunul poate fi si ARMOR STAND (entitate vie fara AI, deci nu se
      *  roteste dupa camera cum face calul). Implicit: calul = varianta C
      *  validata de user; comutabil live cu /vehicle seatkind. */
-    private static volatile String seatKind = "barca";
+    private static volatile String seatKind = "cal";
 
     /** BL34: mod "tinut pe scaun de server" (nu pasager). Doar asa serverul
      *  poate roti si CORPUL si PRIVIREA odata cu vehiculul; pretul: jucatorul
@@ -975,6 +975,22 @@ public final class LandVehicleRig {
         /* BL36: barca are fizica ei si primeste input de la client (A/D o misca
          * pe scaun). O fortam rigid in fiecare tick: pozitia scaunului, yaw-ul
          * vehiculului si viteza ZERO - deci sta ca si cum ar fi sudata pe masina. */
+        /* BL40: calul este "unit" cu vehiculul: viteza zero si pozitia ancorei
+         * in fiecare tick. Calul are clampa vanilla de riding, deci corpul
+         * calareului sta pe direcția monturii (masinii) si doar capul se
+         * roteste cu mouse-ul - exact comportamentul modului original. */
+        if (seat instanceof org.bukkit.entity.AbstractHorse) {
+            seat.setVelocity(new org.bukkit.util.Vector(0, 0, 0));
+            Location seatLocation = carrier.anchor.getLocation();
+            Location mountLocation = seat.getLocation();
+            if (!mountLocation.getWorld().equals(seatLocation.getWorld())
+                    || mountLocation.distanceSquared(seatLocation) > 0.0025D) {
+                seat.teleport(seatLocation, TeleportFlag.EntityState.RETAIN_PASSENGERS);
+            }
+            if (seat.getYaw() != seatYaw) {
+                seat.setRotation(seatYaw, 0.0F);
+            }
+        }
         if (seat instanceof org.bukkit.entity.Boat boat) {
             Location seatLocation = carrier.anchor.getLocation();
             if (!carrier.boatDelayReady) {
