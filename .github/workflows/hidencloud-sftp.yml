@@ -8,16 +8,12 @@ name: HidenCloud deploy (build plugin + upload SSH)
 # server.properties/logs), apoi face un redeploy -- primul deploy pe server gol
 # sare peste sincronizarea hash-ului resource-pack (nu exista server.properties).
 
+# CICLUL PAUZA (2026-11-12): proiectul de masini e pe bara. Serverul d496911d a
+# fost reinstalat ca NeoForge pentru ALT proiect, deci deploy-ul automat a fost
+# oprit ca sa nu scrie peste el. Deploy = DOAR manual, dupa ce masinile primesc
+# din nou un server Paper propriu.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - arena/2f9f7b9e-mrcrayfishvehiclemod
-    paths:
-      - "paper-plugin/**"
-      - "tools/**"
-      - "hidencloud/**"
-      - ".github/workflows/hidencloud-sftp.yml"
 
 permissions:
   contents: write

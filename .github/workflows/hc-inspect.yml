@@ -1,12 +1,8 @@
 name: HidenCloud inspect server (prin cheia SSH)
 
+# CICLUL PAUZA: inspectia serverului se face doar manual, la cerere.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - arena/2f9f7b9e-mrcrayfishvehiclemod
-    paths:
-      - ".github/workflows/hc-inspect.yml"
 
 permissions:
   contents: read

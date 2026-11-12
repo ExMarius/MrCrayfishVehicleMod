@@ -10,6 +10,7 @@ name: Server console (inspectie + comenzi prin panel API)
 # Declansare: push care atinge .github/server-console-request
 #   - continutul fisierului = o comanda de consola optionala (ex: "say salut")
 
+# CICLUL PAUZA: se ruleaza doar manual (Actions -> Server console -> Run workflow).
 on:
   workflow_dispatch:
     inputs:
@@ -19,11 +20,6 @@ on:
       command:
         description: "Comanda de consola (optional)"
         required: false
-  push:
-    branches:
-      - arena/2f9f7b9e-mrcrayfishvehiclemod
-    paths:
-      - ".github/server-console-request"
 
 permissions:
   contents: write

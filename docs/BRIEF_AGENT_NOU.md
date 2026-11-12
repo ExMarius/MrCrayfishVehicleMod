@@ -173,3 +173,35 @@ server-side cu client vanilla. Singura cale completa ramane modul de client
 
 **Starea implicita a serverului:** cal fara sa, pasager, fara fortarea camerei
 (`lookLock=false`), fara variante aplicate. Stabil.
+
+## 12. PAUZA (2026-11-12): proiectul de masini pe bara
+
+**Decizie user:** "momentan nu mai lucram la ala de masini, ramane pe bara pana data viitoare".
+
+**Context important:** serverul HidenCloud `d496911d` a fost reinstalat ca **NeoForge
+21.1.172 (MC 1.21.1, Java 25)** pentru ALT proiect al userului. Deci:
+- pluginul Paper de masini **nu mai are server** (a fost inlocuit de instalarea NeoForge);
+- comanda de start din panel rula din greseala `neoforge-21.1.172-installer.jar`
+  (instalatorul) — remediat punand starterul NeoForge (`server.jar`, 25 KB) sub acel
+  nume; instalatorul real a ramas ca `neoforge-21.1.172-installer.jar.bak`.
+
+**Ce s-a oprit ca sa nu se amestece proiectele (trigger `push` scos, doar manual):**
+- `.github/workflows/hidencloud-sftp.yml` (deploy plugin + restart + hash pack)
+- `.github/workflows/logdump.yml`
+- `.github/workflows/hc-inspect.yml`
+- `.github/workflows/server-console.yml` (unealta de administrare prin GitHub:
+  SFTP + API panel; publica `diagnostics/server-console.txt`)
+
+**Cum se reia proiectul de masini:**
+1. Se creeaza un server **Paper 1.21.4** separat in panel.
+2. Se actualizeaza in `hidencloud-sftp.yml` + `logdump.yml`: `SERVER_ID`, `SFTP_USER`
+   (hostul/portul pot ramane) si se pun inapoi triggerele `push` dorite.
+3. `./paper-plugin/gradlew -p paper-plugin build` trebuie sa fie verde.
+
+**Starea tehnica la pauza (pentru continuare):**
+- Scaunul clasic = cal fara sa, pasager, fara fortarea camerei (stabil, fara tremurat).
+- `/vehicle variants` (A/E/F/K/L), `/vehicle boatshell on`, `/vehicle boatdemo`
+  (+`offset`) exista in cod ca experimente; demo-ul cu barca + model de masina peste
+  ea a fost SINGURUL validat de user ca "1 la 1 ca in mod".
+- Concluzia dovedita: cu client vanilla, corpul urmeaza camera; "corp fix + cap liber"
+  cere mod de client (`client-mod/`, publicat in release).

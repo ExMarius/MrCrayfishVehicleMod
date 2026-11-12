@@ -5,13 +5,9 @@ name: Log dump (diagnostic)
 # pe branch-ul de lucru, ca sa poata fi citit din repo (blob-urile de log nu sunt
 # accesibile din sandbox).
 
+# CICLUL PAUZA: proiectul de masini e pe bara; dump-ul de log se face doar manual.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - arena/2f9f7b9e-mrcrayfishvehiclemod
-    paths:
-      - ".github/logdump-request"
 
 permissions:
   contents: write
