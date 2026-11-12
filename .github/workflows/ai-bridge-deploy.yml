@@ -61,6 +61,14 @@ jobs:
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
             -o BatchMode=yes -i /tmp/hc_key -b up.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
 
+      - name: Pun si fisierul de autotest
+        run: |
+          set -euo pipefail
+          : > selftest.flag
+          printf 'put selftest.flag aibridge.selftest\n' > st.txt
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
+            -o BatchMode=yes -i /tmp/hc_key -b st.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
+
       - name: Cer restart (fisier aibridge.restart)
         run: |
           set -euo pipefail

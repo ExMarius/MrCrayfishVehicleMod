@@ -6,6 +6,7 @@ import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -57,6 +58,7 @@ public final class AIBridgeMod {
         this.bridge = new BridgeServer(server, npcs, BRIDGE_PORT);
         this.bridge.start();
         BridgeLog.info("gata. /npc spawn <nume> pentru primul personaj.");
+        runSelfTest();
     }
 
     private void onServerStopping(ServerStoppingEvent event) {
@@ -71,6 +73,37 @@ public final class AIBridgeMod {
         if (++tickCounter % 100 == 0) {
             checkRestartFlag();
         }
+    }
+
+    /**
+     * Test automat, pornit doar daca exista fisierul aibridge.selftest in folderul
+     * serverului: creeaza un personaj si il ticheaza, ca erorile sa apara in log
+     * fara sa fie nevoie de cineva in joc.
+     */
+    private void runSelfTest() {
+        Path flag = Path.of("aibridge.selftest");
+        if (!Files.exists(flag)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(flag);
+        } catch (IOException ignored) {
+        }
+        server.execute(() -> {
+            try {
+                ServerLevel level = server.overworld();
+                BlockPos spawn = level.getSharedSpawnPos();
+                Npc npc = npcs.spawn(server, level, "TestNPC",
+                        new Vec3(spawn.getX() + 0.5D, spawn.getY(), spawn.getZ() + 0.5D));
+                BridgeLog.info("SELFTEST: spawn OK, poz=" + npc.position());
+                for (int index = 0; index < 5; index++) {
+                    npcs.tick();
+                }
+                BridgeLog.info("SELFTEST: tick OK");
+            } catch (RuntimeException error) {
+                BridgeLog.error("SELFTEST ESUAT: " + error);
+            }
+        });
     }
 
     /** Daca apare fisierul aibridge.restart, opresc serverul curat (panelul il reporneste). */
