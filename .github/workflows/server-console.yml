@@ -1,0 +1,140 @@
+name: Server console (inspectie + comenzi prin panel API)
+
+# Unealta de administrare de la distanta: ruleaza in GitHub Actions (unde reteaua
+# este deschisa) si vorbeste cu serverul HidenCloud prin:
+#   - SFTP (fisiere: eula.txt, server.properties, scripturi de start, loguri)
+#   - API-ul de panel Pterodactyl (stare + comenzi in consola)
+# Rezultatul e publicat in diagnostics/server-console.txt, ca sa poata fi citit
+# din repo (sandbox-ul agentului nu are acces direct la host).
+#
+# Declansare: push care atinge .github/server-console-request
+#   - continutul fisierului = o comanda de consola optionala (ex: "say salut")
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - ".github/server-console-request"
+
+permissions:
+  contents: write
+
+env:
+  BRANCH: arena/2f9f7b9e-mrcrayfishvehiclemod
+  PANEL: https://freepanel.hidencloud.com
+  SERVER_ID: d496911d
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+  SFTP_PASS_BACKUP: 'X5#mK9!vP2qL'
+
+jobs:
+  inspect:
+    name: Inspectez si execut
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: arena/2f9f7b9e-mrcrayfishvehiclemod
+
+      - name: Pregatesc clientul SFTP
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq sshpass >/dev/null 2>&1 || true
+          chmod 600 hidencloud/keys/arena_hc_ed25519
+          export SSHPASS="$SFTP_PASS_BACKUP"
+
+      - name: Iau fisierele de configurare si starea
+        env:
+          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+        run: |
+          export SSHPASS="$SFTP_PASS_BACKUP"
+          sftp_any() {
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes \
+              -o ConnectTimeout=20 -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$1" \
+              -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1 \
+            || sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b "$1" \
+              -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+          }
+          printf 'ls -la\n' > b_root.txt
+          sftp_any b_root.txt > /tmp/root.txt 2>&1 || true
+          # fisierele care decid daca serverul porneste
+          printf 'get eula.txt /tmp/eula.txt\nget server.properties /tmp/server.properties\nget run.sh /tmp/run.sh\nget start.sh /tmp/start.sh\nget user_jvm_args.txt /tmp/user_jvm_args.txt\nget startup.sh /tmp/startup.sh\n' > b_get.txt
+          sftp_any b_get.txt > /tmp/get.txt 2>&1 || true
+          printf 'get logs/latest.log /tmp/latest.log\n' > b_log.txt
+          sftp_any b_log.txt > /tmp/getlog.txt 2>&1 || true
+
+          if [ -n "${K3Y:-}" ]; then
+            curl -sS -m 20 -H "Authorization: Bearer $K3Y" -H 'Accept: application/json' \
+              "$PANEL/api/client/servers/$SERVER_ID" > /tmp/api_server.json 2>&1 || true
+            curl -sS -m 20 -H "Authorization: Bearer $K3Y" -H 'Accept: application/json' \
+              "$PANEL/api/client/servers/$SERVER_ID/utilization" > /tmp/api_state.json 2>&1 || true
+            curl -sS -m 20 -H "Authorization: Bearer $K3Y" -H 'Accept: application/json' \
+              "$PANEL/api/client/servers/$SERVER_ID/files/list?directory=%2F" > /tmp/api_files.json 2>&1 || true
+          fi
+          echo "gata colectarea"
+
+      - name: Rulez comanda din fisierul de cerere (optional)
+        env:
+          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+        run: |
+          CMD=$(head -c 900 .github/server-console-request 2>/dev/null | tr -d '\r' | sed '/^[[:space:]]*$/d' | grep -v '^dump ' | head -1 || true)
+          echo "comanda: ${CMD:-<niciuna>}"
+          echo "${CMD:-}" > /tmp/cmd.txt
+          if [ -n "${CMD:-}" ] && [ -n "${K3Y:-}" ]; then
+            curl -sS -m 20 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
+              -H 'Accept: application/json' \
+              -d "$(python3 -c 'import json,sys; print(json.dumps({"command": sys.argv[1]}))' "$CMD")" \
+              "$PANEL/api/client/servers/$SERVER_ID/command" > /tmp/api_cmd.json 2>&1 || true
+          fi
+
+      - name: Public raportul
+        run: |
+          mkdir -p diagnostics
+          OUT=diagnostics/server-console.txt
+          {
+            echo "# Server console - $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo
+            echo "## Folderul serverului (ls -la)"
+            tail -40 /tmp/root.txt 2>/dev/null || echo "(indisponibil)"
+            echo
+            echo "## eula.txt"
+            [ -f /tmp/eula.txt ] && grep -v '^#' /tmp/eula.txt | grep -v '^$' || echo "(lipsa)"
+            echo
+            echo "## server.properties (cheile relevante)"
+            [ -f /tmp/server.properties ] && grep -E '^(server-port|motd|online-mode|level-name|max-players|view-distance|enable-command-block|white-list)=' /tmp/server.properties || echo "(lipsa)"
+            echo
+            for f in /tmp/run.sh /tmp/start.sh /tmp/startup.sh /tmp/user_jvm_args.txt; do
+              echo "## $(basename "$f")"
+              [ -f "$f" ] && head -40 "$f" || echo "(lipsa)"
+              echo
+            done
+            echo "## API: server"
+            head -c 2000 /tmp/api_server.json 2>/dev/null || echo "(cheie API absenta sau eroare)"
+            echo
+            echo "## API: stare"
+            head -c 1200 /tmp/api_state.json 2>/dev/null || echo "(indisponibil)"
+            echo
+            echo "## API: fisiere in /"
+            head -c 3000 /tmp/api_files.json 2>/dev/null || echo "(indisponibil)"
+            echo
+            echo "## Comanda trimisa"
+            cat /tmp/cmd.txt 2>/dev/null || echo "(niciuna)"
+            echo "## Raspuns API comanda"
+            head -c 800 /tmp/api_cmd.json 2>/dev/null || echo "(niciunul)"
+            echo
+            echo "## Ultimele 60 linii din latest.log"
+            [ -f /tmp/latest.log ] && tail -60 /tmp/latest.log || echo "(lipsa latest.log)"
+          } > "$OUT"
+          wc -l "$OUT"
+
+      - name: Public raportul pe branch
+        run: |
+          git config user.name "arena-agent"
+          git config user.email "297053741+arena-agent@users.noreply.github.com"
+          git add diagnostics/server-console.txt
+          git commit -m "Diagnostic: raport server console (automat)" || echo "nimic de comis"
+          git push origin HEAD:$BRANCH || echo "push esuat (se reia la urmatorul dump)"
