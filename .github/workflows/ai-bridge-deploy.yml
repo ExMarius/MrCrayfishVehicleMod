@@ -61,6 +61,15 @@ jobs:
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
             -o BatchMode=yes -i /tmp/hc_key -b up.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
 
+      - name: Cer restart (fisier aibridge.restart)
+        run: |
+          set -euo pipefail
+          : > restart.flag
+          printf 'put restart.flag aibridge.restart\n' > flag.txt
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
+            -o BatchMode=yes -i /tmp/hc_key -b flag.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST"
+          echo "Fisier de restart urcat (modul opreste serverul curat in ~5s)."
+
       - name: Verific ca e pe server
         run: |
           set -euo pipefail
