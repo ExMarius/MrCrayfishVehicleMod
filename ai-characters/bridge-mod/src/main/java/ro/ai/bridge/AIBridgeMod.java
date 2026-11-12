@@ -16,6 +16,10 @@ import net.neoforged.neoforge.event.server.ServerStartedEvent;
 import net.neoforged.neoforge.event.server.ServerStoppingEvent;
 import net.neoforged.neoforge.event.tick.ServerTickEvent;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
 /**
  * AI Bridge — personaje AI ca jucatori-fantoma pe server.
  *
@@ -36,6 +40,10 @@ public final class AIBridgeMod {
     private final NpcManager npcs = new NpcManager();
     private BridgeServer bridge;
     private MinecraftServer server;
+    private int tickCounter;
+
+    /** Fisierul care declanseaza un restart curat (il creez eu prin SFTP dupa un deploy). */
+    private static final Path RESTART_FLAG = Path.of("aibridge.restart");
 
     public AIBridgeMod(IEventBus modEventBus, ModContainer container) {
         NeoForge.EVENT_BUS.addListener(this::onServerStarted);
@@ -60,6 +68,28 @@ public final class AIBridgeMod {
 
     private void onServerTick(ServerTickEvent.Post event) {
         npcs.tick();
+        if (++tickCounter % 100 == 0) {
+            checkRestartFlag();
+        }
+    }
+
+    /** Daca apare fisierul aibridge.restart, opresc serverul curat (panelul il reporneste). */
+    private void checkRestartFlag() {
+        if (!Files.exists(RESTART_FLAG)) {
+            return;
+        }
+        try {
+            Files.deleteIfExists(RESTART_FLAG);
+        } catch (IOException error) {
+            BridgeLog.warn("nu pot sterge aibridge.restart: " + error.getMessage());
+        }
+        BridgeLog.info("restart cerut prin fisier - salvez si opresc serverul curat.");
+        MinecraftServer current = this.server;
+        if (current == null) {
+            return;
+        }
+        current.execute(() -> current.getCommands()
+                .performPrefixedCommand(current.createCommandSourceStack(), "stop"));
     }
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
