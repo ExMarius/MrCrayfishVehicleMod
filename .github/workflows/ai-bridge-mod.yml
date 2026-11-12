@@ -1,0 +1,48 @@
+name: AI Bridge mod (compile)
+
+# Compileaza modul NeoForge 1.21.1 (AIBridge) si publica JAR-ul ca artefact +
+# in release-ul "ai-bridge-latest", ca sa poata fi descarcat usor.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - arena/2f9f7b9e-mrcrayfishvehiclemod
+    paths:
+      - "ai-characters/bridge-mod/**"
+      - ".github/workflows/ai-bridge-mod.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Compilez AIBridge
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        working-directory: ai-characters/bridge-mod
+        run: ./gradlew build --no-daemon --stacktrace
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: aibridge-jar
+          path: ai-characters/bridge-mod/build/libs/*.jar
+
+      - name: Publica JAR-ul in release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG=ai-bridge-latest
+          gh release view "$TAG" >/dev/null 2>&1 || gh release create "$TAG" --title "AI Bridge (build curent)" --notes "Modul se compileaza automat din branch." || true
+          gh release upload "$TAG" ai-characters/bridge-mod/build/libs/*.jar --clobber || true
