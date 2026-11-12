@@ -1,0 +1,18 @@
+{
+  "name": "aicaracter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Personaje AI care joaca pe serverul tau Minecraft ca jucatori reali (pentru o serie YouTube).",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.1",
+    "mineflayer-pathfinder": "^2.4.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
