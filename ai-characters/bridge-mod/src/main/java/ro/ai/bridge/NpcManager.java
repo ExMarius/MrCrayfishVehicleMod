@@ -2,12 +2,9 @@ package ro.ai.bridge;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Collection;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -20,12 +17,8 @@ public final class NpcManager {
         if (npcs.containsKey(key)) {
             return npcs.get(key);
         }
-        Npc npc = new Npc(level, name, position);
-        ServerPlayer player = npc.player();
-        level.addFreshEntity(player);
-        // apar in lista de jucatori pentru toti clientii (nume + skin)
-        server.getPlayerList().broadcastAll(
-                ClientboundPlayerInfoUpdatePacket.createPlayerInitializing(List.of(player)));
+        Npc npc = new Npc(server, level, name, position, 0.0F);
+        npc.place(server);
         npcs.put(key, npc);
         BridgeLog.info("NPC spawn: " + name + " la " + position);
         return npc;
@@ -37,7 +30,12 @@ public final class NpcManager {
             return false;
         }
         npc.stop();
-        npc.player().discard();
+        MinecraftServer server = npc.player().level().getServer();
+        if (server != null) {
+            server.getPlayerList().remove(npc.player());
+        } else {
+            npc.player().discard();
+        }
         BridgeLog.info("NPC remove: " + name);
         return true;
     }
@@ -65,7 +63,12 @@ public final class NpcManager {
 
     public void removeAll() {
         for (Npc npc : npcs.values()) {
-            npc.player().discard();
+            MinecraftServer server = npc.player().level().getServer();
+            if (server != null) {
+                server.getPlayerList().remove(npc.player());
+            } else {
+                npc.player().discard();
+            }
         }
         npcs.clear();
     }

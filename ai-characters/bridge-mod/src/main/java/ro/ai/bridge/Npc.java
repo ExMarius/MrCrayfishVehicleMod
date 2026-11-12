@@ -1,33 +1,53 @@
 package ro.ai.bridge;
 
 import com.mojang.authlib.GameProfile;
+import net.minecraft.network.protocol.PacketFlow;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ClientInformation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.server.network.CommonListenerCookie;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.common.util.FakePlayer;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.util.UUID;
 
 /**
- * Un personaj = un jucator-fantoma pe server. Pentru ceilalti jucatori si pentru
- * celelalte moduri este un jucator normal: are inventar, poate folosi iteme,
- * poate sapa si pune blocuri. Creierul lui (AI) ruleaza in afara jocului si
- * trimite decizii prin puntea HTTP.
+ * Un personaj = un jucator fara client, inregistrat in lista de jucatori a
+ * serverului. Pentru ceilalti jucatori si pentru celelalte moduri este un jucator
+ * normal: are inventar, poate folosi iteme, poate sapa si pune blocuri.
  */
 public final class Npc {
     private final String name;
+    private final ServerLevel level;
     private final ServerPlayer player;
     private Vec3 target;
     private float walkYaw;
-    private long spawnedAt = System.currentTimeMillis();
+    private int tickCounter;
+    private int tickErrors;
 
-    public Npc(ServerLevel level, String name, Vec3 position) {
+    public Npc(MinecraftServer server, ServerLevel level, String name, Vec3 position, float yaw) {
         this.name = name;
+        this.level = level;
         UUID id = UUID.nameUUIDFromBytes(("aibridge:" + name).getBytes(StandardCharsets.UTF_8));
         GameProfile profile = new GameProfile(id, name);
-        this.player = new FakePlayer(level, profile);
+        this.player = new ServerPlayer(server, level, profile, ClientInformation.createDefault());
         this.player.setPos(position.x, position.y, position.z);
+        this.walkYaw = yaw;
+        this.player.setYRot(yaw);
+        this.player.setYHeadRot(yaw);
+    }
+
+    /** Inregistreaza jucatorul in server: de aici incolo apare in lista si in lume. */
+    public void place(MinecraftServer server) {
+        CommonListenerCookie cookie = new CommonListenerCookie(
+                player.getGameProfile(), 0, ClientInformation.createDefault(), false);
+        server.getPlayerList().placeNewPlayer(
+                new FakeClientConnection(PacketFlow.SERVERBOUND), player, cookie);
+        player.teleportTo(level, player.getX(), player.getY(), player.getZ(), Set.of(),
+                walkYaw, player.getXRot());
     }
 
     public String name() {
@@ -39,7 +59,7 @@ public final class Npc {
     }
 
     public boolean alive() {
-        return player != null && !player.isRemoved();
+        return !player.isRemoved() && player.isAlive();
     }
 
     public Vec3 position() {
@@ -52,57 +72,54 @@ public final class Npc {
 
     public void stop() {
         this.target = null;
+        this.player.setDeltaMovement(Vec3.ZERO);
     }
 
     public void look(float yaw, float pitch) {
+        this.walkYaw = yaw;
         this.player.setYRot(yaw);
         this.player.setYHeadRot(yaw);
         this.player.setXRot(pitch);
     }
 
-    private int tickErrors;
-
-    /** Un pas de mers, apelat din tick-ul serverului. */
+    /** Apelat o data pe tick-ul serverului (entitatea se tickuieste separat de vanilla). */
     public void tick() {
-        if (tickErrors > 3) {
+        if (tickErrors > 5) {
             return;
         }
         try {
-            player.tick();
+            tickCounter++;
+            if (tickCounter % 10 == 0) {
+                // tinem personajul "incarcat" in chunk-uri; altfel nu se misca
+                player.connection.resetPosition();
+                level.getChunkSource().move(player);
+            }
+            step();
         } catch (RuntimeException error) {
             tickErrors++;
             if (tickErrors == 1) {
-                BridgeLog.warn("ticks pentru " + name + " esuate: " + error);
-            }
-            if (tickErrors > 3) {
-                BridgeLog.warn(name + ": opresc tick-ul de entitate, ramane doar mersul.");
+                BridgeLog.warn("tick " + name + " esuat: " + error);
             }
         }
+    }
 
+    private void step() {
         if (target == null) {
             return;
         }
         Vec3 position = player.position();
-        Vec3 delta = target.subtract(position);
-        double distance = delta.length();
-        if (distance < 0.6D) {
+        double distance = position.distanceTo(target);
+        if (distance < 0.8D) {
             target = null;
+            player.setDeltaMovement(Vec3.ZERO);
             return;
         }
-        Vec3 step = delta.normalize().scale(0.21D);
+        Vec3 step = target.subtract(position).normalize().scale(0.2D);
         walkYaw = (float) Math.toDegrees(Math.atan2(-step.x, step.z));
         player.setYRot(walkYaw);
         player.setYHeadRot(walkYaw);
-        try {
-            player.setDeltaMovement(step.x, player.getDeltaMovement().y, step.z);
-            player.move(net.minecraft.world.entity.MoverType.SELF, player.getDeltaMovement());
-        } catch (RuntimeException error) {
-            BridgeLog.warn(name + ": mers esuat: " + error);
-            target = null;
-        }
-    }
-
-    public long spawnedAt() {
-        return spawnedAt;
+        player.setDeltaMovement(step.x, player.getDeltaMovement().y, step.z);
+        player.move(MoverType.SELF, player.getDeltaMovement());
+        player.setDeltaMovement(Vec3.ZERO);
     }
 }
