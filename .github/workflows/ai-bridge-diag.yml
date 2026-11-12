@@ -46,12 +46,22 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/logs
-          for f in logs/latest.log logs/debug.log; do
+          for f in logs/latest.log logs/debug.log server.properties ops.json; do
             printf 'get %s /tmp/logs/%s\n' "$f" "$(basename $f)" > g.txt
             sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
               -o BatchMode=yes -i /tmp/hc_key -b g.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 || true
           done
           ls -l /tmp/logs || true
+
+      - name: Copiez log-ul intreg + ops/server.properties (curatate)
+        run: |
+          set -uo pipefail
+          D=ai-characters/bridge-mod/_diagnostics
+          mkdir -p "$D"
+          sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g' /tmp/logs/latest.log > "$D/latest-full.log" 2>/dev/null || echo "(lipsa)" > "$D/latest-full.log"
+          sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g' /tmp/logs/ops.json > "$D/ops.json" 2>/dev/null || echo "(lipsa)" > "$D/ops.json"
+          sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g; s/^(rcon\.password|.*[Pp]assword|.*[Ss]ecret|.*[Tt]oken)=.*/\1=<ascuns>/' /tmp/logs/server.properties > "$D/server.properties.sanitized" 2>/dev/null || echo "(lipsa)" > "$D/server.properties.sanitized"
+          wc -l "$D/latest-full.log" "$D/ops.json" "$D/server.properties.sanitized"
 
       - name: Fac extrasul curatat
         run: |
