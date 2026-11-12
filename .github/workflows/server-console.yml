@@ -66,6 +66,13 @@ jobs:
           sftp_any b_get.txt > /tmp/get.txt 2>&1 || true
           printf 'get logs/latest.log /tmp/latest.log\n' > b_log.txt
           sftp_any b_log.txt > /tmp/getlog.txt 2>&1 || true
+          # instalarea NeoForge: log-ul instalatorului + ce a produs in libraries/
+          printf 'get neoforge-21.1.172-installer.jar.log /tmp/installer.log\n' > b_inst.txt
+          sftp_any b_inst.txt > /tmp/getinst.txt 2>&1 || true
+          printf 'ls -la libraries/net/neoforged/neoforge/21.1.172\nls -la mods\nls -la config\n' > b_dirs.txt
+          sftp_any b_dirs.txt > /tmp/dirs.txt 2>&1 || true
+          printf 'get user_jvm_args.txt /tmp/user_jvm_args.txt\n' > b_jvm.txt
+          sftp_any b_jvm.txt > /tmp/getjvm.txt 2>&1 || true
 
           if [ -n "${K3Y:-}" ]; then
             curl -sS -m 20 -H "Authorization: Bearer $K3Y" -H 'Accept: application/json' \
@@ -125,6 +132,15 @@ jobs:
             cat /tmp/cmd.txt 2>/dev/null || echo "(niciuna)"
             echo "## Raspuns API comanda"
             head -c 800 /tmp/api_cmd.json 2>/dev/null || echo "(niciunul)"
+            echo
+            echo "## Instalator NeoForge (ultimele 25 linii)"
+            [ -f /tmp/installer.log ] && tail -25 /tmp/installer.log || echo "(lipsa)"
+            echo
+            echo "## Ce exista in libraries/neoforge si mods/ si config/"
+            tail -40 /tmp/dirs.txt 2>/dev/null || echo "(indisponibil)"
+            echo
+            echo "## user_jvm_args.txt (al doilea get)"
+            [ -f /tmp/user_jvm_args.txt ] && cat /tmp/user_jvm_args.txt || echo "(lipsa)"
             echo
             echo "## Ultimele 60 linii din latest.log"
             [ -f /tmp/latest.log ] && tail -60 /tmp/latest.log || echo "(lipsa latest.log)"
