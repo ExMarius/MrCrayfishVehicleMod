@@ -24,6 +24,8 @@ public final class Npc {
     private final ServerLevel level;
     private final ServerPlayer player;
     private Vec3 target;
+    private ServerPlayer followTarget;
+    private double followDistance = 3.0D;
     private float walkYaw;
     private int tickCounter;
     private int tickErrors;
@@ -72,7 +74,19 @@ public final class Npc {
 
     public void stop() {
         this.target = null;
+        this.followTarget = null;
         this.player.setDeltaMovement(Vec3.ZERO);
+    }
+
+    /** Personajul merge dupa jucator, oprindu-se la distanta data. */
+    public void follow(ServerPlayer player, double distance) {
+        this.followTarget = player;
+        this.followDistance = distance;
+        this.target = null;
+    }
+
+    public ServerPlayer followTarget() {
+        return followTarget;
     }
 
     public void look(float yaw, float pitch) {
@@ -104,6 +118,16 @@ public final class Npc {
     }
 
     private void step() {
+        if (followTarget != null) {
+            if (!followTarget.isAlive() || followTarget.isRemoved()) {
+                followTarget = null;
+            } else if (player.distanceTo(followTarget) > followDistance) {
+                target = followTarget.position();
+            } else {
+                target = null;
+                player.setDeltaMovement(Vec3.ZERO);
+            }
+        }
         if (target == null) {
             return;
         }
