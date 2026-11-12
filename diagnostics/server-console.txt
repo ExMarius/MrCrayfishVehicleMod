@@ -1,4 +1,4 @@
-# Server console - 2026-11-12T12:27:02Z
+# Server console - 2026-11-12T12:27:20Z
 
 ## Folderul serverului (ls -la)
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
@@ -47,7 +47,7 @@ java @user_jvm_args.txt @libraries/net/neoforged/neoforge/21.1.172/unix_args.txt
 # Uncomment the next line to set it.
 # -Xmx4G
 ## API: server
-{"errors":[{"code":"AuthenticationException","status":"401","detail":"Unauthenticated."}]}
+{"object":"server","attributes":{"server_owner":true,"identifier":"d496911d","__deprecated_uuid_short":"d496911d","server_identifier":"serv_2sljchmj3zekjltppby6uk2guq","internal_id":54194,"uuid":"d496911d-89de-48a4-ae6f-7871ea2b46a4","name":"mariusuke - Free Server #237487","node":"Jacob","crash_webhook":null,"node_alert":null,"daemon_text":"[HIDENCLOUD]","container_text":"[HIDENCLOUD]","egg_image":"https:\/\/dash.hidencloud.com\/storage\/products\/banner-minecraft-java.jpg","egg_name":"Minecraft - Java","nest_id":1,"egg_id":33,"is_node_under_maintenance":false,"sftp_details":{"ip":"jacob.hidencloud.com","port":2022},"description":"HidenCloud || Free Server #237487 || mariusuke","limits":{"memory":3072,"swap":1536,"disk":15360,"io":500,"cpu":200,"threads":null,"oom_disabled":false},"invocation":"java -Xms128M -Xmx$(( ${MEMORY_OVERRIDE:-0} > 0 ? MEMORY_OVERRIDE : SERVER_MEMORY - 704 ))M -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dusing.aikars.flags=https:\/\/mcflags.emc.gs -Daikars.new.flags=true -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20  -jar neoforge-21.1.172-installer.jar ","docker_image":"ghcr.io\/mcjars\/pterodactyl-yolks:java_25","egg_features":["eula","java_version","pid_limit"],"feature_limits":{"databases":2,"allocations":2,"backups":10240,"subdomains":1},"primary_subdomain":null,"endpoints":[{"type":"allocation","value":"jacob.hidencloud.com:24601","id":"allocation"}],"installation_started_at":null,"status":null,"is_suspended":false,"is_installing":false,"is_transferring":false,"relationships":{"allocations":{"object":"list","data":[{"object":"allocation","attributes":{"id":9180,"ip":"10.3
 ## API: stare
 {
     "errors": [
@@ -59,11 +59,12 @@ java @user_jvm_args.txt @libraries/net/neoforged/neoforge/21.1.172/unix_args.txt
     ]
 }
 ## API: fisiere in /
-{"errors":[{"code":"AuthenticationException","status":"401","detail":"Unauthenticated."}]}
+{"object":"list","data":[{"object":"file_object","attributes":{"name":"libraries","mode":"drwxr-xr-x","mode_bits":"755","size":4096,"is_file":false,"is_symlink":false,"mimetype":"inode\/directory","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T11:59:56+00:00"}},{"object":"file_object","attributes":{"name":"eula.txt","mode":"-rw-r--r--","mode_bits":"644","size":10,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T12:06:11+00:00"}},{"object":"file_object","attributes":{"name":"neoforge-21.1.172-installer.jar","mode":"-rw-r--r--","mode_bits":"644","size":6922832,"is_file":true,"is_symlink":false,"mimetype":"application\/jar","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T11:55:49+00:00"}},{"object":"file_object","attributes":{"name":"neoforge-21.1.172-installer.jar.log","mode":"-rw-r--r--","mode_bits":"644","size":474279,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:07:00+00:00","modified_at":"2026-11-12T12:07:00+00:00"}},{"object":"file_object","attributes":{"name":"run.bat","mode":"-rw-r--r--","mode_bits":"644","size":359,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:47+00:00","modified_at":"2026-11-12T12:06:47+00:00"}},{"object":"file_object","attributes":{"name":"run.sh","mode":"-rwxr--r--","mode_bits":"744","size":358,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:47+00:00","modified_at":"2026-11-12T12:06:47+00:00"}},{"object":"file_object","attributes":{"name":"server.jar","mode":"-rw-r--r--","mode_bits":"644","size":25891,"is_file":true,"is_symlink":false,"mimetype":"application\/zip","created_at":"2026-11-12T12:07:00+00:00","modified_at":"2026-11-12T12:07:00+00:00"}},{"object":"file_object","attributes":{"name":"server.properties","mode":"-rw-r--r--","mode_bits":"644","size":72,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:46+00:00","modified_at":"2026-11-12T12:06:46+00:00"}},{"object":"file_object","attributes":{"name":"user_jvm_args.txt","mode":"-rw-r--r--","mode_bits":"644","size":339,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T11:59:56+00:00"}}]}
 ## Comanda trimisa
 fixstart 2026-11-12T12:26:40Z
 ## Raspuns API comanda
-{"errors":[{"code":"AuthenticationException","status":"401","detail":"Unauthenticated."}]}
+error code: 502
+
 ## Instalator NeoForge (ultimele 25 linii)
   net/minecraft/world/ticks/package-info.class
 ===============================================================================
