@@ -1,0 +1,86 @@
+name: AI Bridge diagnoza (aduc log-ul serverului in repo)
+
+# Trage ultimul log al serverului prin SFTP si comite un extras curatat
+# (fara IP-uri) in ai-characters/bridge-mod/_diagnostics/.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/diag.trigger"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ai-bridge-diag
+  cancel-in-progress: false
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  grab:
+    name: Extrag log-ul
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Cheia SFTP
+        run: install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+
+      - name: Listez mods/ si logs/
+        run: |
+          set -uo pipefail
+          printf 'ls -l mods\nls -l logs\n' > list.txt
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
+            -o BatchMode=yes -i /tmp/hc_key -b list.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" \
+            > listing.txt 2>&1 || true
+          echo "--- listing"; cat listing.txt | head -60
+
+      - name: Descarc log-urile
+        run: |
+          set -uo pipefail
+          mkdir -p /tmp/logs
+          for f in logs/latest.log logs/debug.log; do
+            printf 'get %s /tmp/logs/%s\n' "$f" "$(basename $f)" > g.txt
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
+              -o BatchMode=yes -i /tmp/hc_key -b g.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 || true
+          done
+          ls -l /tmp/logs || true
+
+      - name: Fac extrasul curatat
+        run: |
+          set -uo pipefail
+          mkdir -p ai-characters/bridge-mod/_diagnostics
+          OUT=ai-characters/bridge-mod/_diagnostics/server-log-excerpt.txt
+          {
+            echo "# Extras log server $(date -u +%FT%TZ)"
+            echo
+            echo "## ce e in mods/ si logs/"
+            sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g' listing.txt | head -60
+            echo
+            echo "## linii AIBridge"
+            grep -h "AIBridge\|aibridge" /tmp/logs/*.log 2>/dev/null | tail -40 || echo "(niciuna)"
+            echo
+            echo "## erori / exceptii"
+            grep -hE "ERROR|FATAL|Exception|Caused by|Failed to load|Missing or unsupported" /tmp/logs/*.log 2>/dev/null | tail -60 || echo "(niciuna)"
+            echo
+            echo "## ultimele 40 de linii din latest.log"
+            tail -40 /tmp/logs/latest.log 2>/dev/null || echo "(nu am putut citi latest.log)"
+          } | sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g' > "$OUT"
+          wc -l "$OUT"
+
+      - name: Comit extrasul
+        run: |
+          set -euo pipefail
+          git config user.name "arena-agent"
+          git config user.email "arena-agent@users.noreply.github.com"
+          git add ai-characters/bridge-mod/_diagnostics
+          git commit -m "diagnoza: extras log server" || echo "nimic de comis"
+          git pull --rebase --autostash origin "$GITHUB_REF_NAME" || true
+          git push origin "HEAD:$GITHUB_REF_NAME"
