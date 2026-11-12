@@ -1,4 +1,4 @@
-# Extras log server 2026-11-12T13:43:48Z
+# Extras log server 2026-11-12T13:49:15Z
 
 ## ce e in mods/ si logs/
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
@@ -6,11 +6,11 @@ Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list o
 ** This session may be vulnerable to "store now, decrypt later" attacks.
 ** The server may need to be upgraded. See https://openssh.com/pq.html
 sftp> ls -l mods
--rw-r--r--    1 0        0           15809 Nov 12 13:40 aibridge-0.1.0.jar
+-rw-r--r--    1 0        0           15858 Nov 12 13:48 aibridge-0.1.0.jar
 sftp> ls -l logs
 -rw-r--r--    1 0        0            2340 Nov 12 13:41 2026-11-12-1.log.gz
 -rw-r--r--    1 0        0           13073 Nov 12 13:41 debug-1.log.gz
--rw-r--r--    1 0        0          167015 Nov 12 13:41 debug.log
+-rw-r--r--    1 0        0          167157 Nov 12 13:46 debug.log
 -rw-r--r--    1 0        0            6452 Nov 12 13:41 latest.log
 
 ## linii AIBridge
