@@ -1,0 +1,125 @@
+# Server console - 2026-11-12T12:25:49Z
+
+## Folderul serverului (ls -la)
+Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+sftp> ls -la
+-rw-r--r--    1 0        0              10 Nov 12 12:06 eula.txt
+drwxr-xr-x    1 0        0            4096 Nov 12 11:59 libraries
+-rw-r--r--    1 0        0         6922832 Nov 12 11:55 neoforge-21.1.172-installer.jar
+-rw-r--r--    1 0        0          474279 Nov 12 12:07 neoforge-21.1.172-installer.jar.log
+-rw-r--r--    1 0        0             359 Nov 12 12:06 run.bat
+-rwxr--r--    1 0        0             358 Nov 12 12:06 run.sh
+-rw-r--r--    1 0        0           25891 Nov 12 12:07 server.jar
+-rw-r--r--    1 0        0              72 Nov 12 12:06 server.properties
+-rw-r--r--    1 0        0             339 Nov 12 11:59 user_jvm_args.txt
+
+## eula.txt
+eula=true
+
+## server.properties (cheile relevante)
+server-port=24601
+
+## run.sh
+#!/usr/bin/env sh
+# Forge requires a configured set of both JVM and program arguments.
+# Add custom JVM arguments to the user_jvm_args.txt
+# Add custom program arguments {such as nogui} to this file in the next line before the "$@" or
+#  pass them to this script directly
+java @user_jvm_args.txt @libraries/net/neoforged/neoforge/21.1.172/unix_args.txt "$@"
+
+## start.sh
+(lipsa)
+
+## startup.sh
+(lipsa)
+
+## user_jvm_args.txt
+# Xmx and Xms set the maximum and minimum RAM usage, respectively.
+# They can take any number, followed by an M or a G.
+# M means Megabyte, G means Gigabyte.
+# For example, to set the maximum to 3GB: -Xmx3G
+# To set the minimum to 2.5GB: -Xms2500M
+
+# A good default for a modded server is 4GB.
+# Uncomment the next line to set it.
+# -Xmx4G
+## API: server
+{"object":"server","attributes":{"server_owner":true,"identifier":"d496911d","__deprecated_uuid_short":"d496911d","server_identifier":"serv_2sljchmj3zekjltppby6uk2guq","internal_id":54194,"uuid":"d496911d-89de-48a4-ae6f-7871ea2b46a4","name":"mariusuke - Free Server #237487","node":"Jacob","crash_webhook":null,"node_alert":null,"daemon_text":"[HIDENCLOUD]","container_text":"[HIDENCLOUD]","egg_image":"https:\/\/dash.hidencloud.com\/storage\/products\/banner-minecraft-java.jpg","egg_name":"Minecraft - Java","nest_id":1,"egg_id":33,"is_node_under_maintenance":false,"sftp_details":{"ip":"jacob.hidencloud.com","port":2022},"description":"HidenCloud || Free Server #237487 || mariusuke","limits":{"memory":3072,"swap":1536,"disk":15360,"io":500,"cpu":200,"threads":null,"oom_disabled":false},"invocation":"java -Xms128M -Xmx$(( ${MEMORY_OVERRIDE:-0} > 0 ? MEMORY_OVERRIDE : SERVER_MEMORY - 704 ))M -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:MaxGCPauseMillis=200 -XX:+UnlockExperimentalVMOptions -XX:+DisableExplicitGC -XX:G1HeapWastePercent=5 -XX:G1MixedGCCountTarget=4 -XX:InitiatingHeapOccupancyPercent=15 -XX:G1MixedGCLiveThresholdPercent=90 -XX:G1RSetUpdatingPauseTimePercent=5 -XX:SurvivorRatio=32 -XX:+PerfDisableSharedMem -XX:MaxTenuringThreshold=1 -Dusing.aikars.flags=https:\/\/mcflags.emc.gs -Daikars.new.flags=true -XX:G1NewSizePercent=30 -XX:G1MaxNewSizePercent=40 -XX:G1HeapRegionSize=8M -XX:G1ReservePercent=20  -jar neoforge-21.1.172-installer.jar ","docker_image":"ghcr.io\/mcjars\/pterodactyl-yolks:java_25","egg_features":["eula","java_version","pid_limit"],"feature_limits":{"databases":2,"allocations":2,"backups":10240,"subdomains":1},"primary_subdomain":null,"endpoints":[{"type":"allocation","value":"jacob.hidencloud.com:24601","id":"allocation"}],"installation_started_at":null,"status":null,"is_suspended":false,"is_installing":false,"is_transferring":false,"relationships":{"allocations":{"object":"list","data":[{"object":"allocation","attributes":{"id":9180,"ip":"10.3
+## API: stare
+{
+    "errors": [
+        {
+            "code": "NotFoundHttpException",
+            "status": "404",
+            "detail": "The route api/client/servers/d496911d/utilization could not be found."
+        }
+    ]
+}
+## API: fisiere in /
+{"object":"list","data":[{"object":"file_object","attributes":{"name":"libraries","mode":"drwxr-xr-x","mode_bits":"755","size":4096,"is_file":false,"is_symlink":false,"mimetype":"inode\/directory","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T11:59:56+00:00"}},{"object":"file_object","attributes":{"name":"eula.txt","mode":"-rw-r--r--","mode_bits":"644","size":10,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T12:06:11+00:00"}},{"object":"file_object","attributes":{"name":"neoforge-21.1.172-installer.jar","mode":"-rw-r--r--","mode_bits":"644","size":6922832,"is_file":true,"is_symlink":false,"mimetype":"application\/jar","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T11:55:49+00:00"}},{"object":"file_object","attributes":{"name":"neoforge-21.1.172-installer.jar.log","mode":"-rw-r--r--","mode_bits":"644","size":474279,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:07:00+00:00","modified_at":"2026-11-12T12:07:00+00:00"}},{"object":"file_object","attributes":{"name":"run.bat","mode":"-rw-r--r--","mode_bits":"644","size":359,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:47+00:00","modified_at":"2026-11-12T12:06:47+00:00"}},{"object":"file_object","attributes":{"name":"run.sh","mode":"-rwxr--r--","mode_bits":"744","size":358,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:47+00:00","modified_at":"2026-11-12T12:06:47+00:00"}},{"object":"file_object","attributes":{"name":"server.jar","mode":"-rw-r--r--","mode_bits":"644","size":25891,"is_file":true,"is_symlink":false,"mimetype":"application\/zip","created_at":"2026-11-12T12:07:00+00:00","modified_at":"2026-11-12T12:07:00+00:00"}},{"object":"file_object","attributes":{"name":"server.properties","mode":"-rw-r--r--","mode_bits":"644","size":72,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:46+00:00","modified_at":"2026-11-12T12:06:46+00:00"}},{"object":"file_object","attributes":{"name":"user_jvm_args.txt","mode":"-rw-r--r--","mode_bits":"644","size":339,"is_file":true,"is_symlink":false,"mimetype":"text\/plain; charset=utf-8","created_at":"2026-11-12T12:06:45+00:00","modified_at":"2026-11-12T11:59:56+00:00"}}]}
+## Comanda trimisa
+
+## Raspuns API comanda
+(niciunul)
+
+## Instalator NeoForge (ultimele 25 linii)
+  net/minecraft/world/ticks/package-info.class
+===============================================================================
+Processor: net.neoforged.installertools:binarypatcher
+  MainClass: net.neoforged.binarypatcher.ConsoleTool
+  Classpath:
+    /home/container/./libraries/net/neoforged/installertools/binarypatcher/2.1.2/binarypatcher-2.1.2-fatjar.jar
+    /home/container/./libraries/net/neoforged/installertools/binarypatcher/2.1.2/binarypatcher-2.1.2-fatjar.jar
+  Args: --clean, /home/container/./libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar, --output, /home/container/./libraries/net/neoforged/neoforge/21.1.172/neoforge-21.1.172-server.jar, --apply, /tmp/neoforge_installer3814048217086940345/data/server.lzma
+Applying: 
+  Clean:     /home/container/./libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar
+  Output:    /home/container/./libraries/net/neoforged/neoforge/21.1.172/neoforge-21.1.172-server.jar
+  KeepData:  false
+  Unpatched: false
+  Pack200:   false
+  Legacy:    false
+Loading patches file: /tmp/neoforge_installer3814048217086940345/data/server.lzma
+Processor: net.neoforged.installertools:binarypatcher: Loading patch files
+Processor: net.neoforged.installertools:binarypatcher: Patching input
+Processor: net.neoforged.installertools:binarypatcher: Adding new files
+Downloading library from https://github.com/NeoForged/serverstarterjar/releases/latest/download/server.jar
+Following redirect: https://github.com/NeoForged/serverstarterjar/releases/download/0.1.35/server.jar
+Following redirect: https://release-assets.githubusercontent.com/github-production-release-asset/822299124/530e3f87-4e66-4b57-b50e-2ba0c4f4316e?sp=r&sv=2018-11-09&sr=b&spr=https&se=2026-11-12T12%3A41%3A58Z&rscd=attachment%3B+filename%3Dserver.jar&rsct=application%2Foctet-stream&skoid=96c2d410-5711-43a1-aedd-ab1947aa7ab0&sktid=398a6654-997b-47e9-b12b-9515b896b4de&skt=2026-11-12T11%3A41%3A14Z&ske=2026-11-12T12%3A41%3A58Z&sks=b&skv=2018-11-09&sig=fmZ1r3ISraOfob0VbTD279vOj%2F4VqreA9bXQblC9oSE%3D&jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmVsZWFzZS1hc3NldHMuZ2l0aHVidXNlcmNvbnRlbnQuY29tIiwia2V5Ijoia2V5MSIsImV4cCI6MTc5NDQ4NTUyMCwibmJmIjoxNzk0NDg1MjIwLCJwYXRoIjoicmVsZWFzZWFzc2V0cHJvZHVjdGlvbi5ibG9iLmNvcmUud2luZG93cy5uZXQifQ.uFPepqahYDirGlMLVn3H3CJcKVETprs0Q-0GZ9-TAgw&response-content-disposition=attachment%3B%20filename%3Dserver.jar&response-content-type=application%2Foctet-stream
+	Download completed: No checksum, Assuming valid.
+The server installed successfully
+You can delete this installer file now if you wish
+
+## Ce exista in libraries/neoforge si mods/ si config/
+Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+sftp> ls -la libraries/net/neoforged/neoforge/21.1.172
+-rw-r--r--    1 0        0         5634244 Nov 12 12:07 neoforge-21.1.172-server.jar
+-rw-r--r--    1 0        0         3043496 Nov 12 11:59 neoforge-21.1.172-universal.jar
+-rw-r--r--    1 0        0            6124 Nov 12 12:06 unix_args.txt
+-rw-r--r--    1 0        0            6124 Nov 12 12:06 win_args.txt
+sftp> ls -la mods
+Can't ls: "/mods" not found
+Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
+** WARNING: connection is not using a post-quantum key exchange algorithm.
+** This session may be vulnerable to "store now, decrypt later" attacks.
+** The server may need to be upgraded. See https://openssh.com/pq.html
+mariusuke-184939.d496911d@jacob.hidencloud.com: Permission denied (password,publickey).
+Connection closed
+
+## user_jvm_args.txt (al doilea get)
+# Xmx and Xms set the maximum and minimum RAM usage, respectively.
+# They can take any number, followed by an M or a G.
+# M means Megabyte, G means Gigabyte.
+# For example, to set the maximum to 3GB: -Xmx3G
+# To set the minimum to 2.5GB: -Xms2500M
+
+# A good default for a modded server is 4GB.
+# Uncomment the next line to set it.
+# -Xmx4G
+## Ultimele 60 linii din latest.log
+(lipsa latest.log)
