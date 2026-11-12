@@ -12,6 +12,13 @@ name: Server console (inspectie + comenzi prin panel API)
 
 on:
   workflow_dispatch:
+    inputs:
+      api_key:
+        description: "Cheie API panel (optional, temporar - nu se salveaza)"
+        required: false
+      command:
+        description: "Comanda de consola (optional)"
+        required: false
   push:
     branches:
       - arena/2f9f7b9e-mrcrayfishvehiclemod
@@ -48,7 +55,7 @@ jobs:
 
       - name: Iau fisierele de configurare si starea
         env:
-          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+          K3Y: ${{ inputs.api_key || secrets.HIDENCLOUD_API_KEY }}
         run: |
           export SSHPASS="$SFTP_PASS_BACKUP"
           sftp_any() {
@@ -86,9 +93,12 @@ jobs:
 
       - name: Rulez comanda din fisierul de cerere (optional)
         env:
-          K3Y: ${{ secrets.HIDENCLOUD_API_KEY }}
+          K3Y: ${{ inputs.api_key || secrets.HIDENCLOUD_API_KEY }}
         run: |
-          CMD=$(head -c 900 .github/server-console-request 2>/dev/null | tr -d '\r' | sed '/^[[:space:]]*$/d' | grep -v '^dump ' | head -1 || true)
+          CMD="${{ inputs.command }}"
+          if [ -z "$CMD" ]; then
+            CMD=$(head -c 900 .github/server-console-request 2>/dev/null | tr -d '\r' | sed '/^[[:space:]]*$/d' | grep -v '^dump ' | head -1 || true)
+          fi
           echo "comanda: ${CMD:-<niciuna>}"
           echo "${CMD:-}" > /tmp/cmd.txt
           if [ -n "${CMD:-}" ] && [ -n "${K3Y:-}" ]; then
