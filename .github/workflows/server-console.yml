@@ -108,6 +108,44 @@ jobs:
               "$PANEL/api/client/servers/$SERVER_ID/command" > /tmp/api_cmd.json 2>&1 || true
           fi
 
+
+      - name: Repara startup-ul (doar la cerere "fixstart") + porneste serverul
+        env:
+          K3Y: ${{ inputs.api_key || secrets.HIDENCLOUD_API_KEY }}
+        run: |
+          REQ=$(head -c 200 .github/server-console-request 2>/dev/null | tr -d '\r' | head -1 || true)
+          echo "cerere: $REQ"
+          if [ "$REQ" != "fixstart" ]; then echo "nu e cerere de fix"; exit 0; fi
+          export SSHPASS="$SFTP_PASS_BACKUP"
+          sftp_any() {
+            sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes \
+              -o ConnectTimeout=20 -o IdentityFile=hidencloud/keys/arena_hc_ed25519 -b "$1" \
+              -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1 \
+            || sshpass -e sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -o ConnectTimeout=20 -o NumberOfPasswordPrompts=1 -b "$1" \
+              -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" 2>&1
+          }
+          # 1) iau starterul NeoForge (server.jar) local
+          printf 'get server.jar /tmp/server_starter.jar\n' > b1.txt
+          sftp_any b1.txt > /tmp/s1.txt 2>&1 || true
+          ls -la /tmp/server_starter.jar || true
+          # 2) arhivez instalatorul si pun starterul in locul lui
+          printf 'rm neoforge-21.1.172-installer.jar.bak\nrename neoforge-21.1.172-installer.jar neoforge-21.1.172-installer.jar.bak\nput /tmp/server_starter.jar neoforge-21.1.172-installer.jar\nls -la neoforge-21.1.172-installer.jar neoforge-21.1.172-installer.jar.bak server.jar\n' > b2.txt
+          sftp_any b2.txt > /tmp/s2.txt 2>&1 || true
+          cat /tmp/s2.txt
+          # 3) pornesc serverul din panel
+          if [ -n "${K3Y:-}" ]; then
+            curl -sS -m 20 -X POST -H "Authorization: Bearer $K3Y" -H 'Content-Type: application/json' \
+                 -H 'Accept: application/json' -d '{"signal":"start"}' \
+                 "$PANEL/api/client/servers/$SERVER_ID/power" -o /tmp/power.json -w 'HTTP %{http_code}\n' || true
+            cat /tmp/power.json 2>/dev/null || true
+          fi
+          sleep 75
+          printf 'get logs/latest.log /tmp/latest.log\n' > b3.txt
+          sftp_any b3.txt > /tmp/s3.txt 2>&1 || true
+          cat /tmp/s3.txt
+          [ -f /tmp/latest.log ] && { echo "===== latest.log (ultimele 40) ====="; tail -40 /tmp/latest.log; } || echo "inca nu exista latest.log"
+
       - name: Public raportul
         run: |
           mkdir -p diagnostics
@@ -151,6 +189,9 @@ jobs:
             echo
             echo "## user_jvm_args.txt (al doilea get)"
             [ -f /tmp/user_jvm_args.txt ] && cat /tmp/user_jvm_args.txt || echo "(lipsa)"
+            echo
+            echo "## Fix startup (rezultat)"
+            cat /tmp/s1.txt /tmp/s2.txt /tmp/power.json 2>/dev/null | tail -40 || echo "(n/a)"
             echo
             echo "## Ultimele 60 linii din latest.log"
             [ -f /tmp/latest.log ] && tail -60 /tmp/latest.log || echo "(lipsa latest.log)"
