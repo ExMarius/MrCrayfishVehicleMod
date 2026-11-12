@@ -4,6 +4,10 @@ name: AI Bridge deploy (urca JAR-ul pe server prin SFTP)
 # NeoForge (d496911d). Dupa rulare e nevoie de UN restart din panel.
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - ".github/deploy-ai-bridge.trigger"
+
 
 permissions:
   contents: read
