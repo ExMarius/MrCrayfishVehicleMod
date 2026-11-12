@@ -64,7 +64,6 @@ public final class AIBridgeMod {
 
     private void onRegisterCommands(RegisterCommandsEvent event) {
         event.getDispatcher().register(Commands.literal("npc")
-                .requires(source -> source.hasPermission(2))
                 .then(Commands.literal("spawn")
                         .then(Commands.argument("name", StringArgumentType.word())
                                 .executes(context -> {
@@ -72,10 +71,17 @@ public final class AIBridgeMod {
                                     String name = StringArgumentType.getString(context, "name");
                                     ServerLevel level = source.getLevel();
                                     Vec3 position = source.getPosition();
-                                    npcs.spawn(source.getServer(), level, name, position);
-                                    source.sendSuccess(() -> Component.literal(
-                                            "Personaj creat: " + name), false);
-                                    return 1;
+                                    try {
+                                        npcs.spawn(source.getServer(), level, name, position);
+                                        source.sendSuccess(() -> Component.literal(
+                                                "Personaj creat: " + name), false);
+                                        return 1;
+                                    } catch (RuntimeException error) {
+                                        BridgeLog.error("spawn " + name + " esuat: " + error);
+                                        source.sendFailure(Component.literal(
+                                                "Spawn esuat: " + error));
+                                        return 0;
+                                    }
                                 })))
                 .then(Commands.literal("remove")
                         .then(Commands.argument("name", StringArgumentType.word())
