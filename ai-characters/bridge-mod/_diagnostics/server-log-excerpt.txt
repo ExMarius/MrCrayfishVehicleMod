@@ -1,4 +1,4 @@
-# Extras log server 2026-11-12T14:53:54Z
+# Extras log server 2026-11-12T15:00:15Z
 
 ## ce e in mods/ si logs/
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
@@ -6,12 +6,12 @@ Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list o
 ** This session may be vulnerable to "store now, decrypt later" attacks.
 ** The server may need to be upgraded. See https://openssh.com/pq.html
 sftp> ls -l mods
--rw-r--r--    1 0        0           15858 Nov 12 13:48 aibridge-0.1.0.jar
+-rw-r--r--    1 0        0           17311 Nov 12 14:59 aibridge-0.1.0.jar
 sftp> ls -l logs
 -rw-r--r--    1 0        0            2340 Nov 12 13:41 2026-11-12-1.log.gz
 -rw-r--r--    1 0        0           13073 Nov 12 13:41 debug-1.log.gz
--rw-r--r--    1 0        0          169748 Nov 12 14:52 debug.log
--rw-r--r--    1 0        0            7197 Nov 12 14:52 latest.log
+-rw-r--r--    1 0        0          170023 Nov 12 14:56 debug.log
+-rw-r--r--    1 0        0            7330 Nov 12 14:53 latest.log
 
 ## linii AIBridge
 [12Nov2026 13:41:10.964] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader/SCAN]: Found META-INF/neoforge.mods.toml mod of type null: /home/container/mods/aibridge-0.1.0.jar
@@ -52,7 +52,6 @@ sftp> ls -l logs
 [12Nov2026 13:41:11.049] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from net.neoforged.neoforge-coremods-21.1.172.jar, it does not contain dependency information.
 
 ## ultimele 40 de linii din latest.log
-[12Nov2026 13:41:11.076] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found gamelibrary file "mixinextras-neoforge-0.4.1.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
 [12Nov2026 13:41:11.076] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found library file "net.neoforged.neoforge-coremods-21.1.172.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
 [12Nov2026 13:41:11.078] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
      Mod List:
@@ -92,3 +91,4 @@ sftp> ls -l logs
 [12Nov2026 14:52:40.217] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: <ExMarius> salut
 [12Nov2026 14:52:41.794] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [ExMarius: Set own game mode to Creative Mode]
 [12Nov2026 14:52:55.699] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: gogu la (46.522961772675586, 67.0, -23.559794809351242)
+[12Nov2026 14:53:58.213] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius has made the advancement [Hot Stuff]
