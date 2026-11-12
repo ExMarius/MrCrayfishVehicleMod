@@ -1,0 +1,18 @@
+{
+  "name": "ai-character-demo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Un personaj AI care joaca pe serverul tau Minecraft ca un jucator real (mineflayer).",
+  "type": "module",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js"
+  },
+  "dependencies": {
+    "mineflayer": "^4.20.1",
+    "mineflayer-pathfinder": "^2.4.5"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
