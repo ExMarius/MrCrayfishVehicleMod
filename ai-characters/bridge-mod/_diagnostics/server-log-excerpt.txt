@@ -1,4 +1,4 @@
-# Extras log server 2026-11-12T15:22:26Z
+# Extras log server 2026-11-12T15:39:16Z
 
 ## ce e in mods/ si logs/
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
@@ -6,99 +6,106 @@ Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list o
 ** This session may be vulnerable to "store now, decrypt later" attacks.
 ** The server may need to be upgraded. See https://openssh.com/pq.html
 sftp> ls -l mods
--rw-r--r--    1 0        0           19493 Nov 12 15:20 aibridge-0.1.0.jar
+-rw-r--r--    1 0        0           31511 Nov 12 15:37 aibridge-0.1.0.jar
 sftp> ls -l logs
 -rw-r--r--    1 0        0            2340 Nov 12 13:41 2026-11-12-1.log.gz
 -rw-r--r--    1 0        0            2515 Nov 12 15:07 2026-11-12-2.log.gz
 -rw-r--r--    1 0        0            3403 Nov 12 15:13 2026-11-12-3.log.gz
 -rw-r--r--    1 0        0            2080 Nov 12 15:20 2026-11-12-4.log.gz
--rw-r--r--    1 0        0           12721 Nov 12 15:20 debug-1.log.gz
--rw-r--r--    1 0        0           14285 Nov 12 15:13 debug-2.log.gz
--rw-r--r--    1 0        0           13504 Nov 12 15:07 debug-3.log.gz
--rw-r--r--    1 0        0           13073 Nov 12 13:41 debug-4.log.gz
--rw-r--r--    1 0        0          166114 Nov 12 15:20 debug.log
--rw-r--r--    1 0        0            6659 Nov 12 15:20 latest.log
+-rw-r--r--    1 0        0            2551 Nov 12 15:37 2026-11-12-5.log.gz
+-rw-r--r--    1 0        0           13461 Nov 12 15:37 debug-1.log.gz
+-rw-r--r--    1 0        0           12721 Nov 12 15:20 debug-2.log.gz
+-rw-r--r--    1 0        0           14285 Nov 12 15:13 debug-3.log.gz
+-rw-r--r--    1 0        0           13504 Nov 12 15:07 debug-4.log.gz
+-rw-r--r--    1 0        0           13073 Nov 12 13:41 debug-5.log.gz
+-rw-r--r--    1 0        0          168251 Nov 12 15:38 debug.log
+-rw-r--r--    1 0        0            7303 Nov 12 15:38 latest.log
 
 ## linii AIBridge
-[12Nov2026 15:20:24.394] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader/SCAN]: Found META-INF/neoforge.mods.toml mod of type null: /home/container/mods/aibridge-0.1.0.jar
-[12Nov2026 15:20:24.394] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate /home/container/mods/aibridge-0.1.0.jar
-[12Nov2026 15:20:24.399] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file aibridge-0.1.0.jar with {aibridge} mods - versions {0.1.0}
-[12Nov2026 15:20:24.399] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
-[12Nov2026 15:20:24.410] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from aibridge-0.1.0.jar, it does not contain dependency information.
+[12Nov2026 15:37:11.425] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader/SCAN]: Found META-INF/neoforge.mods.toml mod of type null: /home/container/mods/aibridge-0.1.0.jar
+[12Nov2026 15:37:11.425] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate /home/container/mods/aibridge-0.1.0.jar
+[12Nov2026 15:37:11.429] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file aibridge-0.1.0.jar with {aibridge} mods - versions {0.1.0}
+[12Nov2026 15:37:11.429] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
+[12Nov2026 15:37:11.455] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from aibridge-0.1.0.jar, it does not contain dependency information.
 		AI Bridge 0.1.0 (aibridge)
-[12Nov2026 15:20:24.511] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate /home/container/mods/aibridge-0.1.0.jar
-[12Nov2026 15:20:24.512] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file aibridge-0.1.0.jar with {aibridge} mods - versions {0.1.0}
-[12Nov2026 15:20:24.512] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file /home/container/mods/aibridge-0.1.0.jar with languages [LanguageSpec[languageName=javafml, acceptedVersions=[4,)]]
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: Adding mixin platform agents for container SecureJarResource(aibridge)
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for SecureJarResource(aibridge)
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container SecureJarResource(aibridge)
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for SecureJarResource(aibridge)
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container SecureJarResource(aibridge)
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for SecureJarResource(aibridge)
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent rejected container SecureJarResource(aibridge)
-[12Nov2026 15:20:24.972] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(aibridge)]
-[12Nov2026 15:20:24.974] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(aibridge)]
-[12Nov2026 15:20:31.466] [main/DEBUG] [net.neoforged.fml.javafmlmod.FMLModContainer/LOADING]: Creating FMLModContainer instance for [ro.ai.bridge.AIBridgeMod]
-[12Nov2026 15:20:31.502] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Attempting to inject @EventBusSubscriber classes into the eventbus for aibridge
-[12Nov2026 15:20:40.836] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
-[12Nov2026 15:20:40.836] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
-[12Nov2026 15:20:40.907] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
-[12Nov2026 15:20:41.080] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
-[12Nov2026 15:20:41.081] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
-[12Nov2026 15:20:41.081] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
-[12Nov2026 15:20:24.399] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
+[12Nov2026 15:37:11.550] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate /home/container/mods/aibridge-0.1.0.jar
+[12Nov2026 15:37:11.552] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file aibridge-0.1.0.jar with {aibridge} mods - versions {0.1.0}
+[12Nov2026 15:37:11.552] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file /home/container/mods/aibridge-0.1.0.jar with languages [LanguageSpec[languageName=javafml, acceptedVersions=[4,)]]
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Adding mixin platform agents for container SecureJarResource(aibridge)
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for SecureJarResource(aibridge)
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container SecureJarResource(aibridge)
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for SecureJarResource(aibridge)
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container SecureJarResource(aibridge)
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for SecureJarResource(aibridge)
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent rejected container SecureJarResource(aibridge)
+[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(aibridge)]
+[12Nov2026 15:37:12.080] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(aibridge)]
+[12Nov2026 15:37:18.316] [main/DEBUG] [net.neoforged.fml.javafmlmod.FMLModContainer/LOADING]: Creating FMLModContainer instance for [ro.ai.bridge.AIBridgeMod]
+[12Nov2026 15:37:18.357] [modloading-worker-0/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Config file aibridge-common.toml for aibridge tracking
+[12Nov2026 15:37:18.367] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Attempting to inject @EventBusSubscriber classes into the eventbus for aibridge
+[12Nov2026 15:37:18.600] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loaded TOML config file /home/container/config/aibridge-common.toml
+[12Nov2026 15:37:18.605] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Watching TOML config file /home/container/config/aibridge-common.toml for changes
+[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
+[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
+[12Nov2026 15:37:27.208] [Server thread/WARN] [AIBridge/]: [AIBridge] creierul AI e oprit: pune cheia Groq in config/aibridge-common.toml (brain.apiKey)
+[12Nov2026 15:37:27.289] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
+[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
+[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
+[12Nov2026 15:37:27.461] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
+[12Nov2026 15:37:11.429] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
 		AI Bridge 0.1.0 (aibridge)
-[12Nov2026 15:20:40.836] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
-[12Nov2026 15:20:40.836] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
-[12Nov2026 15:20:40.907] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
-[12Nov2026 15:20:41.080] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
-[12Nov2026 15:20:41.081] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
-[12Nov2026 15:20:41.081] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
+[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
+[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
+[12Nov2026 15:37:27.208] [Server thread/WARN] [AIBridge/]: [AIBridge] creierul AI e oprit: pune cheia Groq in config/aibridge-common.toml (brain.apiKey)
+[12Nov2026 15:37:27.289] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
+[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
+[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
+[12Nov2026 15:37:27.461] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
 
 ## erori / exceptii
-[12Nov2026 15:20:24.410] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from server-1.21.1-20240808.144430-srg.jar, it does not contain dependency information.
-[12Nov2026 15:20:24.410] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from aibridge-0.1.0.jar, it does not contain dependency information.
-[12Nov2026 15:20:24.478] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from mixinextras-neoforge-0.4.1.jar, it does not contain dependency information.
-[12Nov2026 15:20:24.478] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from net.neoforged.neoforge-coremods-21.1.172.jar, it does not contain dependency information.
+[12Nov2026 15:37:11.455] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from server-1.21.1-20240808.144430-srg.jar, it does not contain dependency information.
+[12Nov2026 15:37:11.455] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from aibridge-0.1.0.jar, it does not contain dependency information.
+[12Nov2026 15:37:11.515] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from mixinextras-neoforge-0.4.1.jar, it does not contain dependency information.
+[12Nov2026 15:37:11.515] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from net.neoforged.neoforge-coremods-21.1.172.jar, it does not contain dependency information.
 
 ## ultimele 40 de linii din latest.log
-[12Nov2026 15:20:24.392] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "neoforge-21.1.172-universal.jar" [locator: PathBasedLocator[name=neoforge, paths=[libraries/net/neoforged/neoforge/21.1.172/neoforge-21.1.172-universal.jar]], reader: mod manifest]
-[12Nov2026 15:20:24.399] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
-[12Nov2026 15:20:24.506] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
-[12Nov2026 15:20:24.506] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found gamelibrary file "mixinextras-neoforge-0.4.1.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
-[12Nov2026 15:20:24.507] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found library file "net.neoforged.neoforge-coremods-21.1.172.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
-[12Nov2026 15:20:24.508] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
+[12Nov2026 15:37:11.544] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found library file "net.neoforged.neoforge-coremods-21.1.172.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
+[12Nov2026 15:37:11.546] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
      Mod List:
 		Name Version (Mod Id)
 
 		AI Bridge 0.1.0 (aibridge)
 		Minecraft 1.21.1 (minecraft)
 		NeoForge 21.1.172 (neoforge)
-[12Nov2026 15:20:24.975] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserver' with arguments []
-[12Nov2026 15:20:26.113] [main/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.4.1).
-[12Nov2026 15:20:31.509] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.172, for MC 1.21.1
-[12Nov2026 15:20:31.993] [main/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[12Nov2026 15:20:32.108] [main/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/home/container/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/assets/.mcassetsroot' uses unexpected schema
-[12Nov2026 15:20:32.108] [main/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/home/container/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/data/.mcassetsroot' uses unexpected schema
-[12Nov2026 15:20:33.706] [main/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
-[12Nov2026 15:20:33.957] [main/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
-[12Nov2026 15:20:34.399] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Starting minecraft server version 1.21.1
-[12Nov2026 15:20:34.399] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Loading properties
-[12Nov2026 15:20:34.399] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Default game type: SURVIVAL
-[12Nov2026 15:20:34.399] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
-[12Nov2026 15:20:34.474] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Starting Minecraft server on x.x.x.x:24601
-[12Nov2026 15:20:34.512] [Server thread/INFO] [net.minecraft.server.network.ServerConnectionListener/]: Using epoll channel type
-[12Nov2026 15:20:34.611] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Preparing level "world"
-[12Nov2026 15:20:40.328] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
-[12Nov2026 15:20:40.632] [Worker-Main-1/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Preparing spawn area: 0%
-[12Nov2026 15:20:40.801] [Server thread/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 473 ms
-[12Nov2026 15:20:40.802] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Done (6.218s)! For help, type "help"
-[12Nov2026 15:20:40.827] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
-[12Nov2026 15:20:40.836] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
-[12Nov2026 15:20:40.836] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
-[12Nov2026 15:20:40.907] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
-[12Nov2026 15:20:40.909] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: TestNPC[local] logged in with entity id 11 at (32.5, 65.0, -15.5)
-[12Nov2026 15:20:41.064] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: TestNPC joined the game
-[12Nov2026 15:20:41.080] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
-[12Nov2026 15:20:41.081] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
-[12Nov2026 15:20:41.081] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
+[12Nov2026 15:37:12.081] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserver' with arguments []
+[12Nov2026 15:37:13.263] [main/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.4.1).
+[12Nov2026 15:37:18.357] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.172, for MC 1.21.1
+[12Nov2026 15:37:18.756] [main/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[12Nov2026 15:37:18.951] [main/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/home/container/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/assets/.mcassetsroot' uses unexpected schema
+[12Nov2026 15:37:18.952] [main/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/home/container/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/data/.mcassetsroot' uses unexpected schema
+[12Nov2026 15:37:20.494] [main/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
+[12Nov2026 15:37:20.692] [main/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
+[12Nov2026 15:37:21.132] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Starting minecraft server version 1.21.1
+[12Nov2026 15:37:21.133] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Loading properties
+[12Nov2026 15:37:21.133] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Default game type: SURVIVAL
+[12Nov2026 15:37:21.133] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
+[12Nov2026 15:37:21.190] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Starting Minecraft server on x.x.x.x:24601
+[12Nov2026 15:37:21.288] [Server thread/INFO] [net.minecraft.server.network.ServerConnectionListener/]: Using epoll channel type
+[12Nov2026 15:37:21.367] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Preparing level "world"
+[12Nov2026 15:37:26.666] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
+[12Nov2026 15:37:27.007] [Worker-Main-1/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Preparing spawn area: 0%
+[12Nov2026 15:37:27.173] [Server thread/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 506 ms
+[12Nov2026 15:37:27.173] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Done (5.836s)! For help, type "help"
+[12Nov2026 15:37:27.199] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
+[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
+[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
+[12Nov2026 15:37:27.208] [Server thread/WARN] [AIBridge/]: [AIBridge] creierul AI e oprit: pune cheia Groq in config/aibridge-common.toml (brain.apiKey)
+[12Nov2026 15:37:27.289] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
+[12Nov2026 15:37:27.294] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: TestNPC[local] logged in with entity id 20 at (32.5, 65.0, -15.5)
+[12Nov2026 15:37:27.447] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: TestNPC joined the game
+[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
+[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
+[12Nov2026 15:37:27.461] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
+[12Nov2026 15:38:38.653] [User Authenticator #1/INFO] [net.minecraft.server.network.ServerLoginPacketListenerImpl/]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
+[12Nov2026 15:38:41.388] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: ExMarius[/x.x.x.x:27774] logged in with entity id 366 at (33.07924942657739, 65.0, -12.791743653195605)
+[12Nov2026 15:38:41.406] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius joined the game
