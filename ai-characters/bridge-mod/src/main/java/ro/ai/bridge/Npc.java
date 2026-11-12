@@ -60,9 +60,24 @@ public final class Npc {
         this.player.setXRot(pitch);
     }
 
+    private int tickErrors;
+
     /** Un pas de mers, apelat din tick-ul serverului. */
     public void tick() {
-        player.tick();
+        if (tickErrors > 3) {
+            return;
+        }
+        try {
+            player.tick();
+        } catch (RuntimeException error) {
+            tickErrors++;
+            if (tickErrors == 1) {
+                BridgeLog.warn("ticks pentru " + name + " esuate: " + error);
+            }
+            if (tickErrors > 3) {
+                BridgeLog.warn(name + ": opresc tick-ul de entitate, ramane doar mersul.");
+            }
+        }
 
         if (target == null) {
             return;
@@ -78,8 +93,13 @@ public final class Npc {
         walkYaw = (float) Math.toDegrees(Math.atan2(-step.x, step.z));
         player.setYRot(walkYaw);
         player.setYHeadRot(walkYaw);
-        player.setDeltaMovement(step.x, player.getDeltaMovement().y, step.z);
-        player.move(net.minecraft.world.entity.MoverType.SELF, player.getDeltaMovement());
+        try {
+            player.setDeltaMovement(step.x, player.getDeltaMovement().y, step.z);
+            player.move(net.minecraft.world.entity.MoverType.SELF, player.getDeltaMovement());
+        } catch (RuntimeException error) {
+            BridgeLog.warn(name + ": mers esuat: " + error);
+            target = null;
+        }
     }
 
     public long spawnedAt() {

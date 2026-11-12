@@ -99,6 +99,15 @@ Adaugi un fișier nou → ai un personaj nou. Momentan sunt două: **Uke** (glum
 Creierul AI **doar vorbește**. Comenzile sunt un set fix, verificate de cod, iar botul
 nu sapă (`canDig = false`). Deci un model AI nu poate strica lumea „din greșeală".
 
+## Moduri (opțional, dar recomandat)
+
+Boții mineflayer nu pot folosi iteme din moduri. Pentru asta există modul NeoForge
+din **`bridge-mod/`** (`AIBridge`): personajele devin jucători-fantomă în server, deci
+pot folosi orice item din orice mod. Vezi `bridge-mod/README.md`.
+
+Etapa 1 (acum): `/npc spawn Uke`, mers, privire, chat + punte HTTP locală.
+Etapa 2: creierul din `src/` vorbește cu puntea și primește inventarul real.
+
 ## Ce urmează
 
 1. **Voce**: microfon → text (Whisper) → răspuns → voce românească (Piper), totul local.
@@ -114,4 +123,5 @@ src/character.js   botul: comenzi, urmarire, frica de monstri, memorie
 src/brain.js       AI: personalitate + context din memorie (Groq gratuit / local)
 src/memory.js      memorie persistenta per personaj
 characters/*.json  personalitatile
+bridge-mod/        modul NeoForge: personaje = jucatori-fantoma (etapa 1)
 ```
