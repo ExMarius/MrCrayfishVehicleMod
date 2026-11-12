@@ -115,7 +115,10 @@ jobs:
         run: |
           REQ=$(head -c 200 .github/server-console-request 2>/dev/null | tr -d '\r' | head -1 || true)
           echo "cerere: $REQ"
-          if [ "$REQ" != "fixstart" ]; then echo "nu e cerere de fix"; exit 0; fi
+          case "$REQ" in
+            fixstart*) echo "cerere de fix confirmata" ;;
+            *) echo "nu e cerere de fix"; exit 0 ;;
+          esac
           export SSHPASS="$SFTP_PASS_BACKUP"
           sftp_any() {
             sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes \
