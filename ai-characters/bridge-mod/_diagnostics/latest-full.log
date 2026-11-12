@@ -41,3 +41,9 @@
 [12Nov2026 13:41:27.762] [User Authenticator #1/INFO] [net.minecraft.server.network.ServerLoginPacketListenerImpl/]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
 [12Nov2026 13:41:30.599] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: ExMarius[/x.x.x.x:16550] logged in with entity id 69 at (23.823821612987295, 66.0, -16.701351997049045)
 [12Nov2026 13:41:30.621] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius joined the game
+[12Nov2026 13:52:23.855] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius was slain by Zombie
+[12Nov2026 14:52:16.882] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Made ExMarius a server operator
+[12Nov2026 14:52:26.091] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: 123 la (39.29352749426991, 76.0, -17.585489756853345)
+[12Nov2026 14:52:40.217] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: <ExMarius> salut
+[12Nov2026 14:52:41.794] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [ExMarius: Set own game mode to Creative Mode]
+[12Nov2026 14:52:55.699] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: gogu la (46.522961772675586, 67.0, -23.559794809351242)

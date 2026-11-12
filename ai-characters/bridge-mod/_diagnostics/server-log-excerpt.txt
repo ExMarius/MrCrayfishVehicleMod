@@ -1,4 +1,4 @@
-# Extras log server 2026-11-12T13:49:15Z
+# Extras log server 2026-11-12T14:53:54Z
 
 ## ce e in mods/ si logs/
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
@@ -10,8 +10,8 @@ sftp> ls -l mods
 sftp> ls -l logs
 -rw-r--r--    1 0        0            2340 Nov 12 13:41 2026-11-12-1.log.gz
 -rw-r--r--    1 0        0           13073 Nov 12 13:41 debug-1.log.gz
--rw-r--r--    1 0        0          167157 Nov 12 13:46 debug.log
--rw-r--r--    1 0        0            6452 Nov 12 13:41 latest.log
+-rw-r--r--    1 0        0          169748 Nov 12 14:52 debug.log
+-rw-r--r--    1 0        0            7197 Nov 12 14:52 latest.log
 
 ## linii AIBridge
 [12Nov2026 13:41:10.964] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader/SCAN]: Found META-INF/neoforge.mods.toml mod of type null: /home/container/mods/aibridge-0.1.0.jar
@@ -36,10 +36,14 @@ sftp> ls -l logs
 [12Nov2026 13:41:18.117] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Attempting to inject @EventBusSubscriber classes into the eventbus for aibridge
 [12Nov2026 13:41:27.048] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
 [12Nov2026 13:41:27.048] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
+[12Nov2026 14:52:26.091] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: 123 la (39.29352749426991, 76.0, -17.585489756853345)
+[12Nov2026 14:52:55.699] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: gogu la (46.522961772675586, 67.0, -23.559794809351242)
 [12Nov2026 13:41:10.969] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
 		AI Bridge 0.1.0 (aibridge)
 [12Nov2026 13:41:27.048] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
 [12Nov2026 13:41:27.048] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
+[12Nov2026 14:52:26.091] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: 123 la (39.29352749426991, 76.0, -17.585489756853345)
+[12Nov2026 14:52:55.699] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: gogu la (46.522961772675586, 67.0, -23.559794809351242)
 
 ## erori / exceptii
 [12Nov2026 13:41:10.992] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from server-1.21.1-20240808.144430-srg.jar, it does not contain dependency information.
@@ -48,12 +52,6 @@ sftp> ls -l logs
 [12Nov2026 13:41:11.049] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from net.neoforged.neoforge-coremods-21.1.172.jar, it does not contain dependency information.
 
 ## ultimele 40 de linii din latest.log
-[12Nov2026 13:41:10.559] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserver
-[12Nov2026 13:41:10.623] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/home/container/libraries/net/fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/sponge-mixin-0.15.2+mixin.0.8.7.jar%2373!/ Service=ModLauncher Env=SERVER
-[12Nov2026 13:41:10.941] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "server-1.21.1-20240808.144430-srg.jar" [locator: production server provider +net.neoforged:neoforge:21.1.172:server]
-[12Nov2026 13:41:10.962] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "neoforge-21.1.172-universal.jar" [locator: PathBasedLocator[name=neoforge, paths=[libraries/net/neoforged/neoforge/21.1.172/neoforge-21.1.172-universal.jar]], reader: mod manifest]
-[12Nov2026 13:41:10.969] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
-[12Nov2026 13:41:11.076] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
 [12Nov2026 13:41:11.076] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found gamelibrary file "mixinextras-neoforge-0.4.1.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
 [12Nov2026 13:41:11.076] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found library file "net.neoforged.neoforge-coremods-21.1.172.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
 [12Nov2026 13:41:11.078] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
@@ -88,3 +86,9 @@ sftp> ls -l logs
 [12Nov2026 13:41:27.762] [User Authenticator #1/INFO] [net.minecraft.server.network.ServerLoginPacketListenerImpl/]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
 [12Nov2026 13:41:30.599] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: ExMarius[/x.x.x.x:16550] logged in with entity id 69 at (23.823821612987295, 66.0, -16.701351997049045)
 [12Nov2026 13:41:30.621] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius joined the game
+[12Nov2026 13:52:23.855] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius was slain by Zombie
+[12Nov2026 14:52:16.882] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Made ExMarius a server operator
+[12Nov2026 14:52:26.091] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: 123 la (39.29352749426991, 76.0, -17.585489756853345)
+[12Nov2026 14:52:40.217] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: <ExMarius> salut
+[12Nov2026 14:52:41.794] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: [ExMarius: Set own game mode to Creative Mode]
+[12Nov2026 14:52:55.699] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: gogu la (46.522961772675586, 67.0, -23.559794809351242)
