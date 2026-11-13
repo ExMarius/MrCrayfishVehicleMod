@@ -1,0 +1,47 @@
+name: Panel API (o cerere)
+on:
+  workflow_dispatch:
+    inputs:
+      token: { description: "token API panel", required: true }
+      path:  { description: "ex: /api/client", required: true }
+      method: { description: "GET sau POST", required: false, default: "GET" }
+      data:  { description: "body JSON pentru POST", required: false, default: "" }
+
+permissions:
+  contents: write
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cererea
+        env:
+          TOKEN: ${{ inputs.token }}
+          APIPATH: ${{ inputs.path }}
+          METHOD: ${{ inputs.method }}
+          DATA: ${{ inputs.data }}
+        run: |
+          set +e
+          URL="https://freepanel.hidencloud.com${APIPATH}"
+          if [ "$METHOD" = "GET" ]; then
+            curl -sS -m 40 -w '\nHTTP %{http_code}\n' \
+              -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" "$URL" > out.txt 2>&1
+          else
+            curl -sS -m 40 -w '\nHTTP %{http_code}\n' -X "$METHOD" \
+              -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+              -H "Content-Type: application/json" -d "$DATA" "$URL" > out.txt 2>&1
+          fi
+          head -c 3000 out.txt
+      - name: Public rezultatul in repo
+        if: always()
+        run: |
+          mkdir -p horizon
+          { echo "# panel api $(date -u +%FT%TZ) ${{ inputs.method }} ${{ inputs.path }}"; echo; echo '```'; head -200 out.txt 2>/dev/null; echo '```'; } > horizon/_panel-response.md
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_panel-response.md
+          git commit -m "panel api [skip ci]" || exit 0
+          git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+          git push origin "HEAD:$GITHUB_REF_NAME" || true
