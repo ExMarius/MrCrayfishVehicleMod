@@ -10,16 +10,69 @@ manifest=0 (279089 bytes)
 latest: {'release': '26.3', 'snapshot': '26.4-snapshot-8'}
 folosesc versiunea 26.3
 server.url = https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar
--rw-r--r-- 1 runner runner 60M Nov 13 21:40 server.jar
+-rw-r--r-- 1 runner runner 60M Nov 13 21:43 server.jar
+== reconstruiesc o instalare minima de Minecraft (ca sa aiba ce citi prepare)
+client jar ok
+biblioteci: 114
+asset index: 34
+153M	.minecraft
 == horizon-prepare
 binar: horizon-cli/horizon-linux-x86_64/horizon-prepare
-error: Missing /home/runner/.minecraft/versions/26.3/26.3.json. Horizon does not download the game: play 26.3 once in the launcher you play Minecraft Java Edition with so it downloads the game's files, then rerun. Horizon reads the official launcher's folder, ATLauncher's and the CurseForge app's; for Prism Launcher, MultiMC, the Modrinth App or GDLauncher, prepare from the Horizon launcher, which finds their files. If your launcher keeps them in another folder, pass --minecraft-dir or set HORIZON_MINECRAFT_DIR, or name the files with --version-json, --client-jar, --libraries-dir and --assets-dir. Horizon looked for 26.3 in:
-  /home/runner/.minecraft (the official launcher)
-  /home/runner/.local/share/atlauncher (ATLauncher)
-  /home/runner/.var/app/com.atlauncher.ATLauncher/data/atlauncher (ATLauncher)
-  /home/runner/.var/app/com.atlauncher.ATLauncher/data (ATLauncher)
-  /home/runner/Documents/curseforge/minecraft/Install (the CurseForge app)
-prepare=1
+Imported client 26.3 from .minecraft/versions/26.3/26.3.jar
+client: 11383 classes, 98739 methods
+server: 7762 classes, 72269 methods
+Artifacts: /home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-cli/horizon-linux-x86_64/.local/minecraft/26.3
+Checked the game files in 1.0 s
+Exporting block states (VanillaHeightmapOracle)
+Exporting model bindings (VanillaBlockStateBindingOracle)
+Running vanilla's data generator reports
+Copying the client's assets and data
+Title panorama not imported: Missing asset object .minecraft/assets/objects/47/479ad40b906b87eab6d9eaa66f273226988dc2b2. Play the pinned version once in your launcher.; run horizon-prepare panorama later
+Unifont glyphs not imported: Missing asset object .minecraft/assets/objects/40/402ded0eebd448033ef415e861a17513075f80e7. Play the pinned version once in your launcher.; run horizon-prepare fonts later
+Programmer Art and High Contrast not imported: Missing asset object .minecraft/assets/objects/3d/3d50584e5111fa2a9d28ab07a5383f9e577ab63e. Play the pinned version once in your launcher.; run horizon-prepare packs later
+Languages not imported: Missing asset object .minecraft/assets/objects/28/28e516cd27c26786eeebafaf35feffb324d55ded. Play the pinned version once in your launcher.; run horizon-prepare languages later
+Copied the client's assets and data in 0.8 s
+Writing the world generator's bundle
+Wrote the world generator's bundle in 0.2 s
+Exported model bindings in 9.4 s
+Exporting entity models (VanillaEntityModelExporter)
+Exported entity models in 0.3 s
+Exporting mob data (VanillaMobDataExporter)
+Exported mob data in 0.3 s
+Exporting command registries (VanillaCommandParseOracle)
+Exported block states in 10.1 s
+Exporting movement and attributes (VanillaBlockLandingOracle, VanillaEntityAttributeOracle)
+Ran the data generator in 13.9 s
+Exporting the creative inventory (VanillaCreativeTabsExporter)
+Exported movement and attributes in 6.1 s
+Exporting damage and health (VanillaPlayerHealthOracle, VanillaDamageSourceOracle)
+Exported damage and health in 0.0 s
+Exporting collision shapes (VanillaCollisionOracle)
+Exported collision shapes in 0.0 s
+Exporting face visibility (VanillaFaceVisibilityOracle)
+Exported face visibility in 1.9 s
+Exporting gameplay facts (VanillaGameplayFactsExporter)
+Exported command registries in 10.1 s
+Exported gameplay facts in 3.0 s
+Exporting entity types (VanillaEntityTypesExporter)
+Exported entity types in 0.0 s
+Exporting block behaviours (VanillaBlockBehaviourExporter)
+Exported block behaviours in 0.2 s
+Exporting datafix tables (VanillaDataFixTablesExporter)
+Exported datafix tables in 0.3 s
+Exporting block behavior (VanillaSimpleBlockOracle)
+Exported the creative inventory in 8.1 s
+Exported block behavior in 3.8 s
+Exporting structure blocks (VanillaStructureBlockExporter)
+Exported structure blocks in 0.1 s
+Prepared Horizon native-client resources: /home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-cli/horizon-linux-x86_64/.local/horizon-client/26.3
+Done in 26.9 s
+prepare=0
 == caut registries.json
-folder pregatit: <niciunul>
+./horizon-cli/horizon-linux-x86_64/.local/datagen/out/reports/registries.json
+./horizon-cli/horizon-linux-x86_64/.local/horizon-client/26.3/registries.json
+./horizon-cli/horizon-linux-x86_64/.local/command-registries/registries.json
+folder pregatit: ./horizon-cli/horizon-linux-x86_64/.local/datagen/out/reports
+-rw-r--r-- 1 runner runner 526K Nov 13 21:44 26.3.tar.gz
 script exit=0
+-rw-r--r-- 1 runner runner 526K Nov 13 21:44 26.3.tar.gz
