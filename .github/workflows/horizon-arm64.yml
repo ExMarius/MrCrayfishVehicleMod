@@ -21,7 +21,14 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Clonez sursa Horizon
-        run: git clone --depth 1 https://github.com/horizon-rust/horizon.git horizon
+        run: |
+          set +e
+          git clone --depth 1 --single-branch https://github.com/horizon-rust/horizon.git horizon > clone.log 2>&1
+          code=$?
+          echo "clone exit=$code" >> clone.log
+          tail -5 clone.log
+          du -sh horizon 2>/dev/null >> clone.log
+          exit $code
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -32,10 +39,14 @@ jobs:
       - name: Build (engine fara sunet + supervisor)
         working-directory: horizon
         run: |
-          set -euo pipefail
-          cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client
-          cargo build --release --locked -p horizon-server --bin horizon-server
-          cargo build --release --locked -p horizon-prepare --bin horizon-prepare || echo "horizon-prepare nu s-a construit (nu e critic)"
+          set +e
+          ( cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client ) > ../build-engine.log 2>&1
+          echo "engine exit=$?" >> ../build-engine.log
+          ( cargo build --release --locked -p horizon-server --bin horizon-server ) > ../build-server.log 2>&1
+          echo "server exit=$?" >> ../build-server.log
+          ( cargo build --release --locked -p horizon-prepare --bin horizon-prepare ) > ../build-prepare.log 2>&1
+          echo "prepare exit=$?" >> ../build-prepare.log
+          tail -3 ../build-engine.log ../build-server.log
 
       - name: Pachetez
         run: |
@@ -48,6 +59,28 @@ jobs:
           tar czf horizon-server-linux-aarch64.tar.gz -C out .
           ls -lh horizon-server-linux-aarch64.tar.gz
           sha256sum horizon-server-linux-aarch64.tar.gz
+
+      - name: Raport in repo (ca sa se vada ce s-a intamplat)
+        if: always()
+        run: |
+          set +e
+          mkdir -p horizon
+          {
+            echo "# ultima incercare de build ARM64"
+            echo
+            echo '## clone'; tail -20 clone.log 2>/dev/null
+            echo; echo '## engine'; tail -40 build-engine.log 2>/dev/null
+            echo; echo '## server'; tail -40 build-server.log 2>/dev/null
+            echo; echo '## prepare'; tail -10 build-prepare.log 2>/dev/null
+            echo; echo '## fisiere'; ls -lh horizon/target/release/horizon-server horizon/target/release/horizon-client 2>/dev/null
+            echo; echo '## pachet'; ls -lh horizon-server-linux-aarch64.tar.gz 2>/dev/null
+          } > horizon/_build-report.txt
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_build-report.txt
+          git commit -m "raport build Horizon ARM64 [skip ci]" || exit 0
+          git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+          git push origin "HEAD:$GITHUB_REF_NAME" || true
 
       - uses: actions/upload-artifact@v4
         with:
