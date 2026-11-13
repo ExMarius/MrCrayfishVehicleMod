@@ -1,0 +1,69 @@
+name: Horizon server (build ARM64)
+
+# Serverul Horizon e scris in Rust si e publicat doar pentru x86-64.
+# Panelul nostru ruleaza pe ARM64, deci il compilam aici si publicam arhiva
+# in release-ul "horizon-arm64", de unde o poate lua panelul.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/horizon-arm64.trigger"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Compilez horizon-server pentru aarch64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clonez sursa Horizon
+        run: git clone --depth 1 https://github.com/horizon-rust/horizon.git horizon
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: horizon
+
+      - name: Build (engine fara sunet + supervisor)
+        working-directory: horizon
+        run: |
+          set -euo pipefail
+          cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client
+          cargo build --release --locked -p horizon-server --bin horizon-server
+          cargo build --release --locked -p horizon-prepare --bin horizon-prepare || echo "horizon-prepare nu s-a construit (nu e critic)"
+
+      - name: Pachetez
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          cp horizon/target/release/horizon-client out/horizon-engine
+          cp horizon/target/release/horizon-server out/horizon-server
+          if [ -f horizon/target/release/horizon-prepare ]; then cp horizon/target/release/horizon-prepare out/; fi
+          file out/horizon-server
+          tar czf horizon-server-linux-aarch64.tar.gz -C out .
+          ls -lh horizon-server-linux-aarch64.tar.gz
+          sha256sum horizon-server-linux-aarch64.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: horizon-server-linux-aarch64
+          path: horizon-server-linux-aarch64.tar.gz
+
+      - name: Public in release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=horizon-arm64
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" horizon-server-linux-aarch64.tar.gz --clobber
+          else
+            gh release create "$TAG" horizon-server-linux-aarch64.tar.gz \
+              --title "Horizon server (build ARM64 propriu)" \
+              --notes "Compilat din horizon-rust/horizon pe ubuntu-24.04-arm."
+          fi
