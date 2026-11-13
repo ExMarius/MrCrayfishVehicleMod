@@ -34,8 +34,15 @@ PY
 ls -lh server.jar || { echo "server.jar NU a fost descarcat"; exit 1; }
 
 echo "== horizon-prepare"
-chmod +x horizon-cli/horizon-prepare
-./horizon-cli/horizon-prepare --prepare --server-jar server.jar
+PREPARE=$(find horizon-cli -maxdepth 3 -name horizon-prepare -type f | head -1)
+echo "binar: ${PREPARE:-<lipsa>}"
+if [ -z "${PREPARE}" ]; then
+  echo "nu gasesc horizon-prepare; continut:"
+  find horizon-cli -maxdepth 3 -type f | head -30
+  exit 1
+fi
+chmod +x "$PREPARE"
+"$PREPARE" --prepare --server-jar server.jar
 echo "prepare=$?"
 
 echo "== caut registries.json"
