@@ -1,52 +1,12 @@
-[12Nov2026 15:37:10.890] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher running: args [--launchTarget, forgeserver, --fml.neoForgeVersion, 21.1.172, --fml.fmlVersion, 4.0.39, --fml.mcVersion, 1.21.1, --fml.neoFormVersion, 20240808.144430]
-[12Nov2026 15:37:10.893] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: JVM identified as Eclipse Adoptium OpenJDK 64-Bit Server VM 25.0.5+8-LTS
-[12Nov2026 15:37:10.894] [main/INFO] [cpw.mods.modlauncher.Launcher/MODLAUNCHER]: ModLauncher 11.0.4+main.d2e20e43 starting: java version 25.0.5 by Eclipse Adoptium; OS Linux arch aarch64 version 7.0.0-1017-azure
-[12Nov2026 15:37:11.008] [main/INFO] [net.neoforged.fml.loading.ImmediateWindowHandler/]: ImmediateWindowProvider not loading because launch target is forgeserver
-[12Nov2026 15:37:11.081] [main/INFO] [mixin/]: SpongePowered MIXIN Subsystem Version=0.8.7 Source=union:/home/container/libraries/net/fabricmc/sponge-mixin/0.15.2+mixin.0.8.7/sponge-mixin-0.15.2+mixin.0.8.7.jar%2373!/ Service=ModLauncher Env=SERVER
-[12Nov2026 15:37:11.401] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "server-1.21.1-20240808.144430-srg.jar" [locator: production server provider +net.neoforged:neoforge:21.1.172:server]
-[12Nov2026 15:37:11.423] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "neoforge-21.1.172-universal.jar" [locator: PathBasedLocator[name=neoforge, paths=[libraries/net/neoforged/neoforge/21.1.172/neoforge-21.1.172-universal.jar]], reader: mod manifest]
-[12Nov2026 15:37:11.429] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
-[12Nov2026 15:37:11.544] [main/INFO] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Found 2 dependencies adding them to mods collection
-[12Nov2026 15:37:11.544] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found gamelibrary file "mixinextras-neoforge-0.4.1.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
-[12Nov2026 15:37:11.544] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found library file "net.neoforged.neoforge-coremods-21.1.172.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
-[12Nov2026 15:37:11.546] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
-     Mod List:
-		Name Version (Mod Id)
-
-		AI Bridge 0.1.0 (aibridge)
-		Minecraft 1.21.1 (minecraft)
-		NeoForge 21.1.172 (neoforge)
-[12Nov2026 15:37:12.081] [main/INFO] [cpw.mods.modlauncher.LaunchServiceHandler/MODLAUNCHER]: Launching target 'forgeserver' with arguments []
-[12Nov2026 15:37:13.263] [main/INFO] [MixinExtras|Service/]: Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.4.1).
-[12Nov2026 15:37:18.357] [modloading-worker-0/INFO] [net.neoforged.neoforge.common.NeoForgeMod/NEOFORGE-MOD]: NeoForge mod loading, version 21.1.172, for MC 1.21.1
-[12Nov2026 15:37:18.756] [main/INFO] [com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService/]: Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[12Nov2026 15:37:18.951] [main/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/home/container/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/assets/.mcassetsroot' uses unexpected schema
-[12Nov2026 15:37:18.952] [main/WARN] [net.minecraft.server.packs.VanillaPackResourcesBuilder/]: Assets URL 'union:/home/container/libraries/net/minecraft/server/1.21.1-20240808.144430/server-1.21.1-20240808.144430-srg.jar%23118!/data/.mcassetsroot' uses unexpected schema
-[12Nov2026 15:37:20.494] [main/INFO] [net.minecraft.world.item.crafting.RecipeManager/]: Loaded 1290 recipes
-[12Nov2026 15:37:20.692] [main/INFO] [net.minecraft.advancements.AdvancementTree/]: Loaded 1399 advancements
-[12Nov2026 15:37:21.132] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Starting minecraft server version 1.21.1
-[12Nov2026 15:37:21.133] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Loading properties
-[12Nov2026 15:37:21.133] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Default game type: SURVIVAL
-[12Nov2026 15:37:21.133] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Generating keypair
-[12Nov2026 15:37:21.190] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Starting Minecraft server on x.x.x.x:24601
-[12Nov2026 15:37:21.288] [Server thread/INFO] [net.minecraft.server.network.ServerConnectionListener/]: Using epoll channel type
-[12Nov2026 15:37:21.367] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Preparing level "world"
-[12Nov2026 15:37:26.666] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Preparing start region for dimension minecraft:overworld
-[12Nov2026 15:37:27.007] [Worker-Main-1/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Preparing spawn area: 0%
-[12Nov2026 15:37:27.173] [Server thread/INFO] [net.minecraft.server.level.progress.LoggerChunkProgressListener/]: Time elapsed: 506 ms
-[12Nov2026 15:37:27.173] [Server thread/INFO] [net.minecraft.server.dedicated.DedicatedServer/]: Done (5.836s)! For help, type "help"
-[12Nov2026 15:37:27.199] [Server thread/INFO] [net.neoforged.neoforge.server.permission.PermissionAPI/]: Successfully initialized permission handler neoforge:default_handler
-[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
-[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
-[12Nov2026 15:37:27.208] [Server thread/WARN] [AIBridge/]: [AIBridge] creierul AI e oprit: pune cheia Groq in config/aibridge-common.toml (brain.apiKey)
-[12Nov2026 15:37:27.289] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
-[12Nov2026 15:37:27.294] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: TestNPC[local] logged in with entity id 20 at (32.5, 65.0, -15.5)
-[12Nov2026 15:37:27.447] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: TestNPC joined the game
-[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
-[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
-[12Nov2026 15:37:27.461] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
-[12Nov2026 15:38:38.653] [User Authenticator #1/INFO] [net.minecraft.server.network.ServerLoginPacketListenerImpl/]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
-[12Nov2026 15:38:41.388] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: ExMarius[/x.x.x.x:27774] logged in with entity id 366 at (33.07924942657739, 65.0, -12.791743653195605)
-[12Nov2026 15:38:41.406] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius joined the game
-[12Nov2026 15:40:22.267] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: ExMarius lost connection: Disconnected
-[12Nov2026 15:40:22.268] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius left the game
+[13Nov2026 20:16:30.077] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping the server
+[13Nov2026 20:16:30.112] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP oprita
+[13Nov2026 20:16:30.126] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
+[13Nov2026 20:16:30.127] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
+[13Nov2026 20:16:30.127] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
+[13Nov2026 20:16:30.492] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[13Nov2026 20:16:31.372] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[13Nov2026 20:16:31.391] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[13Nov2026 20:16:31.432] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (world): All chunks are saved
+[13Nov2026 20:16:31.433] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
+[13Nov2026 20:16:31.433] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
+[13Nov2026 20:16:31.434] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved
