@@ -1,5 +1,5 @@
 #Minecraft server properties
-#Fri Nov 13 21:59:02 UTC 2026
+#Fri Nov 13 22:18:10 UTC 2026
 accepts-transfers=false
 allow-flight=false
 broadcast-console-to-ops=true
@@ -35,7 +35,7 @@ log-ips=true
 management-server-allowed-origins=
 management-server-enabled=false
 management-server-host=localhost
-management-server-port=0
+management-server-port=24601
 management-server-secret=<ascuns>
 management-server-tls-enabled=true
 management-server-tls-keystore=

@@ -40,3 +40,25 @@ Horizon: live features ready in 35.48822ms
 [22:07:24] [Server thread/INFO]: ExMarius lost connection: Disconnected
 [22:07:24] [Server thread/INFO]: System chat: ExMarius left the game
 [22:08:24] [Server thread/INFO]: Server empty for 60 seconds, pausing
+[22:18:10] [Supervisor/INFO]: Web panel on http://127.0.0.1:8130 (`horizon-server panel` prints a login link)
+[22:18:10] [Supervisor/INFO]: Starting /home/container/horizon/horizon-engine with the game files in ./resources
+Horizon 0.1.0
+load core tables: 0.60s
+load pack tables: 0.61s
+load items: 0.70s
+Horizon: resources loaded in 1.1s; 35723 block states, 1658 items, 67 biomes; 1 worker threads
+Horizon: control socket /home/container/.horizon/engine.json
+[22:18:11] [Server thread/INFO]: Starting minecraft server version 26.3
+[22:18:11] [Server thread/INFO]: Loading properties
+[22:18:11] [Server thread/INFO]: Default game type: SURVIVAL
+[22:18:11] [Server thread/INFO]: Generating keypair
+[22:18:11] [Server thread/INFO]: Starting Minecraft server on 0.0.0.0:24601
+[22:18:11] [Server thread/INFO]: Preparing level "world"
+Horizon: worldgen data loaded in 303.10602ms
+Horizon: live features ready in 35.2573ms
+[22:18:12] [Server thread/INFO]: Anticheat on (server.toml [anticheat]; enabled = false turns it off)
+[22:18:12] [Server thread/INFO]: Chat filter on: 45 words (server.toml [chat_filter]; enabled = false turns it off)
+[22:18:12] [Server thread/INFO]: Done (1.792s)! For help, type "help"
+[22:18:12] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[22:18:12] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[22:18:12] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
