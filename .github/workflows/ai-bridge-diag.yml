@@ -46,7 +46,7 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/logs
-          for f in logs/latest.log logs/debug.log server.properties ops.json; do
+          for f in logs/latest.log logs/debug.log server.properties ops.json run.sh user_jvm_args.txt; do
             printf 'get %s /tmp/logs/%s\n' "$f" "$(basename $f)" > g.txt
             sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
               -o BatchMode=yes -i /tmp/hc_key -b g.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 || true
@@ -60,6 +60,8 @@ jobs:
           mkdir -p "$D"
           sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g' /tmp/logs/latest.log > "$D/latest-full.log" 2>/dev/null || echo "(lipsa)" > "$D/latest-full.log"
           sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g' /tmp/logs/ops.json > "$D/ops.json" 2>/dev/null || echo "(lipsa)" > "$D/ops.json"
+          cp /tmp/logs/run.sh "$D/run.sh.txt" 2>/dev/null || echo "(lipsa)" > "$D/run.sh.txt"
+          cp /tmp/logs/user_jvm_args.txt "$D/user_jvm_args.txt" 2>/dev/null || echo "(lipsa)" > "$D/user_jvm_args.txt"
           sed -E 's/([0-9]{1,3}\.){3}[0-9]{1,3}/x.x.x.x/g; s/^(rcon\.password|.*[Pp]assword|.*[Ss]ecret|.*[Tt]oken)=.*/\1=<ascuns>/' /tmp/logs/server.properties > "$D/server.properties.sanitized" 2>/dev/null || echo "(lipsa)" > "$D/server.properties.sanitized"
           wc -l "$D/latest-full.log" "$D/ops.json" "$D/server.properties.sanitized"
 
