@@ -61,6 +61,16 @@ public final class Launcher {
             System.exit(0);
         }
 
+        // Datele jocului: daca exista 26.3.tar.gz si nu e inca importat, il desfac si il import.
+        Path resourceTar = base.resolve("26.3.tar.gz");
+        Path imported = base.resolve("resources").resolve("26.3");
+        if (Files.exists(resourceTar) && !Files.exists(imported)) {
+            System.out.println("[horizon-launch] desfac datele jocului din 26.3.tar.gz");
+            run(base, "tar", "-xzf", resourceTar.toString(), "-C", base.toString());
+            System.out.println("[horizon-launch] import-resources");
+            run(base, exe.toString(), "import-resources", base.resolve("26.3").toString());
+        }
+
         String port = System.getenv().getOrDefault("SERVER_PORT", "25565");
         Path toml = base.resolve("server.toml");
         if (!Files.exists(toml)) {

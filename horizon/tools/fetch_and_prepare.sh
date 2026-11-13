@@ -83,9 +83,10 @@ chmod +x "$PREPARE"
 echo "prepare=$?"
 
 echo "== caut registries.json"
-find . -name registries.json -not -path "./horizon-src/*" 2>/dev/null | head -5
+find . -path "*horizon-client/26.3/registries.json" 2>/dev/null | head -5
+du -sh ./horizon-cli/horizon-linux-x86_64/.local/horizon-client/26.3 2>/dev/null
 
-DIR=$(find . -name registries.json -not -path "./horizon-src/*" 2>/dev/null | head -1 | xargs -r dirname)
+DIR=$(find . -path "*horizon-client/26.3/registries.json" 2>/dev/null | head -1 | xargs -r dirname)
 echo "folder pregatit: ${DIR:-<niciunul>}"
 if [ -n "${DIR}" ]; then
   tar czf 26.3.tar.gz -C "$(dirname "$DIR")" "$(basename "$DIR")"
