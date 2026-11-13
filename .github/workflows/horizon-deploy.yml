@@ -43,7 +43,8 @@ jobs:
             -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
           -mkdir horizon
           put out/horizon-server-linux-aarch64.tar.gz horizon/horizon-server-linux-aarch64.tar.gz
-          put out/horizon-launch.jar horizon-launch.jar
+          -rename neoforge-21.1.172-installer.jar neoforge-21.1.172-installer.jar.bak2
+          put out/horizon-launch.jar neoforge-21.1.172-installer.jar
           ls -l horizon
-          ls -l horizon-launch.jar
+          ls -l neoforge-21.1.172-installer.jar
           BATCH

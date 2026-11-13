@@ -47,13 +47,21 @@ public final class Launcher {
             run(base, initArgs.toArray(new String[0]));
         }
 
+        System.out.println("[horizon-launch] arhitectura JVM: " + System.getProperty("os.arch")
+                + ", folder: " + base);
         System.out.println("[horizon-launch] pornesc horizon-server run");
         ProcessBuilder builder = new ProcessBuilder(exe.toString(), "run");
         builder.directory(base.toFile());
         builder.redirectErrorStream(true);
         builder.environment().put("HORIZON_NO_AUDIO", "1");
-        if (Files.exists(dir.resolve("eula"))) {
-            builder.environment().put("HORIZON_EULA", "true");
+        // EULA: daca e acceptat deja pe server (eula.txt de la NeoForge), il dam mai departe
+        Path eulaFile = base.resolve("eula.txt");
+        if (Files.exists(eulaFile)) {
+            String text = Files.readString(eulaFile).replace(" ", "").toLowerCase();
+            if (text.contains("eula=true")) {
+                builder.environment().put("HORIZON_EULA", "true");
+                System.out.println("[horizon-launch] EULA preluat din eula.txt");
+            }
         }
 
         Process process = builder.start();
