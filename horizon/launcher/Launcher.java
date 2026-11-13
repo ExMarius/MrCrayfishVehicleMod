@@ -69,6 +69,11 @@ public final class Launcher {
             run(base, "tar", "-xzf", resourceTar.toString(), "-C", base.toString());
             System.out.println("[horizon-launch] import-resources");
             run(base, exe.toString(), "import-resources", base.resolve("26.3").toString());
+            try {
+                Files.deleteIfExists(resourceTar);
+                System.out.println("[horizon-launch] am sters 26.3.tar.gz (resursele sunt importate)");
+            } catch (Exception ignored) {
+            }
         }
 
         String port = detectPort(base);
@@ -108,18 +113,42 @@ public final class Launcher {
         Process process = builder.start();
         Runtime.getRuntime().addShutdownHook(new Thread(process::destroy));
         Path log = dir.resolve("console.log");
-        try (BufferedWriter writer = Files.newBufferedWriter(log, StandardCharsets.UTF_8,
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-             BufferedReader reader = new BufferedReader(
-                     new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-                writer.write(line);
-                writer.newLine();
-                writer.flush();
+
+        Thread output = new Thread(() -> {
+            try (BufferedReader reader = new BufferedReader(
+                         new InputStreamReader(process.getInputStream(), StandardCharsets.UTF_8));
+                 BufferedWriter writer = Files.newBufferedWriter(log, StandardCharsets.UTF_8,
+                         StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+                    writer.write(line);
+                    writer.newLine();
+                    writer.flush();
+                }
+            } catch (IOException ignored) {
             }
-        }
+        }, "horizon-output");
+        output.setDaemon(true);
+        output.start();
+
+        // comenzile scrise in consola panelului ajung la horizon-server
+        Thread input = new Thread(() -> {
+            try (BufferedReader console = new BufferedReader(
+                         new InputStreamReader(System.in, StandardCharsets.UTF_8));
+                 Writer childIn = new OutputStreamWriter(process.getOutputStream(), StandardCharsets.UTF_8)) {
+                String line;
+                while ((line = console.readLine()) != null) {
+                    childIn.write(line);
+                    childIn.write("\n");
+                    childIn.flush();
+                }
+            } catch (IOException ignored) {
+            }
+        }, "horizon-input");
+        input.setDaemon(true);
+        input.start();
+
         int code = process.waitFor();
         System.out.println("[horizon-launch] horizon-server s-a oprit cu codul " + code);
         System.exit(code);
