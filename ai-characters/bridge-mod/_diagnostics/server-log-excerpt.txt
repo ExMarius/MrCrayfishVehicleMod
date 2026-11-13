@@ -1,4 +1,4 @@
-# Extras log server 2026-11-13T21:59:54Z
+# Extras log server 2026-11-13T22:14:50Z
 
 ## ce e in mods/ si logs/
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
@@ -7,15 +7,15 @@ Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list o
 ** The server may need to be upgraded. See https://openssh.com/pq.html
 sftp> ls -a
 .horizon                                .horizon-cache                          
-26.3                                    26.3.tar.gz                             
-banned-ips.json                         banned-players.json                     
-config                                  eula.txt                                
-horizon                                 logs                                    
-neoforge-21.1.172-installer.jar         neoforge-21.1.172-installer.jar.bak2    
-ops.json                                resources                               
-server.properties                       server.properties.imported              
-server.toml                             usercache.json                          
-whitelist.json                          world                                   
+26.3                                    banned-ips.json                         
+banned-players.json                     config                                  
+eula.txt                                horizon                                 
+logs                                    neoforge-21.1.172-installer.jar         
+neoforge-21.1.172-installer.jar.bak2    ops.json                                
+resources                               server.properties                       
+server.properties.imported              server.toml                             
+usercache.json                          whitelist.json                          
+world                                   
 sftp> ls -l mods
 Can't ls: "/mods" not found
 
@@ -49,3 +49,6 @@ Can't ls: "/mods" not found
 [21:59:21] [User Authenticator #1/INFO]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
 [21:59:21] [Server thread/INFO]: ExMarius[/x.x.x.x:16885] logged in with entity id 1 at (-255.5, 64.0, 112.5)
 [21:59:21] [Server thread/INFO]: System chat: ExMarius joined the game
+[22:07:24] [Server thread/INFO]: ExMarius lost connection: Disconnected
+[22:07:24] [Server thread/INFO]: System chat: ExMarius left the game
+[22:08:24] [Server thread/INFO]: Server empty for 60 seconds, pausing
