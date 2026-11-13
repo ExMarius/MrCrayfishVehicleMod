@@ -251,7 +251,7 @@ pub(super) fn on_server_tick(
         // mașina nu urc urcă/coboară. M2 adaugă proba de sol și gravitația.
 
         // deplasare pe direcția yaw-ului vanilla: 0° = +Z, 90° = -X
-        let yaw = car.yaw.to_radians();
+        let yaw = f64::from(car.yaw.to_radians());
         car.pos[0] -= car.speed * yaw.sin();
         car.pos[2] += car.speed * yaw.cos();
 
