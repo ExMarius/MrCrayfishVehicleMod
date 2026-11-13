@@ -1,0 +1,46 @@
+name: Panel verify
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/verify.trigger"
+permissions:
+  contents: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verific tot
+        run: |
+          set +e
+          TOKEN=$(cat .panel-token 2>/dev/null | tr -d ' \n\r')
+          API=https://freepanel.hidencloud.com/api/client
+          H=(-H "Authorization: Bearer $TOKEN" -H "Accept: application/json")
+          OUT=horizon/_verify.md
+          ID=$(curl -sS -m 20 "${H[@]}" "$API" | grep -o '"identifier": *"[a-z0-9]*"' | head -1 | cut -d'"' -f4)
+          {
+            echo "# verificare $(date -u +%FT%TZ)"
+            echo; echo "## server: $ID"
+            echo; echo "### stare/resurse"; curl -sS -m 20 "${H[@]}" "$API/servers/$ID/resources"; echo
+            echo; echo "### startup"; curl -sS -m 20 "${H[@]}" "$API/servers/$ID/startup" | head -c 2500; echo
+            echo; echo "### fisiere in /"; curl -sS -m 20 "${H[@]}" "$API/servers/$ID/files/list?directory=%2F" | python3 -c "import json,sys; d=json.load(sys.stdin); [print(f\"{e['attributes']['is_file'] and 'file' or 'dir ':5} {e['attributes']['size']:>12} {e['attributes']['name']}\") for e in d.get('data',[])]" 2>/dev/null; echo
+            echo; echo "### resources/"; curl -sS -m 20 "${H[@]}" "$API/servers/$ID/files/list?directory=%2Fresources" | head -c 1200; echo
+            echo; echo "### server.toml"; curl -sS -m 20 "${H[@]}" "$API/servers/$ID/files/contents?file=%2Fserver.toml" | head -c 1800; echo
+            echo; echo "### ping Minecraft 26.3"; timeout 25 python3 horizon/tools/mcping.py jacob.hidencloud.com 24601 || echo "ping: fara raspuns"; echo
+          } > $OUT 2>&1
+          tail -40 $OUT
+      - name: Public
+        if: always()
+        run: |
+          set +e
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_verify.md
+          git commit -m "verificare panel [skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1
+            git push origin "HEAD:$GITHUB_REF_NAME" && break
+            sleep 5
+          done
