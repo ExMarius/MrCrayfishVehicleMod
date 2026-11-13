@@ -12,3 +12,28 @@ prepare them with `horizon-prepare --prepare --server-jar PATH` (or the launcher
   /home/container/.local/horizon-client/26.3
   /home/.local/horizon-client/26.3
   /.local/horizon-client/26.3
+[21:59:02] [Supervisor/INFO]: Web panel on http://127.0.0.1:8130 (`horizon-server panel` prints a login link)
+[21:59:02] [Supervisor/INFO]: Starting /home/container/horizon/horizon-engine with the game files in ./resources
+Horizon 0.1.0
+load core tables: 0.61s
+load pack tables: 0.62s
+load items: 0.70s
+Horizon: resources loaded in 1.3s; 35723 block states, 1658 items, 67 biomes; 1 worker threads
+Horizon: control socket /home/container/.horizon/engine.json
+[21:59:03] [Server thread/INFO]: Starting minecraft server version 26.3
+[21:59:03] [Server thread/INFO]: Loading properties
+[21:59:03] [Server thread/INFO]: Default game type: SURVIVAL
+[21:59:03] [Server thread/INFO]: Generating keypair
+[21:59:03] [Server thread/INFO]: Starting Minecraft server on 0.0.0.0:24601
+[21:59:03] [Server thread/INFO]: Preparing level "world"
+Horizon: worldgen data loaded in 292.781908ms
+Horizon: live features ready in 35.48822ms
+[21:59:04] [Server thread/INFO]: Anticheat on (server.toml [anticheat]; enabled = false turns it off)
+[21:59:04] [Server thread/INFO]: Chat filter on: 45 words (server.toml [chat_filter]; enabled = false turns it off)
+[21:59:04] [Server thread/INFO]: Done (2.208s)! For help, type "help"
+[21:59:04] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[21:59:04] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[21:59:04] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[21:59:21] [User Authenticator #1/INFO]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
+[21:59:21] [Server thread/INFO]: ExMarius[/62.231.94.8:16885] logged in with entity id 1 at (-255.5, 64.0, 112.5)
+[21:59:21] [Server thread/INFO]: System chat: ExMarius joined the game
