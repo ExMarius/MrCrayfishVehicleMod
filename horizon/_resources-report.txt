@@ -10,7 +10,7 @@ manifest=0 (279089 bytes)
 latest: {'release': '26.3', 'snapshot': '26.4-snapshot-8'}
 folosesc versiunea 26.3
 server.url = https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar
--rw-r--r-- 1 runner runner 60M Nov 13 21:43 server.jar
+-rw-r--r-- 1 runner runner 60M Nov 13 21:46 server.jar
 == reconstruiesc o instalare minima de Minecraft (ca sa aiba ce citi prepare)
 client jar ok
 biblioteci: 114
@@ -22,7 +22,7 @@ Imported client 26.3 from .minecraft/versions/26.3/26.3.jar
 client: 11383 classes, 98739 methods
 server: 7762 classes, 72269 methods
 Artifacts: /home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-cli/horizon-linux-x86_64/.local/minecraft/26.3
-Checked the game files in 1.0 s
+Checked the game files in 1.8 s
 Exporting block states (VanillaHeightmapOracle)
 Exporting model bindings (VanillaBlockStateBindingOracle)
 Running vanilla's data generator reports
@@ -31,48 +31,47 @@ Title panorama not imported: Missing asset object .minecraft/assets/objects/47/4
 Unifont glyphs not imported: Missing asset object .minecraft/assets/objects/40/402ded0eebd448033ef415e861a17513075f80e7. Play the pinned version once in your launcher.; run horizon-prepare fonts later
 Programmer Art and High Contrast not imported: Missing asset object .minecraft/assets/objects/3d/3d50584e5111fa2a9d28ab07a5383f9e577ab63e. Play the pinned version once in your launcher.; run horizon-prepare packs later
 Languages not imported: Missing asset object .minecraft/assets/objects/28/28e516cd27c26786eeebafaf35feffb324d55ded. Play the pinned version once in your launcher.; run horizon-prepare languages later
-Copied the client's assets and data in 0.8 s
+Copied the client's assets and data in 0.7 s
 Writing the world generator's bundle
 Wrote the world generator's bundle in 0.2 s
-Exported model bindings in 9.4 s
+Exported model bindings in 8.1 s
 Exporting entity models (VanillaEntityModelExporter)
+Exported block states in 8.4 s
+Exporting movement and attributes (VanillaBlockLandingOracle, VanillaEntityAttributeOracle)
 Exported entity models in 0.3 s
 Exporting mob data (VanillaMobDataExporter)
 Exported mob data in 0.3 s
 Exporting command registries (VanillaCommandParseOracle)
-Exported block states in 10.1 s
-Exporting movement and attributes (VanillaBlockLandingOracle, VanillaEntityAttributeOracle)
-Ran the data generator in 13.9 s
+Ran the data generator in 10.2 s
 Exporting the creative inventory (VanillaCreativeTabsExporter)
-Exported movement and attributes in 6.1 s
+Exported movement and attributes in 4.2 s
 Exporting damage and health (VanillaPlayerHealthOracle, VanillaDamageSourceOracle)
 Exported damage and health in 0.0 s
 Exporting collision shapes (VanillaCollisionOracle)
 Exported collision shapes in 0.0 s
 Exporting face visibility (VanillaFaceVisibilityOracle)
-Exported face visibility in 1.9 s
+Exported face visibility in 1.2 s
 Exporting gameplay facts (VanillaGameplayFactsExporter)
-Exported command registries in 10.1 s
+Exported command registries in 7.8 s
 Exported gameplay facts in 3.0 s
 Exporting entity types (VanillaEntityTypesExporter)
 Exported entity types in 0.0 s
 Exporting block behaviours (VanillaBlockBehaviourExporter)
-Exported block behaviours in 0.2 s
+Exported block behaviours in 0.1 s
 Exporting datafix tables (VanillaDataFixTablesExporter)
-Exported datafix tables in 0.3 s
+Exported the creative inventory in 6.9 s
+Exported datafix tables in 0.2 s
 Exporting block behavior (VanillaSimpleBlockOracle)
-Exported the creative inventory in 8.1 s
-Exported block behavior in 3.8 s
+Exported block behavior in 2.8 s
 Exporting structure blocks (VanillaStructureBlockExporter)
 Exported structure blocks in 0.1 s
 Prepared Horizon native-client resources: /home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-cli/horizon-linux-x86_64/.local/horizon-client/26.3
-Done in 26.9 s
+Done in 22.1 s
 prepare=0
 == caut registries.json
-./horizon-cli/horizon-linux-x86_64/.local/datagen/out/reports/registries.json
 ./horizon-cli/horizon-linux-x86_64/.local/horizon-client/26.3/registries.json
-./horizon-cli/horizon-linux-x86_64/.local/command-registries/registries.json
-folder pregatit: ./horizon-cli/horizon-linux-x86_64/.local/datagen/out/reports
--rw-r--r-- 1 runner runner 526K Nov 13 21:44 26.3.tar.gz
+226M	./horizon-cli/horizon-linux-x86_64/.local/horizon-client/26.3
+folder pregatit: ./horizon-cli/horizon-linux-x86_64/.local/horizon-client/26.3
+-rw-r--r-- 1 runner runner 13M Nov 13 21:47 26.3.tar.gz
 script exit=0
--rw-r--r-- 1 runner runner 526K Nov 13 21:44 26.3.tar.gz
+-rw-r--r-- 1 runner runner 13M Nov 13 21:47 26.3.tar.gz
