@@ -16,36 +16,37 @@ checkout exit=0
 apply exit=0
 
 ## build
-
-[1m[91merror[E0308][0m[1m: mismatched types[0m
-   [1m[94m--> [0mcrates/horizon-client/src/game/vehicle.rs:256:35
-    [1m[94m|[0m
-[1m[94m256[0m [1m[94m|[0m         car.pos[2] += car.speed * yaw.cos();
-    [1m[94m|[0m                                   [1m[91m^^^^^^^^^[0m [1m[91mexpected `f64`, found `f32`[0m
-
-[1m[91merror[E0277][0m[1m: cannot multiply `f64` by `f32`[0m
-   [1m[94m--> [0mcrates/horizon-client/src/game/vehicle.rs:256:33
-    [1m[94m|[0m
-[1m[94m256[0m [1m[94m|[0m         car.pos[2] += car.speed * yaw.cos();
-    [1m[94m|[0m                                 [1m[91m^[0m [1m[91mno implementation for `f64 * f32`[0m
-    [1m[94m|[0m
-    [1m[94m= [0m[1mhelp[0m: the trait `std::ops::Mul<f32>` is not implemented for `f64`
-    [1m[94m= [0m[1mhelp[0m: the following other types implement trait `std::ops::Mul<Rhs>`:
-              `&f64` implements `std::ops::Mul<&DMat2>`
-              `&f64` implements `std::ops::Mul<&DMat3>`
-              `&f64` implements `std::ops::Mul<&DMat4>`
-              `&f64` implements `std::ops::Mul<&DVec2>`
-              `&f64` implements `std::ops::Mul<&DVec3>`
-              `&f64` implements `std::ops::Mul<&DVec4>`
-              `&f64` implements `std::ops::Mul<DMat2>`
-              `&f64` implements `std::ops::Mul<DMat3>`
-            and 21 others
-
-[1mSome errors have detailed explanations: E0277, E0308.[0m
-[1mFor more information about an error, try `rustc --explain E0277`.[0m
-[1m[91merror[0m: could not compile `horizon-client` (lib) due to 4 previous errors
-[1m[33mwarning[0m: build failed, waiting for other jobs to finish...
-exit=101
+[1m[92m   Compiling[0m wgpu-naga-bridge v30.0.1
+[1m[92m   Compiling[0m wgpu-core-deps-windows-linux-android v30.0.1
+[1m[92m   Compiling[0m wgpu-core v30.0.1
+[1m[92m   Compiling[0m horizon-shader-api v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-shader-api)
+[1m[92m   Compiling[0m wgpu v30.0.1
+[1m[92m   Compiling[0m horizon-protocol v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-protocol)
+[1m[92m   Compiling[0m horizon-client-core v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-client-core)
+[1m[92m   Compiling[0m horizon-server-files v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-server-files)
+[1m[92m   Compiling[0m horizon-command v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-command)
+[1m[92m   Compiling[0m horizon-client-input v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-client-input)
+[1m[92m   Compiling[0m horizon-items v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-items)
+[1m[92m   Compiling[0m horizon-hdr v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-hdr)
+[1m[92m   Compiling[0m horizon-shaders v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-shaders)
+[1m[92m   Compiling[0m horizon-platform v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-platform)
+[1m[92m   Compiling[0m horizon-polytone v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-polytone)
+[1m[92m   Compiling[0m horizon-optifine v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-optifine)
+[1m[92m   Compiling[0m horizon-assets v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-assets)
+[1m[92m   Compiling[0m horizon-narrator v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-narrator)
+[1m[92m   Compiling[0m horizon-mods v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-mods)
+[1m[92m   Compiling[0m horizon-client-render v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-client-render)
+[1m[92m   Compiling[0m horizon-client v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-client)
+[1m[92m   Compiling[0m horizon-telemetry v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-telemetry)
+[1m[92m   Compiling[0m horizon-anticheat v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-anticheat)
+[1m[92m   Compiling[0m horizon-mcp v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-mcp)
+[1m[92m   Compiling[0m horizon-chat-filter v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-chat-filter)
+[1m[92m   Compiling[0m horizon-cosmetics v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-cosmetics)
+[1m[92m   Compiling[0m horizon-theme v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-theme)
+[1m[92m   Compiling[0m horizon-client-lib v0.1.0 (/home/runner/work/MrCrayfishVehicleMod/MrCrayfishVehicleMod/horizon-src/crates/horizon-client-lib)
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 11m 37s
+exit=0
 
 ## binar
-OK=0
+-rwxr-xr-x 1 runner runner 85M Nov 13 23:12 out/horizon-engine-mod
+OK=1
