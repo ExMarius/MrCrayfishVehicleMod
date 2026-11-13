@@ -1,0 +1,72 @@
+name: Horizon resource pack (masinile pe client vanilla)
+
+# Construieste resource pack-ul modului (modelele/textele/sunetele), il face acceptabil de
+# un client 26.3, il publica in release-ul `horizon-pack` si scrie pe panel adresa + sha1
+# in `horizon/resourcepack.txt`. Lansatorul le pune in server.toml la fiecare pornire, deci
+# clientul vanilla primeste pack-ul automat cand intra pe server.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/horizon-resourcepack.trigger"
+
+permissions:
+  contents: write
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construiesc pack-ul modului
+        run: |
+          set -euo pipefail
+          python3 tools/build_resource_pack.py --output build/vehicle-1.21.4.zip
+          ls -lh build/vehicle-1.21.4.zip
+          unzip -l build/vehicle-1.21.4.zip | grep -c "go_kart" || true
+
+      - name: Il pregatesc pentru 26.3 (format + minecart invizibil)
+        run: |
+          set -euo pipefail
+          python3 horizon/tools/patch_pack.py build/vehicle-1.21.4.zip build/vehicle-pack.zip | tee build/pack.log
+          SHA1=$(sed -n 's/^sha1=//p' build/pack.log)
+          echo "SHA1=$SHA1" >> "$GITHUB_ENV"
+          unzip -t build/vehicle-pack.zip > /dev/null
+          ls -lh build/vehicle-pack.zip
+          unzip -l build/vehicle-pack.zip | grep -E "minecart|pack.mcmeta"
+
+      - name: Public in release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=horizon-pack
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" build/vehicle-pack.zip --clobber
+          else
+            gh release create "$TAG" build/vehicle-pack.zip \
+              --title "Resource pack masini (Horizon / client vanilla)" \
+              --notes "Modelele modului, ambalate pentru clientul 26.3."
+          fi
+
+      - name: Scriu adresa si sha1 pe panel
+        run: |
+          set -euo pipefail
+          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/horizon-pack/vehicle-pack.zip"
+          printf 'url=%s\nsha1=%s\n' "$URL" "$SHA1" > build/resourcepack.txt
+          cat build/resourcepack.txt
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=25 \
+            -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
+          put build/resourcepack.txt horizon/resourcepack.txt
+          chmod 644 horizon/resourcepack.txt
+          ls -l horizon/resourcepack.txt
+          BATCH

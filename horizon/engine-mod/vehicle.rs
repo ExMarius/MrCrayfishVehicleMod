@@ -4,7 +4,8 @@
 //! lipește direct în arborele sursă Horizon (`apply.py`) și rulează în interiorul engine-ului,
 //! cu acces la lume, entități, input-ul jucătorilor și comenzile serverului.
 //!
-//! Stadiul curent: **M1** — o mașină care există, se conduce și se părăsește.
+//! Stadiul curent: **M2** — go-kartul: schelet care se conduce + caroserie și roți vizibile
+//! (entități `item_display` cu modelele din resource pack-ul servit de server).
 //!
 //! Cum e făcută, și de ce așa:
 //!
@@ -31,6 +32,19 @@ use std::sync::Mutex;
 
 /// Tipul de entitate care ține locul mașinii (invizibilă din NBT).
 const CARRIER: &str = "minecraft:minecart";
+
+/// Materialul pe care stau modelele din pack: clientul renderizează `item_model` pe el.
+const MODEL_MATERIAL: &str = "minecraft:leather_horse_armor";
+
+/// Piesele go-kartului: (model din pack, poziție locală față de centrul mașinii, scale).
+/// Pozițiile vin din `LandVehicleSpec.GO_KART` (axa X = stânga/dreapta, Z = înainte).
+const GO_KART_PARTS: [(&str, [f64; 3], f32); 5] = [
+    ("vehicle:go_kart_body", [0.0, 0.0, 0.0], 1.0),
+    ("vehicle:standard_wheel", [-0.4375, 0.2, 0.547], 0.8),
+    ("vehicle:standard_wheel", [0.4375, 0.2, 0.547], 0.8),
+    ("vehicle:standard_wheel", [-0.4375, 0.2, -0.594], 0.8625),
+    ("vehicle:standard_wheel", [0.4375, 0.2, -0.594], 0.8625),
+];
 
 /// Biții din pachetul `PlayerInput` (vanilla 26.3).
 const IN_FORWARD: i32 = 1;
@@ -62,6 +76,8 @@ struct Car {
     speed: f64,
     /// Ultima poziție a șoferului, ca să vedem dacă s-a dat jos singur.
     mounted: bool,
+    /// Piesele vizuale: (id entitate, poziție locală).
+    parts: Vec<(u32, [f64; 3])>,
 }
 
 static CARS: Mutex<Vec<Car>> = Mutex::new(Vec::new());
@@ -100,6 +116,54 @@ fn describe(flags: i32) -> String {
 /// Comanda `/car`: pune mașina jos, sub jucător, și îl așază la volan.
 pub(super) fn register_commands(_game: &mut Game<'_>, commands: &mut Vec<NativeCommand>) {
     commands.push(NativeCommand::new("car"));
+}
+
+/// Pune o piesă de caroserie: un `item_display` care ține un item al cărui model vine din
+/// resource pack (`minecraft:item_model`). Corecția de 180° e cea din plugin: un item display
+/// desenează modelul cu +Z spre ecran, invers față de o entitate.
+fn spawn_part(
+    game: &mut Game<'_>,
+    dimension: &str,
+    model: &str,
+    pos: [f64; 3],
+    scale: f32,
+) -> Option<u32> {
+    let mut item = Compound::new();
+    item.insert(
+        "id".into(),
+        Tag::String(MODEL_MATERIAL.into()),
+    );
+    item.insert("count".into(), Tag::Int(1));
+    let mut components = Compound::new();
+    components.insert("minecraft:item_model".into(), Tag::String(model.into()));
+    // alb explicit: fără el, tint-ul `dye` cu default -1 iese transparent pe client
+    components.insert("minecraft:dyed_color".into(), Tag::Int(0xF9FFFE));
+    item.insert("components".into(), Tag::Compound(components));
+
+    let mut transformation = Compound::new();
+    transformation.insert(
+        "right_rotation".into(),
+        Tag::List(vec![
+            Tag::Float(0.0f32.to_bits()),
+            Tag::Float(1.0f32.to_bits()),
+            Tag::Float(0.0f32.to_bits()),
+            Tag::Float(0.0f32.to_bits()),
+        ]),
+    );
+    transformation.insert(
+        "scale".into(),
+        Tag::List(vec![
+            Tag::Float(scale.to_bits()),
+            Tag::Float(scale.to_bits()),
+            Tag::Float(scale.to_bits()),
+        ]),
+    );
+
+    let mut nbt = Compound::new();
+    nbt.insert("item".into(), Tag::Compound(item));
+    nbt.insert("transformation".into(), Tag::Compound(transformation));
+
+    game.native_summon(dimension, "minecraft:item_display", pos, nbt)
 }
 
 /// `/car` — pornește o mașină (sau spune unde e cea existentă).
@@ -155,6 +219,27 @@ pub(super) fn on_perform_command(
         return;
     }
 
+    // caroseria și roțile
+    let mut parts: Vec<(u32, [f64; 3])> = Vec::new();
+    for (model, local, scale) in GO_KART_PARTS {
+        let world = [
+            pos[0] + local[0],
+            pos[1] + local[1],
+            pos[2] + local[2],
+        ];
+        match spawn_part(game, &player.dimension, model, world, scale) {
+            Some(id) => parts.push((id, local)),
+            None => super::dedicated::log(
+                "WARN",
+                &format!("[vehicle-mod] piesa {model} nu a putut fi pusa"),
+            ),
+        }
+    }
+    super::dedicated::log(
+        "INFO",
+        &format!("[vehicle-mod] {} piese vizuale pentru go-kart", parts.len()),
+    );
+
     lock_cars().push(Car {
         dimension: player.dimension.clone(),
         cart,
@@ -164,6 +249,7 @@ pub(super) fn on_perform_command(
         yaw: player.yaw,
         speed: 0.0,
         mounted: true,
+        parts,
     });
     super::dedicated::log(
         "INFO",
@@ -207,6 +293,9 @@ pub(super) fn on_server_tick(
         if car.mounted && (flags & IN_SNEAK != 0) {
             game.native_dismount(car.driver_entity);
             game.native_remove_entity(&car.dimension, car.cart);
+            for (id, _) in &car.parts {
+                game.native_remove_entity(&car.dimension, *id);
+            }
             super::dedicated::log("INFO", "[vehicle-mod] soferul a coborat");
             gone.push(index);
             continue;
@@ -256,6 +345,17 @@ pub(super) fn on_server_tick(
         car.pos[2] += car.speed * yaw.cos();
 
         game.native_teleport_vehicle(&car.dimension, car.cart, car.pos);
+
+        // piesele urmează mașina: poziția locală rotită cu yaw-ul, apoi teleportate
+        let (sin, cos) = (yaw.sin(), yaw.cos());
+        for (id, local) in &car.parts {
+            let world = [
+                car.pos[0] + local[0] * cos - local[2] * sin,
+                car.pos[1] + local[1],
+                car.pos[2] + local[0] * sin + local[2] * cos,
+            ];
+            game.native_move_entity(&car.dimension, *id, world, car.yaw, 0.0);
+        }
     }
 
     for index in gone.into_iter().rev() {

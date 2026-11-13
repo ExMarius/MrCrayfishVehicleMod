@@ -93,6 +93,37 @@ public final class Launcher {
             }
         }
 
+        // Resource pack-ul masinilor: adresa si sha1 sunt scrise pe server de workflow-ul
+        // horizon-resourcepack.yml, iar aici ajung in [properties] din server.toml, ca
+        // serverul sa le ceara clientilor vanilla la intrare.
+        Path packInfo = base.resolve("horizon").resolve("resourcepack.txt");
+        if (Files.exists(packInfo) && Files.exists(toml)) {
+            try {
+                String url = null;
+                String sha1 = "";
+                for (String line : Files.readAllLines(packInfo)) {
+                    if (line.startsWith("url=")) {
+                        url = line.substring(4).trim();
+                    } else if (line.startsWith("sha1=")) {
+                        sha1 = line.substring(5).trim();
+                    }
+                }
+                if (url != null && !url.isBlank()) {
+                    String text = Files.readString(toml);
+                    String updated = setProperties(text, List.of(
+                            "resource-pack = \"" + url + "\"",
+                            "resource-pack-sha1 = \"" + sha1 + "\"",
+                            "require-resource-pack = true"));
+                    if (!updated.equals(text)) {
+                        Files.writeString(toml, updated);
+                        System.out.println("[horizon-launch] resource pack pus in server.toml");
+                    }
+                }
+            } catch (Exception e) {
+                System.out.println("[horizon-launch] nu am putut pune resource pack-ul: " + e);
+            }
+        }
+
         // Engine propriu, cu modul nostru de masini compilat in el (horizon/engine-mod).
         // Il folosim doar daca binarul chiar e ce trebuie: un engine stricat ar lasa serverul jos.
         Path modded = base.resolve("horizon").resolve("horizon-engine-mod");
@@ -189,6 +220,35 @@ public final class Launcher {
         input.start();
 
         return process.waitFor();
+    }
+
+    /**
+     * Pune liniile date in secțiunea [properties] din server.toml, scoțându-le pe cele vechi
+     * cu aceleași chei. Dacă secțiunea lipsește, o adaugă la final.
+     */
+    private static String setProperties(String text, List<String> assignments) {
+        java.util.Set<String> keys = new java.util.HashSet<>();
+        for (String assignment : assignments) {
+            keys.add(assignment.substring(0, assignment.indexOf('=')).trim());
+        }
+        List<String> lines = new ArrayList<>(List.of(text.split("\n", -1)));
+        lines.removeIf(line -> {
+            int eq = line.indexOf('=');
+            return eq > 0 && keys.contains(line.substring(0, eq).trim());
+        });
+        int header = -1;
+        for (int i = 0; i < lines.size(); i++) {
+            if (lines.get(i).trim().equals("[properties]")) {
+                header = i;
+                break;
+            }
+        }
+        if (header < 0) {
+            lines.add("[properties]");
+            header = lines.size() - 1;
+        }
+        lines.addAll(header + 1, assignments);
+        return String.join("\n", lines);
     }
 
     /** Portul: din mediu (panelul), altfel din server.properties, altfel 25565. */
