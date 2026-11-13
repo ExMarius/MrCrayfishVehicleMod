@@ -38,8 +38,13 @@ public final class Launcher {
         Path toml = base.resolve("server.toml");
         if (!Files.exists(toml)) {
             System.out.println("[horizon-launch] primul start: scriu server.toml (port " + port + ")");
-            List<String> initArgs = new ArrayList<>(List.of("init", "--yes", "--port", port));
-            run(base, exe.toString(), initArgs.toArray(new String[0]));
+            List<String> initArgs = new ArrayList<>();
+            initArgs.add(exe.toString());
+            initArgs.add("init");
+            initArgs.add("--yes");
+            initArgs.add("--port");
+            initArgs.add(port);
+            run(base, initArgs.toArray(new String[0]));
         }
 
         System.out.println("[horizon-launch] pornesc horizon-server run");
