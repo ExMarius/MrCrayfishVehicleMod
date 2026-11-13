@@ -94,23 +94,47 @@ public final class Launcher {
         }
 
         // Engine propriu, cu modul nostru de masini compilat in el (horizon/engine-mod).
-        // Il folosim doar daca binarul chiar porneste: un engine stricat ar lasa serverul jos.
+        // Il folosim doar daca binarul chiar e ce trebuie: un engine stricat ar lasa serverul jos.
         Path modded = base.resolve("horizon").resolve("horizon-engine-mod");
+        boolean moddedUsed = false;
         if (Files.exists(modded)) {
             if (engineLooksRunnable(modded)) {
                 System.out.println("[horizon-launch] engine cu modul de masini: " + modded);
                 run(base, exe.toString(), "config", "set", "engine.path=horizon/horizon-engine-mod");
+                moddedUsed = true;
             } else {
-                System.out.println("[horizon-launch] ATENTIE: engine-ul cu modul nu raspunde, "
+                System.out.println("[horizon-launch] ATENTIE: engine-ul cu modul nu e valid, "
                         + "raman pe engine-ul normal");
             }
         } else {
-            // fara fisier nu trebuie sa rămână un engine.path care ar impiedica pornirea
+            // fara fisier nu trebuie sa ramana un engine.path care ar impiedica pornirea
             run(base, exe.toString(), "config", "set", "engine.path=");
         }
 
         System.out.println("[horizon-launch] arhitectura JVM: " + System.getProperty("os.arch")
                 + ", folder: " + base);
+
+        Path log = dir.resolve("console.log");
+        long started = System.nanoTime();
+        int code = startServer(base, exe, log);
+        long seconds = (System.nanoTime() - started) / 1_000_000_000L;
+        System.out.println("[horizon-launch] horizon-server s-a oprit cu codul " + code
+                + " dupa " + seconds + "s");
+
+        // Plasa de siguranta: daca engine-ul nostru moare imediat, revenim la cel normal si mai
+        // pornim o data, ca serverul sa nu ramana jos din cauza unui build prost.
+        if (moddedUsed && code != 0 && seconds < 120) {
+            System.out.println("[horizon-launch] engine-ul cu modul a picat repede; "
+                    + "revin la engine-ul normal si repornesc");
+            run(base, exe.toString(), "config", "set", "engine.path=");
+            code = startServer(base, exe, log);
+            System.out.println("[horizon-launch] a doua pornire s-a terminat cu codul " + code);
+        }
+        System.exit(code);
+    }
+
+    /** Porneste `horizon-server run`, copiaza iesirea in console.log si trimite comenzile. */
+    private static int startServer(Path base, Path exe, Path log) throws Exception {
         System.out.println("[horizon-launch] pornesc horizon-server run");
         ProcessBuilder builder = new ProcessBuilder(exe.toString(), "run");
         builder.directory(base.toFile());
@@ -128,7 +152,6 @@ public final class Launcher {
 
         Process process = builder.start();
         Runtime.getRuntime().addShutdownHook(new Thread(process::destroy));
-        Path log = dir.resolve("console.log");
 
         Thread output = new Thread(() -> {
             try (BufferedReader reader = new BufferedReader(
@@ -165,9 +188,7 @@ public final class Launcher {
         input.setDaemon(true);
         input.start();
 
-        int code = process.waitFor();
-        System.out.println("[horizon-launch] horizon-server s-a oprit cu codul " + code);
-        System.exit(code);
+        return process.waitFor();
     }
 
     /** Portul: din mediu (panelul), altfel din server.properties, altfel 25565. */
