@@ -71,17 +71,20 @@ public final class Launcher {
             run(base, exe.toString(), "import-resources", base.resolve("26.3").toString());
         }
 
-        String port = System.getenv().getOrDefault("SERVER_PORT", "25565");
+        String port = detectPort(base);
+        System.out.println("[horizon-launch] port: " + port);
         Path toml = base.resolve("server.toml");
         if (!Files.exists(toml)) {
-            System.out.println("[horizon-launch] primul start: scriu server.toml (port " + port + ")");
-            List<String> initArgs = new ArrayList<>();
-            initArgs.add(exe.toString());
-            initArgs.add("init");
-            initArgs.add("--yes");
-            initArgs.add("--port");
-            initArgs.add(port);
-            run(base, initArgs.toArray(new String[0]));
+            System.out.println("[horizon-launch] primul start: scriu server.toml");
+            run(base, exe.toString(), "init", "--yes", "--port", port);
+        }
+        if (Files.exists(toml)) {
+            String text = Files.readString(toml);
+            String fixed = text.replaceAll("(?m)^port\\s*=.*$", "port = " + port);
+            if (!fixed.equals(text)) {
+                Files.writeString(toml, fixed);
+                System.out.println("[horizon-launch] am pus portul " + port + " in server.toml");
+            }
         }
 
         System.out.println("[horizon-launch] arhitectura JVM: " + System.getProperty("os.arch")
@@ -119,6 +122,26 @@ public final class Launcher {
         int code = process.waitFor();
         System.out.println("[horizon-launch] horizon-server s-a oprit cu codul " + code);
         System.exit(code);
+    }
+
+    /** Portul: din mediu (panelul), altfel din server.properties, altfel 25565. */
+    private static String detectPort(Path base) {
+        String fromEnv = System.getenv("SERVER_PORT");
+        if (fromEnv != null && !fromEnv.isBlank()) {
+            return fromEnv.trim();
+        }
+        Path properties = base.resolve("server.properties");
+        if (Files.exists(properties)) {
+            try {
+                for (String line : Files.readAllLines(properties)) {
+                    if (line.startsWith("server-port=")) {
+                        return line.substring("server-port=".length()).trim();
+                    }
+                }
+            } catch (Exception ignored) {
+            }
+        }
+        return "25565";
     }
 
     private static void run(Path base, String... command) throws Exception {
