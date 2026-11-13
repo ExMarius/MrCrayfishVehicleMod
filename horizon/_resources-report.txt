@@ -1,0 +1,20 @@
+== java
+openjdk version "25.0.5" 2026-10-20 LTS
+OpenJDK Runtime Environment Temurin-25.0.5+8 (build 25.0.5+8-LTS)
+OpenJDK 64-Bit Server VM Temurin-25.0.5+8 (build 25.0.5+8-LTS, mixed mode, sharing)
+== descarc Horizon CLI
+download=0 (55636015 bytes)
+horizon-linux-x86_64
+== descarc server.jar 26.3 de la Mojang
+manifest=0 (279089 bytes)
+latest: {'release': '26.3', 'snapshot': '26.4-snapshot-8'}
+folosesc versiunea 26.3
+server.url = https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar
+-rw-r--r-- 1 runner runner 60M Nov 13 21:38 server.jar
+== horizon-prepare
+chmod: cannot access 'horizon-cli/horizon-prepare': No such file or directory
+horizon/tools/fetch_and_prepare.sh: line 38: ./horizon-cli/horizon-prepare: No such file or directory
+prepare=127
+== caut registries.json
+folder pregatit: <niciunul>
+script exit=0
