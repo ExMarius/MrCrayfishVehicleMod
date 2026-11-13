@@ -1,0 +1,49 @@
+name: Horizon deploy (binare + lansator pe panel)
+
+# Ia arhiva ARM64 din release-ul "horizon-arm64" si jar-ul lansator, le urca pe
+# server in horizon/ prin SFTP, apoi cere restartearea serviciului.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/horizon-deploy.trigger"
+
+permissions:
+  contents: read
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ia arhiva si jar-ul
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          gh release download horizon-arm64 --pattern 'horizon-server-linux-aarch64.tar.gz' --dir out --clobber
+          gh release download horizon-arm64 --pattern 'horizon-launch.jar' --dir out --clobber || true
+          ls -lh out
+
+      - name: Cheia SFTP
+        run: install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+
+      - name: Urc in horizon/
+        run: |
+          set -euo pipefail
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
+            -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
+          -mkdir horizon
+          put out/horizon-server-linux-aarch64.tar.gz horizon/horizon-server-linux-aarch64.tar.gz
+          put out/horizon-launch.jar horizon-launch.jar
+          ls -l horizon
+          ls -l horizon-launch.jar
+          BATCH
