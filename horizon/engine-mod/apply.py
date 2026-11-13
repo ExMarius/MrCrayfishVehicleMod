@@ -27,6 +27,16 @@ INPUT_CALL = "        super::vehicle::on_player_input(self, player, name, flags)
 TICK_ANCHOR = "        mod_api::dispatch_server_tick(self, mod_api::mods(), context, phase);\n"
 TICK_CALL = "        super::vehicle::on_server_tick(self, context, phase);\n"
 
+# Ancora 4: comenzile modului (inregistrare + rulare).
+REGISTER_ANCHOR = (
+    "        mod_api::dispatch_register_commands(self, mod_api::mods(), commands);\n"
+)
+REGISTER_CALL = "        super::vehicle::register_commands(self, commands);\n"
+PERFORM_ANCHOR = (
+    "        mod_api::dispatch_perform_command(self, mod_api::mods(), player, command, ran);\n"
+)
+PERFORM_CALL = "        super::vehicle::on_perform_command(self, player, command, ran);\n"
+
 
 def patch_once(text: str, anchor: str, call: str, where: str) -> str:
     if call in text:
@@ -59,6 +69,8 @@ def main() -> int:
     hooks_text = hooks.read_text(encoding="utf-8")
     hooks_text = patch_once(hooks_text, INPUT_ANCHOR, INPUT_CALL, str(hooks))
     hooks_text = patch_once(hooks_text, TICK_ANCHOR, TICK_CALL, str(hooks))
+    hooks_text = patch_once(hooks_text, REGISTER_ANCHOR, REGISTER_CALL, str(hooks))
+    hooks_text = patch_once(hooks_text, PERFORM_ANCHOR, PERFORM_CALL, str(hooks))
     hooks.write_text(hooks_text, encoding="utf-8")
 
     print("[apply] modul vehicle a fost lipit in engine")
