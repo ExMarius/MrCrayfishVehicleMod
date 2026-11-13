@@ -23,21 +23,21 @@ jobs:
       - name: Clonez sursa Horizon
         run: |
           set +e
-          git clone --depth 1 --single-branch https://github.com/horizon-rust/horizon.git horizon > clone.log 2>&1
+          git clone --depth 1 --single-branch https://github.com/horizon-rust/horizon.git horizon-src > clone.log 2>&1
           code=$?
           echo "clone exit=$code" >> clone.log
           tail -5 clone.log
-          du -sh horizon 2>/dev/null >> clone.log
+          du -sh horizon-src 2>/dev/null >> clone.log
           exit $code
 
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: horizon
+          workspaces: horizon-src
 
       - name: Build (engine fara sunet + supervisor)
-        working-directory: horizon
+        working-directory: horizon-src
         run: |
           set +e
           ( cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client ) > ../build-engine.log 2>&1
@@ -52,9 +52,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p out
-          cp horizon/target/release/horizon-client out/horizon-engine
-          cp horizon/target/release/horizon-server out/horizon-server
-          if [ -f horizon/target/release/horizon-prepare ]; then cp horizon/target/release/horizon-prepare out/; fi
+          cp horizon-src/target/release/horizon-client out/horizon-engine
+          cp horizon-src/target/release/horizon-server out/horizon-server
+          if [ -f horizon-src/target/release/horizon-prepare ]; then cp horizon-src/target/release/horizon-prepare out/; fi
           file out/horizon-server
           tar czf horizon-server-linux-aarch64.tar.gz -C out .
           ls -lh horizon-server-linux-aarch64.tar.gz
@@ -72,7 +72,7 @@ jobs:
             echo; echo '## engine'; tail -40 build-engine.log 2>/dev/null
             echo; echo '## server'; tail -40 build-server.log 2>/dev/null
             echo; echo '## prepare'; tail -10 build-prepare.log 2>/dev/null
-            echo; echo '## fisiere'; ls -lh horizon/target/release/horizon-server horizon/target/release/horizon-client 2>/dev/null
+            echo; echo '## fisiere'; ls -lh horizon-src/target/release/horizon-server horizon-src/target/release/horizon-client 2>/dev/null
             echo; echo '## pachet'; ls -lh horizon-server-linux-aarch64.tar.gz 2>/dev/null
           } > horizon/_build-report.txt
           git config user.name arena-agent
