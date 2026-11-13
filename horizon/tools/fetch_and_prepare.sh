@@ -33,6 +33,43 @@ urllib.request.urlretrieve(url, 'server.jar')
 PY
 ls -lh server.jar || { echo "server.jar NU a fost descarcat"; exit 1; }
 
+echo "== reconstruiesc o instalare minima de Minecraft (ca sa aiba ce citi prepare)"
+python3 << 'PY'
+import json, os, urllib.request
+meta = json.load(open('manifest.json'))
+mine = next(v for v in meta['versions'] if v['id'] == '26.3')
+data = json.load(urllib.request.urlopen(mine['url']))
+root = os.path.abspath('.minecraft')
+verdir = os.path.join(root, 'versions', '26.3')
+os.makedirs(verdir, exist_ok=True)
+json.dump(data, open(os.path.join(verdir, '26.3.json'), 'w'))
+def fetch(url, path):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    if os.path.exists(path) and os.path.getsize(path) > 0:
+        return
+    try:
+        urllib.request.urlretrieve(url, path)
+    except Exception as error:
+        print('  esec', url, error)
+fetch(data['downloads']['client']['url'], os.path.join(verdir, '26.3.jar'))
+print('client jar ok')
+count = 0
+for lib in data.get('libraries', []):
+    art = lib.get('downloads', {}).get('artifact')
+    if not art:
+        continue
+    target = os.path.join(root, 'libraries', art['path'])
+    fetch(art['url'], target)
+    count += 1
+print('biblioteci:', count)
+index = data.get('assetIndex')
+os.makedirs(os.path.join(root, 'assets', 'indexes'), exist_ok=True)
+if index:
+    fetch(index['url'], os.path.join(root, 'assets', 'indexes', index['id'] + '.json'))
+    print('asset index:', index['id'])
+PY
+du -sh .minecraft 2>/dev/null
+
 echo "== horizon-prepare"
 PREPARE=$(find horizon-cli -maxdepth 3 -name horizon-prepare -type f | head -1)
 echo "binar: ${PREPARE:-<lipsa>}"
@@ -42,7 +79,7 @@ if [ -z "${PREPARE}" ]; then
   exit 1
 fi
 chmod +x "$PREPARE"
-"$PREPARE" --prepare --server-jar server.jar
+"$PREPARE" --prepare --server-jar server.jar --minecraft-dir .minecraft
 echo "prepare=$?"
 
 echo "== caut registries.json"
@@ -53,4 +90,7 @@ echo "folder pregatit: ${DIR:-<niciunul>}"
 if [ -n "${DIR}" ]; then
   tar czf 26.3.tar.gz -C "$(dirname "$DIR")" "$(basename "$DIR")"
   ls -lh 26.3.tar.gz
+else
+  echo "ESEC: nu s-a produs folderul pregatit"
+  exit 1
 fi
