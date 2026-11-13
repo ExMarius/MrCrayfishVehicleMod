@@ -1,0 +1,109 @@
+name: Horizon resources (pregatesc datele jocului si le urc pe panel)
+
+# Nu are nevoie de PC-ul utilizatorului: ia server.jar oficial 26.3 de la Mojang,
+# ruleaza horizon-prepare, urca folderul 26.3 pe server prin SFTP.
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/horizon-res.trigger"
+
+permissions:
+  contents: write
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  prepare:
+    name: Prepare + upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Descarc Horizon si server.jar
+        run: |
+          set +e
+          {
+            echo "## java"; java -version 2>&1
+            curl -fsSL -o h.tar.gz https://github.com/horizon-rust/horizon/releases/download/nightly/horizon-linux-x86_64.tar.gz
+            echo "horizon dl=$?"; ls -lh h.tar.gz
+            mkdir -p horizon-cli && tar xzf h.tar.gz -C horizon-cli
+            ls horizon-cli | head -20
+            curl -fsSL -o manifest.json https://piston-meta.mojang.com/mc/game/version_manifest_v2.json
+            echo "manifest dl=$?"; head -c 200 manifest.json; echo
+            python3 - <<'PY'
+import json, urllib.request, sys
+m = json.load(open('manifest.json'))
+vers = {v['id']: v for v in m['versions']}
+print('latest:', m.get('latest'))
+pick = vers.get('26.3')
+if not pick:
+    cand = [v for v in m['versions'] if v['id'].startswith('26.')]
+    print('26.x disponibile:', [v['id'] for v in cand][:10])
+    pick = cand[0] if cand else m['versions'][0]
+print('folosesc', pick['id'])
+data = json.load(urllib.request.urlopen(pick['url']))
+url = data['downloads']['server']['url']
+print('server.url', url)
+urllib.request.urlretrieve(url, 'server.jar')
+PY
+            ls -lh server.jar
+          } > prepare.log 2>&1
+          tail -20 prepare.log
+
+      - name: Rulez horizon-prepare
+        run: |
+          set +e
+          chmod +x horizon-cli/horizon-prepare
+          ./horizon-cli/horizon-prepare --prepare --server-jar server.jar >> prepare.log 2>&1
+          echo "prepare exit=$?" >> prepare.log
+          tail -30 prepare.log
+          echo "--- unde e registries.json:" >> prepare.log
+          find . -name registries.json -not -path "./horizon-src/*" 2>/dev/null | head -5 >> prepare.log
+
+      - name: Pachetez 26.3
+        run: |
+          set +e
+          DIR=$(find . -name registries.json -not -path "./horizon-src/*" 2>/dev/null | head -1 | xargs -r dirname)
+          echo "dir=$DIR" >> prepare.log
+          if [ -n "$DIR" ]; then
+            tar czf 26.3.tar.gz -C "$(dirname "$DIR")" "$(basename "$DIR")"
+            ls -lh 26.3.tar.gz >> prepare.log
+          fi
+          tail -5 prepare.log
+
+      - name: Urc pe server prin SFTP
+        if: hashFiles('26.3.tar.gz') != ''
+        run: |
+          set +e
+          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 \
+            -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
+          put 26.3.tar.gz 26.3.tar.gz
+          ls -l 26.3.tar.gz
+          BATCH
+
+      - name: Raport in repo
+        if: always()
+        run: |
+          set +e
+          mkdir -p horizon
+          cp prepare.log horizon/_resources-report.txt 2>/dev/null || echo "fara log" > horizon/_resources-report.txt
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_resources-report.txt
+          git commit -m "raport prepare [skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1
+            git push origin "HEAD:$GITHUB_REF_NAME" && break
+            sleep 5
+          done
