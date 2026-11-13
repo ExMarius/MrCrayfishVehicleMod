@@ -76,11 +76,12 @@ public final class Launcher {
         Path toml = base.resolve("server.toml");
         if (!Files.exists(toml)) {
             System.out.println("[horizon-launch] primul start: scriu server.toml");
-            run(base, exe.toString(), "init", "--yes", "--port", port);
+            run(base, exe.toString(), "init", "--yes", "--no-whitelist", "--port", port);
         }
         if (Files.exists(toml)) {
             String text = Files.readString(toml);
-            String fixed = text.replaceAll("(?m)^port\\s*=.*$", "port = " + port);
+            String fixed = text.replaceAll("(?m)^port\\s*=.*$", "port = " + port)
+                    .replaceAll("(?m)^whitelist\\s*=.*$", "whitelist = false");
             if (!fixed.equals(text)) {
                 Files.writeString(toml, fixed);
                 System.out.println("[horizon-launch] am pus portul " + port + " in server.toml");
