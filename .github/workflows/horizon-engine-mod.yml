@@ -1,0 +1,135 @@
+name: Horizon engine cu modul de masini (ARM64)
+
+# Horizon nu are plugin-uri runtime: un mod se compileaza in engine. Noi compilam oricum
+# engine-ul pentru ARM64, deci lipim modulul nostru (horizon/engine-mod) in sursa si
+# producem un `horizon-engine` propriu. Lansatorul il foloseste doar daca trece de
+# `--version` (daca e stricat, serverul ramane pe engine-ul normal).
+#
+# Rezultat: release `horizon-engine-mod` + fisierul `horizon/horizon-engine-mod` pe panel.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/horizon-engine-mod.trigger"
+
+permissions:
+  contents: write
+
+env:
+  # Revisiunea Horizon pe care e lipit modulul (build reproductibil).
+  HORIZON_REV: 02fd15886bc700275247afa3e18ec9125e04fb34
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  build:
+    name: Compilez engine-ul cu modul lipit
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clonez sursa Horizon (revisiune fixa)
+        run: |
+          set +e
+          git init -q horizon-src
+          cd horizon-src
+          git remote add origin https://github.com/horizon-rust/horizon.git
+          git fetch --depth 1 origin "$HORIZON_REV" > ../clone.log 2>&1
+          echo "fetch exit=$?" >> ../clone.log
+          git checkout -q FETCH_HEAD >> ../clone.log 2>&1
+          echo "checkout exit=$?" >> ../clone.log
+          git rev-parse HEAD >> ../clone.log
+          tail -5 ../clone.log
+
+      - name: Lipesc modulul in sursa
+        run: |
+          set +e
+          python3 horizon/engine-mod/apply.py horizon-src > apply.log 2>&1
+          echo "apply exit=$?" >> apply.log
+          cat apply.log
+          grep -n "vehicle" horizon-src/crates/horizon-client/src/game.rs | tail -3
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: horizon-src
+
+      - name: Build engine (fara sunet)
+        working-directory: horizon-src
+        run: |
+          set +e
+          cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client > ../build.log 2>&1
+          echo "exit=$?" >> ../build.log
+          tail -25 ../build.log
+
+      - name: Pachetez
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          if [ -f horizon-src/target/release/horizon-client ]; then
+            cp horizon-src/target/release/horizon-client out/horizon-engine-mod
+            strip out/horizon-engine-mod 2>/dev/null || true
+            chmod +x out/horizon-engine-mod
+            file out/horizon-engine-mod
+            ls -lh out/horizon-engine-mod
+            echo "OK=1" > out/status
+          else
+            echo "OK=0" > out/status
+          fi
+          cat out/status
+
+      - name: Urc pe panel (doar daca build-ul a reusit)
+        if: always()
+        run: |
+          set -euo pipefail
+          if [ ! -f out/horizon-engine-mod ]; then echo "build fara binar, sar peste upload"; exit 0; fi
+          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=25 \
+            -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
+          put out/horizon-engine-mod horizon/horizon-engine-mod
+          chmod 755 horizon/horizon-engine-mod
+          ls -l horizon/horizon-engine-mod
+          BATCH
+
+      - name: Raport in repo
+        if: always()
+        run: |
+          set +e
+          mkdir -p horizon
+          {
+            echo "# engine cu modul de masini — ultima incercare"
+            echo
+            echo "revisiune: $HORIZON_REV"
+            echo
+            echo '## clone'; tail -8 clone.log 2>/dev/null
+            echo; echo '## apply'; tail -15 apply.log 2>/dev/null
+            echo; echo '## build'; tail -30 build.log 2>/dev/null
+            echo; echo '## binar'; ls -lh out/horizon-engine-mod 2>/dev/null; cat out/status 2>/dev/null
+          } > horizon/_engine-mod-build.md
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_engine-mod-build.md
+          git commit -m "raport engine mod masini [skip ci]" >/dev/null 2>&1
+          git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+          git push origin "HEAD:$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+
+      - name: Public in release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ ! -f out/horizon-engine-mod ]; then echo "nimic de publicat"; exit 0; fi
+          TAG=horizon-engine-mod
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/horizon-engine-mod --clobber
+          else
+            gh release create "$TAG" out/horizon-engine-mod \
+              --title "Horizon engine cu modul de masini (ARM64)" \
+              --notes "Engine compilat din horizon-rust/horizon la $HORIZON_REV, cu horizon/engine-mod lipit."
+          fi

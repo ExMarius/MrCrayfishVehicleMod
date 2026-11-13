@@ -93,6 +93,22 @@ public final class Launcher {
             }
         }
 
+        // Engine propriu, cu modul nostru de masini compilat in el (horizon/engine-mod).
+        // Il folosim doar daca binarul chiar porneste: un engine stricat ar lasa serverul jos.
+        Path modded = base.resolve("horizon").resolve("horizon-engine-mod");
+        if (Files.exists(modded)) {
+            if (engineAnswers(base, modded)) {
+                System.out.println("[horizon-launch] engine cu modul de masini: " + modded);
+                run(base, exe.toString(), "config", "set", "engine.path=horizon/horizon-engine-mod");
+            } else {
+                System.out.println("[horizon-launch] ATENTIE: engine-ul cu modul nu raspunde, "
+                        + "raman pe engine-ul normal");
+            }
+        } else {
+            // fara fisier nu trebuie sa rămână un engine.path care ar impiedica pornirea
+            run(base, exe.toString(), "config", "set", "engine.path=");
+        }
+
         System.out.println("[horizon-launch] arhitectura JVM: " + System.getProperty("os.arch")
                 + ", folder: " + base);
         System.out.println("[horizon-launch] pornesc horizon-server run");
@@ -172,6 +188,28 @@ public final class Launcher {
             }
         }
         return "25565";
+    }
+
+    /** Rulează `engine --version` cu limită de timp: un engine stricat nu trebuie folosit. */
+    private static boolean engineAnswers(Path base, Path engine) {
+        try {
+            if (!engine.toFile().canExecute()) {
+                engine.toFile().setExecutable(true, false);
+            }
+            Process process = new ProcessBuilder(engine.toString(), "--version")
+                    .directory(base.toFile())
+                    .redirectErrorStream(true)
+                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                    .start();
+            if (!process.waitFor(25, java.util.concurrent.TimeUnit.SECONDS)) {
+                process.destroyForcibly();
+                return false;
+            }
+            return process.exitValue() == 0;
+        } catch (Exception e) {
+            System.out.println("[horizon-launch] verificarea engine-ului a picat: " + e);
+            return false;
+        }
     }
 
     private static void run(Path base, String... command) throws Exception {
