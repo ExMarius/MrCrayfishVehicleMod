@@ -1,0 +1,42 @@
+name: Panel power
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/power.trigger"
+permissions:
+  contents: write
+jobs:
+  power:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Pornesc/opresc
+        run: |
+          set +e
+          TOKEN=$(cat .panel-token 2>/dev/null | tr -d ' \n\r')
+          ACTION=$(cat horizon/.panel-action.txt 2>/dev/null | tr -d ' \n\r')
+          API=https://freepanel.hidencloud.com/api/client
+          H=(-H "Authorization: Bearer $TOKEN" -H "Accept: application/json" -H "Content-Type: application/json")
+          ID=$(curl -sS -m 30 "${H[@]}" "$API" | grep -o '"identifier": *"[a-z0-9]*"' | head -1 | cut -d'"' -f4)
+          {
+            echo "# power [$ACTION] pe [$ID] $(date -u +%FT%TZ)"
+            echo; echo "## raspuns"; curl -sS -m 30 -X POST "${H[@]}" -d "{\"signal\":\"$ACTION\"}" "$API/servers/$ID/power" -w '\nHTTP %{http_code}\n'
+            sleep 25
+            echo; echo "## stare"; curl -sS -m 30 "${H[@]}" "$API/servers/$ID/resources"
+          } > horizon/_panel-power.md 2>&1
+          cat horizon/_panel-power.md
+      - name: Public
+        if: always()
+        run: |
+          set +e
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_panel-power.md
+          git commit -m "panel power [skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1
+            git push origin "HEAD:$GITHUB_REF_NAME" && break
+            sleep 5
+          done

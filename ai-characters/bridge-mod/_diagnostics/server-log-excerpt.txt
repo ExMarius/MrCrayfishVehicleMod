@@ -1,4 +1,4 @@
-# Extras log server 2026-11-13T21:10:53Z
+# Extras log server 2026-11-13T21:22:33Z
 
 ## ce e in mods/ si logs/
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
@@ -6,71 +6,17 @@ Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list o
 ** This session may be vulnerable to "store now, decrypt later" attacks.
 ** The server may need to be upgraded. See https://openssh.com/pq.html
 sftp> ls -a
-.cache                                  banned-ips.json                         
-banned-players.json                     config                                  
-defaultconfigs                          eula.txt                                
-horizon                                 libraries                               
-logs                                    mods                                    
-neoforge-21.1.172-installer.jar         neoforge-21.1.172-installer.jar.bak     
-neoforge-21.1.172-installer.jar.bak2    neoforge-21.1.172-installer.jar.log     
-ops.json                                run.bat                                 
-run.sh                                  server.jar                              
-server.properties                       user_jvm_args.txt                       
-usercache.json                          usernamecache.json                      
-whitelist.json                          world                                   
+eula.txt                                horizon                                 
+neoforge-21.1.172-installer.jar         server.properties                       
+server.properties.imported              server.toml                             
 sftp> ls -l mods
--rw-r--r--    1 0        0           31511 Nov 12 15:37 aibridge-0.1.0.jar
+Can't ls: "/mods" not found
 
 ## linii AIBridge
-[12Nov2026 15:37:11.425] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader/SCAN]: Found META-INF/neoforge.mods.toml mod of type null: /home/container/mods/aibridge-0.1.0.jar
-[12Nov2026 15:37:11.425] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate /home/container/mods/aibridge-0.1.0.jar
-[12Nov2026 15:37:11.429] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file aibridge-0.1.0.jar with {aibridge} mods - versions {0.1.0}
-[12Nov2026 15:37:11.429] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found mod file "aibridge-0.1.0.jar" [locator: {mods folder locator at /home/container/mods}, reader: mod manifest]
-[12Nov2026 15:37:11.455] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from aibridge-0.1.0.jar, it does not contain dependency information.
-		AI Bridge 0.1.0 (aibridge)
-[12Nov2026 15:37:11.550] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileParser/LOADING]: Considering mod file candidate /home/container/mods/aibridge-0.1.0.jar
-[12Nov2026 15:37:11.552] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFileInfo/LOADING]: Found valid mod file aibridge-0.1.0.jar with {aibridge} mods - versions {0.1.0}
-[12Nov2026 15:37:11.552] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.ModFile/LOADING]: Loading mod file /home/container/mods/aibridge-0.1.0.jar with languages [LanguageSpec[languageName=javafml, acceptedVersions=[4,)]]
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Adding mixin platform agents for container SecureJarResource(aibridge)
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentMinecraftForge for SecureJarResource(aibridge)
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: MixinPlatformAgentMinecraftForge rejected container SecureJarResource(aibridge)
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Instancing new MixinPlatformAgentDefault for SecureJarResource(aibridge)
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: MixinPlatformAgentDefault accepted container SecureJarResource(aibridge)
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Instancing new FMLMixinPlatformAgent for SecureJarResource(aibridge)
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: FMLMixinPlatformAgent rejected container SecureJarResource(aibridge)
-[12Nov2026 15:37:12.077] [main/DEBUG] [mixin/]: Processing prepare() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(aibridge)]
-[12Nov2026 15:37:12.080] [main/DEBUG] [mixin/]: Processing inject() for PlatformAgent[MixinPlatformAgentDefault:SecureJarResource(aibridge)]
-[12Nov2026 15:37:18.316] [main/DEBUG] [net.neoforged.fml.javafmlmod.FMLModContainer/LOADING]: Creating FMLModContainer instance for [ro.ai.bridge.AIBridgeMod]
-[12Nov2026 15:37:18.357] [modloading-worker-0/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Config file aibridge-common.toml for aibridge tracking
-[12Nov2026 15:37:18.367] [modloading-worker-0/DEBUG] [net.neoforged.fml.javafmlmod.AutomaticEventSubscriber/LOADING]: Attempting to inject @EventBusSubscriber classes into the eventbus for aibridge
-[12Nov2026 15:37:18.600] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Loaded TOML config file /home/container/config/aibridge-common.toml
-[12Nov2026 15:37:18.605] [modloading-sync-worker/DEBUG] [net.neoforged.fml.config.ConfigTracker/CONFIG]: Watching TOML config file /home/container/config/aibridge-common.toml for changes
-[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP pornita pe x.x.x.x:8765 (doar local)
-[12Nov2026 15:37:27.208] [Server thread/INFO] [AIBridge/]: [AIBridge] gata. /npc spawn <nume> pentru primul personaj.
-[12Nov2026 15:37:27.208] [Server thread/WARN] [AIBridge/]: [AIBridge] creierul AI e oprit: pune cheia Groq in config/aibridge-common.toml (brain.apiKey)
-[12Nov2026 15:37:27.289] [Server thread/INFO] [AIBridge/]: [AIBridge] canal fals instalat pe conexiunea personajului
-[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] NPC spawn: TestNPC la (32.5, 65.0, -15.5)
-[12Nov2026 15:37:27.460] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: spawn OK, poz=(32.5, 65.0, -15.5)
-[12Nov2026 15:37:27.461] [Server thread/INFO] [AIBridge/]: [AIBridge] SELFTEST: tick OK
-[13Nov2026 20:16:30.112] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP oprita
-[13Nov2026 20:16:30.112] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP oprita
+(niciuna)
 
 ## erori / exceptii
-[12Nov2026 15:37:11.455] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from server-1.21.1-20240808.144430-srg.jar, it does not contain dependency information.
-[12Nov2026 15:37:11.455] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from aibridge-0.1.0.jar, it does not contain dependency information.
-[12Nov2026 15:37:11.515] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from mixinextras-neoforge-0.4.1.jar, it does not contain dependency information.
-[12Nov2026 15:37:11.515] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from net.neoforged.neoforge-coremods-21.1.172.jar, it does not contain dependency information.
+(niciuna)
 
 ## ultimele 40 de linii din latest.log
-[13Nov2026 20:16:30.077] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping the server
-[13Nov2026 20:16:30.112] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP oprita
-[13Nov2026 20:16:30.126] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
-[13Nov2026 20:16:30.127] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
-[13Nov2026 20:16:30.127] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
-[13Nov2026 20:16:30.492] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[13Nov2026 20:16:31.372] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[13Nov2026 20:16:31.391] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[13Nov2026 20:16:31.432] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (world): All chunks are saved
-[13Nov2026 20:16:31.433] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[13Nov2026 20:16:31.433] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[13Nov2026 20:16:31.434] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved
+(nu am putut citi latest.log)

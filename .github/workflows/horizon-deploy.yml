@@ -31,6 +31,7 @@ jobs:
           mkdir -p out
           gh release download horizon-arm64 --pattern 'horizon-server-linux-aarch64.tar.gz' --dir out --clobber
           gh release download horizon-arm64 --pattern 'horizon-launch.jar' --dir out --clobber || true
+          printf 'eula=true\n' > out/eula.txt
           ls -lh out
 
       - name: Cheia SFTP
@@ -42,6 +43,7 @@ jobs:
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
             -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
           -mkdir horizon
+          put out/eula.txt eula.txt
           put out/horizon-server-linux-aarch64.tar.gz horizon/horizon-server-linux-aarch64.tar.gz
           -rename neoforge-21.1.172-installer.jar neoforge-21.1.172-installer.jar.bak2
           put out/horizon-launch.jar neoforge-21.1.172-installer.jar

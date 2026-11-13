@@ -1,12 +1,1 @@
-[13Nov2026 20:16:30.077] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping the server
-[13Nov2026 20:16:30.112] [Server thread/INFO] [AIBridge/]: [AIBridge] punte HTTP oprita
-[13Nov2026 20:16:30.126] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Stopping server
-[13Nov2026 20:16:30.127] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving players
-[13Nov2026 20:16:30.127] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving worlds
-[13Nov2026 20:16:30.492] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[13Nov2026 20:16:31.372] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[13Nov2026 20:16:31.391] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[13Nov2026 20:16:31.432] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (world): All chunks are saved
-[13Nov2026 20:16:31.433] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM1): All chunks are saved
-[13Nov2026 20:16:31.433] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage (DIM-1): All chunks are saved
-[13Nov2026 20:16:31.434] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ThreadedAnvilChunkStorage: All dimensions are saved
+(lipsa)

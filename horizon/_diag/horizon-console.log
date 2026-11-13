@@ -1,1 +1,14 @@
-(lipsa: horizon/console.log)
+horizon-server: no prepared game files. Horizon reads them from your own copy of Minecraft 26.3:
+prepare them with `horizon-prepare --prepare --server-jar PATH` (or the launcher) and copy the folder to resources/ here, or set engine.resources in server.toml. Looked in:
+  ./resources
+  /home/container/horizon/.local/horizon-client/26.3
+  /home/container/.local/horizon-client/26.3
+  /home/.local/horizon-client/26.3
+  /.local/horizon-client/26.3
+horizon-server: no prepared game files. Horizon reads them from your own copy of Minecraft 26.3:
+prepare them with `horizon-prepare --prepare --server-jar PATH` (or the launcher) and copy the folder to resources/ here, or set engine.resources in server.toml. Looked in:
+  ./resources
+  /home/container/horizon/.local/horizon-client/26.3
+  /home/container/.local/horizon-client/26.3
+  /home/.local/horizon-client/26.3
+  /.local/horizon-client/26.3

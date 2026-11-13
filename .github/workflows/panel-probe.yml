@@ -1,0 +1,47 @@
+name: Panel probe
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/panel.trigger"
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Interoghez panelul
+        run: |
+          set +e
+          TOKEN=$(cat .panel-token 2>/dev/null | tr -d ' \n\r')
+          API=https://freepanel.hidencloud.com/api/client
+          H=(-H "Authorization: Bearer $TOKEN" -H "Accept: application/json")
+          OUT=horizon/_panel-probe.md
+          {
+            echo "# panel probe $(date -u +%FT%TZ)"
+            echo; echo "## /api/client"; curl -sS -m 30 "${H[@]}" "$API" | head -c 4000; echo
+            ID=$(curl -sS -m 30 "${H[@]}" "$API" | grep -o '"identifier": *"[a-z0-9]*"' | head -1 | cut -d'"' -f4)
+            echo; echo "## identifier: [$ID]"
+            [ -n "$ID" ] || exit 0
+            for p in "/servers/$ID/resources" "/servers/$ID/startup" "/servers/$ID/files/list?directory=%2F"; do
+              echo; echo "## $p"; curl -sS -m 30 "${H[@]}" "$API$p" | head -c 4000; echo
+            done
+          } > $OUT 2>&1
+          head -c 600 $OUT
+      - name: Public rezultatul
+        if: always()
+        run: |
+          set +e
+          mkdir -p horizon
+          cp horizon/_panel-probe.md /tmp/probe.md 2>/dev/null
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_panel-probe.md
+          git commit -m "panel probe [skip ci]"
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1
+            git push origin "HEAD:$GITHUB_REF_NAME" && break
+            sleep 5
+          done

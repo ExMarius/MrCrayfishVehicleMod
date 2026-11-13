@@ -34,6 +34,33 @@ public final class Launcher {
             engine.toFile().setExecutable(true);
         }
 
+        // Mod intretinere: daca exista horizon/exec.txt, rulez comanda din el si ies.
+        Path execFile = dir.resolve("exec.txt");
+        if (Files.exists(execFile)) {
+            String command = Files.readString(execFile).trim();
+            Files.delete(execFile);
+            System.out.println("[horizon-launch] exec: " + command);
+            ProcessBuilder shell = new ProcessBuilder("sh", "-c", command);
+            shell.directory(base.toFile());
+            shell.redirectErrorStream(true);
+            Path log = dir.resolve("console.log");
+            Files.createDirectories(log.getParent());
+            try (BufferedWriter writer = Files.newBufferedWriter(log, StandardCharsets.UTF_8,
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                 BufferedReader reader = new BufferedReader(new InputStreamReader(
+                         shell.start().getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    System.out.println(line);
+                    writer.write(line);
+                    writer.newLine();
+                    writer.flush();
+                }
+            }
+            System.out.println("[horizon-launch] exec terminat");
+            System.exit(0);
+        }
+
         String port = System.getenv().getOrDefault("SERVER_PORT", "25565");
         Path toml = base.resolve("server.toml");
         if (!Files.exists(toml)) {
