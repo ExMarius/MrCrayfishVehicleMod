@@ -36,7 +36,7 @@ jobs:
       - name: Listez mods/ si logs/
         run: |
           set -uo pipefail
-          printf 'ls -l mods\nls -l logs\n' > list.txt
+          printf 'ls -a\nls -l mods\n' > list.txt
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
             -o BatchMode=yes -i /tmp/hc_key -b list.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" \
             > listing.txt 2>&1 || true
