@@ -40,21 +40,27 @@ jobs:
         working-directory: horizon-src
         run: |
           set +e
+          df -h . > ../df.txt
           ( cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client ) > ../build-engine.log 2>&1
           echo "engine exit=$?" >> ../build-engine.log
           ( cargo build --release --locked -p horizon-server --bin horizon-server ) > ../build-server.log 2>&1
           echo "server exit=$?" >> ../build-server.log
           ( cargo build --release --locked -p horizon-prepare --bin horizon-prepare ) > ../build-prepare.log 2>&1
           echo "prepare exit=$?" >> ../build-prepare.log
-          tail -3 ../build-engine.log ../build-server.log
+          tail -2 ../build-engine.log ../build-server.log
+          exit 0
 
       - name: Pachetez
+        if: always()
         run: |
           set -euo pipefail
           mkdir -p out
           cp horizon-src/target/release/horizon-client out/horizon-engine
           cp horizon-src/target/release/horizon-server out/horizon-server
           if [ -f horizon-src/target/release/horizon-prepare ]; then cp horizon-src/target/release/horizon-prepare out/; fi
+          strip out/* 2>/dev/null || true
+          df -h . || true
+          ls -lh out
           file out/horizon-server
           tar czf horizon-server-linux-aarch64.tar.gz -C out .
           ls -lh horizon-server-linux-aarch64.tar.gz
