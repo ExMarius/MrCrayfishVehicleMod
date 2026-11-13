@@ -1,0 +1,38 @@
+name: Horizon launcher jar
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "horizon/launcher/Launcher.java"
+      - ".github/horizon-launcher.trigger"
+permissions:
+  contents: write
+jobs:
+  jar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Compilez
+        run: |
+          set -euo pipefail
+          mkdir -p classes
+          javac -encoding UTF-8 -d classes horizon/launcher/Launcher.java
+          printf 'Main-Class: Launcher\n' > manifest.txt
+          jar cfm horizon-launch.jar manifest.txt -C classes .
+          ls -lh horizon-launch.jar
+      - name: Public in release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=horizon-arm64
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" horizon-launch.jar --clobber
+          else
+            gh release create "$TAG" horizon-launch.jar --title "Horizon server (ARM64 + lansator)" --notes "binar aarch64 + jar lansator"
+          fi
