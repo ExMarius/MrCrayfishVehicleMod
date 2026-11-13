@@ -39,10 +39,10 @@ jobs:
           SHA=$(gh api "repos/$GITHUB_REPOSITORY/contents/horizon/_launcher-build.md" --jq .sha 2>/dev/null)
           if [ -n "$SHA" ]; then
             gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/horizon/_launcher-build.md" \
-              -f message="raport javac (actualizare)" -f content="$CONTENT" -f sha="$SHA" >/dev/null
+              -f message="raport javac (actualizare)" -f content="$CONTENT" -f sha="$SHA" -f branch="$GITHUB_REF_NAME" >/dev/null
           else
             gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/horizon/_launcher-build.md" \
-              -f message="raport javac" -f content="$CONTENT" >/dev/null
+              -f message="raport javac" -f content="$CONTENT" -f branch="$GITHUB_REF_NAME" >/dev/null
           fi
 
       - name: Public in release
