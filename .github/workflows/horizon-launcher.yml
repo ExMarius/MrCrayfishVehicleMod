@@ -44,8 +44,10 @@ jobs:
             gh api --method PUT "repos/$GITHUB_REPOSITORY/contents/horizon/_launcher-build.md" \
               -f message="raport javac" -f content="$CONTENT" -f branch="$GITHUB_REF_NAME" >/dev/null
           fi
+          exit 0
 
       - name: Public in release
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
