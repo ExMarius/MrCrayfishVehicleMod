@@ -97,7 +97,7 @@ public final class Launcher {
         // Il folosim doar daca binarul chiar porneste: un engine stricat ar lasa serverul jos.
         Path modded = base.resolve("horizon").resolve("horizon-engine-mod");
         if (Files.exists(modded)) {
-            if (engineAnswers(base, modded)) {
+            if (engineLooksRunnable(modded)) {
                 System.out.println("[horizon-launch] engine cu modul de masini: " + modded);
                 run(base, exe.toString(), "config", "set", "engine.path=horizon/horizon-engine-mod");
             } else {
@@ -190,22 +190,32 @@ public final class Launcher {
         return "25565";
     }
 
-    /** Rulează `engine --version` cu limită de timp: un engine stricat nu trebuie folosit. */
-    private static boolean engineAnswers(Path base, Path engine) {
+    /**
+     * Verifică binarul fără să-l pornim: engine-ul de joc nu știe `--version` (doar
+     * `horizon-server` știe), deci l-am porni degeaba. Ne uităm la antetul ELF: 64 de biți,
+     * little-endian, AArch64 — exact ce trebuie să ruleze pe panelul nostru ARM.
+     */
+    private static boolean engineLooksRunnable(Path engine) {
         try {
-            if (!engine.toFile().canExecute()) {
-                engine.toFile().setExecutable(true, false);
-            }
-            Process process = new ProcessBuilder(engine.toString(), "--version")
-                    .directory(base.toFile())
-                    .redirectErrorStream(true)
-                    .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-                    .start();
-            if (!process.waitFor(25, java.util.concurrent.TimeUnit.SECONDS)) {
-                process.destroyForcibly();
+            if (!Files.isRegularFile(engine) || Files.size(engine) < 20L * 1024 * 1024) {
+                System.out.println("[horizon-launch] engine-ul cu modul e prea mic sau lipseste");
                 return false;
             }
-            return process.exitValue() == 0;
+            byte[] head = new byte[20];
+            try (InputStream in = Files.newInputStream(engine)) {
+                if (in.readNBytes(head, 0, head.length) < head.length) {
+                    return false;
+                }
+            }
+            boolean elf = head[0] == 0x7F && head[1] == 'E' && head[2] == 'L' && head[3] == 'F';
+            boolean elf64LittleEndian = head[4] == 2 && head[5] == 1;
+            boolean aarch64 = head[18] == (byte) 0xB7 && head[19] == 0;
+            if (!(elf && elf64LittleEndian && aarch64)) {
+                System.out.println("[horizon-launch] engine-ul cu modul nu e un ELF aarch64 valid");
+                return false;
+            }
+            engine.toFile().setExecutable(true, false);
+            return true;
         } catch (Exception e) {
             System.out.println("[horizon-launch] verificarea engine-ului a picat: " + e);
             return false;
