@@ -10,11 +10,16 @@ manifest=0 (279089 bytes)
 latest: {'release': '26.3', 'snapshot': '26.4-snapshot-8'}
 folosesc versiunea 26.3
 server.url = https://piston-data.mojang.com/v1/objects/33680f5f2ac32864d6d7cf5e56a705fdb3e05f4c/server.jar
--rw-r--r-- 1 runner runner 60M Nov 13 21:38 server.jar
+-rw-r--r-- 1 runner runner 60M Nov 13 21:40 server.jar
 == horizon-prepare
-chmod: cannot access 'horizon-cli/horizon-prepare': No such file or directory
-horizon/tools/fetch_and_prepare.sh: line 38: ./horizon-cli/horizon-prepare: No such file or directory
-prepare=127
+binar: horizon-cli/horizon-linux-x86_64/horizon-prepare
+error: Missing /home/runner/.minecraft/versions/26.3/26.3.json. Horizon does not download the game: play 26.3 once in the launcher you play Minecraft Java Edition with so it downloads the game's files, then rerun. Horizon reads the official launcher's folder, ATLauncher's and the CurseForge app's; for Prism Launcher, MultiMC, the Modrinth App or GDLauncher, prepare from the Horizon launcher, which finds their files. If your launcher keeps them in another folder, pass --minecraft-dir or set HORIZON_MINECRAFT_DIR, or name the files with --version-json, --client-jar, --libraries-dir and --assets-dir. Horizon looked for 26.3 in:
+  /home/runner/.minecraft (the official launcher)
+  /home/runner/.local/share/atlauncher (ATLauncher)
+  /home/runner/.var/app/com.atlauncher.ATLauncher/data/atlauncher (ATLauncher)
+  /home/runner/.var/app/com.atlauncher.ATLauncher/data (ATLauncher)
+  /home/runner/Documents/curseforge/minecraft/Install (the CurseForge app)
+prepare=1
 == caut registries.json
 folder pregatit: <niciunul>
 script exit=0
