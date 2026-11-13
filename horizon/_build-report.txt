@@ -1,0 +1,16 @@
+# ultima incercare de build ARM64
+
+## clone
+fatal: destination path 'horizon' already exists and is not an empty directory.
+clone exit=128
+8.0K	horizon
+
+## engine
+
+## server
+
+## prepare
+
+## fisiere
+
+## pachet
