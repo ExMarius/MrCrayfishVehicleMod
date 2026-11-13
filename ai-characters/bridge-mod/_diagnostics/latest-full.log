@@ -48,3 +48,5 @@
 [12Nov2026 15:38:38.653] [User Authenticator #1/INFO] [net.minecraft.server.network.ServerLoginPacketListenerImpl/]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
 [12Nov2026 15:38:41.388] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: ExMarius[/x.x.x.x:27774] logged in with entity id 366 at (33.07924942657739, 65.0, -12.791743653195605)
 [12Nov2026 15:38:41.406] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius joined the game
+[12Nov2026 15:40:22.267] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: ExMarius lost connection: Disconnected
+[12Nov2026 15:40:22.268] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius left the game

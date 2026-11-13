@@ -1,25 +1,24 @@
-# Extras log server 2026-11-12T15:39:16Z
+# Extras log server 2026-11-13T20:15:09Z
 
 ## ce e in mods/ si logs/
 Warning: Permanently added '[jacob.hidencloud.com]:2022' (ED25519) to the list of known hosts.
 ** WARNING: connection is not using a post-quantum key exchange algorithm.
 ** This session may be vulnerable to "store now, decrypt later" attacks.
 ** The server may need to be upgraded. See https://openssh.com/pq.html
+sftp> ls -a
+.cache                                  banned-ips.json                         
+banned-players.json                     config                                  
+defaultconfigs                          eula.txt                                
+libraries                               logs                                    
+mods                                    neoforge-21.1.172-installer.jar         
+neoforge-21.1.172-installer.jar.bak     neoforge-21.1.172-installer.jar.log     
+ops.json                                run.bat                                 
+run.sh                                  server.jar                              
+server.properties                       user_jvm_args.txt                       
+usercache.json                          usernamecache.json                      
+whitelist.json                          world                                   
 sftp> ls -l mods
 -rw-r--r--    1 0        0           31511 Nov 12 15:37 aibridge-0.1.0.jar
-sftp> ls -l logs
--rw-r--r--    1 0        0            2340 Nov 12 13:41 2026-11-12-1.log.gz
--rw-r--r--    1 0        0            2515 Nov 12 15:07 2026-11-12-2.log.gz
--rw-r--r--    1 0        0            3403 Nov 12 15:13 2026-11-12-3.log.gz
--rw-r--r--    1 0        0            2080 Nov 12 15:20 2026-11-12-4.log.gz
--rw-r--r--    1 0        0            2551 Nov 12 15:37 2026-11-12-5.log.gz
--rw-r--r--    1 0        0           13461 Nov 12 15:37 debug-1.log.gz
--rw-r--r--    1 0        0           12721 Nov 12 15:20 debug-2.log.gz
--rw-r--r--    1 0        0           14285 Nov 12 15:13 debug-3.log.gz
--rw-r--r--    1 0        0           13504 Nov 12 15:07 debug-4.log.gz
--rw-r--r--    1 0        0           13073 Nov 12 13:41 debug-5.log.gz
--rw-r--r--    1 0        0          168251 Nov 12 15:38 debug.log
--rw-r--r--    1 0        0            7303 Nov 12 15:38 latest.log
 
 ## linii AIBridge
 [12Nov2026 15:37:11.425] [main/DEBUG] [net.neoforged.fml.loading.moddiscovery.readers.JarModsDotTomlModFileReader/SCAN]: Found META-INF/neoforge.mods.toml mod of type null: /home/container/mods/aibridge-0.1.0.jar
@@ -69,8 +68,6 @@ sftp> ls -l logs
 [12Nov2026 15:37:11.515] [main/TRACE] [net.neoforged.fml.loading.moddiscovery.locators.JarInJarDependencyLocator/]: Failed to load resource META-INF/jarjar/metadata.json from net.neoforged.neoforge-coremods-21.1.172.jar, it does not contain dependency information.
 
 ## ultimele 40 de linii din latest.log
-[12Nov2026 15:37:11.544] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/SCAN]: Found library file "net.neoforged.neoforge-coremods-21.1.172.jar" [parent: neoforge-21.1.172-universal.jar, locator: jarinjar, reader: mod manifest]
-[12Nov2026 15:37:11.546] [main/INFO] [net.neoforged.fml.loading.moddiscovery.ModDiscoverer/]: 
      Mod List:
 		Name Version (Mod Id)
 
@@ -109,3 +106,5 @@ sftp> ls -l logs
 [12Nov2026 15:38:38.653] [User Authenticator #1/INFO] [net.minecraft.server.network.ServerLoginPacketListenerImpl/]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
 [12Nov2026 15:38:41.388] [Server thread/INFO] [net.minecraft.server.players.PlayerList/]: ExMarius[/x.x.x.x:27774] logged in with entity id 366 at (33.07924942657739, 65.0, -12.791743653195605)
 [12Nov2026 15:38:41.406] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius joined the game
+[12Nov2026 15:40:22.267] [Server thread/INFO] [net.minecraft.server.network.ServerGamePacketListenerImpl/]: ExMarius lost connection: Disconnected
+[12Nov2026 15:40:22.268] [Server thread/INFO] [net.minecraft.server.MinecraftServer/]: ExMarius left the game
