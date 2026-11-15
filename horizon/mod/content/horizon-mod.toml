@@ -1,0 +1,11 @@
+# Modul de mașini, partea de conținut (fișierul .hmod).
+# Aici stau lucrurile care sunt DATE: tipuri de entitate, iteme, blocuri, modele, texturi,
+# rețete, texte. Codul (fizica, condusul, randarea) stă în modulul nativ, în ../native.
+id = "vehicle"
+name = "Masini (MrCrayfish's Vehicle Mod)"
+version = "0.1.0"
+description = "Masinile modului original, ca mod nativ Horizon."
+authors = ["ExMarius"]
+api = "0.2"
+side = "both"
+capabilities = ["registries"]
