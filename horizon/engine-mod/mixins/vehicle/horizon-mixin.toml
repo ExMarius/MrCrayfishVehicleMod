@@ -1,0 +1,60 @@
+[mod]
+id = "vehicle"
+version = "0.1.0"
+priority = 100
+
+# Se lipește doar prin punctele de hook documentate de Horizon, deci se poate
+# recompila pe orice versiune care are API-ul de mai jos (native_mount = 472).
+[compatibility]
+horizon_revision = "02fd15886bc700275247afa3e18ec9125e04fb34"
+
+[[module]]
+id = "runtime"
+file = "crates/horizon-client/src/game.rs"
+name = "vehicle"
+source = "runtime.rs"
+
+[[injection]]
+id = "tick"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_server_tick"
+helper = "tick.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "context", ty = "&crate::mod_api::NativeLifecycleContext", value = "context" },
+  { name = "phase", ty = "crate::mod_api::ServerTickPhase", value = "phase" },
+]
+
+[[injection]]
+id = "input"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_player_input"
+helper = "input.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "u128", value = "player" },
+  { name = "name", ty = "&str", value = "name" },
+  { name = "flags", ty = "i32", value = "flags" },
+]
+
+[[injection]]
+id = "register"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_register_commands"
+helper = "register.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "commands", ty = "&mut Vec<crate::mod_api::NativeCommand>", value = "&mut *commands" },
+]
+
+[[injection]]
+id = "perform"
+kind = "HEAD"
+target = "horizon_client::game::native_hooks::Game<'_>::native_perform_command"
+helper = "perform.rs"
+bindings = [
+  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "player", ty = "&crate::mod_api::NativeServerPlayer", value = "player" },
+  { name = "command", ty = "&str", value = "command" },
+  { name = "ran", ty = "&mut bool", value = "&mut *ran" },
+]

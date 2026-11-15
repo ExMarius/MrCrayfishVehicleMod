@@ -1,87 +1,93 @@
-name: Horizon engine cu modul de masini (ARM64)
+name: Horizon mod masini (build oficial, ARM64)
 
-# Horizon nu are plugin-uri runtime: un mod se compileaza in engine. Noi compilam oricum
-# engine-ul pentru ARM64, deci lipim modulul nostru (horizon/engine-mod) in sursa si
-# producem un `horizon-engine` propriu. Lansatorul il foloseste doar daca trece de
-# `--version` (daca e stricat, serverul ramane pe engine-ul normal).
+# Modul nostru e un bundle nativ Horizon (horizon-mixin.toml + .rs), construit cu
+# uneltele oficiale din horizon-rust/horizon-mods:
+#   1. `native.py build vehicle` descarca sursa Horizon la commit-ul din compatibility.json,
+#      construieste horizon-mixins, aplica bundle-ul si compileaza jocul;
+#   2. recompilam in profil release si fara sunet, pentru serverul de pe panel;
+#   3. urcam binarul ca `horizon/horizon-engine-mod` si in release-ul `horizon-engine-mod`.
 #
-# Rezultat: release `horizon-engine-mod` + fisierul `horizon/horizon-engine-mod` pe panel.
+# Lansatorul il activeaza doar daca e un ELF aarch64 valid, si revine singur la engine-ul
+# normal daca modulul crapa la pornire.
 
 on:
   workflow_dispatch:
   push:
     paths:
       - ".github/horizon-engine-mod.trigger"
+      - "horizon/engine-mod/**"
 
 permissions:
   contents: write
 
 env:
-  # Revisiunea Horizon pe care e lipit modulul (build reproductibil).
-  HORIZON_REV: 02fd15886bc700275247afa3e18ec9125e04fb34
   SFTP_HOST: jacob.hidencloud.com
   SFTP_PORT: "2022"
   SFTP_USER: mariusuke-184939.d496911d
 
 jobs:
   build:
-    name: Compilez engine-ul cu modul lipit
+    name: Build mod + engine (ARM64)
     runs-on: ubuntu-24.04-arm
     timeout-minutes: 360
     steps:
       - uses: actions/checkout@v4
 
-      - name: Clonez sursa Horizon (revisiune fixa)
-        run: |
-          set +e
-          git init -q horizon-src
-          cd horizon-src
-          git remote add origin https://github.com/horizon-rust/horizon.git
-          git fetch --depth 1 origin "$HORIZON_REV" > ../clone.log 2>&1
-          echo "fetch exit=$?" >> ../clone.log
-          git checkout -q FETCH_HEAD >> ../clone.log 2>&1
-          echo "checkout exit=$?" >> ../clone.log
-          git rev-parse HEAD >> ../clone.log
-          tail -5 ../clone.log
-
-      - name: Lipesc modulul in sursa
-        run: |
-          set +e
-          python3 horizon/engine-mod/apply.py horizon-src > apply.log 2>&1
-          echo "apply exit=$?" >> apply.log
-          cat apply.log
-          grep -n "vehicle" horizon-src/crates/horizon-client/src/game.rs | tail -3
-
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Clonez horizon-mods (uneltele oficiale)
+        run: |
+          set +e
+          git clone --depth 1 https://github.com/horizon-rust/horizon-mods.git horizon-mods > clone.log 2>&1
+          echo "clone exit=$?" >> clone.log
+          tail -3 clone.log
+
+      - name: Pun modul in registrul local
+        run: |
+          set -euo pipefail
+          rm -rf horizon-mods/native/vehicle
+          cp -r horizon/engine-mod horizon-mods/native/vehicle
+          ls horizon-mods/native/vehicle horizon-mods/native/vehicle/mixins/vehicle
 
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: horizon-src
+          workspaces: |
+            horizon-mods/native/target/cargo
 
-      - name: Build engine (fara sunet)
-        working-directory: horizon-src
+      - name: Aplic bundle-ul si compilez (uneltele Horizon)
+        working-directory: horizon-mods
         run: |
           set +e
-          cargo build --release --locked -p horizon-client --no-default-features --bin horizon-client > ../build.log 2>&1
-          echo "exit=$?" >> ../build.log
-          tail -25 ../build.log
+          NATIVE_NO_DEFAULT_FEATURES=1 python3 native/tools/native.py build vehicle > ../native-build.log 2>&1
+          echo "exit=$?" >> ../native-build.log
+          tail -30 ../native-build.log
+
+      - name: Recompilez in release (server, fara sunet)
+        run: |
+          set +e
+          STAGE=horizon-mods/native/target/stage/vehicle
+          if [ ! -d "$STAGE" ]; then echo "lipseste stage-ul" > build.log; echo "exit=1" >> build.log; exit 0; fi
+          cd "$STAGE"
+          CARGO_TARGET_DIR="$GITHUB_WORKSPACE/horizon-mods/native/target/cargo" \
+            cargo build --release --locked -p horizon-client --bin horizon-client --no-default-features > "$GITHUB_WORKSPACE/build.log" 2>&1
+          echo "exit=$?" >> "$GITHUB_WORKSPACE/build.log"
+          tail -25 "$GITHUB_WORKSPACE/build.log"
 
       - name: Pachetez
         if: always()
         run: |
           set -euo pipefail
           mkdir -p out
-          if [ -f horizon-src/target/release/horizon-client ]; then
-            cp horizon-src/target/release/horizon-client out/horizon-engine-mod
+          BIN=horizon-mods/native/target/cargo/release/horizon-client
+          if [ -f "$BIN" ]; then
+            cp "$BIN" out/horizon-engine-mod
             strip out/horizon-engine-mod 2>/dev/null || true
             chmod +x out/horizon-engine-mod
             file out/horizon-engine-mod
             ls -lh out/horizon-engine-mod
-            echo "OK=1" > out/status
           else
-            echo "OK=0" > out/status
+            echo "fara binar"
           fi
-          cat out/status
 
       - name: Urc pe panel (doar daca build-ul a reusit)
         if: always()
@@ -102,19 +108,16 @@ jobs:
           set +e
           mkdir -p horizon
           {
-            echo "# engine cu modul de masini — ultima incercare"
+            echo "# modul de masini — ultima incercare (unelte oficiale)"
             echo
-            echo "revisiune: $HORIZON_REV"
-            echo
-            echo '## clone'; tail -8 clone.log 2>/dev/null
-            echo; echo '## apply'; tail -15 apply.log 2>/dev/null
-            echo; echo '## build'; tail -30 build.log 2>/dev/null
-            echo; echo '## binar'; ls -lh out/horizon-engine-mod 2>/dev/null; cat out/status 2>/dev/null
+            echo '## native.py build'; tail -40 native-build.log 2>/dev/null
+            echo; echo '## release'; tail -30 build.log 2>/dev/null
+            echo; echo '## binar'; ls -lh out/horizon-engine-mod 2>/dev/null
           } > horizon/_engine-mod-build.md
           git config user.name arena-agent
           git config user.email arena-agent@users.noreply.github.com
           git add -f horizon/_engine-mod-build.md
-          git commit -m "raport engine mod masini [skip ci]" >/dev/null 2>&1
+          git commit -m "raport mod masini [skip ci]" >/dev/null 2>&1
           git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
           git push origin "HEAD:$GITHUB_REF_NAME" >/dev/null 2>&1 || true
 
@@ -131,5 +134,5 @@ jobs:
           else
             gh release create "$TAG" out/horizon-engine-mod \
               --title "Horizon engine cu modul de masini (ARM64)" \
-              --notes "Engine compilat din horizon-rust/horizon la $HORIZON_REV, cu horizon/engine-mod lipit."
+              --notes "Mod nativ construit cu horizon-mods/native.py pe horizon-rust/horizon, profil release, fara sunet."
           fi
