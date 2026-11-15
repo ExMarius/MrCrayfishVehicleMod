@@ -362,3 +362,46 @@ pub(super) fn on_server_tick(
         cars.remove(index);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Randarea pe client (etapa B): entitatea `vehicle:go_kart` desenata cu modelul
+// modului, nu cu modelul vanilla al template-ului.
+//
+// Modelul e in formatul de model de bloc (cuburi in texeli, 16 pe bloc), deci il
+// desenam ca pe un model de bloc "de sine statator": il inregistram la pornire
+// (`native_standalone_models`) si il desenam cu `native_draw_model`. Fata de
+// model: +z, ca la modul original (`EntityVehicleRenderer`: doar `-yaw`, fara
+// intoarcere pe 180°), deci se potriveste cu cadrul entitatii (+z = inainte).
+// ---------------------------------------------------------------------------
+
+/// Entitatea noastra, asa cum o declara modul de continut.
+pub const GO_KART: &str = "vehicle:go_kart";
+/// Caroseria go-kartului, `assets/vehicle/models/vehicle/go_kart_body.json`.
+pub const GO_KART_BODY: &str = "vehicle:vehicle/go_kart_body";
+
+/// Cuburile modelului sunt asezate in jurul lui x=8, z=12.5 (texeli), nu in
+/// origine: le aducem in centrul entitatii, in blocuri.
+const BODY_OFFSET: [f32; 3] = [-0.5, 0.0, -0.78];
+
+/// Modelele care trebuie coapte ca sa le putem desena.
+pub fn standalone_models(models: &mut Vec<String>) {
+    models.push(GO_KART_BODY.to_string());
+}
+
+/// `native_mob_submit`: un model propriu pentru mobul `vehicle:go_kart`.
+pub fn on_mob_submit(
+    game: &mut Game<'_>,
+    mob: &crate::game::native_mob_draw::NativeMobRender<'_>,
+    draw: &mut crate::game::native_block_entity_draw::BlockEntityDraw,
+    drawn: &mut bool,
+) {
+    if mob.kind != GO_KART {
+        return;
+    }
+    draw.push();
+    draw.translate(BODY_OFFSET);
+    let _ = game.native_draw_model(draw, GO_KART_BODY, 0xFF_FFFF);
+    draw.pop();
+    // entitatea e desenata de noi: modelul vanilla (negustorul) nu se mai deseneaza
+    *drawn = true;
+}
