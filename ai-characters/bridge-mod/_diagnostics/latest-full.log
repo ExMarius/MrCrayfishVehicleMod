@@ -1,21 +1,26 @@
-[22:21:41] [Server thread/INFO]: Horizon 0.1.0
-[22:21:42] [Server thread/INFO]: load core tables: 0.58s
-[22:21:42] [Server thread/INFO]: load pack tables: 0.59s
-[22:21:42] [Server thread/INFO]: load items: 0.67s
-[22:21:42] [Server thread/INFO]: Horizon: resources loaded in 1.1s; 35723 block states, 1658 items, 67 biomes; 1 worker threads
-[22:21:42] [Server thread/INFO]: Horizon: control socket /home/container/.horizon/engine.json
-[22:21:42] [Server thread/INFO]: Starting minecraft server version 26.3
-[22:21:42] [Server thread/INFO]: Loading properties
-[22:21:42] [Server thread/INFO]: Default game type: SURVIVAL
-[22:21:42] [Server thread/INFO]: Generating keypair
-[22:21:43] [Server thread/INFO]: Starting Minecraft server on x.x.x.x:24601
-[22:21:43] [Server thread/INFO]: Preparing level "world"
-[22:21:43] [Server thread/INFO]: Horizon: worldgen data loaded in 299.730073ms
-[22:21:43] [Server thread/INFO]: Horizon: live features ready in 35.892118ms
-[22:21:43] [Server thread/INFO]: Anticheat on (server.toml [anticheat]; enabled = false turns it off)
-[22:21:43] [Server thread/INFO]: Chat filter on: 45 words (server.toml [chat_filter]; enabled = false turns it off)
-[22:21:43] [Server thread/INFO]: Done (1.765s)! For help, type "help"
-[22:21:43] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
-[22:21:43] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
-[22:21:43] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
-[22:22:43] [Server thread/INFO]: Server empty for 60 seconds, pausing
+[15:34:36] [Server thread/INFO]: Horizon 0.1.0
+[15:34:36] [Server thread/WARN]: resource-pack-id missing, using default of 5e5b0a91-d7c0-3c2a-a110-0c485c33eb4c
+[15:34:37] [Server thread/INFO]: load core tables: 0.62s
+[15:34:37] [Server thread/INFO]: load pack tables: 0.63s
+[15:34:37] [Server thread/INFO]: load items: 0.72s
+[15:34:37] [Server thread/INFO]: Horizon: resources loaded in 1.1s; 35723 block states, 1658 items, 67 biomes; 1 worker threads
+[15:34:37] [Server thread/INFO]: Horizon: control socket /home/container/.horizon/engine.json
+[15:34:37] [Server thread/INFO]: Starting minecraft server version 26.3
+[15:34:37] [Server thread/INFO]: Loading properties
+[15:34:37] [Server thread/INFO]: Default game type: SURVIVAL
+[15:34:37] [Server thread/INFO]: Generating keypair
+[15:34:37] [Server thread/INFO]: Starting Minecraft server on x.x.x.x:24601
+[15:34:37] [Server thread/INFO]: Preparing level "world"
+[15:34:38] [Server thread/INFO]: Horizon: worldgen data loaded in 297.470913ms
+[15:34:38] [Server thread/INFO]: Horizon: live features ready in 34.407343ms
+[15:34:38] [Server thread/INFO]: Anticheat on (server.toml [anticheat]; enabled = false turns it off)
+[15:34:38] [Server thread/INFO]: Chat filter on: 45 words (server.toml [chat_filter]; enabled = false turns it off)
+[15:34:38] [Server thread/INFO]: Done (1.825s)! For help, type "help"
+[15:34:38] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:overworld
+[15:34:38] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_nether
+[15:34:38] [Server thread/INFO]: Saving chunks for level 'ServerLevel[world]'/minecraft:the_end
+[15:34:43] [Server thread/INFO]: ExMarius (/x.x.x.x:26773) lost connection: Disconnected
+[15:34:53] [User Authenticator #1/INFO]: UUID of player ExMarius is a4a067d0-ad43-4d01-8673-bd3b68ea1f7d
+[15:34:56] [Server thread/INFO]: ExMarius[/x.x.x.x:26793] logged in with entity id 1 at (-261.9152127595425, 69.0, 132.77901422053884)
+[15:34:56] [Server thread/INFO]: System chat: ExMarius joined the game
+[15:35:02] [Server thread/INFO]: [vehicle-mod] ExMarius a pornit masina (cart 292, dim minecraft:overworld)

@@ -1,5 +1,5 @@
 #Minecraft server properties
-#Fri Nov 13 22:21:41 UTC 2026
+#Sun Nov 15 15:34:36 UTC 2026
 accepts-transfers=false
 allow-flight=false
 broadcast-console-to-ops=true
@@ -57,11 +57,11 @@ rate-limit=0
 rcon.password=<ascuns>
 rcon.port=25575
 region-file-compression=deflate
-require-resource-pack=false
-resource-pack=
+require-resource-pack=true
+resource-pack=https\://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/horizon-pack/vehicle-pack.zip
 resource-pack-id=
 resource-pack-prompt=
-resource-pack-sha1=
+resource-pack-sha1=fb2c9a6b0f31785f8ef74656e53bba85172b249e
 server-ip=x.x.x.x
 server-port=24601
 simulation-distance=10
