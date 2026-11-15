@@ -1,0 +1,79 @@
+name: Mod masini (.hmod) — build cu uneltele Horizon
+
+# Construieste partea de continut a modului (horizon/mod/content) cu `cargo horizon-mod`,
+# exact cum spune docul oficial, si publica fisierul `vehicle.hmod` in release.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/horizon-mod.trigger"
+      - "horizon/mod/content/**"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "."
+
+      - name: Instalez cargo-horizon-mod
+        run: |
+          set +e
+          cargo install --git https://github.com/horizon-rust/horizon cargo-horizon-mod > install.log 2>&1
+          echo "exit=$?" >> install.log
+          tail -5 install.log
+
+      - name: Construiesc .hmod
+        working-directory: horizon/mod/content
+        run: |
+          set +e
+          cargo horizon-mod build > "$GITHUB_WORKSPACE/mod-build.log" 2>&1
+          echo "exit=$?" >> "$GITHUB_WORKSPACE/mod-build.log"
+          tail -25 "$GITHUB_WORKSPACE/mod-build.log"
+
+      - name: Adun rezultatul
+        if: always()
+        run: |
+          set -euo pipefail
+          mkdir -p out
+          find horizon/mod/content/target -name "*.hmod" -exec cp {} out/vehicle.hmod \; 2>/dev/null || true
+          ls -lh out || true
+
+      - name: Public in release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ ! -f out/vehicle.hmod ]; then echo "fara .hmod"; exit 0; fi
+          TAG=horizon-mod
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" out/vehicle.hmod --clobber
+          else
+            gh release create "$TAG" out/vehicle.hmod \
+              --title "Mod masini (Horizon .hmod)" \
+              --notes "Partea de continut: entitatea vehicle:go_kart, construita cu cargo horizon-mod."
+          fi
+
+      - name: Raport
+        if: always()
+        run: |
+          set +e
+          mkdir -p horizon
+          { echo "# build .hmod"; echo; tail -20 install.log 2>/dev/null; echo; tail -30 mod-build.log 2>/dev/null; echo; ls -lh out 2>/dev/null; } > horizon/_mod-build.md
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_mod-build.md
+          git commit -m "raport build .hmod [skip ci]" >/dev/null 2>&1
+          git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+          git push origin "HEAD:$GITHUB_REF_NAME" >/dev/null 2>&1 || true
