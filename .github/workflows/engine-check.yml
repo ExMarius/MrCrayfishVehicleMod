@@ -1,0 +1,70 @@
+name: Verific ce engine e pe panel
+
+# Compara binarul din release cu cel de pe panel si cauta in el textul modulului,
+# ca sa stim exact ce cod ruleaza (fara presupuneri).
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/engine-check.trigger"
+
+permissions:
+  contents: write
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ia binarul din release si cel de pe panel
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set +e
+          mkdir -p out
+          gh release download horizon-engine-mod --pattern horizon-engine-mod --dir out --clobber || echo "release: lipseste"
+          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=25 \
+            -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp.log 2>&1 <<'BATCH'
+          get horizon/horizon-engine-mod out/panel-engine
+          ls -l horizon/horizon-engine-mod
+          BATCH
+          tail -3 sftp.log
+          ls -lh out
+
+      - name: Inspectez
+        if: always()
+        run: |
+          set +e
+          {
+            echo "# ce engine ruleaza"
+            echo
+            for f in out/horizon-engine-mod out/panel-engine; do
+              if [ -f "$f" ]; then
+                echo "## $f"
+                ls -l "$f"
+                sha256sum "$f"
+                echo "texte ale modulului:"
+                for needle in "piese vizuale" "a pornit masina" "go_kart_body" "standard_wheel" "engine propriu" "vehicle-mod"; do
+                  printf '  %-22s %s\n' "$needle" "$(strings -a "$f" | grep -c "$needle")"
+                done
+              fi
+            done
+            echo
+            echo '## sftp'; tail -5 sftp.log 2>/dev/null
+          } > horizon/_engine-check.md
+          cat horizon/_engine-check.md
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_engine-check.md
+          git commit -m "verificare engine [skip ci]" >/dev/null 2>&1
+          git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+          git push origin "HEAD:$GITHUB_REF_NAME" >/dev/null 2>&1 || true
