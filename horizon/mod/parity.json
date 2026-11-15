@@ -1,0 +1,9 @@
+{
+  "com/mrcrayfish/vehicle/entity/LandVehicleEntity.java": "ported",
+  "com/mrcrayfish/vehicle/entity/PoweredVehicleEntity.java": "partial",
+  "com/mrcrayfish/vehicle/entity/VehicleEntity.java": "partial",
+  "com/mrcrayfish/vehicle/client/model/VehicleModels.java": "data",
+  "com/mrcrayfish/vehicle/init/ModEntities.java": "ported",
+  "com/mrcrayfish/vehicle/util/CommonUtils.java": "ported",
+  "com/mrcrayfish/vehicle/util/SurfaceHelper.java": "partial"
+}

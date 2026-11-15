@@ -41,14 +41,6 @@ const IN_RIGHT: i32 = 8;
 const IN_JUMP: i32 = 16;
 const IN_SNEAK: i32 = 32;
 
-/// Fizica, în unități vanilla pe tick. Valorile sunt calibrate după cele din
-/// `paper-plugin/.../vehicle/DriveTuning.java`, ca mașina să se simtă la fel.
-const ACCEL: f64 = 0.030;
-const BRAKE: f64 = 0.055;
-const DRAG: f64 = 0.012;
-const MAX_SPEED: f64 = 0.55; // ~11 blocuri/s
-const TURN_DEGREES: f32 = 3.2;
-
 /// O mașină vie.
 struct Car {
     dimension: String,
@@ -57,10 +49,8 @@ struct Car {
     /// Cine o conduce (UUID-ul contului) și id-ul lui de rețea (pentru coborâre).
     driver: u128,
     driver_entity: u32,
-    pos: [f64; 3],
-    yaw: f32,
-    /// Viteza pe direcția de mers, în blocuri/tick (poate fi negativă la mers înapoi).
-    speed: f64,
+    /// Poziția, viteza, unghiul și volanul — `land::Motion`, ca în Java.
+    motion: land::Motion,
     /// Ultima poziție a șoferului, ca să vedem dacă s-a dat jos singur.
     mounted: bool,
     /// Entitatea care poarta modelul vehiculului (`vehicle:go_kart`, ...). Randarea
@@ -247,9 +237,11 @@ pub(super) fn on_perform_command(
         cart,
         driver: player.uuid,
         driver_entity,
-        pos,
-        yaw: player.yaw,
-        speed: 0.0,
+        motion: land::Motion {
+            pos,
+            yaw: player.yaw,
+            ..Default::default()
+        },
         mounted: true,
         model,
         vehicle: vehicle.to_string(),
@@ -302,53 +294,31 @@ pub(super) fn on_server_tick(
             continue;
         }
 
-        // accelerație / frână
-        let forward = flags & IN_FORWARD != 0;
-        let back = flags & IN_BACK != 0;
-        if forward {
-            car.speed += ACCEL;
-        } else if back {
-            if car.speed > 0.0 {
-                car.speed -= BRAKE;
+        // fizica modului: `LandVehicleEntity.updateVehicleMotion()`
+        let inputs = land::Inputs {
+            throttle: if flags & IN_FORWARD != 0 {
+                1.0
+            } else if flags & IN_BACK != 0 {
+                -1.0
             } else {
-                car.speed -= ACCEL * 0.6;
-            }
-        } else {
-            // frecare: se oprește lin
-            if car.speed.abs() <= DRAG {
-                car.speed = 0.0;
+                0.0
+            },
+            steer: if flags & IN_LEFT != 0 {
+                -1.0
+            } else if flags & IN_RIGHT != 0 {
+                1.0
             } else {
-                car.speed -= DRAG * car.speed.signum();
-            }
-        }
-        car.speed = car.speed.clamp(-MAX_SPEED * 0.45, MAX_SPEED);
-
-        // viraj: A/D, mai eficient cu cât merge mai repede (ca o mașină adevărată)
-        let turn_scale = if car.speed.abs() < 0.02 {
-            0.35
-        } else {
-            1.0
+                0.0
+            },
+            handbrake: false,
         };
-        if flags & IN_LEFT != 0 {
-            car.yaw -= TURN_DEGREES * turn_scale;
-        }
-        if flags & IN_RIGHT != 0 {
-            car.yaw += TURN_DEGREES * turn_scale;
-        }
-        car.yaw = car.yaw.rem_euclid(360.0);
+        land::update_turning(&mut car.motion, inputs);
+        land::update_vehicle_motion(&mut car.motion, inputs, true);
 
-        // Înălțimea rămâne cea de la pornire: M1 nu are încă citirea terenului, deci
-        // mașina nu urc urcă/coboară. M2 adaugă proba de sol și gravitația.
-
-        // deplasare pe direcția yaw-ului vanilla: 0° = +Z, 90° = -X
-        let yaw = f64::from(car.yaw.to_radians());
-        car.pos[0] -= car.speed * yaw.sin();
-        car.pos[2] += car.speed * yaw.cos();
-
-        game.native_teleport_vehicle(&car.dimension, car.cart, car.pos);
+        game.native_teleport_vehicle(&car.dimension, car.cart, car.motion.pos);
 
         // vehiculul urmează scheletul: aceeași poziție, aceeași rotire
-        game.native_move_entity(&car.dimension, car.model, car.pos, car.yaw, 0.0);
+        game.native_move_entity(&car.dimension, car.model, car.motion.pos, car.motion.yaw, 0.0);
     }
 
     for index in gone.into_iter().rev() {
@@ -417,3 +387,193 @@ pub const VEHICLES: &[(&str, &str, [f32; 3])] = &[
     ("vehicle:fertilizer", "vehicle:vehicle/trailer_fertilizer_body", [-0.5, 0.031, -0.812]),
 ];
 // END GENERATED VEHICLES
+
+// ---------------------------------------------------------------------------
+// Port 1:1 al fizicii: `LandVehicleEntity.updateVehicleMotion()` din modul Java.
+//
+// Numele si ordinea calculelor sunt cele din sursa; valorile care in mod vin din
+// `VehicleProperties` (fisierul de proprietati al fiecarui vehicul, care nu e in
+// acest repo) sunt luate din valorile lor implicite, din `PoweredProperties` si
+// `LandProperties`, si stranse mai jos, ca sa se vada exact ce lipseste.
+// ---------------------------------------------------------------------------
+pub mod land {
+    /// `PoweredProperties.DEFAULT_ENGINE_POWER`.
+    pub const ENGINE_POWER: f64 = 15.0;
+    /// `LandProperties.DEFAULT_BRAKE_POWER`.
+    pub const BRAKE_POWER: f64 = -1.0;
+    /// `LandProperties.DEFAULT_MAX_REVERSE_SPEED`.
+    pub const MAX_REVERSE_SPEED: f64 = 5.0;
+    /// `PoweredProperties.DEFAULT_MAX_STEERING_ANGLE`.
+    pub const MAX_STEERING_ANGLE: f32 = 35.0;
+    /// `LandVehicleEntity.updateVehicleMotion`: `float drag = 0.001F`.
+    pub const DRAG: f64 = 0.001;
+    /// `SurfaceHelper.getFriction` pentru piatra/pamant.
+    pub const FRICTION: f64 = 0.6;
+    /// `LandVehicleEntity`: accelerația și forțele se aplică la scara asta (0.05).
+    pub const STEP: f64 = 0.05;
+    /// `Config.SERVER.globalSpeedLimit` — limita serverului, in blocuri/tick.
+    pub const SPEED_LIMIT: f64 = 0.55;
+    /// Cât de repede se învârte volanul spre țintă, în grade pe tick.
+    pub const STEER_RATE: f32 = 8.0;
+
+    /// Ce intră în ecuație din tastatură.
+    #[derive(Clone, Copy, Default)]
+    pub struct Inputs {
+        pub throttle: f64,
+        pub steer: f32,
+        pub handbrake: bool,
+    }
+
+    /// Starea de mișcare a vehiculului, echivalentul `velocity`/`yRot`/`steeringAngle`.
+    #[derive(Clone, Copy, Default)]
+    pub struct Motion {
+        pub pos: [f64; 3],
+        pub velocity: [f64; 3],
+        pub yaw: f32,
+        pub steering: f32,
+    }
+
+    fn len(v: [f64; 3]) -> f64 {
+        (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt()
+    }
+
+    fn scale(v: [f64; 3], k: f64) -> [f64; 3] {
+        [v[0] * k, v[1] * k, v[2] * k]
+    }
+
+    fn add(a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+        [a[0] + b[0], a[1] + b[1], a[2] + b[2]]
+    }
+
+    fn normalize(v: [f64; 3]) -> [f64; 3] {
+        let length = len(v);
+        if length < 1e-9 {
+            [0.0, 0.0, 0.0]
+        } else {
+            scale(v, 1.0 / length)
+        }
+    }
+
+    fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    }
+
+    fn lerp(a: [f64; 3], b: [f64; 3], t: f64) -> [f64; 3] {
+        [
+            a[0] + (b[0] - a[0]) * t,
+            a[1] + (b[1] - a[1]) * t,
+            a[2] + (b[2] - a[2]) * t,
+        ]
+    }
+
+    /// `Vector3d.directionFromRotation` pentru un vehicul drept: 0° = +Z, 90° = -X.
+    fn forward(yaw: f32) -> [f64; 3] {
+        let yaw = f64::from(yaw.to_radians());
+        [-yaw.sin(), 0.0, yaw.cos()]
+    }
+
+    /// `Vector3d.yRot` în jurul lui Y.
+    fn rotate_y(v: [f64; 3], degrees: f32) -> [f64; 3] {
+        let a = f64::from(degrees.to_radians());
+        let (sin, cos) = (a.sin(), a.cos());
+        [v[0] * cos + v[2] * sin, v[1], -v[0] * sin + v[2] * cos]
+    }
+
+    /// Unghiul unui vector în plan, în grade, ca `CommonUtils.yaw`.
+    fn yaw_of(v: [f64; 3]) -> f32 {
+        (-v[0]).atan2(v[2]).to_degrees() as f32
+    }
+
+    /// Diferența de unghi, înfășurată în (-180, 180], ca `MathHelper.wrapDegrees`.
+    fn wrap_degrees(mut angle: f32) -> f32 {
+        angle %= 360.0;
+        if angle >= 180.0 {
+            angle -= 360.0;
+        }
+        if angle < -180.0 {
+            angle += 360.0;
+        }
+        angle
+    }
+
+    /// `CommonUtils.clampSpeed`.
+    fn clamp_speed(v: [f64; 3]) -> [f64; 3] {
+        let length = len(v).clamp(0.0, SPEED_LIMIT);
+        scale(normalize(v), length)
+    }
+
+    /// `updateTurning`: volanul merge spre ținta cu o viteză fixă.
+    pub fn update_turning(motion: &mut Motion, inputs: Inputs) {
+        let target = (inputs.steer * MAX_STEERING_ANGLE).clamp(-MAX_STEERING_ANGLE, MAX_STEERING_ANGLE);
+        let delta = (target - motion.steering).clamp(-STEER_RATE, STEER_RATE);
+        motion.steering += delta;
+    }
+
+    /// `LandVehicleEntity.updateVehicleMotion()`, rând cu rând.
+    pub fn update_vehicle_motion(motion: &mut Motion, inputs: Inputs, on_ground: bool) {
+        let forward = forward(motion.yaw);
+
+        let engine_power = if on_ground { ENGINE_POWER } else { 0.0 };
+        let brake_power = if on_ground { BRAKE_POWER } else { 0.0 };
+        let throttle = inputs.throttle.clamp(-1.0, 1.0);
+
+        let mut forward_force = engine_power * throttle;
+        if throttle < 0.0 {
+            forward_force *= 0.4;
+        }
+        let mut acceleration = scale(forward, forward_force * STEP);
+
+        if len(motion.velocity) < 0.05 {
+            motion.velocity = [0.0, 0.0, 0.0];
+        }
+        let handbrake_force = scale(motion.velocity, if inputs.handbrake { brake_power } else { 0.0 } * STEP);
+        let friction_force = scale(motion.velocity, -FRICTION * STEP);
+        let drag_force = scale(motion.velocity, len(motion.velocity) * -DRAG * STEP);
+        acceleration = add(add(acceleration, drag_force), add(friction_force, handbrake_force));
+        motion.velocity = add(motion.velocity, acceleration);
+        motion.velocity = clamp_speed(motion.velocity);
+
+        // Roțile: față/spate, cu offset-urile de axe (0 în proprietățile implicite).
+        let front_axle = 0.0;
+        let rear_axle = 0.0;
+        let world_front = add(
+            add(motion.pos, scale(forward, front_axle)),
+            scale(rotate_y(motion.velocity, motion.steering), STEP),
+        );
+        let world_rear = add(
+            add(motion.pos, scale(forward, rear_axle)),
+            scale(motion.velocity, STEP),
+        );
+
+        let heading = normalize([
+            world_front[0] - world_rear[0],
+            world_front[1] - world_rear[1],
+            world_front[2] - world_rear[2],
+        ]);
+        let next_position = add(world_rear, scale(heading, -rear_axle));
+        let movement = [
+            next_position[0] - motion.pos[0],
+            next_position[1] - motion.pos[1],
+            next_position[2] - motion.pos[2],
+        ];
+
+        // `SurfaceHelper.getSurfaceTraction` — 1.0 pe teren uscat.
+        let surface_traction = 1.0;
+        if dot(heading, normalize(motion.velocity)) > 0.0 {
+            motion.velocity = lerp(motion.velocity, scale(heading, len(motion.velocity)), surface_traction);
+        } else {
+            let reverse = scale(heading, -len(motion.velocity).min(MAX_REVERSE_SPEED));
+            motion.velocity = lerp(motion.velocity, reverse, surface_traction);
+        }
+
+        // `yRot -= wrapDegrees(yaw(forward) - yaw(heading))`
+        let delta_yaw = wrap_degrees(yaw_of(forward) - yaw_of(heading));
+        motion.yaw -= delta_yaw;
+        motion.yaw = motion.yaw.rem_euclid(360.0);
+
+        // `motion` se adaugă poziției, ca `this.move(MoverType.SELF, this.motion)`
+        motion.pos[0] += movement[0];
+        motion.pos[1] += movement[1];
+        motion.pos[2] += movement[2];
+    }
+}
