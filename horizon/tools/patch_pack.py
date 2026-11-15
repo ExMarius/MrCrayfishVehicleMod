@@ -15,12 +15,14 @@ import sys
 import zipfile
 import zlib
 
-# Pack-ul e construit pentru 1.21.4; îl declarăm compatibil cu orice versiune mai nouă.
+# 26.3 cere min_format si max_format (RESOURCE_PACK_FORMAT = (97, 1) în horizon-core);
+# `supported_formats` e refuzat pentru formatele noi.
 PACK_META = """{
   "pack": {
-    "description": "MrCrayfish Vehicle Mod - masini (Horizon)",
-    "pack_format": 46,
-    "supported_formats": {"min_inclusive": 1, "max_inclusive": 999}
+    "description": "MrCrayfish Vehicle Mod - masini (Horizon 26.3)",
+    "min_format": [97, 1],
+    "max_format": [97, 1],
+    "pack_format": 97
   }
 }
 """
