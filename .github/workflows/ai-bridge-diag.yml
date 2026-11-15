@@ -46,7 +46,7 @@ jobs:
         run: |
           set -uo pipefail
           mkdir -p /tmp/logs
-          for f in logs/latest.log logs/debug.log server.properties ops.json run.sh user_jvm_args.txt horizon/console.log horizon/server.toml eula.txt; do
+          for f in logs/latest.log logs/debug.log server.properties ops.json run.sh user_jvm_args.txt horizon/console.log horizon/resourcepack.txt server.toml eula.txt; do
             printf 'get %s /tmp/logs/%s\n' "$f" "$(basename $f)" > g.txt
             sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=20 \
               -o BatchMode=yes -i /tmp/hc_key -b g.txt -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" >/dev/null 2>&1 || true
