@@ -1,27 +1,27 @@
-//! [vehicle-mod] Portul sistemului nostru de mașini pe Horizon — partea server-side.
-//!
-//! Horizon nu rulează cod Java, deci `paper-plugin/` nu poate fi încărcat. Modulul ăsta se
-//! lipește direct în arborele sursă Horizon (`apply.py`) și rulează în interiorul engine-ului,
-//! cu acces la lume, entități, input-ul jucătorilor și comenzile serverului.
-//!
-//! Stadiul curent: **M2** — go-kartul: schelet care se conduce + caroserie și roți vizibile
-//! (entități `item_display` cu modelele din resource pack-ul servit de server).
-//!
-//! Cum e făcută, și de ce așa:
-//!
-//! * **Scheletul** e un minecart invizibil (`Invisible`, `Invulnerable`, `NoGravity`). Am ales
-//!   minecart-ul pentru că e singurul tip de vehicul pe care Horizon îl lasă să poarte jucători
-//!   prin API-ul propriu (`native_mount`, API 472, ca `/ride`), și pentru că `native_teleport_vehicle`
-//!   îl mută împreună cu pasagerii.
-//! * **Mișcarea** e calculată de noi la fiecare tick de server (`native_server_tick`), nu de
-//!   fizica de șine a minecart-ului: poziția e impusă de `native_teleport_vehicle`.
-//! * **Tastarea** vine din pachetul `PlayerInput` (`native_player_input`), deci W/S/A/D ajung
-//!   la noi fără să ghicim mișcarea din diferențe de poziție.
-//! * **Comenzile** (`/car`) se înregistrează prin `native_register_commands` și rulează în
-//!   `native_perform_command`.
-//!
-//! Urmează M2: caroseria (entități `item_display` cu modelele modului, aduse printr-un resource
-//! pack servit de server) și urcarea pe teren.
+// [vehicle-mod] Portul sistemului nostru de mașini pe Horizon — partea server-side.
+//
+// Horizon nu rulează cod Java, deci `paper-plugin/` nu poate fi încărcat. Modulul ăsta e un
+// bundle nativ Horizon (`horizon-mixin.toml`) care intră în arborele sursă la compilare și rulează în engine,
+// cu acces la lume, entități, input-ul jucătorilor și comenzile serverului.
+//
+// Stadiul curent: **M2** — go-kartul: schelet care se conduce + caroserie și roți vizibile
+// (entități `item_display` cu modelele din resource pack-ul servit de server).
+//
+// Cum e făcută, și de ce așa:
+//
+// * **Scheletul** e un minecart invizibil (`Invisible`, `Invulnerable`, `NoGravity`). Am ales
+//   minecart-ul pentru că e singurul tip de vehicul pe care Horizon îl lasă să poarte jucători
+//   prin API-ul propriu (`native_mount`, API 472, ca `/ride`), și pentru că `native_teleport_vehicle`
+//   îl mută împreună cu pasagerii.
+// * **Mișcarea** e calculată de noi la fiecare tick de server (`native_server_tick`), nu de
+//   fizica de șine a minecart-ului: poziția e impusă de `native_teleport_vehicle`.
+// * **Tastarea** vine din pachetul `PlayerInput` (`native_player_input`), deci W/S/A/D ajung
+//   la noi fără să ghicim mișcarea din diferențe de poziție.
+// * **Comenzile** (`/car`) se înregistrează prin `native_register_commands` și rulează în
+//   `native_perform_command`.
+//
+// Urmează M2: caroseria (entități `item_display` cu modelele modului, aduse printr-un resource
+// pack servit de server) și urcarea pe teren.
 
 use super::Game;
 use crate::mod_api::{NativeCommand, NativeLifecycleContext, NativeServerPlayer, ServerTickPhase};
