@@ -1,29 +1,29 @@
 # ce engine ruleaza
 
 ## out/horizon-engine-mod
--rw-r--r-- 1 runner runner 88827976 Nov 15 15:38 out/horizon-engine-mod
-8664c0cfc7ae3bf20e0fed9de972037c3224b68e0040625a92dff420f77af8a8  out/horizon-engine-mod
+-rw-r--r-- 1 runner runner 88827976 Nov 15 16:51 out/horizon-engine-mod
+7ffa0ce6fcaee7a22b0e7d30e18c805deb84e363c32be375f7a0f989e6c28925  out/horizon-engine-mod
 texte ale modulului:
   piese vizuale          1
   a pornit masina        1
-  go_kart_body           1
+  go_kart_body           2
   standard_wheel         1
   engine propriu         0
   vehicle-mod            6
 ## out/panel-engine
--rwxr-xr-x 1 runner runner 88762440 Nov 15 15:38 out/panel-engine
-dcc880ab5c5e684e23a97ec9b61f2722dc8ce80b749f29b262eda530447d8b8d  out/panel-engine
+-rw-r--r-- 1 runner runner 88827976 Nov 15 16:53 out/panel-engine
+7ffa0ce6fcaee7a22b0e7d30e18c805deb84e363c32be375f7a0f989e6c28925  out/panel-engine
 texte ale modulului:
-  piese vizuale          0
+  piese vizuale          1
   a pornit masina        1
-  go_kart_body           0
-  standard_wheel         0
+  go_kart_body           2
+  standard_wheel         1
   engine propriu         0
-  vehicle-mod            4
+  vehicle-mod            6
 
 ## sftp
 Connected to jacob.hidencloud.com.
 sftp> get horizon/horizon-engine-mod out/panel-engine
 Fetching /horizon/horizon-engine-mod to out/panel-engine
 sftp> ls -l horizon/horizon-engine-mod
--rwxr-xr-x    ? 997      986      88762440 Nov 13 23:12 horizon/horizon-engine-mod
+-rwxr-xr-x    ? 997      986      88827976 Nov 15 16:51 horizon/horizon-engine-mod
