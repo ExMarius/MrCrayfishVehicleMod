@@ -1,0 +1,452 @@
+{
+	"textures": {
+		"electric_engine": "vehicle:model/electric_engine"
+	},
+	"elements": [
+		{
+			"from": [
+				4,
+				0,
+				1
+			],
+			"to": [
+				12,
+				3,
+				14
+			],
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					0,
+					0,
+					1
+				]
+			},
+			"faces": {
+				"north": {
+					"uv": [
+						1.5625,
+						1.5,
+						2.0625,
+						1.6875
+					],
+					"texture": "#electric_engine"
+				},
+				"east": {
+					"uv": [
+						1.0,
+						1.3125,
+						1.8125,
+						1.5
+					],
+					"texture": "#electric_engine"
+				},
+				"south": {
+					"uv": [
+						1.625,
+						0.75,
+						2.125,
+						0.9375
+					],
+					"texture": "#electric_engine"
+				},
+				"west": {
+					"uv": [
+						1.5,
+						0.0,
+						2.3125,
+						0.1875
+					],
+					"texture": "#electric_engine"
+				},
+				"up": {
+					"uv": [
+						0.5,
+						0.8125,
+						0.0,
+						0.0
+					],
+					"texture": "#electric_engine"
+				},
+				"down": {
+					"uv": [
+						1.0,
+						0.0,
+						0.5,
+						0.8125
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		},
+		{
+			"from": [
+				4,
+				3,
+				1
+			],
+			"to": [
+				12,
+				11,
+				14
+			],
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					0,
+					-7,
+					1
+				]
+			},
+			"faces": {
+				"north": {
+					"uv": [
+						0.0,
+						1.3125,
+						0.5,
+						1.8125
+					],
+					"texture": "#electric_engine"
+				},
+				"east": {
+					"uv": [
+						0.0,
+						0.8125,
+						0.8125,
+						1.3125
+					],
+					"texture": "#electric_engine"
+				},
+				"south": {
+					"uv": [
+						0.5,
+						1.3125,
+						1.0,
+						1.8125
+					],
+					"texture": "#electric_engine"
+				},
+				"west": {
+					"uv": [
+						0.8125,
+						0.8125,
+						1.625,
+						1.3125
+					],
+					"texture": "#electric_engine"
+				},
+				"up": {
+					"uv": [
+						1.5,
+						0.8125,
+						1.0,
+						0.0
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		},
+		{
+			"from": [
+				4,
+				8,
+				0.999
+			],
+			"to": [
+				6.82843,
+				9,
+				14.001
+			],
+			"rotation": {
+				"angle": 45,
+				"axis": "z",
+				"origin": [
+					4,
+					9,
+					1
+				]
+			},
+			"faces": {
+				"north": {
+					"uv": [
+						1.625,
+						1.0625,
+						1.8125,
+						1.125
+					],
+					"texture": "#electric_engine"
+				},
+				"south": {
+					"uv": [
+						1.625,
+						1.125,
+						1.8125,
+						1.1875
+					],
+					"texture": "#electric_engine"
+				},
+				"up": {
+					"uv": [
+						1.1875,
+						2.3125,
+						1.0,
+						1.5
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		},
+		{
+			"from": [
+				9.17157,
+				8,
+				0.999
+			],
+			"to": [
+				12,
+				9,
+				14.001
+			],
+			"rotation": {
+				"angle": -45,
+				"axis": "z",
+				"origin": [
+					12,
+					9,
+					1
+				]
+			},
+			"faces": {
+				"north": {
+					"uv": [
+						1.625,
+						1.1875,
+						1.8125,
+						1.25
+					],
+					"texture": "#electric_engine"
+				},
+				"south": {
+					"uv": [
+						1.625,
+						1.25,
+						1.8125,
+						1.3125
+					],
+					"texture": "#electric_engine"
+				},
+				"up": {
+					"uv": [
+						1.375,
+						2.3125,
+						1.1875,
+						1.5
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		},
+		{
+			"from": [
+				9.17157,
+				5,
+				4.999
+			],
+			"to": [
+				12,
+				6,
+				14.001
+			],
+			"rotation": {
+				"angle": 45,
+				"axis": "z",
+				"origin": [
+					12,
+					5,
+					1
+				]
+			},
+			"faces": {
+				"north": {
+					"uv": [
+						1.6875,
+						0.1875,
+						1.875,
+						0.25
+					],
+					"texture": "#electric_engine"
+				},
+				"south": {
+					"uv": [
+						1.6875,
+						0.25,
+						1.875,
+						0.3125
+					],
+					"texture": "#electric_engine"
+				},
+				"down": {
+					"uv": [
+						1.6875,
+						0.1875,
+						1.5,
+						0.75
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		},
+		{
+			"from": [
+				4,
+				5,
+				4.999
+			],
+			"to": [
+				6.82843,
+				6,
+				14.001
+			],
+			"rotation": {
+				"angle": -45,
+				"axis": "z",
+				"origin": [
+					4,
+					5,
+					1
+				]
+			},
+			"faces": {
+				"north": {
+					"uv": [
+						1.6875,
+						0.3125,
+						1.875,
+						0.375
+					],
+					"texture": "#electric_engine"
+				},
+				"south": {
+					"uv": [
+						1.6875,
+						0.375,
+						1.875,
+						0.4375
+					],
+					"texture": "#electric_engine"
+				},
+				"down": {
+					"uv": [
+						1.5625,
+						1.5,
+						1.375,
+						2.0625
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		},
+		{
+			"from": [
+				4,
+				3,
+				4
+			],
+			"to": [
+				12,
+				5,
+				5
+			],
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					4,
+					3,
+					4
+				]
+			},
+			"faces": {
+				"south": {
+					"uv": [
+						1.625,
+						0.9375,
+						2.125,
+						1.0625
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		},
+		{
+			"from": [
+				7.5,
+				6.5,
+				14
+			],
+			"to": [
+				8.5,
+				7.5,
+				15
+			],
+			"rotation": {
+				"angle": 0,
+				"axis": "y",
+				"origin": [
+					7.5,
+					6.5,
+					14
+				]
+			},
+			"faces": {
+				"east": {
+					"uv": [
+						1.5,
+						0.75,
+						1.5625,
+						0.8125
+					],
+					"texture": "#electric_engine"
+				},
+				"south": {
+					"uv": [
+						1.5625,
+						0.75,
+						1.625,
+						0.8125
+					],
+					"texture": "#electric_engine"
+				},
+				"west": {
+					"uv": [
+						1.6875,
+						0.4375,
+						1.75,
+						0.5
+					],
+					"texture": "#electric_engine"
+				},
+				"up": {
+					"uv": [
+						1.75,
+						0.5625,
+						1.6875,
+						0.5
+					],
+					"texture": "#electric_engine"
+				},
+				"down": {
+					"uv": [
+						1.75,
+						0.5625,
+						1.6875,
+						0.625
+					],
+					"texture": "#electric_engine"
+				}
+			}
+		}
+	]
+}

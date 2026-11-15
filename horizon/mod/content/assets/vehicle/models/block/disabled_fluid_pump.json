@@ -1,0 +1,6 @@
+{
+	"textures": {
+		"fluid_pump": "vehicle:model/disabled_fluid_pump"
+	},
+	"elements": []
+}

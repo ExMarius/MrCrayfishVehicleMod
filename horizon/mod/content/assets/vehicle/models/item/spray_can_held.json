@@ -1,0 +1,163 @@
+{
+	"textures": {
+		"spray_can": "vehicle:model/spray_can"
+	},
+	"elements": [
+		{
+			"from": [
+				5,
+				0,
+				5
+			],
+			"to": [
+				11,
+				10,
+				11
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						1.5,
+						0.0,
+						3.0,
+						2.5
+					],
+					"texture": "#spray_can"
+				},
+				"east": {
+					"uv": [
+						0.0,
+						2.5,
+						1.5,
+						5.0
+					],
+					"texture": "#spray_can"
+				},
+				"south": {
+					"uv": [
+						1.5,
+						2.5,
+						3.0,
+						5.0
+					],
+					"texture": "#spray_can"
+				},
+				"west": {
+					"uv": [
+						3.0,
+						0.0,
+						4.5,
+						2.5
+					],
+					"texture": "#spray_can"
+				},
+				"up": {
+					"uv": [
+						4.5,
+						4.0,
+						3.0,
+						2.5
+					],
+					"texture": "#spray_can"
+				},
+				"down": {
+					"uv": [
+						4.5,
+						4.0,
+						3.0,
+						5.5
+					],
+					"texture": "#spray_can"
+				}
+			}
+		},
+		{
+			"from": [
+				6.5,
+				10,
+				6.5
+			],
+			"to": [
+				9.5,
+				13,
+				9.5
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						0.0,
+						5.0,
+						0.75,
+						5.75
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"east": {
+					"uv": [
+						0.75,
+						5.0,
+						1.5,
+						5.75
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"south": {
+					"uv": [
+						1.5,
+						5.0,
+						2.25,
+						5.75
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"west": {
+					"uv": [
+						2.25,
+						5.0,
+						3.0,
+						5.75
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"up": {
+					"uv": [
+						3.75,
+						6.25,
+						3.0,
+						5.5
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				}
+			}
+		},
+		{
+			"from": [
+				5,
+				0,
+				5.002
+			],
+			"to": [
+				11,
+				10,
+				11.002
+			],
+			"faces": {
+				"south": {
+					"uv": [
+						0.0,
+						0.0,
+						1.5,
+						2.5
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,6 @@
+{
+	"textures": {
+		"fluid_mixer": "vehicle:model/disabled_fluid_mixer"
+	},
+	"elements": []
+}

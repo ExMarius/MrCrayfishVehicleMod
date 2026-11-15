@@ -1,0 +1,154 @@
+{
+	"textures": {
+		"spray_can": "vehicle:model/spray_can"
+	},
+	"elements": [
+		{
+			"from": [
+				5,
+				0,
+				5
+			],
+			"to": [
+				11,
+				10,
+				11
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						1.5,
+						0.0,
+						3.0,
+						2.5
+					],
+					"texture": "#spray_can"
+				},
+				"east": {
+					"uv": [
+						0.0,
+						2.5,
+						1.5,
+						5.0
+					],
+					"texture": "#spray_can"
+				},
+				"south": {
+					"uv": [
+						1.5,
+						2.5,
+						3.0,
+						5.0
+					],
+					"texture": "#spray_can"
+				},
+				"west": {
+					"uv": [
+						3.0,
+						0.0,
+						4.5,
+						2.5
+					],
+					"texture": "#spray_can"
+				},
+				"down": {
+					"uv": [
+						4.5,
+						4.0,
+						3.0,
+						5.5
+					],
+					"texture": "#spray_can"
+				}
+			}
+		},
+		{
+			"from": [
+				5,
+				10,
+				5
+			],
+			"to": [
+				11,
+				14,
+				11
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						4.5,
+						1.5,
+						6.0,
+						2.5
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"east": {
+					"uv": [
+						4.5,
+						2.5,
+						6.0,
+						3.5
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"south": {
+					"uv": [
+						4.5,
+						3.5,
+						6.0,
+						4.5
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"west": {
+					"uv": [
+						4.5,
+						4.5,
+						6.0,
+						5.5
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				},
+				"up": {
+					"uv": [
+						6.0,
+						1.5,
+						4.5,
+						0.0
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				}
+			}
+		},
+		{
+			"from": [
+				5,
+				0,
+				5.002
+			],
+			"to": [
+				11,
+				10,
+				11.002
+			],
+			"faces": {
+				"south": {
+					"uv": [
+						0.0,
+						0.0,
+						1.5,
+						2.5
+					],
+					"texture": "#spray_can",
+					"tintindex": 0
+				}
+			}
+		}
+	]
+}

@@ -3,7 +3,7 @@
 # rețete, texte. Codul (fizica, condusul, randarea) stă în modulul nativ, în ../native.
 id = "vehicle"
 name = "Masini (MrCrayfish's Vehicle Mod)"
-version = "0.1.0"
+version = "0.2.0"
 description = "Masinile modului original, ca mod nativ Horizon."
 authors = ["ExMarius"]
 api = "0.2"

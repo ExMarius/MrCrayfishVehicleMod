@@ -1,0 +1,75 @@
+{
+	"textures": {
+		"metal_panel": "vehicle:model/metal_panel"
+	},
+	"elements": [
+		{
+			"from": [
+				0,
+				0,
+				0
+			],
+			"to": [
+				16,
+				1,
+				16
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						4.0,
+						0.0,
+						8.0,
+						0.25
+					],
+					"texture": "#metal_panel"
+				},
+				"east": {
+					"uv": [
+						4.0,
+						0.25,
+						8.0,
+						0.5
+					],
+					"texture": "#metal_panel"
+				},
+				"south": {
+					"uv": [
+						4.0,
+						0.5,
+						8.0,
+						0.75
+					],
+					"texture": "#metal_panel"
+				},
+				"west": {
+					"uv": [
+						4.0,
+						0.75,
+						8.0,
+						1.0
+					],
+					"texture": "#metal_panel"
+				},
+				"up": {
+					"uv": [
+						4.0,
+						4.0,
+						0.0,
+						0.0
+					],
+					"texture": "#metal_panel"
+				},
+				"down": {
+					"uv": [
+						4.0,
+						4.0,
+						0.0,
+						8.0
+					],
+					"texture": "#metal_panel"
+				}
+			}
+		}
+	]
+}

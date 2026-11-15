@@ -116,6 +116,9 @@ fn describe(flags: i32) -> String {
 /// Comanda `/car`: pune mașina jos, sub jucător, și îl așază la volan.
 pub(super) fn register_commands(_game: &mut Game<'_>, commands: &mut Vec<NativeCommand>) {
     commands.push(NativeCommand::new("car"));
+    // `/masina [nume]` pune un vehicul al modului, ca entitate adevarata
+    // (`vehicle:go_kart`, `vehicle:sports_car`, ...). Fara nume, le listeaza.
+    commands.push(NativeCommand::new("masina"));
 }
 
 /// Pune o piesă de caroserie: un `item_display` care ține un item al cărui model vine din
@@ -174,7 +177,43 @@ pub(super) fn on_perform_command(
     ran: &mut bool,
 ) {
     let mut words = command.split_whitespace();
-    if words.next() != Some("car") {
+    let head = words.next();
+
+    if head == Some("masina") {
+        *ran = true;
+        let wanted = words.next();
+        let Some((id, _, _)) = (match wanted {
+            None => None,
+            Some(name) => VEHICLES
+                .iter()
+                .find(|(id, _, _)| id.rsplit(':').next() == Some(name)),
+        }) else {
+            let names: Vec<&str> = VEHICLES
+                .iter()
+                .filter_map(|(id, _, _)| id.rsplit(':').next())
+                .collect();
+            game.native_feedback(Text::literal(format!(
+                "[masina] vehicule: {}",
+                names.join(", ")
+            )));
+            return;
+        };
+        let pos = [
+            player.position[0],
+            player.position[1] + 0.1,
+            player.position[2],
+        ];
+        match game.native_summon(&player.dimension, id, pos, Compound::new()) {
+            Some(entity) => game.native_feedback(Text::literal(format!(
+                "[masina] {} pus (entitate {entity})",
+                id.rsplit(':').next().unwrap_or(id)
+            ))),
+            None => game.native_feedback(Text::literal("[masina] nu am putut pune vehiculul aici")),
+        }
+        return;
+    }
+
+    if head != Some("car") {
         return;
     }
     *ran = true;
@@ -374,34 +413,53 @@ pub(super) fn on_server_tick(
 // intoarcere pe 180°), deci se potriveste cu cadrul entitatii (+z = inainte).
 // ---------------------------------------------------------------------------
 
-/// Entitatea noastra, asa cum o declara modul de continut.
-pub const GO_KART: &str = "vehicle:go_kart";
-/// Caroseria go-kartului, `assets/vehicle/models/vehicle/go_kart_body.json`.
-pub const GO_KART_BODY: &str = "vehicle:vehicle/go_kart_body";
-
-/// Cuburile modelului sunt asezate in jurul lui x=8, z=12.5 (texeli), nu in
-/// origine: le aducem in centrul entitatii, in blocuri.
-const BODY_OFFSET: [f32; 3] = [-0.5, 0.0, -0.78];
-
-/// Modelele care trebuie coapte ca sa le putem desena.
+/// Modelele care trebuie coapte ca sa le putem desena: unul per vehicul.
 pub fn standalone_models(models: &mut Vec<String>) {
-    models.push(GO_KART_BODY.to_string());
+    for (_, model, _) in VEHICLES {
+        models.push((*model).to_string());
+    }
 }
 
-/// `native_mob_submit`: un model propriu pentru mobul `vehicle:go_kart`.
+/// `native_mob_submit`: fiecare vehicul e desenat cu modelul lui din mod.
 pub fn on_mob_submit(
     game: &Game<'_>,
     mob: &crate::game::native_mob_draw::NativeMobRender<'_>,
     draw: &mut crate::game::native_block_entity_draw::BlockEntityDraw,
     drawn: &mut bool,
 ) {
-    if mob.kind != GO_KART {
+    let Some((_, model, offset)) = VEHICLES.iter().find(|(id, _, _)| *id == mob.kind) else {
         return;
-    }
+    };
     draw.push();
-    draw.translate(BODY_OFFSET);
-    let _ = game.native_draw_model(draw, GO_KART_BODY, 0xFF_FFFF);
+    draw.translate(*offset);
+    let _ = game.native_draw_model(draw, model, 0xFF_FFFF);
     draw.pop();
     // entitatea e desenata de noi: modelul vanilla (negustorul) nu se mai deseneaza
     *drawn = true;
 }
+
+// BEGIN GENERATED VEHICLES
+// GENERAT de horizon/tools/port_mod_content.py — nu edita de mana.
+// (entitate, model, offset) pentru fiecare vehicul al modului: offset-ul aduce
+// cutia modelului in centrul entitatii, in blocuri (cuburile sunt in texeli/16).
+pub const VEHICLES: &[(&str, &str, [f32; 3])] = &[
+    ("vehicle:quad_bike", "vehicle:vehicle/quad_bike/base", [-0.5, 0.031, -0.459]),
+    ("vehicle:sports_car", "vehicle:vehicle/sports_car/base", [-0.5, 0.0, -0.469]),
+    ("vehicle:go_kart", "vehicle:vehicle/go_kart/base", [-0.5, 0.062, -0.559]),
+    ("vehicle:jet_ski", "vehicle:vehicle/jet_ski_body", [-0.5, 0.125, -0.641]),
+    ("vehicle:lawn_mower", "vehicle:vehicle/lawn_mower_body", [-0.5, 0.0, -0.562]),
+    ("vehicle:moped", "vehicle:vehicle/moped/body", [-0.5, 0.0, -0.447]),
+    ("vehicle:sports_plane", "vehicle:vehicle/sports_plane/base", [-0.5, 0.094, 0.64]),
+    ("vehicle:golf_cart", "vehicle:vehicle/golf_cart_body", [-0.5, 0.0, -0.456]),
+    ("vehicle:off_roader", "vehicle:vehicle/off_roader_body", [-0.5, 0.062, -0.5]),
+    ("vehicle:tractor", "vehicle:vehicle/tractor_body", [-0.5, -0.062, -0.501]),
+    ("vehicle:mini_bus", "vehicle:vehicle/mini_bus/body", [-0.5, 0.188, -0.531]),
+    ("vehicle:dirt_bike", "vehicle:vehicle/dirt_bike/body", [-0.5, 0.013, -0.209]),
+    ("vehicle:compact_helicopter", "vehicle:vehicle/helicopter/base", [-0.5, 0.0, 1.36]),
+    ("vehicle:vehicle_trailer", "vehicle:vehicle/trailer_body", [-0.5, 0.031, -0.688]),
+    ("vehicle:storage_trailer", "vehicle:vehicle/trailer_chest_body", [-0.5, 0.031, -0.75]),
+    ("vehicle:fluid_trailer", "vehicle:vehicle/trailer_fluid_body", [-0.5, 0.031, -0.719]),
+    ("vehicle:seeder", "vehicle:vehicle/trailer_seeder_body", [-0.5, 0.219, -0.844]),
+    ("vehicle:fertilizer", "vehicle:vehicle/trailer_fertilizer_body", [-0.5, 0.031, -0.812]),
+];
+// END GENERATED VEHICLES

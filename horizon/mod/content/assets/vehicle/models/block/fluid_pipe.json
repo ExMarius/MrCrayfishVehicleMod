@@ -1,0 +1,76 @@
+{
+	"textures": {
+		"particle": "vehicle:block/dark_metal",
+		"fluid_pipe": "vehicle:model/fluid_pipe"
+	},
+	"elements": [
+		{
+			"from": [
+				5,
+				5,
+				5
+			],
+			"to": [
+				11,
+				11,
+				11
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						0.0,
+						0.0,
+						1.5,
+						1.5
+					],
+					"texture": "#fluid_pipe"
+				},
+				"east": {
+					"uv": [
+						0.0,
+						0.0,
+						1.5,
+						1.5
+					],
+					"texture": "#fluid_pipe"
+				},
+				"south": {
+					"uv": [
+						0.0,
+						1.5,
+						1.5,
+						3.0
+					],
+					"texture": "#fluid_pipe"
+				},
+				"west": {
+					"uv": [
+						1.5,
+						0.0,
+						3.0,
+						1.5
+					],
+					"texture": "#fluid_pipe"
+				},
+				"up": {
+					"uv": [
+						3.0,
+						3.0,
+						1.5,
+						1.5
+					],
+					"texture": "#fluid_pipe"
+				},
+				"down": {
+					"uv": [
+						1.5,
+						3.0,
+						0.0,
+						4.5
+					],
+					"texture": "#fluid_pipe"
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,6 @@
+{
+	"textures": {
+		"fluid_extractor": "vehicle:model/disabled_fluid_extractor"
+	},
+	"elements": []
+}

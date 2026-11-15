@@ -1,0 +1,108 @@
+{
+	"textures": {
+		"particle": "vehicle:block/metal",
+		"fluid_extractor": "vehicle:model/fluid_extractor"
+	},
+	"elements": [
+		{
+			"from": [
+				0,
+				0,
+				0
+			],
+			"to": [
+				16,
+				16,
+				16
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						0.0,
+						0.0,
+						1.0,
+						1.0
+					],
+					"texture": "#fluid_extractor"
+				},
+				"east": {
+					"uv": [
+						0.0,
+						1.0,
+						1.0,
+						2.0
+					],
+					"texture": "#fluid_extractor"
+				},
+				"south": {
+					"uv": [
+						1.0,
+						0.0,
+						2.0,
+						1.0
+					],
+					"texture": "#fluid_extractor"
+				},
+				"west": {
+					"uv": [
+						1.0,
+						1.0,
+						2.0,
+						2.0
+					],
+					"texture": "#fluid_extractor"
+				},
+				"up": {
+					"uv": [
+						1.0,
+						3.0,
+						0.0,
+						2.0
+					],
+					"texture": "#fluid_extractor"
+				},
+				"down": {
+					"uv": [
+						3.0,
+						0.0,
+						2.0,
+						1.0
+					],
+					"texture": "#fluid_extractor"
+				}
+			}
+		},
+		{
+			"from": [
+				0,
+				3,
+				7
+			],
+			"to": [
+				16,
+				16,
+				0
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						1.0,
+						2.0,
+						2.0,
+						2.8125
+					],
+					"texture": "#fluid_extractor"
+				},
+				"down": {
+					"uv": [
+						3.0,
+						1.0,
+						2.0,
+						1.4375
+					],
+					"texture": "#fluid_extractor"
+				}
+			}
+		}
+	]
+}

@@ -1,0 +1,76 @@
+{
+	"textures": {
+		"particle": "vehicle:block/metal",
+		"fluid_mixer": "vehicle:model/fluid_mixer"
+	},
+	"elements": [
+		{
+			"from": [
+				0,
+				0,
+				0
+			],
+			"to": [
+				16,
+				16,
+				16
+			],
+			"faces": {
+				"north": {
+					"uv": [
+						0.0,
+						0.0,
+						1.0,
+						1.0
+					],
+					"texture": "#fluid_mixer"
+				},
+				"east": {
+					"uv": [
+						0.0,
+						1.0,
+						1.0,
+						2.0
+					],
+					"texture": "#fluid_mixer"
+				},
+				"south": {
+					"uv": [
+						1.0,
+						0.0,
+						2.0,
+						1.0
+					],
+					"texture": "#fluid_mixer"
+				},
+				"west": {
+					"uv": [
+						1.0,
+						1.0,
+						2.0,
+						2.0
+					],
+					"texture": "#fluid_mixer"
+				},
+				"up": {
+					"uv": [
+						1.0,
+						3.0,
+						0.0,
+						2.0
+					],
+					"texture": "#fluid_mixer"
+				},
+				"down": {
+					"uv": [
+						3.0,
+						0.0,
+						2.0,
+						1.0
+					],
+					"texture": "#fluid_mixer"
+				}
+			}
+		}
+	]
+}
