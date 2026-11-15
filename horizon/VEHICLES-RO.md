@@ -40,11 +40,24 @@ există deja:
 | M3 | combustibil, vitezometru, sunet de motor | |
 | M4 | garaj, benzinării, mecanic, economie (restul din plugin) | |
 
-## Cum se construiește
+## Cum se construiește (formatul oficial Horizon)
 
-- Modul: `horizon/engine-mod/vehicle.rs`
-- Lipirea în sursă: `horizon/engine-mod/apply.py` (eșuează zgomotos dacă Horizon își schimbă hook-urile)
-- Build + upload: `.github/workflows/horizon-engine-mod.yml` (ARM64, reviziune Horizon fixă)
+Modul e un **bundle nativ** în structura cerută de Horizon ([make-a-mod](https://playhorizon.dev/docs/make-a-mod)):
+
+```
+horizon/engine-mod/
+├── compatibility.json              jocul, API-ul de hook-uri, reviziile Horizon/horizon-mixins
+├── LICENSE
+└── mixins/vehicle/
+    ├── horizon-mixin.toml          manifestul: modul adăugat + cele 4 puncte de hook
+    ├── runtime.rs                  codul modului (devine crate::game::vehicle)
+    ├── tick.rs  input.rs  register.rs  perform.rs    câte un helper per hook
+```
+
+Build-ul folosește uneltele oficiale din `horizon-rust/horizon-mods`:
+`native.py build vehicle` descarcă sursa Horizon la commit-ul fixat, construiește
+`horizon-mixins`, aplică bundle-ul și compilează; apoi recompilăm în `release`, fără sunet,
+pentru serverul de pe panel (`.github/workflows/horizon-engine-mod.yml`, runner ARM64).
 - Lansatorul folosește engine-ul propriu **doar** dacă binarul răspunde la `--version`;
   altfel rămâne pe engine-ul normal, deci serverul nu poate fi lăsat jos de un build prost.
 
