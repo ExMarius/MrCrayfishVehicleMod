@@ -1,0 +1,57 @@
+name: Aduce console.log de pe panel
+
+# Descarca ultimele linii din horizon/console.log si le pune in horizon/_console.md,
+# ca sa vedem ce a incarcat serverul (moduri, entitati, erori).
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/panel-log.trigger"
+
+permissions:
+  contents: write
+
+env:
+  SFTP_HOST: jacob.hidencloud.com
+  SFTP_PORT: "2022"
+  SFTP_USER: mariusuke-184939.d496911d
+
+jobs:
+  log:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Descarc logul
+        run: |
+          set -euo pipefail
+          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=25 \
+            -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp.log 2>&1 <<'BATCH'
+          get horizon/console.log out-console.log
+          BATCH
+          tail -3 sftp.log
+          {
+            echo "# console.log (ultimele 200 de linii)"
+            echo '```'
+            tail -200 out-console.log 2>/dev/null || echo "(nu am putut lua logul)"
+            echo '```'
+          } > horizon/_console.md
+          echo "== linii cu modul/entitati:"
+          grep -inE "vehicle|go_kart|mod|entit" out-console.log 2>/dev/null | tail -20 || true
+
+      - name: Public
+        if: always()
+        run: |
+          set +e
+          git config user.name arena-agent
+          git config user.email arena-agent@users.noreply.github.com
+          git add -f horizon/_console.md
+          git commit -m "console.log [skip ci]" >/dev/null 2>&1
+          for i in 1 2 3; do
+            git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1
+            git push origin "HEAD:$GITHUB_REF_NAME" && break
+            sleep 5
+          done
