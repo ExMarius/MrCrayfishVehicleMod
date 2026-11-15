@@ -1,10 +1,10 @@
 # modul de masini — ultima incercare (unelte oficiale)
 
 ## native.py build
-[1m[94m12849[0m [1m[94m|[0m [1m[91m|[0m         mob: &crate::game::native_mob_draw::NativeMobRender<'_>,
-[1m[94m12850[0m [1m[94m|[0m [1m[91m|[0m         draw: &mut crate::game::native_block_entity_draw::BlockEntityDraw,
-[1m[94m12851[0m [1m[94m|[0m [1m[91m|[0m         drawn: &mut bool,
-[1m[94m12852[0m [1m[94m|[0m [1m[91m|[0m     ) {
+[1m[94m12838[0m [1m[94m|[0m [1m[91m|[0m         mob: &crate::game::native_mob_draw::NativeMobRender<'_>,
+[1m[94m12839[0m [1m[94m|[0m [1m[91m|[0m         draw: &mut crate::game::native_block_entity_draw::BlockEntityDraw,
+[1m[94m12840[0m [1m[94m|[0m [1m[91m|[0m         drawn: &mut bool,
+[1m[94m12841[0m [1m[94m|[0m [1m[91m|[0m     ) {
       [1m[94m|[0m [1m[91m|_____^[0m [1m[91mfunction `on_mob_submit` is reachable at visibility `pub(crate)`[0m
       [1m[94m|[0m
 [1m[92mnote[0m: but type `game::Game<'_>` is only usable at visibility `pub(self)`
@@ -16,12 +16,12 @@
       [1m[94m= [0m[1mhelp[0m: to override `-D warnings` add `#[allow(private_interfaces)]`
 
 [1m[91merror[0m[1m: field `vehicle` is never read[0m
-     [1m[94m--> [0mcrates/horizon-client/src/game.rs:12575:9
+     [1m[94m--> [0mcrates/horizon-client/src/game.rs:12566:9
       [1m[94m|[0m
-[1m[94m12558[0m [1m[94m|[0m     struct Car {
+[1m[94m12551[0m [1m[94m|[0m     struct Car {
       [1m[94m|[0m            [1m[94m---[0m [1m[94mfield in this struct[0m
 [1m[94m...[0m
-[1m[94m12575[0m [1m[94m|[0m         vehicle: String,
+[1m[94m12566[0m [1m[94m|[0m         vehicle: String,
       [1m[94m|[0m         [1m[91m^^^^^^^[0m
       [1m[94m|[0m
       [1m[94m= [0m[1mnote[0m: `-D dead-code` implied by `-D warnings`
@@ -44,12 +44,12 @@ exit=1
 
 ## release
       [1m[94m|[0m
-[1m[94m12847[0m [1m[94m|[0m [1m[33m/[0m     pub fn on_mob_submit(
-[1m[94m12848[0m [1m[94m|[0m [1m[33m|[0m         game: &Game<'_>,
-[1m[94m12849[0m [1m[94m|[0m [1m[33m|[0m         mob: &crate::game::native_mob_draw::NativeMobRender<'_>,
-[1m[94m12850[0m [1m[94m|[0m [1m[33m|[0m         draw: &mut crate::game::native_block_entity_draw::BlockEntityDraw,
-[1m[94m12851[0m [1m[94m|[0m [1m[33m|[0m         drawn: &mut bool,
-[1m[94m12852[0m [1m[94m|[0m [1m[33m|[0m     ) {
+[1m[94m12836[0m [1m[94m|[0m [1m[33m/[0m     pub fn on_mob_submit(
+[1m[94m12837[0m [1m[94m|[0m [1m[33m|[0m         game: &Game<'_>,
+[1m[94m12838[0m [1m[94m|[0m [1m[33m|[0m         mob: &crate::game::native_mob_draw::NativeMobRender<'_>,
+[1m[94m12839[0m [1m[94m|[0m [1m[33m|[0m         draw: &mut crate::game::native_block_entity_draw::BlockEntityDraw,
+[1m[94m12840[0m [1m[94m|[0m [1m[33m|[0m         drawn: &mut bool,
+[1m[94m12841[0m [1m[94m|[0m [1m[33m|[0m     ) {
       [1m[94m|[0m [1m[33m|_____^[0m [1m[33mfunction `on_mob_submit` is reachable at visibility `pub(crate)`[0m
       [1m[94m|[0m
 [1m[92mnote[0m: but type `game::Game<'_>` is only usable at visibility `pub(self)`
@@ -60,19 +60,19 @@ exit=1
       [1m[94m= [0m[1mnote[0m: `#[warn(private_interfaces)]` on by default
 
 [1m[33mwarning[0m[1m: field `vehicle` is never read[0m
-     [1m[94m--> [0mcrates/horizon-client/src/game.rs:12575:9
+     [1m[94m--> [0mcrates/horizon-client/src/game.rs:12566:9
       [1m[94m|[0m
-[1m[94m12558[0m [1m[94m|[0m     struct Car {
+[1m[94m12551[0m [1m[94m|[0m     struct Car {
       [1m[94m|[0m            [1m[94m---[0m [1m[94mfield in this struct[0m
 [1m[94m...[0m
-[1m[94m12575[0m [1m[94m|[0m         vehicle: String,
+[1m[94m12566[0m [1m[94m|[0m         vehicle: String,
       [1m[94m|[0m         [1m[33m^^^^^^^[0m
       [1m[94m|[0m
       [1m[94m= [0m[1mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
 
 [1m[33mwarning[0m: `horizon-client` (lib) generated 2 warnings
-[1m[92m    Finished[0m `release` profile [optimized] target(s) in 12m 05s
+[1m[92m    Finished[0m `release` profile [optimized] target(s) in 11m 51s
 exit=0
 
 ## binar
--rwxr-xr-x 1 runner runner 85M Nov 15 18:08 out/horizon-engine-mod
+-rwxr-xr-x 1 runner runner 85M Nov 15 18:43 out/horizon-engine-mod
