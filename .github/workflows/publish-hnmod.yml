@@ -1,0 +1,32 @@
+name: Public .hnmod cu nume fix
+
+# Ia cel mai nou `vehicle-<versiune>.hnmod` din release si il publica si ca
+# `vehicle.hnmod`, ca jucatorul sa descarce mereu acelasi nume (fara redenumiri).
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/publish-hnmod.trigger"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Public sub nume fix
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=horizon-mod
+          NAME=$(gh release view "$TAG" --json assets --jq '.assets[].name' | grep -E '^vehicle-[0-9]+\.[0-9]+\.[0-9]+\.hnmod$' | sort -V | tail -1)
+          echo "cel mai nou: $NAME"
+          mkdir -p out
+          gh release download "$TAG" --pattern "$NAME" --dir out --clobber
+          cp "out/$NAME" out/vehicle.hnmod
+          gh release upload "$TAG" out/vehicle.hnmod --clobber
+          echo "publicat vehicle.hnmod ($(stat -c %s out/vehicle.hnmod) B)"
