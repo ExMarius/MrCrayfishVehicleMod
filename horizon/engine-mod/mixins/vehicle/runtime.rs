@@ -390,7 +390,7 @@ pub fn standalone_models(models: &mut Vec<String>) {
 
 /// `native_mob_submit`: un model propriu pentru mobul `vehicle:go_kart`.
 pub fn on_mob_submit(
-    game: &mut Game<'_>,
+    game: &Game<'_>,
     mob: &crate::game::native_mob_draw::NativeMobRender<'_>,
     draw: &mut crate::game::native_block_entity_draw::BlockEntityDraw,
     drawn: &mut bool,

@@ -93,7 +93,7 @@ jobs:
         if: always()
         run: |
           set -euo pipefail
-          if [ ! -f out/horizon-engine-mod ]; then echo "build fara binar, sar peste upload"; exit 0; fi
+          if [ ! -f out/horizon-engine-mod ]; then echo "::error title=Build picat::nu exista binar"; exit 1; fi
           install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=25 \
             -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
@@ -120,6 +120,28 @@ jobs:
           git commit -m "raport mod masini [skip ci]" >/dev/null 2>&1
           git pull --rebase --autostash origin "$GITHUB_REF_NAME" >/dev/null 2>&1 || true
           git push origin "HEAD:$GITHUB_REF_NAME" >/dev/null 2>&1 || true
+
+      - name: Pachetez .hnmod (partea de client)
+        if: always()
+        run: |
+          set +e
+          python3 horizon/tools/pack_hnmod.py --out out >> "$GITHUB_STEP_SUMMARY" 2>&1
+          ls -lh out/*.hnmod 2>/dev/null
+
+      - name: Public .hnmod in release
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          FILE=$(ls out/*.hnmod 2>/dev/null | head -1 || true)
+          if [ -z "$FILE" ]; then echo "fara .hnmod"; exit 0; fi
+          TAG=horizon-mod
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$FILE" --clobber
+          else
+            gh release create "$TAG" "$FILE" --title "Mod masini (Horizon)" --notes "Modul de masini: .hmod (continut) + .hnmod (cod)."
+          fi
 
       - name: Public in release
         if: always()

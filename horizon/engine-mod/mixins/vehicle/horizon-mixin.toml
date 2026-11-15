@@ -76,7 +76,7 @@ kind = "HEAD"
 target = "horizon_client::game::native_hooks::Game<'_>::native_mob_submit"
 helper = "render.rs"
 bindings = [
-  { name = "game", ty = "&mut crate::game::Game<'_>", value = "&mut *self" },
+  { name = "game", ty = "&crate::game::Game<'_>", value = "&*self" },
   { name = "mob", ty = "&crate::game::native_mob_draw::NativeMobRender<'_>", value = "mob" },
   { name = "draw", ty = "&mut crate::game::native_block_entity_draw::BlockEntityDraw", value = "&mut *draw" },
   { name = "drawn", ty = "&mut bool", value = "&mut *drawn" },
