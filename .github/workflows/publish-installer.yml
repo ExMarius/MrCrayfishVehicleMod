@@ -1,0 +1,27 @@
+name: Public instalatorul Windows
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/installer.trigger"
+      - "horizon/tools/windows/**"
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Public in release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG=horizon-mod
+          gh release upload "$TAG" horizon/tools/windows/instaleaza-modul.bat --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'
