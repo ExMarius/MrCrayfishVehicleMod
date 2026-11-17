@@ -36,6 +36,8 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Clonez horizon-mods (uneltele oficiale)
+        env:
+          HIDENCLOUD_SFTP_KEY: ${{ secrets.HIDENCLOUD_SFTP_KEY }}
         run: |
           set +e
           git clone --depth 1 https://github.com/horizon-rust/horizon-mods.git horizon-mods > clone.log 2>&1
@@ -94,7 +96,14 @@ jobs:
         run: |
           set -euo pipefail
           if [ ! -f out/horizon-engine-mod ]; then echo "::error title=Build picat::nu exista binar"; exit 1; fi
-          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          # cheia vine din secretul HIDENCLOUD_SFTP_KEY; fisierul din repo e doar
+          # rezerva pentru build-urile vechi si trebuie sters dupa rotire
+          if [ -n "${HIDENCLOUD_SFTP_KEY:-}" ]; then
+            printf '%s\n' "$HIDENCLOUD_SFTP_KEY" > /tmp/hc_key
+            chmod 600 /tmp/hc_key
+          else
+            install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          fi
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=25 \
             -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
           put out/horizon-engine-mod horizon/horizon-engine-mod

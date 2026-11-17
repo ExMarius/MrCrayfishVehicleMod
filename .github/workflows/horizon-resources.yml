@@ -30,6 +30,8 @@ jobs:
           java-version: "25"
 
       - name: Prepare (Horizon CLI + server.jar + horizon-prepare)
+        env:
+          HIDENCLOUD_SFTP_KEY: ${{ secrets.HIDENCLOUD_SFTP_KEY }}
         run: |
           set +e
           bash horizon/tools/fetch_and_prepare.sh > prepare.log 2>&1
@@ -46,7 +48,14 @@ jobs:
         if: hashFiles('26.3.tar.gz') != ''
         run: |
           set +e
-          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          # cheia vine din secretul HIDENCLOUD_SFTP_KEY; fisierul din repo e doar
+          # rezerva pentru build-urile vechi si trebuie sters dupa rotire
+          if [ -n "${HIDENCLOUD_SFTP_KEY:-}" ]; then
+            printf '%s\n' "$HIDENCLOUD_SFTP_KEY" > /tmp/hc_key
+            chmod 600 /tmp/hc_key
+          else
+            install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          fi
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=30 \
             -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<'BATCH'
           put 26.3.tar.gz 26.3.tar.gz

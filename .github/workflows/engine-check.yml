@@ -31,7 +31,14 @@ jobs:
           set +e
           mkdir -p out
           gh release download horizon-engine-mod --pattern horizon-engine-mod --dir out --clobber || echo "release: lipseste"
-          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          # cheia vine din secretul HIDENCLOUD_SFTP_KEY; fisierul din repo e doar
+          # rezerva pentru build-urile vechi si trebuie sters dupa rotire
+          if [ -n "${HIDENCLOUD_SFTP_KEY:-}" ]; then
+            printf '%s\n' "$HIDENCLOUD_SFTP_KEY" > /tmp/hc_key
+            chmod 600 /tmp/hc_key
+          else
+            install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          fi
           sftp -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=25 \
             -o BatchMode=yes -i /tmp/hc_key -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" > sftp.log 2>&1 <<'BATCH'
           get horizon/horizon-engine-mod out/panel-engine
@@ -42,6 +49,8 @@ jobs:
 
       - name: Inspectez
         if: always()
+        env:
+          HIDENCLOUD_SFTP_KEY: ${{ secrets.HIDENCLOUD_SFTP_KEY }}
         run: |
           set +e
           {

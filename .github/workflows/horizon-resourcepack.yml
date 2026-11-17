@@ -27,6 +27,8 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Construiesc pack-ul modului
+        env:
+          HIDENCLOUD_SFTP_KEY: ${{ secrets.HIDENCLOUD_SFTP_KEY }}
         run: |
           set -euo pipefail
           python3 tools/build_resource_pack.py --output build/vehicle-1.21.4.zip
@@ -60,7 +62,14 @@ jobs:
       - name: Scriu adresa si sha1 pe panel
         run: |
           set -euo pipefail
-          install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          # cheia vine din secretul HIDENCLOUD_SFTP_KEY; fisierul din repo e doar
+          # rezerva pentru build-urile vechi si trebuie sters dupa rotire
+          if [ -n "${HIDENCLOUD_SFTP_KEY:-}" ]; then
+            printf '%s\n' "$HIDENCLOUD_SFTP_KEY" > /tmp/hc_key
+            chmod 600 /tmp/hc_key
+          else
+            install -m 600 hidencloud/keys/arena_hc_ed25519 /tmp/hc_key
+          fi
           URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/horizon-pack/vehicle-pack.zip"
           printf 'url=%s\nsha1=%s\n' "$URL" "$SHA1" > build/resourcepack.txt
           cat build/resourcepack.txt
