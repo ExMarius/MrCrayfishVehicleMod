@@ -168,6 +168,7 @@ jobs:
           FALIX_SFTP_PASSWORD: ${{ secrets.FALIX_SFTP_PASSWORD }}
         run: |
           set -euo pipefail
+          exec > >(tee /tmp/falix.log) 2>&1
           for variable in FALIX_SFTP_HOST FALIX_SFTP_PORT FALIX_SFTP_USERNAME FALIX_SFTP_PASSWORD; do
             if [ -z "${!variable:-}" ]; then
               echo "::error title=Missing FalixNodes secret::${variable} is not configured."
@@ -254,6 +255,23 @@ jobs:
           EOF
           unset SSHPASS FALIX_SFTP_PASSWORD
           echo "FalixNodes plugin upload completed from repository secrets."
+
+      - name: Raporteaza deploy-ul Falix pe commit
+        if: always() && hashFiles('.github/falix-deploy-request') != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Deploy Falix"
+            echo ""
+            echo '```'
+            tail -n 60 /tmp/falix.log 2>/dev/null || echo "nu exista transcript"
+            echo '```'
+          } > /tmp/falix-summary.md
+          head -c 60000 /tmp/falix-summary.md > /tmp/falix-summary-cut.md
+          gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -F body=@/tmp/falix-summary-cut.md
 
       - name: Upload deliverables
         uses: actions/upload-artifact@v5
