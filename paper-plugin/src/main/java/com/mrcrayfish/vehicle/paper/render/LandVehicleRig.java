@@ -196,6 +196,8 @@ public final class LandVehicleRig {
                 towBar, Collections.unmodifiableList(chassisParts),
                 Collections.unmodifiableList(forkParts), storageChest, storageInteraction,
                 Collections.unmodifiableList(wheels), Collections.unmodifiableList(seats), all);
+        /* Primul cadru poarta deja vopseaua din fabrica (nu un cadru alb). */
+        rig.applyColor(null);
         rig.update(location, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, false, 0);
         return rig;
     }
@@ -262,6 +264,21 @@ public final class LandVehicleRig {
 
     public static void setSeatRide(boolean value) {
         seatRide = value;
+    }
+
+    /** BL70 (cerinta user: "fa ca jucatorul sa stea fixat de scaun"): scaunul
+     *  (calul/barca/armor stand-ul) primeste pozitia + rotatia in FIECARE tick,
+     *  cu intarzierea de un tick a corpului masinii, deci calaretul nu mai
+     *  aluneca in urma sau in lateral la viteza. Implicit PORNIT; se poate
+     *  opri din config (`seat.glue-every-tick`) sau live cu /vehicle seatglue. */
+    private static volatile boolean seatGlue = true;
+
+    public static boolean seatGlue() {
+        return seatGlue;
+    }
+
+    public static void setSeatGlue(boolean value) {
+        seatGlue = value;
     }
 
     public static void setSeatKind(String kind) {
@@ -1007,7 +1024,8 @@ public final class LandVehicleRig {
          * pozitia de ACUM, apare cu un tick inaintea masinii => "pe alt loc".
          * Solutie: scaunul primeste pozitia din tickul precedent (aceeasi
          * intarziere ca desenul masinii). */
-        if (variantGlueEveryTick && !seat.isInsideVehicle() && !(seat instanceof org.bukkit.entity.Boat)) {
+        if ((seatGlue || variantGlueEveryTick) && !seat.isInsideVehicle()
+                && !(seat instanceof org.bukkit.entity.Boat)) {
             Location delayed = carrier.boatDelayReady
                     ? carrier.boatDelayLocation.clone() : seatTarget.clone();
             delayed.setYaw(carrier.boatDelayReady ? carrier.boatDelayYaw : seatTarget.getYaw());
@@ -1723,6 +1741,15 @@ public final class LandVehicleRig {
     public void applyColor(Integer rgb) {
         if (removed) {
             return;
+        }
+        /* Fara vopsea de la jucator => vopseaua din fabrica a vehiculului
+         * (fiecare model are alta culoare). Totul ramane un tint "dye" peste
+         * texturile albe, deci revopsirea din spray can functioneaza perfect. */
+        if (rgb == null) {
+            int factory = spec.factoryPaintColor();
+            if (factory >= 0) {
+                rgb = factory;
+            }
         }
         if (body != null && body.isValid()) {
             body.setItemStack(coloredStack(spec.bodyModel(), rgb));

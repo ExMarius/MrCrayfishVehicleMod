@@ -158,6 +158,13 @@ public final class VehiclePlugin extends JavaPlugin {
             getConfig().set("seat.rider-height-correction", -0.85D);
             saveConfig();
         }
+        if (getConfig().isSet("seat.glue-every-tick")) {
+            com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatGlue(
+                    getConfig().getBoolean("seat.glue-every-tick"));
+        } else {
+            getConfig().set("seat.glue-every-tick", true);
+            saveConfig();
+        }
 
         vehicleManager = new VehicleManager(this);
         gasPumpManager = new GasPumpManager(this, vehicleManager);

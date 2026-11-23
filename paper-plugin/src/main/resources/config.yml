@@ -1,10 +1,10 @@
-# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip.
+# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip.
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
-  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
+  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip"
   # Ciclul AH: pack-ul s-a schimbat (con de trafic + placa de boost) => hash nou;
   # server.properties il primeste automat la fiecare deploy.
-  sha1: "72d783b1cf0b67dba3c116da429f818df6bb6036"
+  sha1: "f1a1a086669572c60ae80d85dea2ee6d4e34598a"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
@@ -214,3 +214,5 @@ mechanic:
 # Reglaj fin live: /vehicle seatheight <valoare>
 seat:
   rider-height-correction: -0.85
+  # Lipeste scaunul de masina in fiecare tick (calaretul nu aluneca la viteza).
+  glue-every-tick: true

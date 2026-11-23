@@ -8,9 +8,13 @@ import argparse
 import hashlib
 import json
 import shutil
+import sys
 import tempfile
 import zipfile
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import restyle  # noqa: E402  (local helper: deterministic livery/emblem pass)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -147,7 +151,7 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
     with tempfile.TemporaryDirectory(prefix="vehicle-resource-pack-") as temporary:
         pack = Path(temporary)
         manifest = {
-            "description": "MrCrayfish Vehicle Plugin r39 — twenty-three vehicles and five trailers",
+            "description": "FleetCraft 26.3 — 23 de vehicule + 5 remorci | modele GPLv3 (MrCrayfish), reskin propriu",
             "pack_format": pack_format,
         }
         if pack_format >= 97:
@@ -1766,6 +1770,21 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
             },
         })
 
+        # ==== Own badge (r40) ================================================
+        # The user asked for a fleet that no longer looks like the original mod,
+        # and explicitly for no MrCrayfish naming/branding. Every "logo" sprite
+        # in the pack used to be the mod's Cray Industries mark; it is replaced
+        # here by our own chevron, generated procedurally in tools/restyle.py.
+        # The bodies stay neutral (white) on purpose: the spray-can paints them
+        # through a dye tint, so a pre-coloured atlas would ruin repainting.
+        # Per-vehicle identity therefore comes from the factory paint colour in
+        # LandVehicleSpec (Java side) + this badge + our own vehicle names.
+        badges = 0
+        for texture in sorted((namespace / "textures/item").glob("*logo*.png")):
+            restyle.write_emblem(texture)
+            badges += 1
+        print(f"Embleme proprii: {badges}")
+
         emit_vehicle_icons(namespace)
         emit_vehicle_previews(namespace)
         emit_jack_gui_backdrop(namespace)
@@ -2525,7 +2544,7 @@ def emit_hud_speed_font(namespace: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip")
     parser.add_argument("--pack-format", type=int, default=97,
                         help="resource pack format (97 = Minecraft 26.3)")
     args = parser.parse_args()

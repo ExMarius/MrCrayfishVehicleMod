@@ -92,6 +92,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "seatride" -> seatRideCmd(sender, args);
             case "seatdebug" -> seatDebugCmd(sender);
             case "seatlock" -> seatLockCmd(sender, args);
+            case "seatglue", "seatsudat" -> seatGlueCmd(sender, args);
             default -> help(sender, label);
         }
         return true;
@@ -111,6 +112,24 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
         boolean on = "on".equalsIgnoreCase(args[1]) || "1".equals(args[1]);
         com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setLookLock(on);
         sender.sendRichMessage(on ? "<green>seatlock = on</green>" : "<yellow>seatlock = off</yellow>");
+    }
+
+    /** /vehicle seatglue <on|off>: sudeaza scaunul de masina (pozitie + rotatie
+     *  in fiecare tick, cu aceeasi intarziere ca desenul corpului). Implicit on. */
+    private void seatGlueCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>seatglue: "
+                    + (com.mrcrayfish.vehicle.paper.render.LandVehicleRig.seatGlue() ? "on" : "off")
+                    + " | folosire: /vehicle seatglue <on|off></yellow>");
+            return;
+        }
+        boolean on = "on".equalsIgnoreCase(args[1]) || "1".equals(args[1]);
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setSeatGlue(on);
+        plugin.getConfig().set("seat.glue-every-tick", on);
+        plugin.saveConfig();
+        sender.sendRichMessage(on
+                ? "<green>seatglue = on (calaretul este sudat pe scaun)</green>"
+                : "<yellow>seatglue = off (scaunul urmeaza doar la abateri mari)</yellow>");
     }
 
     /** /vehicle seatdebug: logheaza 6 secunde yaw-urile (masina/ancora/scaun/jucator). */
@@ -1279,7 +1298,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
     public @Nullable List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                                  @NotNull String alias, @NotNull String[] args) {
         if (args.length == 1) {
-            return filter(List.of("spawn", "variants", "boatdemo", "boatshell", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock"), args[0]);
+            return filter(List.of("spawn", "variants", "boatdemo", "boatshell", "remove", "refuel", "gaspump", "jerrycan", "trust", "untrust", "trusted", "magazin", "podium", "list", "save", "pack", "creative", "paint", "vopsea", "vopseste", "garaj", "perf", "consum", "stats", "give", "propsdebug", "seattest", "seatkind", "seatyaw", "seatlook", "inputtest", "seatride", "seatdebug", "seatlock", "seatglue", "seatsudat"), args[0]);
         }
         if (args.length == 2 && (args[0].equalsIgnoreCase("trust") || args[0].equalsIgnoreCase("untrust"))) {
             return filter(onTabPlayers(), args[1]);

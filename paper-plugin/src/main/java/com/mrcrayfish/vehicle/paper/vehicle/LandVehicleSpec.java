@@ -53,8 +53,45 @@ public record LandVehicleSpec(
     /* 1.21.4's passenger attachment sits two model pixels above the source seat pose. */
     public static final float RIDER_HEIGHT_CORRECTION = 4.0F * MODEL_UNIT;
 
+    /* Vopseaua "din fabrica" (0xRRGGBB) pentru fiecare vehicul, sau -1 = alb
+     * (vopsibil integral din spray can). Texturile de caroserie din pack sunt
+     * albe intentionat: tintul "dye" le inmulteste, deci culorile ies curate,
+     * iar jucatorul poate revopsi oricand fara sa se amestece cu o culoare
+     * existenta. Fiecare vehicul are alta culoare, ca flota sa nu mai arate
+     * ca o copie uniforma a modului original. */
+    private static final Map<String, Integer> FACTORY_PAINTS = Map.ofEntries(
+            Map.entry("go_kart", 0xE24B2B),
+            Map.entry("lawn_mower", 0x3F7D20),
+            Map.entry("quad_bike", 0xC2302F),
+            Map.entry("dune_buggy", 0xE0A21C),
+            Map.entry("tractor", 0x2C6E49),
+            Map.entry("dirt_bike", 0x2F6FD0),
+            Map.entry("moped", 0xE4B824),
+            Map.entry("off_roader", 0x46603C),
+            Map.entry("sports_car", 0xD5323C),
+            Map.entry("mini_bus", 0x2C9C8F),
+            Map.entry("police_car", 0x1B1E24),
+            Map.entry("golf_cart", 0xF2F2F2),
+            Map.entry("jet_ski", 0xE0507A),
+            Map.entry("compact_helicopter", 0x4B3F72),
+            Map.entry("sofacopter", 0x6B4F3A),
+            Map.entry("sports_plane", 0xE8E4D8),
+            Map.entry("atv", 0x5D7A3A),
+            Map.entry("mini_bike", 0xB26A2E),
+            Map.entry("smart_car", 0x8FC7DE),
+            Map.entry("speed_boat", 0x1F7FB8),
+            Map.entry("aluminum_boat", 0xB7BEC4),
+            Map.entry("couch", 0x8B5A2B),
+            Map.entry("bumper_car", 0xE0507A),
+            Map.entry("shopping_cart", 0x9AA0A6)
+    );
+
+    public int factoryPaintColor() {
+        return FACTORY_PAINTS.getOrDefault(id, -1);
+    }
+
     public static final LandVehicleSpec GO_KART = new LandVehicleSpec(
-            "go_kart", "Go Kart", "go_kart_body",
+            "go_kart", "Street Kart 125", "go_kart_body",
             1.5F, 0.5F, 1.05F,
             1.0F, -1.0F, 3.2F,
             18.0F, 20.0F, 9.0F * MODEL_UNIT, -9.5F * MODEL_UNIT, 5.0F,
@@ -83,7 +120,7 @@ public record LandVehicleSpec(
 
     /* wheelOffset = (8 * 0.97 / 2) - 0.8 = 3.08; auto-scaled front wheels become 0.77. */
     public static final LandVehicleSpec LAWN_MOWER = new LandVehicleSpec(
-            "lawn_mower", "Lawn Mower", "lawn_mower_body",
+            "lawn_mower", "Turf Cutter", "lawn_mower_body",
             1.2F, 1.0F, 1.0F,
             1.25F, -2.0F, 3.08F,
             8.0F, 35.0F, 13.5F * MODEL_UNIT * 1.25F, -10.7F * MODEL_UNIT * 1.25F, 5.0F,
@@ -109,7 +146,7 @@ public record LandVehicleSpec(
     );
 
     public static final LandVehicleSpec QUAD_BIKE = new LandVehicleSpec(
-            "quad_bike", "Quad Bike", "quad_bike_body",
+            "quad_bike", "Ridge Runner 400", "quad_bike_body",
             1.5F, 1.0F, 1.0F,
             1.1F, -0.5F, 4.4F,
             15.0F, 35.0F, 9.5F * MODEL_UNIT * 1.1F, -11.0F * MODEL_UNIT * 1.1F, 5.0F,
@@ -143,7 +180,7 @@ public record LandVehicleSpec(
      * wheel inside the tilted handlebar steering matrix, so renderCenter keeps
      * that manual position separate from the generated wheel's physics point. */
     public static final LandVehicleSpec DUNE_BUGGY = new LandVehicleSpec(
-            "dune_buggy", "Dune Buggy", "dune_buggy_body",
+            "dune_buggy", "Sand Viper", "dune_buggy_body",
             0.75F, 0.75F, 0.5F,
             1.3F, -2.3F, 2.5F,
             10.0F, 35.0F, 5.3F * MODEL_UNIT * 1.3F, -5.7F * MODEL_UNIT * 1.3F, 5.0F,
@@ -176,7 +213,7 @@ public record LandVehicleSpec(
      * auto-scaled Y/Z axes become 5.7 / 4 = 1.425 while X stays at the
      * generated property's serialized 0.938 value. */
     public static final LandVehicleSpec TRACTOR = new LandVehicleSpec(
-            "tractor", "Tractor", "tractor_body",
+            "tractor", "Fieldmaster 75", "tractor_body",
             1.5F, 1.5F, 1.0F,
             1.0F, -3.0F, 5.7F,
             8.0F, 35.0F, 14.0F * MODEL_UNIT, -14.5F * MODEL_UNIT, 5.0F,
@@ -211,7 +248,7 @@ public record LandVehicleSpec(
     /* DirtBikeRenderer steers both the handle assembly and the separately rendered
      * front wheel around a fork axis tilted 22.5 degrees toward the rider. */
     public static final LandVehicleSpec DIRT_BIKE = new LandVehicleSpec(
-            "dirt_bike", "Dirt Bike", "dirt_bike_body",
+            "dirt_bike", "Trail Raptor 250", "dirt_bike_body",
             1.0F, 1.5F, 1.0F,
             1.0F, 0.0F, 5.6F,
             16.0F, 35.0F, 14.08F * MODEL_UNIT, -11.61F * MODEL_UNIT, 5.0F,
@@ -243,7 +280,7 @@ public record LandVehicleSpec(
     /* The Moped renderer steers its handles, mud guard, and manually rendered
      * front wheel around a fork axis tilted 22.5 degrees toward the rider. */
     public static final LandVehicleSpec MOPED = new LandVehicleSpec(
-            "moped", "Moped", "moped_body",
+            "moped", "City Scoot 50", "moped_body",
             1.0F, 1.0F, 1.0F,
             1.2F, -1.0F, 3.2F,
             12.0F, 45.0F, 14.0F * MODEL_UNIT * 1.2F, -6.7F * MODEL_UNIT * 1.2F, 5.0F,
@@ -285,7 +322,7 @@ public record LandVehicleSpec(
      * OffRoaderRenderer applies the local -45 degree steering-wheel transform before
      * its final -0.02 local-Y translation. */
     public static final LandVehicleSpec OFF_ROADER = new LandVehicleSpec(
-            "off_roader", "Off Roader", "off_roader_body",
+            "off_roader", "Trailbreaker 4x4", "off_roader_body",
             2.0F, 1.0F, 1.0F,
             1.4F, -1.0F, 5.6F,
             16.0F, 35.0F, 14.5F * MODEL_UNIT * 1.4F, -14.5F * MODEL_UNIT * 1.4F, 5.0F,
@@ -327,7 +364,7 @@ public record LandVehicleSpec(
      * cosmetic models are required to complete the body; four retain the source
      * openable actions around their declared cosmetic pivots. */
     public static final LandVehicleSpec SPORTS_CAR = new LandVehicleSpec(
-            "sports_car", "Sports Car", "sports_car_body",
+            "sports_car", "Apex GT", "sports_car_body",
             1.5F, 1.0F, 1.0F,
             1.0F, 0.0F, 2.6F,
             20.0F, 35.0F, 20.0F * MODEL_UNIT, -19.0F * MODEL_UNIT, 5.0F,
@@ -405,7 +442,7 @@ public record LandVehicleSpec(
      * model that is absent from its assets; its ray transforms explicitly use the Go Kart wheel,
      * so that original model is the non-fallback vanilla representation here. */
     public static final LandVehicleSpec MINI_BUS = new LandVehicleSpec(
-            "mini_bus", "Mini Bus", "mini_bus_body",
+            "mini_bus", "Metro Shuttle", "mini_bus_body",
             2.0F, 2.0F, 1.0F,
             1.3F, 1.0F, 4.76F,
             14.0F, 35.0F, 13.5F * MODEL_UNIT * 1.3F, -13.5F * MODEL_UNIT * 1.3F, 5.0F,
@@ -475,7 +512,7 @@ public record LandVehicleSpec(
      * steering and four-seat definition is therefore run through the source land equations
      * so the intended cart remains usable by vanilla clients. */
     public static final LandVehicleSpec GOLF_CART = new LandVehicleSpec(
-            "golf_cart", "Golf Cart", "golf_cart_body",
+            "golf_cart", "Fairway Cruiser", "golf_cart_body",
             2.0F, 1.0F, 1.0F,
             1.15F, -0.5F, 4.4F,
             25.0F, 35.0F, 16.0F * MODEL_UNIT * 1.15F,
@@ -514,7 +551,7 @@ public record LandVehicleSpec(
     /* BoatEntity's motion is empty in 1.16.X-dev. Runtime uses its last complete released
      * water-state/buoyancy equations while preserving these dev properties and transforms. */
     public static final LandVehicleSpec JET_SKI = new LandVehicleSpec(
-            "jet_ski", "Jet Ski", "jet_ski_body",
+            "jet_ski", "Wave Dash", "jet_ski_body",
             1.5F, 1.0F, 0.0F,
             1.25F, 2.75F, 0.0F,
             18.0F, 35.0F, 0.0F, 0.0F, 4.0F,
@@ -540,7 +577,7 @@ public record LandVehicleSpec(
      * HelicopterProperties values. The complex-model children are separate displays so
      * the main blades, tail rotor, and joystick retain their source animation pivots. */
     public static final LandVehicleSpec COMPACT_HELICOPTER = new LandVehicleSpec(
-            "compact_helicopter", "Compact Helicopter", "compact_helicopter_body",
+            "compact_helicopter", "Skyhopper", "compact_helicopter_body",
             2.0F, 2.0F, 0.6F,
             1.0F, 0.0F, 0.0F,
             25.0F, 35.0F, 0.0F, 0.0F, 5.0F,
@@ -576,7 +613,7 @@ public record LandVehicleSpec(
      * uses the CFM red sofa, Vehicle Mod arm, and CFM ceiling_fan_fans as the rotor;
      * later aluminum-boat/plane-wing choices were compatibility placeholders. */
     public static final LandVehicleSpec SOFACOPTER = new LandVehicleSpec(
-            "sofacopter", "Sofacopter", "sofacopter_sofa",
+            "sofacopter", "Lazy Lift", "sofacopter_sofa",
             1.0F, 1.0F, 0.6F,
             1.0F, 0.0F, 0.0F,
             15.0F, 35.0F, 0.0F, 0.0F, 5.0F,
@@ -620,7 +657,7 @@ public record LandVehicleSpec(
      * Complex-model children are represented as independent displays so their original
      * propeller, aileron, elevator, and joystick actions remain animated for vanilla clients. */
     public static final LandVehicleSpec SPORTS_PLANE = new LandVehicleSpec(
-            "sports_plane", "Sports Plane", "sports_plane_body",
+            "sports_plane", "Skyline 200", "sports_plane_body",
             3.0F, 1.6875F, 0.6F,
             1.0F, 0.0F, 4.0F,
             24.0F, 25.0F, 0.765625F, -0.40625F, 5.0F,
@@ -669,7 +706,7 @@ public record LandVehicleSpec(
      * match the existing Quad Bike's tuning and non-motorcycle steering pattern closely,
      * confirming the same real-world vehicle class under a distinct body model. */
     public static final LandVehicleSpec ATV = new LandVehicleSpec(
-            "atv", "ATV", "atv_body",
+            "atv", "Mud Brute", "atv_body",
             1.5F, 1.0F, 1.0F,
             1.25F, -1.5F, 4.624F,
             15.0F, 35.0F, 10.5F * MODEL_UNIT * 1.25F, -10.5F * MODEL_UNIT * 1.25F, 5.0F,
@@ -708,7 +745,7 @@ public record LandVehicleSpec(
      * since no generated position entry exists for it, and should be treated as a
      * reasonable first-pass estimate rather than an exactly sourced value. */
     public static final LandVehicleSpec MINI_BIKE = new LandVehicleSpec(
-            "mini_bike", "Mini Bike", "mini_bike_body",
+            "mini_bike", "Pocket Rocket", "mini_bike_body",
             1.0F, 1.0F, 1.0F,
             1.05F, -1.7F, 4.12F,
             18.0F, 35.0F, 13.0F * MODEL_UNIT * 1.05F, -6.7F * MODEL_UNIT * 1.05F, 5.0F,
@@ -735,7 +772,7 @@ public record LandVehicleSpec(
      * the same non-motorcycle resting-position pattern as the other wheeled steering
      * wheels in this file. */
     public static final LandVehicleSpec SMART_CAR = new LandVehicleSpec(
-            "smart_car", "Smart Car", "smart_car_body",
+            "smart_car", "Tiny Two", "smart_car_body",
             1.85F, 1.15F, 1.0F,
             1.25F, -1.7F, 3.752F,
             15.0F, 35.0F, 12.0F * MODEL_UNIT * 1.25F, -12.0F * MODEL_UNIT * 1.25F, 5.0F,
@@ -762,7 +799,7 @@ public record LandVehicleSpec(
      * verificate in joc) + girofar rosu/albastru pe plafon, in modelul corpului.
      * Modelul propriu = fara asseturi din mod pentru caroserie. */
     public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
-            "police_car", "Police Off Roader", "police_car_body",
+            "police_car", "Patrol 4x4", "police_car_body",
             2.0F, 1.0F, 1.0F,
             1.4F, -1.0F, 5.6F,
             16.0F, 35.0F, 14.5F * MODEL_UNIT * 1.4F, -14.5F * MODEL_UNIT * 1.4F, 5.0F,
@@ -800,7 +837,7 @@ public record LandVehicleSpec(
      * steering wheel add that vector on top of the standard pixel-converted offset,
      * matching the confirmed Jet Ski formula. */
     public static final LandVehicleSpec SPEED_BOAT = new LandVehicleSpec(
-            "speed_boat", "Speed Boat", "speed_boat_body",
+            "speed_boat", "Riptide 210", "speed_boat_body",
             1.5F, 1.0F, 0.0F,
             1.0F, 2.5F, 0.0F,
             20.0F, 35.0F, 0.0F, 0.0F, 4.0F,
@@ -821,7 +858,7 @@ public record LandVehicleSpec(
      * model, and its four seats use the plain pixel-converted seat formula with no
      * body-translate addition (confirmed against Jet Ski's existing seat values). */
     public static final LandVehicleSpec ALUMINUM_BOAT = new LandVehicleSpec(
-            "aluminum_boat", "Aluminum Boat", "aluminum_boat_body",
+            "aluminum_boat", "Tin Skiff", "aluminum_boat_body",
             2.25F, 0.875F, 0.0F,
             1.1F, 0.0F, 0.0F,
             10.0F, 20.0F, 0.0F, 0.0F, 4.0F,
@@ -847,7 +884,7 @@ public record LandVehicleSpec(
      * NOTE: this vehicle's original source model hard-depends on MrCrayfish's
      * Furniture Mod asset; flagged for the user before shipping. */
     public static final LandVehicleSpec COUCH = new LandVehicleSpec(
-            "couch", "Couch", "sofacopter_sofa",
+            "couch", "Sofa Glider", "sofacopter_sofa",
             1.0F, 1.0F, 1.0F,
             1.0F, -1.5F, 4.4F,
             10.0F, 35.0F, 7.0F * MODEL_UNIT, -7.0F * MODEL_UNIT, 5.0F,
@@ -874,7 +911,7 @@ public record LandVehicleSpec(
      * bespoke mechanic, push()'s car-to-car bonk, needs to compare every active Bumper
      * Car pairwise each tick, so it is handled in VehicleManager rather than here. */
     public static final LandVehicleSpec BUMPER_CAR = new LandVehicleSpec(
-            "bumper_car", "Bumper Car", "bumper_car_body",
+            "bumper_car", "Bumper Brawl", "bumper_car_body",
             1.5F, 1.0F, 0.625F,
             1.2F, -1.5F, 1.88F,
             10.0F, 35.0F, 8.5F * MODEL_UNIT * 1.2F, -8.5F * MODEL_UNIT * 1.2F, 5.0F,
@@ -904,7 +941,7 @@ public record LandVehicleSpec(
      * normal driving every tick while held — is handled by LandVehicle#tickPushed and
      * VehicleManager's sneak-interact toggle rather than here. */
     public static final LandVehicleSpec SHOPPING_CART = new LandVehicleSpec(
-            "shopping_cart", "Shopping Cart", "shopping_cart_body",
+            "shopping_cart", "Trolley Turbo", "shopping_cart_body",
             1.0F, 1.0F, 1.0F,
             1.05F, -1.0F, 1.88F,
             10.0F, 90.0F, 9.5F * MODEL_UNIT * 1.05F, -10.5F * MODEL_UNIT * 1.05F, 5.0F,

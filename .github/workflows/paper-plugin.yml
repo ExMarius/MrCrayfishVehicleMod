@@ -5,6 +5,8 @@ on:
     paths:
       - "paper-plugin/**"
       - "tools/build_resource_pack.py"
+      - "tools/restyle.py"
+      - "tools/test_restyle.py"
       - "tools/test_build_resource_pack.py"
       - "tools/configure_server_resource_pack.py"
       - "tools/test_configure_server_resource_pack.py"
@@ -98,7 +100,7 @@ jobs:
           grep -n 'sha1:' paper-plugin/src/main/resources/config.yml
 
       - name: Test resource-pack build and server synchronization
-        run: python3 -m unittest tools.test_build_resource_pack tools.test_configure_server_resource_pack tools.test_wheels_preset
+        run: python3 -m unittest tools.test_build_resource_pack tools.test_restyle tools.test_configure_server_resource_pack tools.test_wheels_preset
 
       - name: Build plugin and resource pack
         env:
@@ -125,7 +127,7 @@ jobs:
 
       - name: Verify resource pack
         run: |
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip"
           unzip -t "$PACK"
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
           CONFIG_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)
@@ -365,7 +367,7 @@ jobs:
           if-no-files-found: error
           path: |
             paper-plugin/build/libs/MrCrayfishVehiclePlugin-*.jar
-            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip
+            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip
 
       - name: Public pluginul si pack-ul in release
         if: success()
@@ -558,8 +560,8 @@ jobs:
         run: |
           API=https://client.falixnodes.net/api/v2/servers/3500167
           AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
-          URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
-          SHA1="72d783b1cf0b67dba3c116da429f818df6bb6036"
+          URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip"
+          SHA1="f1a1a086669572c60ae80d85dea2ee6d4e34598a"
           exec > >(tee /tmp/diag.log) 2>&1
 
           echo "== 1. properties inainte"
@@ -637,8 +639,8 @@ jobs:
           API=https://client.falixnodes.net/api/v2/servers/3500167
           AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
           JAR="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-26.3.jar"
-          PACK="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
-          SHA1="72d783b1cf0b67dba3c116da429f818df6bb6036"
+          PACK="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip"
+          SHA1="f1a1a086669572c60ae80d85dea2ee6d4e34598a"
           exec > >(tee /tmp/deploy.log) 2>&1
           echo "== properties:"
           for B in \
