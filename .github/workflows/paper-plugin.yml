@@ -75,8 +75,9 @@ jobs:
           PAPER_API: ${{ inputs.paperApi || '26.3.build.259-stable' }}
           JAVA_VERSION: ${{ inputs.javaVersion || '25' }}
         run: |
+          set -o pipefail
           ./paper-plugin/gradlew -p paper-plugin clean build resourcePack \
-            -PpaperApi="$PAPER_API" -PjavaVersion="$JAVA_VERSION"
+            -PpaperApi="$PAPER_API" -PjavaVersion="$JAVA_VERSION" 2>&1 | tee /tmp/build.log
 
       - name: Report test failures
         if: failure()
@@ -159,6 +160,26 @@ jobs:
           unzip -l "$PACK" assets/vehicle/items/speed_boat_body.json | grep -q speed_boat_body.json
           unzip -l "$PACK" assets/vehicle/sounds/entity/speed_boat/engine.ogg | grep -q engine.ogg
           unzip -l "$PACK" assets/vehicle/items/aluminum_boat_body.json | grep -q aluminum_boat_body.json
+
+      - name: Raporteaza esecul build-ului pe commit
+        if: failure()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Build esuat"
+            echo ""
+            echo "Commit: \`${GITHUB_SHA:0:7}\`"
+            echo ""
+            echo '```'
+            grep -E "(FAILED|error:|e: |What went wrong|Execution failed|expected|Assertion)" /tmp/build.log 2>/dev/null | head -n 40 \
+              || tail -n 40 /tmp/build.log 2>/dev/null || echo "fara log"
+            echo '```'
+          } > /tmp/err.md
+          head -c 60000 /tmp/err.md > /tmp/err_cut.md
+          gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -F body=@/tmp/err_cut.md || true
 
       - name: Test completely fresh Paper server
         env:

@@ -142,7 +142,7 @@ def copy(source: Path, destination: Path) -> None:
     shutil.copy2(source, destination)
 
 
-def build(output: Path, pack_format: int = 46) -> tuple[Path, str]:
+def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="vehicle-resource-pack-") as temporary:
         pack = Path(temporary)
