@@ -526,3 +526,58 @@ jobs:
           head -c 60000 /tmp/up.md > /tmp/up_cut.md
           gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
             -F body=@/tmp/up_cut.md || true
+
+  api-probe:
+    if: inputs.mode == 'api-probe'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    environment: production
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Sign in to Falix
+        run: |
+          set -euo pipefail
+          ID_TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://client.falixnodes.net/api/v2" | jq -r .value)
+          FALIX_TOKEN=$(curl -sSf https://client.falixnodes.net/api/v2/oauth2/token \
+            -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
+            -d subject_token_type=urn:ietf:params:oauth:token-type:id_token \
+            -d connection=reg_wi7EZ1pUXUnMZf84wbLEk5MBZh \
+            --data-urlencode subject_token="$ID_TOKEN" | jq -r .access_token)
+          echo "::add-mask::$FALIX_TOKEN"
+          echo "FALIX_TOKEN=$FALIX_TOKEN" >> "$GITHUB_ENV"
+          echo "Token obtinut: ${#FALIX_TOKEN} caractere"
+
+      - name: Descopera endpoint-urile
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          OUT=/tmp/probe.md
+          echo "### Falix API v2 - probe endpoint-uri" > "$OUT"
+          for path in \
+            "/api/v2/servers" \
+            "/api/v2/servers/3500167" \
+            "/api/v2/servers/3500167/resources" \
+            "/api/v2/servers/3500167/files/list" \
+            "/api/v2/servers/3500167/files/list?directory=/plugins" \
+            "/api/client/servers/3500167" \
+            "/api/client/servers/3500167/resources" \
+            "/api/client/servers/3500167/files/list?directory=/plugins"; do
+          do
+            CODE=$(curl -s -o /tmp/body -w '%{http_code}' "https://client.falixnodes.net${path}" \
+              --header "Authorization: Bearer $FALIX_TOKEN" --header "Accept: application/json" || echo "000")
+            {
+              echo ""
+              echo "**GET ${path}** -> \`${CODE}\`"
+              echo '```'
+              head -c 400 /tmp/body 2>/dev/null
+              echo '```'
+            } >> "$OUT"
+          done
+          cat "$OUT"
+          head -c 60000 "$OUT" > /tmp/probe_cut.md
+          gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -F body=@/tmp/probe_cut.md || true
