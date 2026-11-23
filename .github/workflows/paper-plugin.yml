@@ -576,15 +576,10 @@ jobs:
           JAR_URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-26.3.jar"
           AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
           OK=0
-          for BODY in \
-            "{\"url\":\"$JAR_URL\",\"path\":\"/plugins/MrCrayfishVehiclePlugin.jar\"}" \
-            "{\"url\":\"$JAR_URL\",\"directory\":\"/plugins\",\"filename\":\"MrCrayfishVehiclePlugin.jar\"}" \
-            "{\"url\":\"$JAR_URL\",\"directory\":\"/plugins\",\"name\":\"MrCrayfishVehiclePlugin.jar\"}" \
-            "{\"url\":\"$JAR_URL\",\"destination\":\"/plugins/MrCrayfishVehiclePlugin.jar\"}"; do
-            CODE=$(curl -s -o /tmp/pull -w '%{http_code}' --max-time 30 -X POST "$API/files/pull" "${AUTH[@]}" -d "$BODY" || echo 000)
-            echo "pull -> $CODE  $(head -c 300 /tmp/pull)"
-            if [ "$CODE" = "200" ] || [ "$CODE" = "201" ] || [ "$CODE" = "202" ]; then OK=1; break; fi
-          done
+          BODY="{\"url\":\"$JAR_URL\",\"directory\":\"/plugins\",\"file_name\":\"MrCrayfishVehiclePlugin.jar\"}"
+          CODE=$(curl -s -o /tmp/pull -w '%{http_code}' --max-time 40 -X POST "$API/files/pull" "${AUTH[@]}" -d "$BODY" || echo 000)
+          echo "pull -> $CODE  $(head -c 300 /tmp/pull)"
+          [ "$CODE" = "200" ] || [ "$CODE" = "201" ] || [ "$CODE" = "202" ] && OK=1
           if [ "$OK" = "0" ]; then echo "::error title=Pull esuat::niciun payload acceptat"; exit 1; fi
           for i in $(seq 1 20); do
             curl -s --max-time 20 "$API/files/pull/status" "${AUTH[@]}" -o /tmp/pullstatus
@@ -606,7 +601,17 @@ jobs:
           echo "stare inainte: $(curl -s --max-time 20 "$API/console/status" "${AUTH[@]}" | head -c 120)"
           for SIG in restart start; do
             CODE=$(curl -s -o /tmp/power -w '%{http_code}' --max-time 30 -X POST "$API/power" "${AUTH[@]}" -d "{\"signal\":\"$SIG\"}" || echo 000)
-            echo "power $SIG -> $CODE $(head -c 300 /tmp/power)"
+            echo "power $SIG -> $CODE $(head -c 600 /tmp/power)"
+            python3 - <<'PY' || true
+import json
+try:
+    d = json.load(open("/tmp/power"))
+    url = d.get("error", {}).get("action_url")
+    if url:
+        print(f"ACTIUNE_UMANA: {url}")
+except Exception:
+    pass
+PY
             [ "$CODE" = "200" ] || [ "$CODE" = "202" ] || [ "$CODE" = "204" ] && break
           done
           sleep 45
