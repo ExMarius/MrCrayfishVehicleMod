@@ -674,6 +674,27 @@ jobs:
           echo "::add-mask::$FALIX_TOKEN"
           echo "FALIX_TOKEN=$FALIX_TOKEN" >> "$GITHUB_ENV"
 
+      - name: Fixeaza resource-pack in server.properties
+        run: |
+          set -uo pipefail
+          exec > >(tee /tmp/props.log) 2>&1
+          API=https://client.falixnodes.net/api/v2/servers/3500167
+          AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
+          URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
+          SHA1="8cf71d442daac6644c2fd2276597937167145c35"
+          PROMPT="Acest resource pack este necesar pentru modelele vehiculelor."
+          OK=0
+          for BODY in \
+            "{\"properties\":{\"resource-pack\":\"$URL\",\"resource-pack-sha1\":\"$SHA1\",\"require-resource-pack\":\"true\",\"resource-pack-prompt\":\"$PROMPT\"}}" \
+            "{\"properties\":[{\"key\":\"resource-pack\",\"value\":\"$URL\"},{\"key\":\"resource-pack-sha1\",\"value\":\"$SHA1\"},{\"key\":\"require-resource-pack\",\"value\":\"true\"},{\"key\":\"resource-pack-prompt\",\"value\":\"$PROMPT\"}]}" \
+            "{\"resource-pack\":\"$URL\",\"resource-pack-sha1\":\"$SHA1\",\"require-resource-pack\":\"true\"}"; do
+            CODE=$(curl -s -o /tmp/propsresp -w '%{http_code}' --max-time 30 -X PUT "$API/properties" "${AUTH[@]}" -d "$BODY")
+            echo "PUT properties -> $CODE $(head -c 250 /tmp/propsresp)"
+            case "$CODE" in 200|201|202|204) OK=1; break;; esac
+          done
+          [ "$OK" = "1" ] || echo "::warning title=Properties::nu am putut scrie resource-pack"
+          curl -s --max-time 20 "$API/properties" "${AUTH[@]}" | tr '}' '\n' | grep -i "resource-pack" || true
+
       - name: Trage JAR-ul in /plugins
         run: |
           set -uo pipefail
