@@ -567,33 +567,31 @@ jobs:
           echo "FALIX_TOKEN=$FALIX_TOKEN" >> "$GITHUB_ENV"
           echo "Token obtinut: ${#FALIX_TOKEN} caractere"
 
-      - name: Descopera endpoint-urile
+      - name: Descopera forma cererilor
         if: always()
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
           OUT=/tmp/probe.md
-          { echo "### Falix API v2 - probe endpoint-uri"; echo ""; echo '```'; cat /tmp/signin.log 2>/dev/null | tail -n 15; echo '```'; } > "$OUT"
-          for path in \
-            "/api/v2/servers" \
-            "/api/v2/servers/3500167" \
-            "/api/v2/servers/3500167/resources" \
-            "/api/v2/servers/3500167/files/list" \
-            "/api/v2/servers/3500167/files/list?directory=/plugins" \
-            "/api/client/servers/3500167" \
-            "/api/client/servers/3500167/resources" \
-            "/api/client/servers/3500167/files/list?directory=/plugins"; do
-            CODE=$(curl -s -o /tmp/body -w '%{http_code}' "https://client.falixnodes.net${path}" \
-              --max-time 20 --header "Authorization: Bearer $FALIX_TOKEN" --header "Accept: application/json" || echo "000")
-            {
-              echo ""
-              echo "**GET ${path}** -> \`${CODE}\`"
-              echo '```'
-              head -c 400 /tmp/body 2>/dev/null
-              echo '```'
-            } >> "$OUT"
-          done
+          { echo "### Falix API v2 - forme cereri"; echo ""; echo '```'; tail -n 8 /tmp/signin.log 2>/dev/null; echo '```'; } > "$OUT"
+          API=https://client.falixnodes.net/api/v2/servers/3500167
+          call() {
+            local label=$1 method=$2 path=$3 body=$4
+            local code
+            if [ -n "$body" ]; then
+              code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 25 -X "$method" "$API$path" \
+                -H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" \
+                -H "Accept: application/json" -d "$body" || echo "000")
+            else
+              code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 25 -X "$method" "$API$path" \
+                -H "Authorization: Bearer $FALIX_TOKEN" -H "Accept: application/json" || echo "000")
+            fi
+            { echo ""; echo "**$method $path** -> \`$code\`"; echo '```'; head -c 900 /tmp/body; echo '```'; } >> "$OUT"
+          }
+          call files "GET" "/files?directory=/plugins" ""
+          call pull-gol "POST" "/files/pull" "{}"
+          call power-gol "POST" "/power" "{}"
+          call log "GET" "/console/log?lines=5" ""
+          call status "GET" "/console/status" ""
 
       - name: Publica raportul
         if: always()
