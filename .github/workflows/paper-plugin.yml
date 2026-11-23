@@ -305,17 +305,23 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAPER_API: ${{ inputs.paperApi || '1.21.4-R0.1-SNAPSHOT' }}
         run: |
           set -euo pipefail
           TAG=paper-plugin
+          MC_VERSION="${PAPER_API%%.build*}"
+          MC_VERSION="${MC_VERSION%%-*}"
           JAR=$(ls paper-plugin/build/libs/*.jar | grep -v -- "-sources" | head -1)
           PACK=$(ls paper-plugin/build/*resource-pack*.zip | head -1)
-          echo "JAR=$JAR"; echo "PACK=$PACK"
-          ls -lh "$JAR" "$PACK"
+          OUT="/tmp/MrCrayfishVehiclePlugin-${MC_VERSION}.jar"
+          cp "$JAR" "$OUT"
+          echo "JAR=$OUT (MC $MC_VERSION)  PACK=$PACK"
+          ls -lh "$OUT" "$PACK"
           if ! gh release view "$TAG" >/dev/null 2>&1; then
-            gh release create "$TAG" --title "Plugin Paper (masini)" --notes "JAR + resource pack, construite de CI din paper-plugin/."
+            gh release create "$TAG" --title "Plugin Paper (masini)" --notes "JAR pe versiuni de Minecraft + resource pack, construite de CI din paper-plugin/."
           fi
-          gh release upload "$TAG" "$JAR" "$PACK" --clobber
+          gh release upload "$TAG" "$OUT" "$PACK" --clobber
+          gh release view "$TAG" --json assets --jq '.assets[].name'
 
   probe:
     if: inputs.probe == true
