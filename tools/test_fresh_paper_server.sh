@@ -109,7 +109,7 @@ run_server_cycle() {
       break
     fi
     if grep -Fq 'Done (' "$SERVER_LOG" \
-        && [ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
+        && [ "$(grep -Fc 'Vehicle plugin enabled. Eighteen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -ge "$cycle" ]; then
       ready=true
       break
     fi
@@ -154,7 +154,7 @@ grep -Eq 'sha1: *"[0-9a-f]{40}"' "$DATA_DIR/config.yml" \
 
 run_server_cycle 2
 
-[ "$(grep -Fc 'Vehicle plugin enabled. Seventeen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -eq 2 ] \
+[ "$(grep -Fc 'Vehicle plugin enabled. Eighteen land vehicles, three water vehicles, three aircraft, five trailers, and the gas pump are ready.' "$SERVER_LOG")" -eq 2 ] \
   || fail "plugin did not enable exactly once per startup"
 # Message gained garage counts when the garage feature shipped; fresh boot logs exactly this.
 [ "$(grep -Fc 'Loaded 0 vehicle(s); 0 deferred, 0 stored in garages.' "$SERVER_LOG")" -eq 2 ] \
