@@ -13,6 +13,8 @@ repositories {
 
 val paperApi = (findProperty("paperApi") as String?) ?: "1.21.4-R0.1-SNAPSHOT"
 val javaVersion = ((findProperty("javaVersion") as String?) ?: "21").toInt()
+val apiVersion = (findProperty("apiVersion") as String?)
+    ?: paperApi.substringBefore(".build").removeSuffix("-R0.1-SNAPSHOT")
 
 dependencies {
     compileOnly("io.papermc.paper:paper-api:$paperApi")
@@ -36,7 +38,7 @@ tasks.withType<JavaCompile>().configureEach {
 }
 
 tasks.processResources {
-    val properties = mapOf("version" to project.version)
+    val properties = mapOf("version" to project.version, "apiVersion" to apiVersion)
     inputs.properties(properties)
     filteringCharset = "UTF-8"
     filesMatching("plugin.yml") {

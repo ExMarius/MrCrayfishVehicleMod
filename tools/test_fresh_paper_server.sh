@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Clean-room integration test for a built MrCrayfishVehiclePlugin JAR.
-# Downloads the latest stable Paper 1.21.4 build, starts it twice in a brand-new
+# Downloads the latest stable Paper build for MC_VERSION (default 1.21.4),
+# starts it twice in a brand-new
 # directory, exercises console commands, and audits first-install persistence.
 set -euo pipefail
 
@@ -10,9 +11,10 @@ if [ "$#" -ne 1 ] || [ ! -f "$1" ]; then
 fi
 
 PLUGIN_JAR=$(realpath "$1")
+MC_VERSION=${MC_VERSION:-1.21.4}
 SERVER_DIR=$(mktemp -d "${TMPDIR:-/tmp}/mcv-fresh-paper.XXXXXX")
 SERVER_LOG="$SERVER_DIR/server.log"
-PAPER_API="https://fill.papermc.io/v3/projects/paper/versions/1.21.4/builds"
+PAPER_API="https://fill.papermc.io/v3/projects/paper/versions/${MC_VERSION}/builds"
 USER_AGENT="ExMarius-MrCrayfishVehicleMod/clean-room-test (https://github.com/ExMarius/MrCrayfishVehicleMod)"
 CURRENT_PID=""
 CONSOLE_OPEN=false
@@ -69,24 +71,24 @@ import json, sys
 builds = json.load(sys.stdin)
 stable = next((build for build in builds if build.get("channel") == "STABLE"), None)
 if stable is None:
-    raise SystemExit("Paper API returned no stable 1.21.4 build")
+    raise SystemExit(f"Paper API returned no stable build for {sys.argv[1]}")
 download = stable["downloads"]["server:default"]
 print(download["url"])
 print(download["checksums"]["sha256"])
 print(stable["id"])
-' <<< "$BUILDS_JSON")
+' "$MC_VERSION" <<< "$BUILDS_JSON")
 PAPER_URL=${PAPER_DOWNLOAD[0]:-}
 PAPER_SHA256=${PAPER_DOWNLOAD[1]:-}
 PAPER_BUILD=${PAPER_DOWNLOAD[2]:-}
 [ -n "$PAPER_URL" ] && [ -n "$PAPER_SHA256" ] && [ -n "$PAPER_BUILD" ] \
-  || fail "could not resolve the latest stable Paper 1.21.4 download"
+  || fail "could not resolve the latest stable Paper ${MC_VERSION} download"
 
 curl --fail --silent --show-error --location \
   --header "User-Agent: $USER_AGENT" --output "$SERVER_DIR/paper.jar" "$PAPER_URL"
 echo "$PAPER_SHA256  $SERVER_DIR/paper.jar" | sha256sum --check --status \
   || fail "Paper build $PAPER_BUILD checksum mismatch"
 
-echo "Using Paper 1.21.4 build $PAPER_BUILD in clean directory $SERVER_DIR"
+echo "Using Paper ${MC_VERSION} build $PAPER_BUILD in clean directory $SERVER_DIR"
 
 run_server_cycle() {
   local cycle=$1
@@ -143,8 +145,8 @@ DATA_DIR="$SERVER_DIR/plugins/MrCrayfishVehiclePlugin"
 test -s "$DATA_DIR/config.yml" || fail "default config.yml was not generated"
 test -f "$DATA_DIR/vehicles.yml" || fail "vehicles.yml was not created on shutdown"
 test -f "$DATA_DIR/trailers.yml" || fail "trailers.yml was not created on shutdown"
-grep -Fq 'MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip' "$DATA_DIR/config.yml" \
-  || fail "generated config does not select resource pack r39"
+grep -Eq 'MrCrayfishVehiclePlugin-resource-pack-[0-9.]+-r[0-9]+\.zip' "$DATA_DIR/config.yml" \
+  || fail "generated config does not point at a resource pack release"
 # Pin tracks the currently verified r39 pack (deterministic rebuild; matches the live
 # server + players). MUST be refreshed whenever pack contents change on purpose.
 # Ciclul BK (curatenie pre-beta) => d1b55da2...
@@ -167,4 +169,4 @@ if grep -Eiq '(\[(ERROR|SEVERE)\]|Exception|Caused by:|Could not load|Could not 
   fail "server log contains an error or exception"
 fi
 
-echo "Fresh Paper 1.21.4 integration test passed: clean install, commands, persistence, shutdown, and restart."
+echo "Fresh Paper ${MC_VERSION} integration test passed: clean install, commands, persistence, shutdown, and restart."
