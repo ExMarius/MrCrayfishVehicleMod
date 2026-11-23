@@ -16,6 +16,24 @@ on:
       - ".github/falix-deploy-request"
   workflow_dispatch:
     inputs:
+      mode:
+        description: "build = build+test; sftp = doar urca JAR-ul din branch pe server"
+        default: "build"
+      sftpHost:
+        description: "SFTP host (modul sftp)"
+        default: ""
+      sftpPort:
+        description: "SFTP port (modul sftp)"
+        default: "22"
+      sftpUser:
+        description: "SFTP user (modul sftp)"
+        default: ""
+      sftpPassword:
+        description: "SFTP password (modul sftp)"
+        default: ""
+      sftpTarget:
+        description: "Folderul de pluginuri pe server (modul sftp)"
+        default: "plugins"
       probe:
         description: "Doar probe de compilare (fara build, test, deploy)"
         type: boolean
@@ -36,7 +54,7 @@ concurrency:
 
 jobs:
   build:
-    if: inputs.probe != true
+    if: inputs.probe != true && inputs.mode != 'sftp'
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -409,3 +427,61 @@ jobs:
           head -c 60000 /tmp/summary.md > /tmp/summary_cut.md
           gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
             -F body=@/tmp/summary_cut.md
+
+  sftp-upload:
+    if: inputs.mode == 'sftp'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Urca JAR-ul din branch pe server
+        env:
+          SFTP_HOST: ${{ inputs.sftpHost }}
+          SFTP_PORT: ${{ inputs.sftpPort }}
+          SFTP_USER: ${{ inputs.sftpUser }}
+          SFTP_PASSWORD: ${{ inputs.sftpPassword }}
+          SFTP_TARGET: ${{ inputs.sftpTarget }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$SFTP_PASSWORD"
+          test -s plugins/MrCrayfishVehiclePlugin.jar || { echo "::error title=Lipsa JAR::plugins/MrCrayfishVehiclePlugin.jar nu exista in branch."; exit 1; }
+          echo "Local: $(ls -l plugins/MrCrayfishVehiclePlugin.jar | awk '{print $5}') bytes, sha256 $(sha256sum plugins/MrCrayfishVehiclePlugin.jar | cut -d' ' -f1)"
+          sudo apt-get update -qq
+          sudo apt-get install --yes --quiet sshpass
+          export SSHPASS="$SFTP_PASSWORD"
+          {
+          sshpass -e sftp -oBatchMode=no -oPreferredAuthentications=password -oPubkeyAuthentication=no             -oStrictHostKeyChecking=accept-new -oConnectTimeout=25 -P "$SFTP_PORT" "$SFTP_USER@$SFTP_HOST" <<EOF
+          -mkdir $SFTP_TARGET
+          -rm $SFTP_TARGET/MrCrayfishVehiclePlugin.jar.uploading
+          put plugins/MrCrayfishVehiclePlugin.jar $SFTP_TARGET/MrCrayfishVehiclePlugin.jar.uploading
+          -rm $SFTP_TARGET/MrCrayfishVehiclePlugin.jar
+          rename $SFTP_TARGET/MrCrayfishVehiclePlugin.jar.uploading $SFTP_TARGET/MrCrayfishVehiclePlugin.jar
+          ls -l $SFTP_TARGET
+          -get logs/latest.log /tmp/latest.log
+          EOF
+          } 2>&1 | tee /tmp/sftp.log
+
+      - name: Raporteaza rezultatul pe commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### SFTP upload ${{ inputs.sftpHost }}"
+            echo ""
+            echo '```'
+            tail -n 25 /tmp/sftp.log 2>/dev/null || echo "fara log"
+            echo '```'
+            if [ -f /tmp/latest.log ]; then
+              echo ""
+              echo "#### latest.log (ultimele linii)"
+              echo '```'
+              tail -n 20 /tmp/latest.log
+              echo '```'
+            fi
+          } > /tmp/up.md
+          head -c 60000 /tmp/up.md > /tmp/up_cut.md
+          gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -F body=@/tmp/up_cut.md || true
