@@ -14,7 +14,8 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import restyle  # noqa: E402  (local helper: deterministic livery/emblem pass)
+import restyle  # noqa: E402  (local helper: deterministic emblem/PNG pass)
+import restyle_geometry  # noqa: E402  (local helper: body silhouette restyle)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -42,6 +43,11 @@ def item_definition(model: str, tint: int = 0xFFFFFF) -> dict[str, object]:
 
 
 VANILLA_1_21_4_ELEMENT_ANGLES = (-45.0, -22.5, 0.0, 22.5, 45.0)
+
+# Conversion output before the r41 silhouette restyle, keyed by model name.
+# The tests that audit "did we convert the source faithfully?" read this, while
+# the restyle itself is covered by tools/test_restyle_geometry.py.
+PRE_RESTYLE_MODELS: dict[str, dict] = {}
 
 
 def convert_model(source: Path, destination: Path, textures: dict[str, str] | None = None,
@@ -1785,6 +1791,26 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
             badges += 1
         print(f"Embleme proprii: {badges}")
 
+        # ==== Geometry restyle (r40) =========================================
+        # The user wants the bodies themselves to be different, not just the
+        # colours. Each body model gets its own stance (width/height/length),
+        # an optional chopped/raised greenhouse and a bolted-on kit (roof rack,
+        # light bar, roll hoop, exhaust stack, antenna, side rails) generated
+        # from the model's own bounding box. Purely additive parts cannot
+        # distort the source geometry, and everything is clamped to the vanilla
+        # element limits; tools/model_preview.py renders the result offline.
+        restyled = 0
+        for path in sorted((namespace / "models/item").glob("*.json")):
+            profile = restyle_geometry.PROFILES.get(path.stem)
+            if profile is None:
+                continue
+            model = json.loads(path.read_text(encoding="utf-8"))
+            PRE_RESTYLE_MODELS[path.stem] = json.loads(json.dumps(model))
+            restyle_geometry.restyle_model(model, profile)
+            write_json(path, model)
+            restyled += 1
+        print(f"Modele restilizate: {restyled}")
+
         emit_vehicle_icons(namespace)
         emit_vehicle_previews(namespace)
         emit_jack_gui_backdrop(namespace)
@@ -2544,7 +2570,7 @@ def emit_hud_speed_font(namespace: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r40.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r41.zip")
     parser.add_argument("--pack-format", type=int, default=97,
                         help="resource pack format (97 = Minecraft 26.3)")
     args = parser.parse_args()

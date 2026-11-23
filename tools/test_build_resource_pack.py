@@ -27,6 +27,18 @@ class ResourcePackBuildTest(unittest.TestCase):
     def read_json(self, path):
         return json.loads(self.archive.read(path))
 
+    def read_model(self, name):
+        """The model as produced by the SOURCE CONVERSION.
+
+        r41 adds a declared silhouette restyle on top (proportions + bolt-on
+        kit); the tests below audit the conversion itself, so they read the
+        pre-restyle snapshot that build() records. The restyled output is
+        covered by tools/test_restyle_geometry.py and by the bounds/pack tests.
+        """
+        if name in build_resource_pack.PRE_RESTYLE_MODELS:
+            return build_resource_pack.PRE_RESTYLE_MODELS[name]
+        return self.read_json(f"assets/vehicle/models/item/{name}.json")
+
     def test_hud_speed_font_present(self):
         """Ciclul BA: fontul HUD sta IN STANGA la randul inimilor (viteza +
         odometru); glife bitmap ascent -12 + provider 'space' cu avansii de
@@ -109,6 +121,22 @@ class ResourcePackBuildTest(unittest.TestCase):
                     _, texture_path = texture.split(":", 1)
                     self.assertIn(f"assets/vehicle/textures/{texture_path}.png", self.entries,
                                   f"{model_entry}: {texture}")
+
+    def test_every_profile_gets_its_restyled_silhouette(self):
+        """r41: fiecare caroserie din PROFILES primeste kitul cerut (piesele
+        suplimentare sunt marcate cu texturi `#kit_*`), deci flota nu mai
+        ramane pe geometria originala acolo unde am cerut o modificare."""
+        from tools import restyle_geometry as geometry
+        for stem, profile in geometry.PROFILES.items():
+            entry = f"assets/vehicle/models/item/{stem}.json"
+            self.assertIn(entry, self.entries, stem)
+            model = self.read_json(entry)
+            if not profile[4]:
+                continue
+            used = {definition.get("texture")
+                    for element in model["elements"]
+                    for definition in element["faces"].values()}
+            self.assertTrue(any(str(texture).startswith("#kit_") for texture in used), stem)
 
     def test_every_generated_element_stays_inside_vanilla_model_bounds(self):
         for entry in sorted(path for path in self.entries
@@ -245,7 +273,7 @@ class ResourcePackBuildTest(unittest.TestCase):
             "sports_car_roof": 21,
         }
         for model, count in expected_elements.items():
-            data = self.read_json(f"assets/vehicle/models/item/{model}.json")
+            data = self.read_model(model)
             self.assertEqual(count, len(data["elements"]), model)
             self.assertIn(f"assets/vehicle/items/{model}.json", self.entries)
             self.assertIn(f"assets/vehicle/textures/item/{model}.png", self.entries)
@@ -277,7 +305,7 @@ class ResourcePackBuildTest(unittest.TestCase):
             "big_tow_bar": 4,
         }
         for model, count in expected_elements.items():
-            data = self.read_json(f"assets/vehicle/models/item/{model}.json")
+            data = self.read_model(model)
             self.assertEqual(count, len(data["elements"]), model)
             self.assertIn(f"assets/vehicle/items/{model}.json", self.entries)
             self.assertIn(f"assets/vehicle/textures/item/{model}.png", self.entries)
@@ -287,7 +315,7 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual(113_610, self.last_ogg_granule(engine))
 
     def test_golf_cart_model_and_source_audio_are_complete(self):
-        model = self.read_json("assets/vehicle/models/item/golf_cart_body.json")
+        model = self.read_model("golf_cart_body")
         self.assertEqual(86, len(model["elements"]))
         self.assertIn("assets/vehicle/items/golf_cart_body.json", self.entries)
         self.assertEqual("minecraft:block/white_concrete", model["textures"]["body"])
@@ -319,7 +347,7 @@ class ResourcePackBuildTest(unittest.TestCase):
         # the trailer's sides. The fix instead bakes a 16/17 scale directly into
         # these faces' own UV numbers so every value actually lands at or under the
         # substitute sprite's real 16x16 bounds; see SOURCE_POSITION_AUDIT.md.
-        model = self.read_json("assets/vehicle/models/item/vehicle_trailer_body.json")
+        model = self.read_model("vehicle_trailer_body")
         self.assertNotIn("texture_size", model)
         rails = [element for element in model["elements"]
                  if element["from"] in ([1, -0.5, -4], [13, -0.5, -4])]
@@ -350,7 +378,7 @@ class ResourcePackBuildTest(unittest.TestCase):
         # canvas if ever reopened. See SOURCE_POSITION_AUDIT.md for the
         # correction, and for the one model that genuinely did have UV
         # overflowing past 16 (the Vehicle Trailer's side rails).
-        model = self.read_json("assets/vehicle/models/item/standard_wheel.json")
+        model = self.read_model("standard_wheel")
         self.assertEqual([32, 32], model["texture_size"])
         max_uv = max(
             value
@@ -362,7 +390,7 @@ class ResourcePackBuildTest(unittest.TestCase):
 
     def test_jet_ski_body_and_engine_are_complete(self):
 
-        model = self.read_json("assets/vehicle/models/item/jet_ski_body.json")
+        model = self.read_model("jet_ski_body")
         self.assertEqual(42, len(model["elements"]))
         self.assertIn("assets/vehicle/items/jet_ski_body.json", self.entries)
         # r35: the source model's literal, unconverted "vehicle:model/cray_industries"
@@ -388,7 +416,7 @@ class ResourcePackBuildTest(unittest.TestCase):
             "sports_plane_joystick": 3,
         }
         for model, count in expected_elements.items():
-            data = self.read_json(f"assets/vehicle/models/item/{model}.json")
+            data = self.read_model(model)
             self.assertEqual(count, len(data["elements"]), model)
             self.assertIn(f"assets/vehicle/items/{model}.json", self.entries)
             self.assertIn(f"assets/vehicle/textures/item/{model}.png", self.entries)
@@ -406,7 +434,7 @@ class ResourcePackBuildTest(unittest.TestCase):
             "compact_helicopter_tail_rotor": 4,
         }
         for model, count in expected_elements.items():
-            data = self.read_json(f"assets/vehicle/models/item/{model}.json")
+            data = self.read_model(model)
             self.assertEqual(count, len(data["elements"]), model)
             self.assertIn(f"assets/vehicle/items/{model}.json", self.entries)
             self.assertIn(f"assets/vehicle/textures/item/{model}.png", self.entries)
@@ -422,15 +450,15 @@ class ResourcePackBuildTest(unittest.TestCase):
             "sofacopter_blades": 10,
         }
         for model, count in expected_elements.items():
-            data = self.read_json(f"assets/vehicle/models/item/{model}.json")
+            data = self.read_model(model)
             self.assertEqual(count, len(data["elements"]), model)
             self.assertIn(f"assets/vehicle/items/{model}.json", self.entries)
-        sofa = self.read_json("assets/vehicle/models/item/sofacopter_sofa.json")
+        sofa = self.read_model("sofacopter_sofa")
         self.assertEqual("minecraft:block/red_wool", sofa["textures"]["wool"])
         self.assertEqual("minecraft:block/oak_log", sofa["textures"]["support"])
-        arm = self.read_json("assets/vehicle/models/item/sofacopter_arm.json")
+        arm = self.read_model("sofacopter_arm")
         self.assertEqual("minecraft:block/gray_concrete", arm["textures"]["0"])
-        blades = self.read_json("assets/vehicle/models/item/sofacopter_blades.json")
+        blades = self.read_model("sofacopter_blades")
         self.assertEqual("minecraft:block/gray_concrete", blades["textures"]["0"])
         self.assertEqual("minecraft:block/white_concrete", blades["textures"]["1"])
         self.assertEqual("fan_base_1", blades["elements"][0]["name"])
@@ -439,13 +467,13 @@ class ResourcePackBuildTest(unittest.TestCase):
         self.assertEqual([9.5, 8.0, 19.4], blades["elements"][-1]["to"])
 
     def test_dune_buggy_models_use_the_released_vanilla_block_textures_and_bumper_car_engine(self):
-        body = self.read_json("assets/vehicle/models/item/dune_buggy_body.json")
+        body = self.read_model("dune_buggy_body")
         self.assertEqual(20, len(body["elements"]))
         self.assertEqual("minecraft:block/yellow_concrete", body["textures"]["body"])
         self.assertEqual("minecraft:block/yellow_wool", body["textures"]["seat"])
         self.assertEqual("minecraft:block/light_gray_concrete", body["textures"]["engine_base"])
         self.assertEqual("minecraft:block/gray_concrete", body["textures"]["engine_part"])
-        handles = self.read_json("assets/vehicle/models/item/dune_buggy_handles.json")
+        handles = self.read_model("dune_buggy_handles")
         self.assertEqual(16, len(handles["elements"]))
         self.assertEqual("minecraft:block/yellow_concrete", handles["textures"]["handles"])
         self.assertEqual("minecraft:block/light_gray_concrete", handles["textures"]["axel"])
@@ -465,7 +493,7 @@ class ResourcePackBuildTest(unittest.TestCase):
                          sounds["entity.bumper_car.engine"]["sounds"][0]["name"])
 
     def test_atv_mini_bike_smart_car_and_boat_models_use_released_geometry_and_audio(self):
-        atv_body = self.read_json("assets/vehicle/models/item/atv_body.json")
+        atv_body = self.read_model("atv_body")
         self.assertEqual(46, len(atv_body["elements"]))
         # The vendored source model (exported with MrCrayfish's own Model Creator,
         # the closest available reference for this un-decompiled vehicle) declares
@@ -474,29 +502,29 @@ class ResourcePackBuildTest(unittest.TestCase):
         # no documented reason, rendering the default-white, dyeable ATV green.
         self.assertEqual("minecraft:block/white_concrete", atv_body["textures"]["body"])
         self.assertEqual("minecraft:block/anvil", atv_body["textures"]["frame"])
-        atv_handles = self.read_json("assets/vehicle/models/item/atv_handles.json")
+        atv_handles = self.read_model("atv_handles")
         self.assertEqual(11, len(atv_handles["elements"]))
         self.assertEqual("minecraft:block/black_concrete", atv_handles["textures"]["handles"])
         self.assertEqual("minecraft:block/stone", atv_handles["textures"]["frame_alt"])
         self.assertIn("assets/vehicle/sounds/entity/atv/engine.ogg", self.entries)
 
-        mini_bike_body = self.read_json("assets/vehicle/models/item/mini_bike_body.json")
+        mini_bike_body = self.read_model("mini_bike_body")
         self.assertEqual(33, len(mini_bike_body["elements"]))
         self.assertEqual("minecraft:block/white_concrete", mini_bike_body["textures"]["body"])  # user rule: white
-        mini_bike_handles = self.read_json("assets/vehicle/models/item/mini_bike_handles.json")
+        mini_bike_handles = self.read_model("mini_bike_handles")
         self.assertEqual(16, len(mini_bike_handles["elements"]))
         self.assertEqual("minecraft:block/white_concrete", mini_bike_handles["textures"]["handles"])  # user rule: white
 
-        smart_car_body = self.read_json("assets/vehicle/models/item/smart_car_body.json")
+        smart_car_body = self.read_model("smart_car_body")
         self.assertEqual(109, len(smart_car_body["elements"]))
         self.assertEqual("minecraft:block/white_concrete", smart_car_body["textures"]["base"])  # user rule: white
 
-        speed_boat_body = self.read_json("assets/vehicle/models/item/speed_boat_body.json")
+        speed_boat_body = self.read_model("speed_boat_body")
         self.assertEqual(67, len(speed_boat_body["elements"]))
         self.assertEqual("minecraft:block/red_concrete", speed_boat_body["textures"]["base"])
         self.assertIn("assets/vehicle/sounds/entity/speed_boat/engine.ogg", self.entries)
 
-        aluminum_boat_body = self.read_json("assets/vehicle/models/item/aluminum_boat_body.json")
+        aluminum_boat_body = self.read_model("aluminum_boat_body")
         self.assertEqual(77, len(aluminum_boat_body["elements"]))
         # The released source's own texture map already resolves cleanly in modern vanilla
         # (see build_resource_pack.py); r34 reverted r31's substitution of an unrelated,
@@ -534,13 +562,13 @@ class ResourcePackBuildTest(unittest.TestCase):
                          sounds["entity.speed_boat.engine"]["sounds"][0]["name"])
 
     def test_bumper_car_and_shopping_cart_use_released_geometry_and_audio(self):
-        bumper_car_body = self.read_json("assets/vehicle/models/item/bumper_car_body.json")
+        bumper_car_body = self.read_model("bumper_car_body")
         self.assertEqual(33, len(bumper_car_body["elements"]))
         self.assertEqual("minecraft:block/white_concrete", bumper_car_body["textures"]["body"])
         self.assertIn("assets/vehicle/sounds/entity/bumper_car/engine.ogg", self.entries)
         self.assertIn("assets/vehicle/sounds/entity/bumper_car/bonk.ogg", self.entries)
 
-        shopping_cart_body = self.read_json("assets/vehicle/models/item/shopping_cart_body.json")
+        shopping_cart_body = self.read_model("shopping_cart_body")
         self.assertEqual(46, len(shopping_cart_body["elements"]))
         # r35: each of this body's mesh/logo decals now points at its own dedicated
         # textures/item/ copy instead of the non-standard textures/model/ path, which

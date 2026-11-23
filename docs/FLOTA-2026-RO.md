@@ -64,7 +64,32 @@ SHA-1-ul pack-ului rămâne reproductibil.
 Modelele în sine rămân GPLv3 (credit + `LICENSE.txt` în pack), dar aspectul de
 flotă — nume, culori, insignă — este al nostru.
 
-## 4. Scaunul: călărețul stă lipit de mașină
+## 4. Geometria: caroseriile nu mai sunt cele originale (r41)
+
+Fiecare caroserie trece printr-un pass declarat de restilizare
+(`tools/restyle_geometry.py`), aplicat după conversia modelului sursă:
+
+* **proporții proprii** — lățime/înălțime/lungime diferite de original
+  (ex. off-roader +8% lățime, tuns 8% pe înălțime la kart, +5% lungime la
+  bărci), aplicate în jurul centrului modelului;
+* **plafon** — raport de cabină pe verticală, aplicat doar deasupra liniei
+  brâului, deci stâlpii și geamurile rămân lipite (off-roader/poliție +12%,
+  tractor +8%);
+* **kit propriu** — piese adăugate, generate din cutia modelului: roof rack,
+  light bar, roll hoop, footboards, side skirt, coș de evacuare, antenă, roof
+  box. Sunt pur aditive, deci nu pot strica geometria sursă;
+* totul rămâne în limitele vanilla (elemente −16..32, UV 0..16, fără unghiuri
+  noi) — testat automat.
+
+Modelele cu piese separate (uși/capotă/plafon la sports car și mini bus,
+ghidoane la motociclete) primesc doar kitul: piesele sunt poziționate de
+specificație, deci o scalare doar a corpului le-ar deplasa.
+
+Comparație randată offline (stânga = original, dreapta = r41):
+`docs/flota-r41-înainte-după.png`. Randările se fac cu
+`python3 tools/model_preview.py out.png <model.json>`.
+
+## 5. Scaunul: călărețul stă lipit de mașină
 
 `seat.glue-every-tick: true` (implicit) înseamnă că scaunul primește poziția și
 rotația în **fiecare** tick, cu exact întârzierea de un tick pe care o are
@@ -78,7 +103,7 @@ desenul caroseriei (`interpolationDuration = 1`). Astfel:
 
 Reglaj fin pe înălțime: `/vehicle seatheight -0.85` (valoarea 26.3).
 
-## 5. Comenzi utile pentru test
+## 6. Comenzi utile pentru test
 
 ```
 /vehicle spawn police_car      # Patrol 4x4 (off-roader + girofare)
