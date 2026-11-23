@@ -318,13 +318,13 @@ jobs:
           JAR=$(find paper-plugin/build/libs -name 'MrCrayfishVehiclePlugin-*.jar' -type f | grep -v sources | head -1)
           mkdir -p plugins
           cp "$JAR" plugins/MrCrayfishVehiclePlugin.jar
-          if git diff --quiet -- plugins/MrCrayfishVehiclePlugin.jar; then
+          git add plugins/MrCrayfishVehiclePlugin.jar
+          if git diff --cached --quiet -- plugins/MrCrayfishVehiclePlugin.jar; then
             echo "JAR-ul din branch este deja la zi."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add plugins/MrCrayfishVehiclePlugin.jar
           git commit -m "deploy: JAR Paper $(date -u +%Y-%m-%dT%H:%MZ) (sha ${GITHUB_SHA:0:7})"
           git push origin "HEAD:${GITHUB_REF_NAME}"
 
