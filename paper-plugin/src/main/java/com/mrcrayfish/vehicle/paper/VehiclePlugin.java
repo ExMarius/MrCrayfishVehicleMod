@@ -152,6 +152,11 @@ public final class VehiclePlugin extends JavaPlugin {
         if (getConfig().isSet("seat.rider-height-correction")) {
             com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setRiderHeightCorrection(
                     (float) getConfig().getDouble("seat.rider-height-correction"));
+        } else {
+            /* Config-uri vechi (1.21.4) nu au cheia; scriem valoarea calibrata
+             * pentru 26.3 ca sa nu ramana pe offset-ul vechi. */
+            getConfig().set("seat.rider-height-correction", -0.85D);
+            saveConfig();
         }
 
         vehicleManager = new VehicleManager(this);

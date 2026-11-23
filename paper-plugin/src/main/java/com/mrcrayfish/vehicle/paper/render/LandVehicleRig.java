@@ -1161,7 +1161,11 @@ public final class LandVehicleRig {
      * al pasagerului s-a mutat, deci valoarea se poate regla live din joc:
      *   /vehicle seatheight -0.4
      */
-    private static volatile float riderHeightCorrection = LandVehicleSpec.RIDER_HEIGHT_CORRECTION;
+    /* 1.21.4: +0.25 (atasamentul pasagerului statea 2 pixeli peste pozitia sursa).
+     * 26.3: scara monturii nu mai este aplicata punctului de atasament, deci
+     * calaretul urca la inaltimea NEscalata a calului (~1.1 blocuri). Compensam
+     * cu -0.85 si lasam reglaj fin din joc: /vehicle seatheight <valoare>. */
+    private static volatile float riderHeightCorrection = -0.85F;
 
     public static void setRiderHeightCorrection(float value) {
         riderHeightCorrection = value;
