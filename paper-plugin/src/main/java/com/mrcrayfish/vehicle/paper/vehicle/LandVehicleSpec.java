@@ -758,6 +758,33 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
+    /* Masina de politie: geometrie din proiectul Horizon (model propriu, nu din mod).
+     * Dimensiunile vin din limitele modelului: 1.78 x 1.22 x 2.98 blocuri; fizica
+     * porneste de la Smart Car si se regleaza pe feedback vizual. */
+    public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
+            "police_car", "Police Car", "police_car_body",
+            1.78F, 1.22F, 1.0F,
+            1.0F, 0.0F, 3.0F,
+            16.0F, 35.0F, 12.0F * MODEL_UNIT, -12.0F * MODEL_UNIT, 5.0F,
+            18_000.0F, 0.28F, 0.8F, 1.6F, "vehicle:entity.bumper_car.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel", new Point(0.0F, 0.85F, 0.30F),
+                    1.05F, -67.5F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -9.0F, 8.7F, -12.3F,
+                    0.25F, 0.0F, -90.0F, 0.0F, 1.0F, 0.0F, 3.0F),
+            null,
+            List.of(),
+            List.of(
+                    wheel(-1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F),
+                    wheel(1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F),
+                    wheel(-1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F),
+                    wheel(1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F)
+            ),
+            List.of(seat(true, 0.0F, 0.5F, -2.0F, 1.0F, 0.0F, 3.0F)),
+            true, "tow_bar", new Point(0.0F, 0.0F, -20.3F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
     /* SpeedBoatEntity extends the mod's own BoatEntity, same water-motion base as
      * Jet Ski. AbstractBoatRenderer applies the body's generated translate in raw
      * block units (unscaled) before the uniform body scale, so fuelFiller and the
@@ -914,7 +941,8 @@ public record LandVehicleSpec(
             Map.entry(ALUMINUM_BOAT.id, ALUMINUM_BOAT),
             Map.entry(COUCH.id, COUCH),
             Map.entry(BUMPER_CAR.id, BUMPER_CAR),
-            Map.entry(SHOPPING_CART.id, SHOPPING_CART)
+            Map.entry(SHOPPING_CART.id, SHOPPING_CART),
+            Map.entry(POLICE_CAR.id, POLICE_CAR)
     );
 
     public static LandVehicleSpec byId(String id) {

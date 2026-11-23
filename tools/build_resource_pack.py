@@ -193,6 +193,7 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
             "mini_bus_left_door": ("vehicle:item/mini_bus_left_door", 16383998),
             "mini_bus_right_door": ("vehicle:item/mini_bus_right_door", 16383998),
             "mini_bus_sliding_door": ("vehicle:item/mini_bus_sliding_door", 16383998),
+            "police_car_body": ("vehicle:item/police_car_body", 16383998),
             "mini_bus_rear": ("vehicle:item/mini_bus_rear", 16383998),
             "mini_bus_seat": ("vehicle:item/mini_bus_seat", 16383998),
             "mini_bus_dashboard": ("vehicle:item/mini_bus_dashboard", 16383998),
@@ -276,6 +277,23 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
             namespace / "models/item/quad_bike_handles.json",
             {"texture": "vehicle:item/quad_bike_handles", "particle": "vehicle:item/quad_bike_handles"},
         )
+        convert_model(
+            ROOT / "tools/source_assets/police_car_body.json",
+            namespace / "models/item/police_car_body.json",
+            {name: "vehicle:item/" + name for name in (
+                "kart_body", "kart_frame", "kart_carbon", "kart_grille", "kart_headlight",
+                "kart_taillight", "kart_amber", "kart_dash", "police_side", "police_hood",
+                "plate_ro", "siren_red", "siren_blue", "kart_chrome", "kart_seat",
+            )} | {"particle": "vehicle:item/police_side"},
+        )
+        for police_texture in (
+            "kart_body", "kart_frame", "kart_carbon", "kart_grille", "kart_headlight",
+            "kart_taillight", "kart_amber", "kart_dash", "police_side", "police_hood",
+            "plate_ro", "siren_red", "siren_blue", "kart_chrome", "kart_seat",
+        ):
+            copy(ASSETS / f"textures/item/{police_texture}.png",
+                 namespace / f"textures/item/{police_texture}.png")
+
         convert_model(
             ROOT / "tools/source_assets/vehicle_dune_buggy_body.json",
             namespace / "models/item/dune_buggy_body.json",

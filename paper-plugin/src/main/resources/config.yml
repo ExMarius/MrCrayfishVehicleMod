@@ -4,7 +4,7 @@ resource-pack:
   url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
   # Ciclul AH: pack-ul s-a schimbat (con de trafic + placa de boost) => hash nou;
   # server.properties il primeste automat la fiecare deploy.
-  sha1: "8cf71d442daac6644c2fd2276597937167145c35"
+  sha1: "03c25d841f8c60ffc15d5f45015f6929ee1ee84a"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
