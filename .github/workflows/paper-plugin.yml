@@ -444,6 +444,7 @@ jobs:
           SFTP_TARGET: ${{ inputs.sftpTarget }}
         run: |
           set -euo pipefail
+          exec > >(tee /tmp/sftp.log) 2>&1
           echo "::add-mask::$SFTP_PASSWORD"
           test -s plugins/MrCrayfishVehiclePlugin.jar || { echo "::error title=Lipsa JAR::plugins/MrCrayfishVehiclePlugin.jar nu exista in branch."; exit 1; }
           echo "Local: $(ls -l plugins/MrCrayfishVehiclePlugin.jar | awk '{print $5}') bytes, sha256 $(sha256sum plugins/MrCrayfishVehiclePlugin.jar | cut -d' ' -f1)"
@@ -460,7 +461,7 @@ jobs:
           ls -l $SFTP_TARGET
           -get logs/latest.log /tmp/latest.log
           EOF
-          } 2>&1 | tee /tmp/sftp.log
+          } 2>&1
 
       - name: Raporteaza rezultatul pe commit
         if: always()
