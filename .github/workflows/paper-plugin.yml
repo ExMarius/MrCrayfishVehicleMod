@@ -537,26 +537,44 @@ jobs:
       contents: read
     steps:
       - name: Sign in to Falix
+        id: signin
+        continue-on-error: true
         run: |
-          set -euo pipefail
-          ID_TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://client.falixnodes.net/api/v2" | jq -r .value)
-          FALIX_TOKEN=$(curl -sSf https://client.falixnodes.net/api/v2/oauth2/token \
+          set -uo pipefail
+          exec > >(tee /tmp/signin.log) 2>&1
+          echo "ID token request host: ${ACTIONS_ID_TOKEN_REQUEST_URL%%\?*}"
+          ID_RESP=$(curl -sS -w '\nHTTP:%{http_code}' -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://client.falixnodes.net/api/v2" || true)
+          echo "ID token response: $(echo "$ID_RESP" | tail -c 300)"
+          ID_TOKEN=$(echo "$ID_RESP" | head -n -1 | jq -r .value 2>/dev/null || true)
+          if [ -z "$ID_TOKEN" ] || [ "$ID_TOKEN" = "null" ]; then
+            echo "::error title=Fara ID token::GitHub nu a emis tokenul OIDC."
+            exit 1
+          fi
+          echo "ID token: ${#ID_TOKEN} caractere"
+          EX_RESP=$(curl -sS -w '\nHTTP:%{http_code}' https://client.falixnodes.net/api/v2/oauth2/token \
             -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
             -d subject_token_type=urn:ietf:params:oauth:token-type:id_token \
             -d connection=reg_wi7EZ1pUXUnMZf84wbLEk5MBZh \
-            --data-urlencode subject_token="$ID_TOKEN" | jq -r .access_token)
+            --data-urlencode subject_token="$ID_TOKEN" || true)
+          echo "Exchange: $(echo "$EX_RESP" | tail -c 600)"
+          FALIX_TOKEN=$(echo "$EX_RESP" | head -n -1 | jq -r .access_token 2>/dev/null || true)
+          if [ -z "$FALIX_TOKEN" ] || [ "$FALIX_TOKEN" = "null" ]; then
+            echo "::error title=Exchange esuat::Falix nu a emis tokenul."
+            exit 1
+          fi
           echo "::add-mask::$FALIX_TOKEN"
           echo "FALIX_TOKEN=$FALIX_TOKEN" >> "$GITHUB_ENV"
           echo "Token obtinut: ${#FALIX_TOKEN} caractere"
 
       - name: Descopera endpoint-urile
+        if: always()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
           OUT=/tmp/probe.md
-          echo "### Falix API v2 - probe endpoint-uri" > "$OUT"
+          { echo "### Falix API v2 - probe endpoint-uri"; echo ""; echo '```'; cat /tmp/signin.log 2>/dev/null | tail -n 15; echo '```'; } > "$OUT"
           for path in \
             "/api/v2/servers" \
             "/api/v2/servers/3500167" \
