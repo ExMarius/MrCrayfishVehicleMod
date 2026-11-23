@@ -567,31 +567,58 @@ jobs:
           echo "FALIX_TOKEN=$FALIX_TOKEN" >> "$GITHUB_ENV"
           echo "Token obtinut: ${#FALIX_TOKEN} caractere"
 
-      - name: Descopera forma cererilor
+      - name: Publica JAR-ul pe server (pull din release)
         if: always()
         run: |
           set -uo pipefail
-          OUT=/tmp/probe.md
-          { echo "### Falix API v2 - forme cereri"; echo ""; echo '```'; tail -n 8 /tmp/signin.log 2>/dev/null; echo '```'; } > "$OUT"
+          exec > >(tee /tmp/deploy.log) 2>&1
           API=https://client.falixnodes.net/api/v2/servers/3500167
-          call() {
-            local label=$1 method=$2 path=$3 body=$4
-            local code
-            if [ -n "$body" ]; then
-              code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 25 -X "$method" "$API$path" \
-                -H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" \
-                -H "Accept: application/json" -d "$body" || echo "000")
-            else
-              code=$(curl -s -o /tmp/body -w '%{http_code}' --max-time 25 -X "$method" "$API$path" \
-                -H "Authorization: Bearer $FALIX_TOKEN" -H "Accept: application/json" || echo "000")
-            fi
-            { echo ""; echo "**$method $path** -> \`$code\`"; echo '```'; head -c 900 /tmp/body; echo '```'; } >> "$OUT"
-          }
-          call files "GET" "/files?directory=/plugins" ""
-          call pull-gol "POST" "/files/pull" "{}"
-          call power-gol "POST" "/power" "{}"
-          call log "GET" "/console/log?lines=5" ""
-          call status "GET" "/console/status" ""
+          JAR_URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-26.3.jar"
+          AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
+          OK=0
+          for BODY in \
+            "{\"url\":\"$JAR_URL\",\"path\":\"/plugins/MrCrayfishVehiclePlugin.jar\"}" \
+            "{\"url\":\"$JAR_URL\",\"directory\":\"/plugins\",\"filename\":\"MrCrayfishVehiclePlugin.jar\"}" \
+            "{\"url\":\"$JAR_URL\",\"directory\":\"/plugins\",\"name\":\"MrCrayfishVehiclePlugin.jar\"}" \
+            "{\"url\":\"$JAR_URL\",\"destination\":\"/plugins/MrCrayfishVehiclePlugin.jar\"}"; do
+            CODE=$(curl -s -o /tmp/pull -w '%{http_code}' --max-time 30 -X POST "$API/files/pull" "${AUTH[@]}" -d "$BODY" || echo 000)
+            echo "pull -> $CODE  $(head -c 300 /tmp/pull)"
+            if [ "$CODE" = "200" ] || [ "$CODE" = "201" ] || [ "$CODE" = "202" ]; then OK=1; break; fi
+          done
+          if [ "$OK" = "0" ]; then echo "::error title=Pull esuat::niciun payload acceptat"; exit 1; fi
+          for i in $(seq 1 20); do
+            curl -s --max-time 20 "$API/files/pull/status" "${AUTH[@]}" -o /tmp/pullstatus
+            echo "status: $(head -c 200 /tmp/pullstatus)"
+            grep -q '"state":"completed"\|"status":"completed"' /tmp/pullstatus && break
+            sleep 5
+          done
+          echo "--- plugins:"
+          curl -s --max-time 20 "$API/files?directory=/plugins" "${AUTH[@]}" \
+            | python3 -c 'import json,sys; [print(f["name"], f["size"]) for f in json.load(sys.stdin)["data"]]'
+
+      - name: Restart si verificare
+        if: always()
+        run: |
+          set -uo pipefail
+          exec > >(tee /tmp/restart.log) 2>&1
+          API=https://client.falixnodes.net/api/v2/servers/3500167
+          AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
+          echo "stare inainte: $(curl -s --max-time 20 "$API/console/status" "${AUTH[@]}" | head -c 120)"
+          for SIG in restart start; do
+            CODE=$(curl -s -o /tmp/power -w '%{http_code}' --max-time 30 -X POST "$API/power" "${AUTH[@]}" -d "{\"signal\":\"$SIG\"}" || echo 000)
+            echo "power $SIG -> $CODE $(head -c 300 /tmp/power)"
+            [ "$CODE" = "200" ] || [ "$CODE" = "202" ] || [ "$CODE" = "204" ] && break
+          done
+          sleep 45
+          for i in $(seq 1 12); do
+            CUR=$(curl -s --max-time 20 "$API/console/status" "${AUTH[@]}" | python3 -c 'import json,sys; print(json.load(sys.stdin)["data"]["status"])' 2>/dev/null || echo "?")
+            echo "stare: $CUR"
+            [ "$CUR" = "running" ] && break
+            sleep 10
+          done
+          echo "--- ultimele linii din log:"
+          curl -s --max-time 20 "$API/console/log?lines=40" "${AUTH[@]}" \
+            | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["data"]["lines"]))' 2>/dev/null | tail -25
 
       - name: Publica raportul
         if: always()
@@ -600,7 +627,7 @@ jobs:
         run: |
           set -uo pipefail
           OUT=/tmp/probe.md
-          [ -f "$OUT" ] || echo "(proba nu a produs raport)" > "$OUT"
-          head -c 60000 "$OUT" > /tmp/probe_cut.md
+          { [ -f "$OUT" ] && cat "$OUT" || echo "(fara raport)"; echo ""; echo '```'; echo "### deploy"; tail -n 60 /tmp/deploy.log 2>/dev/null; echo '```'; echo ""; echo '```'; echo "### restart"; tail -n 40 /tmp/restart.log 2>/dev/null; echo '```'; } > /tmp/raport.md || true
+          head -c 60000 /tmp/raport.md > /tmp/probe_cut.md
           gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
             -F body=@/tmp/probe_cut.md || true
