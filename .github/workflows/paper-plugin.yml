@@ -534,7 +534,7 @@ jobs:
     environment: production
     permissions:
       id-token: write
-      contents: read
+      contents: write
     steps:
       - name: Sign in to Falix
         id: signin
