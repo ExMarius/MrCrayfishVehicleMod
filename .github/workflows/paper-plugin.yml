@@ -584,7 +584,6 @@ jobs:
             "/api/client/servers/3500167" \
             "/api/client/servers/3500167/resources" \
             "/api/client/servers/3500167/files/list?directory=/plugins"; do
-          do
             CODE=$(curl -s -o /tmp/body -w '%{http_code}' "https://client.falixnodes.net${path}" \
               --header "Authorization: Bearer $FALIX_TOKEN" --header "Accept: application/json" || echo "000")
             {
