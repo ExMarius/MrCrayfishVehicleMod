@@ -630,6 +630,9 @@ jobs:
           echo "== stare:"; curl -s --max-time 20 "$API/console/status" "${AUTH[@]}" | head -c 400; echo
           echo "== jar:"; curl -s --max-time 20 "$API/files?directory=/plugins" "${AUTH[@]}" \
             | python3 -c 'import json,sys; [print(f["name"], f["size"], f["modified_at"]) for f in json.load(sys.stdin)["data"] if f["name"].endswith(".jar")]'
+          echo "== server.properties:"
+          curl -s --max-time 20 "$API/properties" "${AUTH[@]}" | head -c 1200
+          echo
           echo "== debut log boot:"; curl -s --max-time 20 "$API/console/log?lines=400" "${AUTH[@]}" \
             | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["data"]["lines"]))' \
             | grep -Ei "Starting minecraft server version|Vehicle plugin enabled|MrCrayfishVehiclePlugin\] (Enabling|Loaded)|ERROR|SEVERE|Exception" | tail -20
