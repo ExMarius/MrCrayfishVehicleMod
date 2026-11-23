@@ -1155,8 +1155,24 @@ public final class LandVehicleRig {
         return seatOffset(seat);
     }
 
+    /**
+     * Inaltimea la care sta calaretul fata de ancora scaunului. Valoarea din
+     * LandVehicleSpec a fost calibrata pe 1.21.4; pe 26.3 punctul de atasament
+     * al pasagerului s-a mutat, deci valoarea se poate regla live din joc:
+     *   /vehicle seatheight -0.4
+     */
+    private static volatile float riderHeightCorrection = LandVehicleSpec.RIDER_HEIGHT_CORRECTION;
+
+    public static void setRiderHeightCorrection(float value) {
+        riderHeightCorrection = value;
+    }
+
+    public static float riderHeightCorrection() {
+        return riderHeightCorrection;
+    }
+
     private static Vector3f seatOffset(LandVehicleSpec.Seat seat) {
-        return point(seat.sourceOffset()).add(0.0F, LandVehicleSpec.RIDER_HEIGHT_CORRECTION, 0.0F);
+        return point(seat.sourceOffset()).add(0.0F, riderHeightCorrection, 0.0F);
     }
 
     private static Vector3f pigAnchor(Vector3f seatPoint) {

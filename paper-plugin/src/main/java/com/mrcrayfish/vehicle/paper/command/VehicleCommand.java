@@ -84,6 +84,7 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
             case "give" -> give(sender, args);
             case "propsdebug" -> propsDebug(sender);
             case "seattest" -> seatTest(sender, args);
+            case "seatheight", "seatinaltime" -> seatHeightCmd(sender, args);
             case "seatkind" -> seatKindCmd(sender, args);
             case "seatyaw" -> seatYawCmd(sender, args);
             case "seatlook" -> seatLookCmd(sender, args);
@@ -211,6 +212,31 @@ public final class VehicleCommand implements CommandExecutor, TabCompleter {
 
     /** /vehicle seatkind <cal|armorstand>: alege entitatea-scaun si o aplica
      *  imediat tuturor vehiculelor (te da jos; urci din nou). */
+    private void seatHeightCmd(CommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.sendRichMessage("<yellow>Inaltime calaret acum: "
+                    + com.mrcrayfish.vehicle.paper.render.LandVehicleRig.riderHeightCorrection()
+                    + " | folosire: /vehicle seatheight <valoare> (ex. -0.4)</yellow>");
+            return;
+        }
+        float value;
+        try {
+            value = Float.parseFloat(args[1].replace(',', '.'));
+        } catch (NumberFormatException error) {
+            sender.sendRichMessage("<red>Valoare numerica, ex: /vehicle seatheight -0.4</red>");
+            return;
+        }
+        if (value < -2.0F || value > 2.0F) {
+            sender.sendRichMessage("<red>Valoarea trebuie intre -2.0 si 2.0</red>");
+            return;
+        }
+        com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setRiderHeightCorrection(value);
+        plugin.getConfig().set("seat.rider-height-correction", (double) value);
+        plugin.saveConfig();
+        sender.sendRichMessage("<green>Inaltime calaret setata pe " + value
+                + " (salvata in config.yml). Urcate pe masina ca sa vezi efectul.</green>");
+    }
+
     private void seatKindCmd(CommandSender sender, String[] args) {
         if (args.length < 2) {
             sender.sendRichMessage("<yellow>seatkind actual: "

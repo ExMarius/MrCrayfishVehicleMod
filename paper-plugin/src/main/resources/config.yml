@@ -208,3 +208,8 @@ mechanic:
       wheel_sports: 6000
       wheel_off_road: 4500
       spray_can: 1200
+
+# Inaltimea la care sta jucatorul pe scaun, fata de ancora scaunului.
+# Se poate regla live: /vehicle seatheight <valoare>
+seat:
+  rider-height-correction: 0.25

@@ -149,6 +149,10 @@ public final class VehiclePlugin extends JavaPlugin {
     public void onEnable() {
         dataWipedThisBoot = wipeDataIfRequested();
         saveDefaultConfig();
+        if (getConfig().isSet("seat.rider-height-correction")) {
+            com.mrcrayfish.vehicle.paper.render.LandVehicleRig.setRiderHeightCorrection(
+                    (float) getConfig().getDouble("seat.rider-height-correction"));
+        }
 
         vehicleManager = new VehicleManager(this);
         gasPumpManager = new GasPumpManager(this, vehicleManager);
