@@ -11,8 +11,8 @@ repositories {
     maven("https://jitpack.io")
 }
 
-val paperApi = (findProperty("paperApi") as String?) ?: "1.21.4-R0.1-SNAPSHOT"
-val javaVersion = ((findProperty("javaVersion") as String?) ?: "21").toInt()
+val paperApi = (findProperty("paperApi") as String?) ?: "26.3.build.259-stable"
+val javaVersion = ((findProperty("javaVersion") as String?) ?: "25").toInt()
 val apiVersion = (findProperty("apiVersion") as String?)
     ?: paperApi.substringBefore(".build").removeSuffix("-R0.1-SNAPSHOT")
 
@@ -60,7 +60,8 @@ tasks.register<Exec>("resourcePack") {
     commandLine(
         "python3",
         "tools/build_resource_pack.py",
+        "--pack-format", "97",
         "--output",
-        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip").get().asFile.absolutePath
+        rootProject.layout.buildDirectory.file("MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip").get().asFile.absolutePath
     )
 }

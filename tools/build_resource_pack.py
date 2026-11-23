@@ -142,16 +142,19 @@ def copy(source: Path, destination: Path) -> None:
     shutil.copy2(source, destination)
 
 
-def build(output: Path) -> tuple[Path, str]:
+def build(output: Path, pack_format: int = 46) -> tuple[Path, str]:
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="vehicle-resource-pack-") as temporary:
         pack = Path(temporary)
-        write_json(pack / "pack.mcmeta", {
-            "pack": {
-                "description": "MrCrayfish Vehicle Plugin r39 — twenty-three vehicles and five trailers",
-                "pack_format": 46,
-            }
-        })
+        manifest = {
+            "description": "MrCrayfish Vehicle Plugin r39 — twenty-three vehicles and five trailers",
+            "pack_format": pack_format,
+        }
+        if pack_format >= 97:
+            # 26.x reads min/max_format; older clients only look at pack_format.
+            manifest["min_format"] = [pack_format, 0]
+            manifest["max_format"] = pack_format
+        write_json(pack / "pack.mcmeta", {"pack": manifest})
         copy(ROOT / "src/main/resources/vehicle_mod.png", pack / "pack.png")
         copy(ROOT / "MOD-LICENSE.txt", pack / "LICENSE.txt")
 
@@ -2492,9 +2495,11 @@ def emit_hud_speed_font(namespace: Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path,
-                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-1.21.4-r39.zip")
+                        default=ROOT / "paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip")
+    parser.add_argument("--pack-format", type=int, default=97,
+                        help="resource pack format (97 = Minecraft 26.3)")
     args = parser.parse_args()
-    output, sha1 = build(args.output.resolve())
+    output, sha1 = build(args.output.resolve(), args.pack_format)
     print(f"Resource pack: {output}")
     print(f"SHA-1: {sha1}")
 
