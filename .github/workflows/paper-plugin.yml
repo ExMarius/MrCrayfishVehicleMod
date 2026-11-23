@@ -585,7 +585,7 @@ jobs:
             "/api/client/servers/3500167/resources" \
             "/api/client/servers/3500167/files/list?directory=/plugins"; do
             CODE=$(curl -s -o /tmp/body -w '%{http_code}' "https://client.falixnodes.net${path}" \
-              --header "Authorization: Bearer $FALIX_TOKEN" --header "Accept: application/json" || echo "000")
+              --max-time 20 --header "Authorization: Bearer $FALIX_TOKEN" --header "Accept: application/json" || echo "000")
             {
               echo ""
               echo "**GET ${path}** -> \`${CODE}\`"
@@ -594,7 +594,15 @@ jobs:
               echo '```'
             } >> "$OUT"
           done
-          cat "$OUT"
+
+      - name: Publica raportul
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          OUT=/tmp/probe.md
+          [ -f "$OUT" ] || echo "(proba nu a produs raport)" > "$OUT"
           head -c 60000 "$OUT" > /tmp/probe_cut.md
           gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
             -F body=@/tmp/probe_cut.md || true
