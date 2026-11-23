@@ -34,6 +34,15 @@ on:
       sftpTarget:
         description: "Folderul de pluginuri pe server (modul sftp)"
         default: "plugins"
+      panelUrl:
+        description: "URL panel (ex. https://client.falixnodes.net) - optional, pentru restart automat"
+        default: ""
+      panelServerId:
+        description: "ID-ul serverului in panel (ex. 3500167) - optional"
+        default: ""
+      panelApiKey:
+        description: "Cheia API din panel (optional, doar pentru restart automat)"
+        default: ""
       probe:
         description: "Doar probe de compilare (fara build, test, deploy)"
         type: boolean
@@ -462,6 +471,32 @@ jobs:
           -get logs/latest.log /tmp/latest.log
           EOF
           } 2>&1
+
+      - name: Restart automat prin API-ul panelului
+        if: inputs.panelApiKey != ''
+        env:
+          PANEL_URL: ${{ inputs.panelUrl }}
+          PANEL_ID: ${{ inputs.panelServerId }}
+          PANEL_KEY: ${{ inputs.panelApiKey }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$PANEL_KEY"
+          BASE="${PANEL_URL%/}/api/client/servers/${PANEL_ID}"
+          echo "Cer restart la $BASE"
+          curl --fail --silent --show-error -X POST "$BASE/power" \
+            --header "Authorization: Bearer $PANEL_KEY" \
+            --header "Content-Type: application/json" \
+            --header "Accept: application/json" \
+            --data '{"signal":"restart"}' -w '\nHTTP %{http_code}\n'
+          sleep 45
+          for i in 1 2 3 4 5 6; do
+            STATE=$(curl --silent --show-error "$BASE/resources" \
+              --header "Authorization: Bearer $PANEL_KEY" \
+              --header "Accept: application/json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["attributes"]["current_state"])' 2>/dev/null || echo "?")
+            echo "stare: $STATE"
+            [ "$STATE" = "running" ] && break
+            sleep 10
+          done
 
       - name: Raporteaza rezultatul pe commit
         if: always()
