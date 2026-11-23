@@ -602,16 +602,7 @@ jobs:
           for SIG in restart start; do
             CODE=$(curl -s -o /tmp/power -w '%{http_code}' --max-time 30 -X POST "$API/power" "${AUTH[@]}" -d "{\"signal\":\"$SIG\"}" || echo 000)
             echo "power $SIG -> $CODE $(head -c 600 /tmp/power)"
-            python3 - <<'PY' || true
-import json
-try:
-    d = json.load(open("/tmp/power"))
-    url = d.get("error", {}).get("action_url")
-    if url:
-        print(f"ACTIUNE_UMANA: {url}")
-except Exception:
-    pass
-PY
+            python3 -c 'import json;d=json.load(open("/tmp/power"));print("ACTIUNE_UMANA:",(d.get("error") or {}).get("action_url"))' || true
             [ "$CODE" = "200" ] || [ "$CODE" = "202" ] || [ "$CODE" = "204" ] && break
           done
           sleep 45
