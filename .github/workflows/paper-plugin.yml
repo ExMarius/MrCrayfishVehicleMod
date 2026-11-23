@@ -15,6 +15,17 @@ on:
       - ".github/workflows/paper-plugin.yml"
       - ".github/falix-deploy-request"
   workflow_dispatch:
+    inputs:
+      probe:
+        description: "Doar probe de compilare (fara build, test, deploy)"
+        type: boolean
+        default: false
+      paperApi:
+        description: "Versiunea paper-api pentru probe"
+        default: "26.3.build.259-stable"
+      javaVersion:
+        description: "Toolchain Java pentru probe"
+        default: "25"
 
 permissions:
   contents: write
@@ -25,6 +36,7 @@ concurrency:
 
 jobs:
   build:
+    if: inputs.probe != true
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -257,3 +269,54 @@ jobs:
             gh release create "$TAG" --title "Plugin Paper (masini)" --notes "JAR + resource pack, construite de CI din paper-plugin/."
           fi
           gh release upload "$TAG" "$JAR" "$PACK" --clobber
+
+  probe:
+    if: inputs.probe == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up Java ${{ inputs.javaVersion }}
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: ${{ inputs.javaVersion }}
+
+      - uses: gradle/actions/setup-gradle@v5
+
+      - name: Compile against ${{ inputs.paperApi }}
+        id: compile
+        continue-on-error: true
+        run: |
+          set -o pipefail
+          ./paper-plugin/gradlew -p paper-plugin --no-daemon \
+            -PpaperApi="${{ inputs.paperApi }}" \
+            -PjavaVersion="${{ inputs.javaVersion }}" \
+            compileJava 2>&1 | tee /tmp/compile.log | tail -n 120
+          exit "${PIPESTATUS[0]}"
+
+      - name: Publica rezultatul ca comentariu pe commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          {
+            echo "### Probe port ${{ inputs.paperApi }} (Java ${{ inputs.javaVersion }})"
+            echo ""
+            echo "Rezultat: **${{ steps.compile.outcome }}**"
+            echo ""
+            if [ "${{ steps.compile.outcome }}" != "success" ]; then
+              echo "Erori: $(grep -c '^e: ' /tmp/compile.log || true)"
+              echo ""
+              echo '```'
+              grep '^e: ' /tmp/compile.log | sed 's#file:///home/runner/work/[^/]*/[^/]*/##' | head -n 80 || tail -n 80 /tmp/compile.log
+              echo '```'
+            else
+              echo "Compileaza curat pe aceasta versiune de API."
+            fi
+          } > /tmp/summary.md
+          head -c 60000 /tmp/summary.md > /tmp/summary_cut.md
+          gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
+            -F body=@/tmp/summary_cut.md
