@@ -645,3 +645,74 @@ jobs:
           head -c 60000 /tmp/raport.md > /tmp/probe_cut.md
           gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
             -F body=@/tmp/probe_cut.md || true
+
+  falix-deploy:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/arena/2f9f7b9e-mrcrayfishvehiclemod'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment: production
+    permissions:
+      id-token: write
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Sign in to Falix
+        run: |
+          set -euo pipefail
+          ID_TOKEN=$(curl -sSf -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://client.falixnodes.net/api/v2" | jq -r .value)
+          FALIX_TOKEN=$(curl -sSf https://client.falixnodes.net/api/v2/oauth2/token \
+            -d grant_type=urn:ietf:params:oauth:grant-type:token-exchange \
+            -d subject_token_type=urn:ietf:params:oauth:token-type:id_token \
+            -d connection=reg_wi7EZ1pUXUnMZf84wbLEk5MBZh \
+            --data-urlencode subject_token="$ID_TOKEN" | jq -r .access_token)
+          echo "::add-mask::$FALIX_TOKEN"
+          echo "FALIX_TOKEN=$FALIX_TOKEN" >> "$GITHUB_ENV"
+
+      - name: Trage JAR-ul in /plugins
+        run: |
+          set -uo pipefail
+          API=https://client.falixnodes.net/api/v2/servers/3500167
+          AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
+          JAR_URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-26.3.jar"
+          BODY="{\"url\":\"$JAR_URL\",\"directory\":\"/plugins\",\"file_name\":\"MrCrayfishVehiclePlugin.jar\"}"
+          echo "pull -> $(curl -s -o /tmp/pull -w '%{http_code}' --max-time 60 -X POST "$API/files/pull" "${AUTH[@]}" -d "$BODY")"
+          sleep 15
+          curl -s --max-time 20 "$API/files?directory=/plugins" "${AUTH[@]}" \
+            | python3 -c 'import json,sys; [print("PE SERVER:", f["name"], f["size"], f["modified_at"]) for f in json.load(sys.stdin)["data"] if f["name"].startswith("MrCrayfish")]'
+
+      - name: Restart (poate cere captcha pe planul gratuit)
+        run: |
+          set -uo pipefail
+          API=https://client.falixnodes.net/api/v2/servers/3500167
+          AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
+          CODE=$(curl -s -o /tmp/power -w '%{http_code}' --max-time 30 -X POST "$API/power" "${AUTH[@]}" -d '{"signal":"restart"}')
+          echo "restart -> $CODE $(head -c 400 /tmp/power)"
+          if [ "$CODE" = "403" ]; then
+            python3 -c 'import json;d=json.load(open("/tmp/power"));print("LINK_VERIFICARE:",(d.get("error") or {}).get("action_url"))' || true
+            echo "::warning title=Captcha::Planul gratuit cere verificare manuala pentru pornire."
+          fi
+
+      - name: Raport pe commit
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          API=https://client.falixnodes.net/api/v2/servers/3500167
+          AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Accept: application/json")
+          {
+            echo "### Deploy automat Falix"
+            echo ""
+            echo "commit: \`${GITHUB_SHA:0:7}\`"
+            echo ""
+            echo '```'
+            curl -s --max-time 20 "$API/console/log?lines=120" "${AUTH[@]}" \
+              | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["data"]["lines"]))' \
+              | grep -Ei "Vehicle plugin enabled|MrCrayfishVehiclePlugin|ERROR|SEVERE|Exception" | tail -n 12 || true
+            echo '```'
+          } > /tmp/rep.md
+          head -c 60000 /tmp/rep.md > /tmp/rep_cut.md
+          gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" -F body=@/tmp/rep_cut.md || true
