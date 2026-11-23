@@ -479,7 +479,12 @@ jobs:
               echo ""
               echo "#### latest.log (ultimele linii)"
               echo '```'
-              tail -n 20 /tmp/latest.log
+              tail -n 12 /tmp/latest.log
+              echo '```'
+              echo ""
+              echo "#### plugin si erori"
+              echo '```'
+              grep -Ei "mrcrayfish|vehicle|ERROR|SEVERE|Exception|Caused by" /tmp/latest.log | tail -n 40
               echo '```'
             fi
           } > /tmp/up.md
