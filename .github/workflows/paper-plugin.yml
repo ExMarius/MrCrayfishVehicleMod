@@ -31,6 +31,9 @@ on:
       sftpPassword:
         description: "SFTP password (modul sftp)"
         default: ""
+      doDeploy:
+        description: "api-probe: urca JAR + restart (false = doar citeste starea)"
+        default: "true"
       sftpTarget:
         description: "Folderul de pluginuri pe server (modul sftp)"
         default: "plugins"
@@ -568,7 +571,7 @@ jobs:
           echo "Token obtinut: ${#FALIX_TOKEN} caractere"
 
       - name: Publica JAR-ul pe server (pull din release)
-        if: always()
+        if: always() && inputs.doDeploy == 'true' 
         run: |
           set -uo pipefail
           exec > >(tee /tmp/deploy.log) 2>&1
@@ -592,7 +595,7 @@ jobs:
             | python3 -c 'import json,sys; [print(f["name"], f["size"]) for f in json.load(sys.stdin)["data"]]'
 
       - name: Restart si verificare
-        if: always()
+        if: always() && inputs.doDeploy == 'true' 
         run: |
           set -uo pipefail
           exec > >(tee /tmp/restart.log) 2>&1
@@ -616,6 +619,21 @@ jobs:
           curl -s --max-time 20 "$API/console/log?lines=40" "${AUTH[@]}" \
             | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["data"]["lines"]))' 2>/dev/null | tail -25
 
+      - name: Citeste starea serverului
+        if: always()
+        run: |
+          set -uo pipefail
+          exec > >(tee /tmp/status.log) 2>&1
+          API=https://client.falixnodes.net/api/v2/servers/3500167
+          AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Accept: application/json")
+          echo "== software:"; curl -s --max-time 20 "$API" "${AUTH[@]}" | head -c 500; echo
+          echo "== stare:"; curl -s --max-time 20 "$API/console/status" "${AUTH[@]}" | head -c 400; echo
+          echo "== jar:"; curl -s --max-time 20 "$API/files?directory=/plugins" "${AUTH[@]}" \
+            | python3 -c 'import json,sys; [print(f["name"], f["size"], f["modified_at"]) for f in json.load(sys.stdin)["data"] if f["name"].endswith(".jar")]'
+          echo "== debut log boot:"; curl -s --max-time 20 "$API/console/log?lines=400" "${AUTH[@]}" \
+            | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["data"]["lines"]))' \
+            | grep -Ei "Starting minecraft server version|Vehicle plugin enabled|MrCrayfishVehiclePlugin\] (Enabling|Loaded)|ERROR|SEVERE|Exception" | tail -20
+
       - name: Publica raportul
         if: always()
         env:
@@ -623,7 +641,7 @@ jobs:
         run: |
           set -uo pipefail
           OUT=/tmp/probe.md
-          { [ -f "$OUT" ] && cat "$OUT" || echo "(fara raport)"; echo ""; echo '```'; echo "### deploy"; tail -n 60 /tmp/deploy.log 2>/dev/null; echo '```'; echo ""; echo '```'; echo "### restart"; tail -n 40 /tmp/restart.log 2>/dev/null; echo '```'; } > /tmp/raport.md || true
+          { cat "$OUT" 2>/dev/null || echo "(fara raport)"; for f in deploy restart status; do echo ""; echo "### $f"; echo '```'; tail -n 50 "/tmp/$f.log" 2>/dev/null || echo "(gol)"; echo '```'; done; } > /tmp/raport.md || true
           head -c 60000 /tmp/raport.md > /tmp/probe_cut.md
           gh api --method POST "repos/${{ github.repository }}/commits/${{ github.sha }}/comments" \
             -F body=@/tmp/probe_cut.md || true
