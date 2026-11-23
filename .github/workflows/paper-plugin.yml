@@ -631,7 +631,7 @@ jobs:
           echo "== jar:"; curl -s --max-time 20 "$API/files?directory=/plugins" "${AUTH[@]}" \
             | python3 -c 'import json,sys; [print(f["name"], f["size"], f["modified_at"]) for f in json.load(sys.stdin)["data"] if f["name"].endswith(".jar")]'
           echo "== server.properties:"
-          curl -s --max-time 20 "$API/properties" "${AUTH[@]}" | head -c 1200
+          curl -s --max-time 20 "$API/properties" "${AUTH[@]}" | tr '}' '\n' | grep -i "resource-pack" || echo "(fara resource-pack in properties)"
           echo
           echo "== debut log boot:"; curl -s --max-time 20 "$API/console/log?lines=400" "${AUTH[@]}" \
             | python3 -c 'import json,sys; print("\n".join(json.load(sys.stdin)["data"]["lines"]))' \
