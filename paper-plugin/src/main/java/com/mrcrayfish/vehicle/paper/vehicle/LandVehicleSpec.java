@@ -758,30 +758,39 @@ public record LandVehicleSpec(
             null, null, List.of(), false
     );
 
-    /* Masina de politie: geometrie din proiectul Horizon (model propriu, nu din mod).
-     * Dimensiunile vin din limitele modelului: 1.78 x 1.22 x 2.98 blocuri; fizica
-     * porneste de la Smart Car si se regleaza pe feedback vizual. */
+    /* Masina de politie construita pe Off Roader (proportii si fizica deja
+     * verificate in joc) + girofar rosu/albastru pe plafon, in modelul corpului.
+     * Modelul propriu = fara asseturi din mod pentru caroserie. */
     public static final LandVehicleSpec POLICE_CAR = new LandVehicleSpec(
-            "police_car", "Police Car", "police_car_body",
-            1.78F, 1.22F, 1.0F,
-            1.0F, 0.0F, 3.0F,
-            16.0F, 35.0F, 12.0F * MODEL_UNIT, -12.0F * MODEL_UNIT, 5.0F,
-            18_000.0F, 0.28F, 0.8F, 1.6F, "vehicle:entity.bumper_car.engine",
+            "police_car", "Police Off Roader", "police_car_body",
+            2.0F, 1.0F, 1.0F,
+            1.4F, -1.0F, 5.6F,
+            16.0F, 35.0F, 14.5F * MODEL_UNIT * 1.4F, -14.5F * MODEL_UNIT * 1.4F, 5.0F,
+            25_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.jet_ski.engine",
             false, new Point(0.0F, 0.0F, 0.0F), null,
-            new Part("go_kart_steering_wheel", new Point(0.0F, 0.85F, 0.30F),
-                    1.05F, -67.5F, 0.0F, 0.0F),
-            itemPart("fuel_door_closed", -9.0F, 8.7F, -12.3F,
-                    0.25F, 0.0F, -90.0F, 0.0F, 1.0F, 0.0F, 3.0F),
-            null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.4375F, 1.572701F, 0.299799F),
+                    1.05F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -12.0F, 10.5F, -6.5F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.4F, -1.0F, 5.6F),
+            itemPart("key_hole", 0.0F, 7.0F, 6.2F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.4F, -1.0F, 5.6F),
             List.of(),
             List.of(
-                    wheel(-1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F),
-                    wheel(1, true, 7.0F, 0.0F, 12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F),
-                    wheel(-1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F),
-                    wheel(1, false, 7.0F, 0.0F, -12.0F, 0.938F, 0.938F, 0.938F, 1.0F, 0.0F, 3.0F)
+                    wheel(-1, true, 10.0F, 0.0F, 14.5F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(1, true, 10.0F, 0.0F, 14.5F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(-1, false, 10.0F, 0.0F, -14.5F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F),
+                    wheel(1, false, 10.0F, 0.0F, -14.5F, 1.4F, 1.4F, 1.4F, 1.4F, -1.0F, 5.6F)
             ),
-            List.of(seat(true, 0.0F, 0.5F, -2.0F, 1.0F, 0.0F, 3.0F)),
-            true, "tow_bar", new Point(0.0F, 0.0F, -20.3F), new Point(0.0F, 0.0F, 0.0F),
+            List.of(
+                    seat(true, 5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
+                    seat(false, -5.0F, 4.0F, -3.0F, 1.4F, -1.0F, 5.6F),
+                    /* Same lower rear Y as OFF_ROADER: vanilla always renders a mounted
+                     * player seated, so the source's 11.5-pixel pose is not reachable. */
+                    seat(false, 5.0F, 3.5F, -14.5F, 1.4F, -1.0F, 5.6F),
+                    seat(false, -5.0F, 3.5F, -18.9F, 1.4F, -1.0F, 5.6F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
             null, null, List.of(), false
     );
 

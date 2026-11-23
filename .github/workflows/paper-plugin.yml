@@ -559,7 +559,7 @@ jobs:
           API=https://client.falixnodes.net/api/v2/servers/3500167
           AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
           URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
-          SHA1="e8073afc2dfb546eade0ac89f16528253eb84f34"
+          SHA1="72d783b1cf0b67dba3c116da429f818df6bb6036"
           exec > >(tee /tmp/diag.log) 2>&1
 
           echo "== 1. properties inainte"
@@ -638,7 +638,7 @@ jobs:
           AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
           JAR="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-26.3.jar"
           PACK="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r39.zip"
-          SHA1="e8073afc2dfb546eade0ac89f16528253eb84f34"
+          SHA1="72d783b1cf0b67dba3c116da429f818df6bb6036"
           exec > >(tee /tmp/deploy.log) 2>&1
           echo "== properties:"
           for B in \

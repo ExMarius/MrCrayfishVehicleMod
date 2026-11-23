@@ -280,17 +280,29 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
         convert_model(
             ROOT / "tools/source_assets/police_car_body.json",
             namespace / "models/item/police_car_body.json",
-            {name: "vehicle:item/" + name for name in (
-                "kart_body", "kart_frame", "kart_carbon", "kart_grille", "kart_headlight",
-                "kart_taillight", "kart_amber", "kart_dash", "police_side", "police_hood",
-                "plate_ro", "siren_red", "siren_blue", "kart_chrome", "kart_seat",
-            )} | {"particle": "vehicle:item/police_side"},
+            {
+                "indicator_light": "minecraft:block/orange_stained_glass",
+                "brake_light": "minecraft:block/red_stained_glass",
+                "headlight_glass": "minecraft:block/white_stained_glass",
+                "headlight": "minecraft:block/redstone_lamp",
+                "body": "minecraft:block/white_concrete",
+                "seat": "minecraft:block/black_wool",
+                "spring": "vehicle:item/off_roader_spring",
+                "axel": "minecraft:block/light_gray_concrete",
+                "trim": "minecraft:block/white_concrete",
+                "logo": "vehicle:item/off_roader_logo",
+                "window_frame": "minecraft:block/black_concrete",
+                "windshield": "minecraft:block/glass",
+                "bumper": "minecraft:block/iron_block",
+                "grill": "vehicle:item/off_roader_grill",
+                "frame": "minecraft:block/gray_concrete",
+                "particle": "minecraft:block/white_concrete",
+                "siren_red": "vehicle:item/siren_red",
+                "siren_blue": "vehicle:item/siren_blue",
+                "lightbar_base": "minecraft:block/black_concrete",
+            },
         )
-        for police_texture in (
-            "kart_body", "kart_frame", "kart_carbon", "kart_grille", "kart_headlight",
-            "kart_taillight", "kart_amber", "kart_dash", "police_side", "police_hood",
-            "plate_ro", "siren_red", "siren_blue", "kart_chrome", "kart_seat",
-        ):
+        for police_texture in ("siren_red", "siren_blue"):
             copy(ASSETS / f"textures/item/{police_texture}.png",
                  namespace / f"textures/item/{police_texture}.png")
 
