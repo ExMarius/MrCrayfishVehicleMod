@@ -137,6 +137,10 @@ Unde apar:
 Comanda de test: `/vehicle spawn sports_car`, apoi `/vehicle creative`, tab
 „Roti”, click pe „Set roti 4x - Roti aliaj”, click drept pe mașină.
 
+Randare: `docs/roti-r42.png` (rândul de jos = roțile noastre; rândul de sus =
+cele trei convertite din mod, pe care randătorul offline le arată deformate
+pentru că folosesc elemente rotite).
+
 ## 5. Scaunul: călărețul stă lipit de mașină
 
 `seat.glue-every-tick: true` (implicit) înseamnă că scaunul primește poziția și
