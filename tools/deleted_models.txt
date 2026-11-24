@@ -1,0 +1,7 @@
+# Modele care NU se mai pun in pack (stergere "de la zero" a setului de modele).
+# Sistemul rămâne: comenzi, fizica, garaj, mecanic, magazin.
+# Un nume pe linie, fara extensie. Exemplu:
+#   off_roader_body
+#   sports_car_body
+# Atentie: daca un vehicul din LandVehicleSpec inca foloseste modelul sters,
+# masina apare fara caroserie. Gol = nu se sterge nimic.

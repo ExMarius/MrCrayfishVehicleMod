@@ -164,3 +164,22 @@ Reglaj fin pe înălțime: `/vehicle seatheight -0.85` (valoarea 26.3).
 /vehicle seatglue on           # sudează călărețul pe scaun
 /vehicle seatheight -0.85      # înălțimea călărețului
 ```
+
+## 7. Import 1:1 dintr-un pack extern (r42)
+
+`tools/import_external_pack.py` mută un set de modele străine în pack-ul nostru
+fără să redeseneze nimic: cuboizii, UV-urile și rotațiile rămân identice, doar
+referințele de textură sunt rescrise în namespace-ul `vehicle`.
+
+```
+python3 tools/import_external_pack.py horizon.zip --prefix hz_ --dry-run   # raport
+python3 tools/import_external_pack.py horizon.zip --prefix hz_            # scrie
+python3 tools/build_resource_pack.py --output /tmp/pack.zip               # le bagă în pack
+```
+
+* intră în pack: `tools/external_models/models/*.json` + `textures/*.png`;
+* **nu** intră: `.obj/.gltf/.glb/.fbx` (clientul vanilla nu le poate randa),
+  modelele care își iau geometria din `parent` și modelele fără `elements` —
+  toate apar în raport, nu sunt aruncate în tăcere;
+* ștergerea unui model vechi se face din `tools/deleted_models.txt` (un stem pe
+  linie) — sistemul (comenzi, fizică, garaj, mecanic, magazin) rămâne intact.

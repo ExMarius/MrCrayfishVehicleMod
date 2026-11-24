@@ -1839,6 +1839,41 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
         emit_jack_gui_backdrop(namespace)
         emit_hud_speed_font(namespace)
 
+        # ==== Imported (third-party) models =================================
+        # tools/import_external_pack.py drops a converted Horizon-style pack in
+        # tools/external_models/. Anything there is copied verbatim, so an
+        # imported car keeps its original cuboids/UVs (1:1).
+        external = ROOT / "tools/external_models"
+        imported = 0
+        if (external / "models").is_dir():
+            for path in sorted((external / "models").glob("*.json")):
+                write_json(namespace / f"models/item/{path.name}", 
+                           json.loads(path.read_text(encoding="utf-8")))
+                imported += 1
+        if (external / "textures").is_dir():
+            for path in sorted((external / "textures").glob("*.png")):
+                (namespace / f"textures/item/{path.name}").write_bytes(path.read_bytes())
+        if imported:
+            print(f"Modele importate: {imported}")
+
+        # ==== Removed models ================================================
+        # tools/deleted_models.txt lists model stems to drop from the pack (the
+        # "clean slate" for a model set we are replacing). System/commands stay.
+        deletions = ROOT / "tools/deleted_models.txt"
+        removed = 0
+        if deletions.exists():
+            for line in deletions.read_text(encoding="utf-8").splitlines():
+                stem = line.split("#", 1)[0].strip()
+                if not stem:
+                    continue
+                for candidate in (namespace / f"models/item/{stem}.json",
+                                  namespace / f"items/{stem}.json"):
+                    if candidate.exists():
+                        candidate.unlink()
+                        removed += 1
+        if removed:
+            print(f"Modele sterse: {removed}")
+
         if output.exists():
             output.unlink()
         with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as archive:
