@@ -150,3 +150,22 @@ class ScratchBodyTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PackVersionConsistencyTest(unittest.TestCase):
+    """The pack name is spelled in three places; they must agree.
+
+    r42 shipped a red build because build.gradle.kts still produced "-r41" while
+    the workflow and config.yml expected "-r42". This guards that trio.
+    """
+
+    def test_same_release_tag_everywhere(self):
+        import re
+
+        root = ROOT
+        gradle = (root / "paper-plugin/build.gradle.kts").read_text(encoding="utf-8")
+        workflow = (root / ".github/workflows/paper-plugin.yml").read_text(encoding="utf-8")
+        config = (root / "paper-plugin/src/main/resources/config.yml").read_text(encoding="utf-8")
+        pattern = re.compile(r"resource-pack-26\.3-(r\d+)\.zip")
+        tags = set(pattern.findall(gradle)) | set(pattern.findall(workflow)) | set(pattern.findall(config))
+        self.assertEqual(len(tags), 1, f"tag-uri diferite in pack: {sorted(tags)}")
