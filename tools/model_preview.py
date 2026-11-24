@@ -193,7 +193,8 @@ def render(model: dict, *, pack: zipfile.ZipFile | None = None, size: int = 720,
         screen_y = size / 2.0 - (y * math.cos(pitch) - rz * math.sin(pitch)) * scale
         return (screen_x, screen_y, rz)
 
-    view = []
+    pixels = bytearray(b"\x1a\x1c\x21\xff" * (size * size))
+    depth_buffer = [float("inf")] * (size * size)
     for points, normal, face in quads:
         projected = [project(point) for point in points]
         # Backface culling using the screen-space winding.
@@ -204,21 +205,50 @@ def render(model: dict, *, pack: zipfile.ZipFile | None = None, size: int = 720,
             area += x1 * y2 - x2 * y1
         if area >= 0:  # wound away from the camera
             continue
-        depth = sum(p[2] for p in projected) / len(projected)
         name = next((name for name, (_, n) in FACE_CORNERS.items() if n == normal), "up")
         base = colour_for(face)
         brightness = FACE_BRIGHTNESS.get(name, 0.8)
-        tint = face.get("tintindex")
-        if tint is not None:
+        if face.get("tintindex") is not None:
             brightness *= 0.92
         colour = tuple(min(255, int(channel * brightness)) for channel in base)
-        view.append((depth, projected, colour))
-
-    view.sort(key=lambda item: -item[0])
-    pixels = bytearray(b"\x1a\x1c\x21\xff" * (size * size))
-    for _depth, points, colour in view:
-        fill_polygon(pixels, size, points, colour)
+        # A z-buffer per pixel (instead of painter sorting) keeps overlapping
+        # cuboids honest: no more "floating panel" artefacts while modelling.
+        for triangle in ((0, 1, 2), (0, 2, 3)):
+            fill_triangle(pixels, depth_buffer, size,
+                          [projected[i] for i in triangle], colour)
     return size, size, bytes(pixels)
+
+
+def fill_triangle(pixels: bytearray, depth_buffer: list, size: int, triangle, colour) -> None:
+    (x0, y0, z0), (x1, y1, z1), (x2, y2, z2) = triangle
+    area = (x1 - x0) * (y2 - y0) - (x2 - x0) * (y1 - y0)
+    if abs(area) < 1e-9:
+        return
+    left = max(0, int(math.floor(min(x0, x1, x2))))
+    right = min(size - 1, int(math.ceil(max(x0, x1, x2))))
+    top = max(0, int(math.floor(min(y0, y1, y2))))
+    bottom = min(size - 1, int(math.ceil(max(y0, y1, y2))))
+    red, green, blue = colour
+    for y in range(top, bottom + 1):
+        py = y + 0.5
+        row = y * size
+        for x in range(left, right + 1):
+            px = x + 0.5
+            w0 = ((x1 - px) * (y2 - py) - (x2 - px) * (y1 - py)) / area
+            w1 = ((x2 - px) * (y0 - py) - (x0 - px) * (y2 - py)) / area
+            w2 = 1.0 - w0 - w1
+            if w0 < 0 or w1 < 0 or w2 < 0:
+                continue
+            depth = w0 * z0 + w1 * z1 + w2 * z2
+            index = row + x
+            if depth >= depth_buffer[index]:
+                continue
+            depth_buffer[index] = depth
+            offset = index * 4
+            pixels[offset] = red
+            pixels[offset + 1] = green
+            pixels[offset + 2] = blue
+            pixels[offset + 3] = 255
 
 
 def fill_polygon(pixels: bytearray, size: int, points, colour) -> None:
