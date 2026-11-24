@@ -39,6 +39,15 @@ MATERIALS: dict[str, tuple[str, str, bool]] = {
     "accent": ("#C8502F", "#96371F", False),
     "siren_red": ("#B20E16", "#7A0A0F", False),
     "siren_blue": ("#0E3EB0", "#0A2A7A", False),
+    # --- wheels (r42) -------------------------------------------------------
+    "tire": ("#1A1C1F", "#0E0F11", False),
+    "tread": ("#2C2F34", "#1C1E22", False),
+    "rim_steel": ("#B9C0C7", "#8C939A", False),
+    "rim_dark": ("#4B5158", "#34383D", False),
+    "rim_alloy": ("#DEE5EC", "#B0B8C0", False),
+    "rim_accent": ("#E0682A", "#AE4A18", False),
+    "hub": ("#71787F", "#4E5359", False),
+    "bolt": ("#33373C", "#22252A", False),
 }
 
 FACE_ORDER = ("north", "east", "south", "west", "up", "down")
@@ -290,3 +299,111 @@ CANDIDATE_BODIES = {
 # the r41 silhouette, so it stays out of the pack until the design is agreed.
 # Add e.g. "off_roader_body": lambda: pickup_body() to ship it.
 SCRATCH_BODIES: dict[str, object] = {}
+
+
+# ---------------------------------------------------------------------------
+# Wheels (r42)
+# ---------------------------------------------------------------------------
+# Every wheel keeps the envelope the rig expects: centred on (8, 8, 8), 16-unit
+# diameter (y/z 0..16 -> radius 8) and 4 units wide (x 6..10), so any
+# LandVehicleSpec can mount it without a scale correction.
+#
+# The shape is a 16x16 pixel mask (like the vanilla wheel sprites), emitted as
+# row runs, so the wheel reads as a circle instead of a stack of cubes. No
+# element rotation is needed, which also keeps the offline preview exact.
+
+import math as _math
+
+
+def _mask(predicate) -> set:
+    cells = set()
+    for uy in range(16):
+        for uz in range(16):
+            if predicate(uy + 0.5 - 8.0, uz + 0.5 - 8.0):
+                cells.add((uy, uz))
+    return cells
+
+
+def _emit_mask(body: Body, cells: set, x0: float, x1: float, material: str) -> None:
+    for uy in range(16):
+        run = None
+        for uz in range(16):
+            if (uy, uz) in cells:
+                if run is None:
+                    run = uz
+            elif run is not None:
+                body.part((x0, uy, run), (x1, uy + 1, uz), material)
+                run = None
+        if run is not None:
+            body.part((x0, uy, run), (x1, uy + 1, 16), material)
+
+
+def _radius(uy: float, uz: float) -> float:
+    return _math.hypot(uy, uz)
+
+
+def _angle(uy: float, uz: float) -> float:
+    return (_math.degrees(_math.atan2(uy, uz)) + 360.0) % 360.0
+
+
+def _in_sector(uy: float, uz: float, count: int, width: float, rotation: float) -> bool:
+    sector = 360.0 / count
+    offset = (_angle(uy, uz) - rotation) % sector
+    return abs(offset - sector / 2.0) <= width / 2.0
+
+
+def wheel_body(style: str) -> dict:
+    """Three wheel designs, drawn from scratch.
+
+    * ``alloy`` - light 5-spoke alloy on a low-profile street tyre
+    * ``trail`` - knobby mud tyre, steel rim, beadlock bolts (off-road)
+    * ``heavy`` - deep-dish industrial wheel, 4 wide slots, big hub (trucks)
+    """
+    body = Body()
+    tyre = _mask(lambda uy, uz: 5.8 <= _radius(uy, uz) <= 8.0)
+    face = _mask(lambda uy, uz: _radius(uy, uz) <= 5.8)
+    ring = _mask(lambda uy, uz: 4.8 <= _radius(uy, uz) <= 5.8)
+    hub_ring = _mask(lambda uy, uz: _radius(uy, uz) <= 2.2)
+    nut = _mask(lambda uy, uz: _radius(uy, uz) <= 1.0)
+
+    if style == "alloy":
+        holes = _mask(lambda uy, uz: 2.9 <= _radius(uy, uz) <= 4.7
+                      and _in_sector(uy, uz, 5, 30.0, 18.0))
+        tread = _mask(lambda uy, uz: 7.2 <= _radius(uy, uz) <= 8.0)
+        rim, accent = "rim_alloy", "rim_accent"
+    elif style == "trail":
+        holes = _mask(lambda uy, uz: 3.4 <= _radius(uy, uz) <= 4.4
+                      and _in_sector(uy, uz, 6, 26.0, 0.0))
+        tread = _mask(lambda uy, uz: 6.6 <= _radius(uy, uz) <= 8.0)
+        rim, accent = "rim_dark", "rim_steel"
+    else:  # heavy
+        holes = _mask(lambda uy, uz: 2.8 <= _radius(uy, uz) <= 4.6
+                      and _in_sector(uy, uz, 4, 44.0, 45.0))
+        tread = _mask(lambda uy, uz: 7.0 <= _radius(uy, uz) <= 8.0)
+        rim, accent = "rim_dark", "rim_steel"
+
+    # tyre carcass (full width) + tread blocks proud on both sidewalls
+    _emit_mask(body, tyre, 6.0, 10.0, "tire")
+    _emit_mask(body, tread, 5.8, 6.05, "tread")
+    _emit_mask(body, tread, 9.95, 10.2, "tread")
+    # dark backing so the cut-outs do not look straight through the wheel
+    _emit_mask(body, face, 7.5, 8.5, "bolt")
+    # rim face: spokes = face minus the cut-outs
+    # rim face; the lip and the cut-outs sit on *adjacent* planes (never
+    # overlapping) so no two faces end up coplanar and flicker in game
+    _emit_mask(body, face - holes, 6.3, 9.7, rim)
+    _emit_mask(body, ring, 6.0, 6.3, accent)
+    _emit_mask(body, ring, 9.7, 10.0, accent)
+    _emit_mask(body, holes, 6.12, 6.3, "bolt")
+    _emit_mask(body, holes, 9.7, 9.88, "bolt")
+    # hub + centre nut
+    _emit_mask(body, hub_ring, 5.95, 10.05, "hub")
+    _emit_mask(body, nut, 5.85, 10.15, accent)
+    return body.model()
+
+
+SCRATCH_WHEELS = {
+    "wheel_alloy": lambda: wheel_body("alloy"),
+    "wheel_trail": lambda: wheel_body("trail"),
+    "wheel_heavy": lambda: wheel_body("heavy"),
+}

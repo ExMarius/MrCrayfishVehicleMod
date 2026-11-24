@@ -1,10 +1,10 @@
-# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-26.3-r41.zip.
+# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip.
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
-  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r41.zip"
+  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip"
   # Ciclul AH: pack-ul s-a schimbat (con de trafic + placa de boost) => hash nou;
   # server.properties il primeste automat la fiecare deploy.
-  sha1: "d4126443065fb34cfa2428801d96cc332d91580e"
+  sha1: "b65e5e4ff892a31c29ff37e31471f6ad87955b8e"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat
@@ -207,6 +207,9 @@ mechanic:
       wheel_standard: 1500
       wheel_sports: 6000
       wheel_off_road: 4500
+      wheel_alloy: 7500
+      wheel_trail: 5200
+      wheel_heavy: 6800
       spray_can: 1200
 
 # Inaltimea la care sta jucatorul pe scaun, fata de ancora scaunului.

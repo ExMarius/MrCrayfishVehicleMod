@@ -7,3 +7,6 @@ key,label,model,pret_baza,grupa
 standard,Roti standard,standard_wheel,1500,ieftin
 sports,Roti sport,sports_wheel,6000,premium
 off_road,Roti off-road,off_road_wheel,4500,mediu
+alloy,Roti aliaj,wheel_alloy,7500,premium
+trail,Roti noroi,wheel_trail,5200,mediu
+heavy,Roti grele,wheel_heavy,6800,mediu

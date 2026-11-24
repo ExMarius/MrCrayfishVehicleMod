@@ -94,6 +94,54 @@ class ScratchBodyTest(unittest.TestCase):
             self.assertTrue(seat_tops, stem)
             self.assertGreaterEqual(max(seat_tops), 8.0, stem)
 
+    def wheel_models(self):
+        for stem, factory in scratch_models.SCRATCH_WHEELS.items():
+            yield stem, factory()
+
+    def test_wheels_use_the_envelope_the_rig_expects(self):
+        # 16 units across (y/z 0..16) and 4 units wide (x 6..10 +- tread), so any
+        # LandVehicleSpec mounts them without a scale correction.
+        for stem, model in self.wheel_models():
+            xs, ys, zs = [], [], []
+            for element in model["elements"]:
+                xs += [element["from"][0], element["to"][0]]
+                ys += [element["from"][1], element["to"][1]]
+                zs += [element["from"][2], element["to"][2]]
+            self.assertGreaterEqual(min(xs), 5.5, stem)
+            self.assertLessEqual(max(xs), 10.5, stem)
+            self.assertGreaterEqual(min(ys), -0.01, stem)
+            self.assertLessEqual(max(ys), 16.01, stem)
+            self.assertGreaterEqual(min(zs), -0.01, stem)
+            self.assertLessEqual(max(zs), 16.01, stem)
+            self.assertAlmostEqual(min(ys) + max(ys), 16.0, delta=0.01, msg=stem)
+            self.assertAlmostEqual(min(zs) + max(zs), 16.0, delta=0.01, msg=stem)
+
+    def test_wheels_have_no_tint_and_known_materials(self):
+        for stem, model in self.wheel_models():
+            self.assertTrue(model["elements"], stem)
+            for element in model["elements"]:
+                for face in element["faces"].values():
+                    self.assertIn(face["texture"].lstrip("#"), scratch_models.MATERIALS, stem)
+                    self.assertNotIn("tintindex", face, stem)
+
+    def test_every_wheel_type_has_a_model(self):
+        # whatever WheelType.java lists must exist either as one of our models
+        # or as a model converted from the mod's assets
+        java = (ROOT / "paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/"
+                "mechanic/WheelType.java").read_text(encoding="utf-8")
+        names = [part.split('"')[1] for part in java.split("(")[1:] if '"' in part]
+        models = [name for name in names if name.endswith("_wheel")]
+        self.assertTrue(models)
+        converted = {"standard_wheel", "sports_wheel", "off_road_wheel"}
+        for model in models:
+            self.assertTrue(model in scratch_models.SCRATCH_WHEELS or model in converted,
+                            f"WheelType {model} has no model in the pack")
+
+    def test_wheels_are_listed_in_the_creative_gui(self):
+        gui = (ROOT / "paper-plugin/src/main/java/com/mrcrayfish/vehicle/paper/"
+               "mechanic/CreativeGui.java").read_text(encoding="utf-8")
+        self.assertIn("WheelType.values()", gui)
+
     def test_materials_are_emitted_as_png(self):
         png = scratch_models.material_png("body")
         self.assertTrue(png.startswith(b"\x89PNG\r\n\x1a\n"))

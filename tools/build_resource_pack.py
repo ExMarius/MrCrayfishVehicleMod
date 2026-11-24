@@ -1819,7 +1819,16 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
         # converted source outright; the restyle pass above is skipped for them.
         for stem, factory in scratch_models.SCRATCH_BODIES.items():
             write_json(namespace / f"models/item/{stem}.json", factory())
-        if scratch_models.SCRATCH_BODIES:
+        # Wheels: our own three designs, registered as normal wheel items so
+        # /vehicle creative (WHEELS tab), the shop and the mechanic all see
+        # them without extra wiring.
+        for stem, factory in scratch_models.SCRATCH_WHEELS.items():
+            write_json(namespace / f"models/item/{stem}.json", factory())
+            write_json(namespace / f"items/{stem}.json",
+                       item_definition(f"vehicle:item/{stem}"))
+        if scratch_models.SCRATCH_WHEELS:
+            print(f"Roti proprii: {len(scratch_models.SCRATCH_WHEELS)}")
+        if scratch_models.SCRATCH_BODIES or scratch_models.SCRATCH_WHEELS:
             for material in scratch_models.MATERIALS:
                 (namespace / f"textures/item/mat_{material}.png").write_bytes(
                     scratch_models.material_png(material))

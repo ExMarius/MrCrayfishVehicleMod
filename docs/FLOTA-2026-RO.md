@@ -108,6 +108,35 @@ Modelul **nu este încă activat** în pack (`SCRATCH_BODIES` e gol): randarea
 lui e mai săracă decât silueta r41, deci nu se urcă până nu e mai bun.
 Comparație: `docs/flota-r42-caroserii-noi.png`.
 
+### 4c. Roți proprii (r42)
+
+Trei roți desenate de la zero (`tools/scratch_models.py`, funcția
+`wheel_body`) și livrate ca piese normale de mecanică:
+
+| Cheie | Nume în joc | Model | Asfalt / pământ / zăpadă | Prindere |
+|---|---|---|---|---|
+| `ALLOY` | Roti aliaj | `wheel_alloy` | 0,85 / 1,55 / 2,20 | 0,92 (alunecare 0,13) |
+| `TRAIL` | Roti noroi | `wheel_trail` | 1,30 / 0,80 / 0,95 | 0,84 (alunecare 0,26) |
+| `HEAVY` | Roti grele | `wheel_heavy` | 1,15 / 1,05 / 1,20 | 0,86 (alunecare 0,20) |
+
+Fiecare roată păstrează anvelopa pe care o așteaptă rig-ul (16 unități
+diametru, 4 unități lățime, centru în 8/8/8), deci se montează pe orice
+vehicul fără corecție de scală. Sunt desenate ca măști de 16×16 pixeli
+(anvelopă, spițe, jantă, butuc, șuruburi), fără elemente rotite — arată la fel
+din ambele părți și nu pot produce fețe care pâlpâie.
+
+Unde apar:
+
+* **`/vehicle creative` → tab „Roti”** — toate cele 6 tipuri (3 vechi + 3 noi),
+  câte un set de 4 în inventar la click;
+* **magazinul de piese** (`/vehicle magazin`) — cu prețurile din `config.yml`
+  (`wheel_alloy: 7500`, `wheel_trail: 5200`, `wheel_heavy: 6800`);
+* **stația de mecanic** — se montează cu click dreapta pe vehicul, ca înainte;
+* fizica pe suprafețe intră automat prin `WheelType.surfaceModifier()`.
+
+Comanda de test: `/vehicle spawn sports_car`, apoi `/vehicle creative`, tab
+„Roti”, click pe „Set roti 4x - Roti aliaj”, click drept pe mașină.
+
 ## 5. Scaunul: călărețul stă lipit de mașină
 
 `seat.glue-every-tick: true` (implicit) înseamnă că scaunul primește poziția și

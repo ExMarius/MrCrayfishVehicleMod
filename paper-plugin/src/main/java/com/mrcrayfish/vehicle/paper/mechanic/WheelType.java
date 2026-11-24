@@ -11,7 +11,14 @@ import java.util.Locale;
 public enum WheelType {
     STANDARD("standard_wheel", "Roti standard", 1.1F, 1.3F, 1.7F, 0.8F, 0.05F),
     SPORTS("sports_wheel", "Roti sport", 0.8F, 1.5F, 2.2F, 0.9F, 0.15F),
-    OFF_ROAD("off_road_wheel", "Roti off-road", 1.2F, 0.9F, 1.1F, 0.8F, 0.2F);
+    OFF_ROAD("off_road_wheel", "Roti off-road", 1.2F, 0.9F, 1.1F, 0.8F, 0.2F),
+    // --- r42: rotile noastre, modelate de la zero (tools/scratch_models.py).
+    // Fizica e in continuarea curbei existente: ALLOY = cea mai buna pe asfalt
+    // si cea mai slaba pe noroi, TRAIL = invers, HEAVY = compromis pentru
+    // vehicule grele (autobuz, camion, remorca).
+    ALLOY("wheel_alloy", "Roti aliaj", 0.85F, 1.55F, 2.2F, 0.92F, 0.13F),
+    TRAIL("wheel_trail", "Roti noroi", 1.3F, 0.8F, 0.95F, 0.84F, 0.26F),
+    HEAVY("wheel_heavy", "Roti grele", 1.15F, 1.05F, 1.2F, 0.86F, 0.2F);
 
     private final String model;
     private final String label;
