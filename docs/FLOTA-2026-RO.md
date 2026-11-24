@@ -89,6 +89,25 @@ Comparație randată offline (stânga = original, dreapta = r41):
 `docs/flota-r41-înainte-după.png`. Randările se fac cu
 `python3 tools/model_preview.py out.png <model.json>`.
 
+### 4b. De la zero: ce se poate și ce nu (r42, în lucru)
+
+Clientul vanilla **nu încarcă OBJ/glTF**. Un pack Java poate conține doar
+modele din cuboizi (`elements` cu `from`/`to` în −16..32, UV 0..16, rotații
+multiplu de 22,5°). Deci „model nou” = geometrie scrisă cub cu cub, nu un mesh
+adus din alt program.
+
+`tools/scratch_models.py` conține primul astfel de model (un pickup 4x4, în
+două variante: civil și poliție), cu **set propriu de texturi** (`mat_*`,
+generate pixel cu pixel) și cu punctele de ancorare păstrate: roți la
+x −2/18, z 22,5/−6,5, bancheta șoferului la y 8, față = +Z. Gardurile
+automate (`tools/test_scratch_models.py`) verifică limitele vanilla, faptul că
+nicio piesă nu intră în volumul roților, că doar vopseaua e vopsibilă și că
+stopurile/farurile sunt la capetele corecte.
+
+Modelul **nu este încă activat** în pack (`SCRATCH_BODIES` e gol): randarea
+lui e mai săracă decât silueta r41, deci nu se urcă până nu e mai bun.
+Comparație: `docs/flota-r42-caroserii-noi.png`.
+
 ## 5. Scaunul: călărețul stă lipit de mașină
 
 `seat.glue-every-tick: true` (implicit) înseamnă că scaunul primește poziția și

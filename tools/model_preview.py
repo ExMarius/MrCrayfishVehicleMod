@@ -91,6 +91,14 @@ def average_png_colour(path: Path) -> tuple[int, int, int]:
 
 
 def texture_colour(reference: str, pack: zipfile.ZipFile | None) -> tuple[int, int, int]:
+    if isinstance(reference, str) and reference.startswith("vehicle:item/mat_"):
+        import scratch_models
+
+        name = reference.rsplit("mat_", 1)[1]
+        material = scratch_models.MATERIALS.get(name)
+        if material:
+            value = material[0].lstrip("#")
+            return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16)
     if not isinstance(reference, str):
         return (128, 128, 128)
     if reference.startswith("#"):

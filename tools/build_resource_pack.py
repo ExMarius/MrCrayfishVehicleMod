@@ -16,6 +16,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import restyle  # noqa: E402  (local helper: deterministic emblem/PNG pass)
 import restyle_geometry  # noqa: E402  (local helper: body silhouette restyle)
+import scratch_models  # noqa: E402  (local helper: r42 bodies modelled from scratch)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1810,6 +1811,19 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
             write_json(path, model)
             restyled += 1
         print(f"Modele restilizate: {restyled}")
+
+        # ==== r42: bodies modelled from scratch ==============================
+        # The vanilla client cannot load OBJ/mesh files, so "from scratch" means
+        # authored cuboid geometry (tools/scratch_models.py) drawn with our own
+        # sprite set, not a copy of the mod's model. These files replace the
+        # converted source outright; the restyle pass above is skipped for them.
+        for stem, factory in scratch_models.SCRATCH_BODIES.items():
+            write_json(namespace / f"models/item/{stem}.json", factory())
+        if scratch_models.SCRATCH_BODIES:
+            for material in scratch_models.MATERIALS:
+                (namespace / f"textures/item/mat_{material}.png").write_bytes(
+                    scratch_models.material_png(material))
+        print(f"Caroserii proprii: {len(scratch_models.SCRATCH_BODIES)}")
 
         emit_vehicle_icons(namespace)
         emit_vehicle_previews(namespace)
