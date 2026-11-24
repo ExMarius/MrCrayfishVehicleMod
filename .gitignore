@@ -30,3 +30,6 @@ __pycache__/
 
 # Scratch reference images pulled down for visual research, never a build input
 image-search/
+
+# arhive pregatite pentru repo nou (nu se urca in git)
+export/
