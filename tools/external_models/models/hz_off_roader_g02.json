@@ -1,0 +1,154 @@
+{
+  "textures": {
+    "body": "vehicle:item/hz_kart_body",
+    "frame": "vehicle:item/hz_kart_frame",
+    "carbon": "vehicle:item/hz_kart_carbon",
+    "grille": "vehicle:item/hz_kart_grille",
+    "headlight": "vehicle:item/hz_kart_headlight",
+    "taillight": "vehicle:item/hz_kart_taillight",
+    "amber": "vehicle:item/hz_kart_amber",
+    "dash": "vehicle:item/hz_kart_dash",
+    "spring": "vehicle:item/hz_kart_spring",
+    "plate_ro": "vehicle:item/hz_plate_ro",
+    "chrome": "vehicle:item/hz_kart_chrome",
+    "seat": "vehicle:item/hz_kart_seat"
+  },
+  "elements": [
+    {
+      "from": [
+        7.6,
+        8.0,
+        7.6
+      ],
+      "to": [
+        8.4,
+        10.75,
+        8.4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            7.6,
+            8.4,
+            8.4
+          ]
+        },
+        "up": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            7.6,
+            8.4,
+            8.4
+          ]
+        },
+        "north": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            6.62,
+            8.4,
+            9.37
+          ]
+        },
+        "south": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            6.62,
+            8.4,
+            9.37
+          ]
+        },
+        "west": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            6.62,
+            8.4,
+            9.37
+          ]
+        },
+        "east": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            6.62,
+            8.4,
+            9.37
+          ]
+        }
+      }
+    },
+    {
+      "from": [
+        7.15,
+        10.6,
+        7.25
+      ],
+      "to": [
+        8.85,
+        11.6,
+        8.75
+      ],
+      "faces": {
+        "down": {
+          "texture": "#seat",
+          "uv": [
+            7.15,
+            7.25,
+            8.85,
+            8.75
+          ]
+        },
+        "up": {
+          "texture": "#seat",
+          "uv": [
+            7.15,
+            7.25,
+            8.85,
+            8.75
+          ]
+        },
+        "north": {
+          "texture": "#seat",
+          "uv": [
+            7.15,
+            7.5,
+            8.85,
+            8.5
+          ]
+        },
+        "south": {
+          "texture": "#seat",
+          "uv": [
+            7.15,
+            7.5,
+            8.85,
+            8.5
+          ]
+        },
+        "west": {
+          "texture": "#seat",
+          "uv": [
+            7.25,
+            7.5,
+            8.75,
+            8.5
+          ]
+        },
+        "east": {
+          "texture": "#seat",
+          "uv": [
+            7.25,
+            7.5,
+            8.75,
+            8.5
+          ]
+        }
+      }
+    }
+  ]
+}

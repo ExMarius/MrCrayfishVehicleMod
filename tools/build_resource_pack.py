@@ -1847,8 +1847,13 @@ def build(output: Path, pack_format: int = 97) -> tuple[Path, str]:
         imported = 0
         if (external / "models").is_dir():
             for path in sorted((external / "models").glob("*.json")):
-                write_json(namespace / f"models/item/{path.name}", 
+                write_json(namespace / f"models/item/{path.name}",
                            json.loads(path.read_text(encoding="utf-8")))
+                # every imported model also needs an item definition, otherwise
+                # setItemModel("vehicle:<stem>") resolves to nothing and the
+                # display renders air
+                write_json(namespace / f"items/{path.stem}.json",
+                           item_definition(f"vehicle:item/{path.stem}"))
                 imported += 1
         if (external / "textures").is_dir():
             for path in sorted((external / "textures").glob("*.png")):

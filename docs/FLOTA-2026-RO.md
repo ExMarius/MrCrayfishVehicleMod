@@ -183,3 +183,25 @@ python3 tools/build_resource_pack.py --output /tmp/pack.zip               # le b
   toate apar în raport, nu sunt aruncate în tăcere;
 * ștergerea unui model vechi se face din `tools/deleted_models.txt` (un stem pe
   linie) — sistemul (comenzi, fizică, garaj, mecanic, magazin) rămâne intact.
+
+## 8. Off-Roader Horizon importat 1:1 (r43)
+
+Sursa: `tools/horizon/horizon-off-roader-transfer.zip` (pachetul de transfer din
+HorizonMods, commit `cd950cb`). Conversia e în `tools/horizon_import.py`.
+
+* **caroseria păstrează toate cele 163 de cuboizi** ai modelului Horizon;
+* cele **17 panouri cu rotații pe care vanilla nu le poate exprima** (35°, −18°,
+  −35°, 32°, 4° …) devin display-uri separate: modelul fiecărui grup e
+  deplasat ca pivotul să cadă în centrul modelului (8,8,8), iar `Part`-ul din
+  spec îl rotește cu unghiul sursă. Zero rotunjiri la 22,5°;
+* scara 1.42, înălțimea de rulare 0.39, ecartamentul ±0.92125 și ampatamentul
+  ±1.286875 vin din `source/runtime-layout.json`;
+* texturile Horizon sunt copiate ca `hz_*` (15 fișiere), deci nimic nu e
+  redesenat.
+
+Vehicul nou: `/vehicle spawn horizon_off_roader` — **nu** îl înlocuiește pe
+`off_roader`, exact cum cere README-ul pachetului.
+
+Teste: `tools/test_horizon_import.py` (6) — numărul de cuboizi, grupurile,
+deplasarea pivotului, absența rotațiilor ilegale, texturile și sincronizarea cu
+`LandVehicleSpec`.

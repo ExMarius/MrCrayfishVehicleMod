@@ -964,6 +964,69 @@ public record LandVehicleSpec(
      * source (VehicleUtil.createModDependentEntityType("cfm", "bath", ...)), and this
      * port only reproduces the Vehicle Mod's own source code/assets, not other mods'. */
 
+
+    /* ======================================================================
+     * HorizonMods off-roader, imported 1:1 (tools/horizon_import.py).
+     *
+     * The body keeps all 163 cuboids of the source model. The 17 panels whose
+     * rotation vanilla cannot express (35 deg, -18 deg, -35 deg, 4 deg ...)
+     * are separate ItemDisplays: each group model is pre-shifted so its pivot
+     * sits on the model centre, and the Part rotates it by the source angle.
+     * Wheels/seats/body origin are taken from the transfer package's
+     * source/runtime-layout.json (scale 1.42, wheel pivots +-0.92125 x,
+     * +-1.286875 z, ride height 0.39, driver attach 0.426/0.569/-0.222).
+     * ====================================================================== */
+    public static final LandVehicleSpec HORIZON_OFF_ROADER = new LandVehicleSpec(
+            "horizon_off_roader", "Off-Roader Horizon", "hz_off_roader_body",
+            2.0F, 1.0F, 1.0F,
+            1.42F, -2.254F, 4.394F,
+            16.0F, 35.0F, 14.5F * MODEL_UNIT * 1.42F, -14.5F * MODEL_UNIT * 1.42F, 5.0F,
+            25_000.0F, 0.25F, 0.8F, 1.6F, "vehicle:entity.jet_ski.engine",
+            false, new Point(0.0F, 0.0F, 0.0F), null,
+            new Part("go_kart_steering_wheel",
+                    new Point(-0.4375F, 1.572701F, 0.299799F),
+                    1.05F, -45.0F, 0.0F, 0.0F),
+            itemPart("fuel_door_closed", -12.0F, 10.5F, -6.5F,
+                    0.5F, 0.0F, -90.0F, 0.0F, 1.42F, -2.254F, 4.394F),
+            itemPart("key_hole", 0.0F, 7.0F, 6.2F,
+                    0.5F, -67.5F, 0.0F, 0.0F, 1.42F, -2.254F, 4.394F),
+            List.of(
+                    new Part("hz_off_roader_g01", new Point(0.000000F, -0.363875F, 1.819375F), 1.42F, -18.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g02", new Point(0.000000F, 0.022187F, 0.142000F), 1.42F, -12.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g03", new Point(-0.088750F, 0.022187F, 0.252937F), 1.42F, -8.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g04", new Point(0.000000F, 0.181938F, 1.504312F), 1.42F, 35.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g05", new Point(0.000000F, 0.181938F, 1.069438F), 1.42F, -35.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g06", new Point(0.000000F, 0.181938F, -1.069438F), 1.42F, 35.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g07", new Point(0.000000F, 0.181938F, -1.504312F), 1.42F, -35.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g08", new Point(0.426000F, 0.402925F, 0.277788F), 1.42F, 32.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g09", new Point(0.328375F, -0.226312F, 0.639000F), 1.42F, -20.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g10", new Point(0.523625F, -0.226312F, 0.639000F), 1.42F, -20.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g11", new Point(0.000000F, 0.488125F, 0.656750F), 1.42F, -18.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g12", new Point(0.106500F, 0.505875F, 0.725975F), 1.42F, 0.0F, 0.0F, 4.0F),
+                    new Part("hz_off_roader_g13", new Point(-0.692250F, 0.505875F, 0.725975F), 1.42F, 0.0F, 0.0F, 4.0F),
+                    new Part("hz_off_roader_g14", new Point(0.949625F, 0.443750F, -1.775000F), 1.42F, 32.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g15", new Point(-0.949625F, 0.443750F, -1.775000F), 1.42F, 32.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g16", new Point(0.426000F, -0.113600F, -0.497000F), 1.42F, -8.0F, 0.0F, 0.0F),
+                    new Part("hz_off_roader_g17", new Point(-0.426000F, -0.113600F, -0.497000F), 1.42F, -8.0F, 0.0F, 0.0F)
+            ),
+            List.of(
+                    wheel(-1, true, 10.3873F, 0.0F, 14.5F,
+                            1.56F, 1.56F, 1.56F, 1.42F, -2.254F, 4.394F),
+                    wheel(1, true, 10.3873F, 0.0F, 14.5F,
+                            1.56F, 1.56F, 1.56F, 1.42F, -2.254F, 4.394F),
+                    wheel(-1, false, 10.3873F, 0.0F, -14.5F,
+                            1.56F, 1.56F, 1.56F, 1.42F, -2.254F, 4.394F),
+                    wheel(1, false, 10.3873F, 0.0F, -14.5F,
+                            1.56F, 1.56F, 1.56F, 1.42F, -2.254F, 4.394F)
+            ),
+            List.of(
+                    seat(true, -4.8F, 4.27F, -2.5F, 1.42F, -2.254F, 4.394F),
+                    seat(false, 4.8F, 4.27F, -2.5F, 1.42F, -2.254F, 4.394F)
+            ),
+            false, "tow_bar", new Point(0.0F, 0.0F, 0.0F), new Point(0.0F, 0.0F, 0.0F),
+            null, null, List.of(), false
+    );
+
     private static final Map<String, LandVehicleSpec> BY_ID = Map.ofEntries(
             Map.entry(GO_KART.id, GO_KART),
             Map.entry(LAWN_MOWER.id, LAWN_MOWER),
@@ -988,7 +1051,8 @@ public record LandVehicleSpec(
             Map.entry(COUCH.id, COUCH),
             Map.entry(BUMPER_CAR.id, BUMPER_CAR),
             Map.entry(SHOPPING_CART.id, SHOPPING_CART),
-            Map.entry(POLICE_CAR.id, POLICE_CAR)
+            Map.entry(POLICE_CAR.id, POLICE_CAR),
+            Map.entry(HORIZON_OFF_ROADER.id, HORIZON_OFF_ROADER)
     );
 
     public static LandVehicleSpec byId(String id) {

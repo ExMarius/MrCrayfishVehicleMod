@@ -1,0 +1,207 @@
+{
+  "body": {
+    "model": "hz_off_roader_body",
+    "elements": 163
+  },
+  "parts": [
+    {
+      "model": "hz_off_roader_g01",
+      "elements": 1,
+      "pivot": [
+        8.0,
+        3.9,
+        28.5
+      ],
+      "axis": "x",
+      "angle": -18.0
+    },
+    {
+      "model": "hz_off_roader_g02",
+      "elements": 2,
+      "pivot": [
+        8.0,
+        8.25,
+        9.6
+      ],
+      "axis": "x",
+      "angle": -12.0
+    },
+    {
+      "model": "hz_off_roader_g03",
+      "elements": 1,
+      "pivot": [
+        7.0,
+        8.25,
+        10.85
+      ],
+      "axis": "x",
+      "angle": -8.0
+    },
+    {
+      "model": "hz_off_roader_g04",
+      "elements": 4,
+      "pivot": [
+        8.0,
+        10.05,
+        24.95
+      ],
+      "axis": "x",
+      "angle": 35.0
+    },
+    {
+      "model": "hz_off_roader_g05",
+      "elements": 4,
+      "pivot": [
+        8.0,
+        10.05,
+        20.05
+      ],
+      "axis": "x",
+      "angle": -35.0
+    },
+    {
+      "model": "hz_off_roader_g06",
+      "elements": 4,
+      "pivot": [
+        8.0,
+        10.05,
+        -4.05
+      ],
+      "axis": "x",
+      "angle": 35.0
+    },
+    {
+      "model": "hz_off_roader_g07",
+      "elements": 4,
+      "pivot": [
+        8.0,
+        10.05,
+        -8.95
+      ],
+      "axis": "x",
+      "angle": -35.0
+    },
+    {
+      "model": "hz_off_roader_g08",
+      "elements": 1,
+      "pivot": [
+        12.8,
+        12.54,
+        11.13
+      ],
+      "axis": "x",
+      "angle": 32.0
+    },
+    {
+      "model": "hz_off_roader_g09",
+      "elements": 1,
+      "pivot": [
+        11.7,
+        5.45,
+        15.2
+      ],
+      "axis": "x",
+      "angle": -20.0
+    },
+    {
+      "model": "hz_off_roader_g10",
+      "elements": 1,
+      "pivot": [
+        13.9,
+        5.45,
+        15.2
+      ],
+      "axis": "x",
+      "angle": -20.0
+    },
+    {
+      "model": "hz_off_roader_g11",
+      "elements": 5,
+      "pivot": [
+        8.0,
+        13.5,
+        15.4
+      ],
+      "axis": "x",
+      "angle": -18.0
+    },
+    {
+      "model": "hz_off_roader_g12",
+      "elements": 1,
+      "pivot": [
+        9.2,
+        13.7,
+        16.18
+      ],
+      "axis": "z",
+      "angle": 4.0
+    },
+    {
+      "model": "hz_off_roader_g13",
+      "elements": 1,
+      "pivot": [
+        0.2,
+        13.7,
+        16.18
+      ],
+      "axis": "z",
+      "angle": 4.0
+    },
+    {
+      "model": "hz_off_roader_g14",
+      "elements": 1,
+      "pivot": [
+        18.7,
+        13.0,
+        -12.0
+      ],
+      "axis": "x",
+      "angle": 32.0
+    },
+    {
+      "model": "hz_off_roader_g15",
+      "elements": 1,
+      "pivot": [
+        -2.7,
+        13.0,
+        -12.0
+      ],
+      "axis": "x",
+      "angle": 32.0
+    },
+    {
+      "model": "hz_off_roader_g16",
+      "elements": 1,
+      "pivot": [
+        12.8,
+        6.72,
+        2.4
+      ],
+      "axis": "x",
+      "angle": -8.0
+    },
+    {
+      "model": "hz_off_roader_g17",
+      "elements": 1,
+      "pivot": [
+        3.2,
+        6.72,
+        2.4
+      ],
+      "axis": "x",
+      "angle": -8.0
+    }
+  ],
+  "wheels": {
+    "wheel_sports": {
+      "model": "hz_wheel_sports",
+      "elements": 15,
+      "dropped_group": "wheel_sports_part_01"
+    },
+    "wheel_standard": {
+      "model": "hz_wheel_standard",
+      "elements": 15,
+      "dropped_group": "wheel_standard_part_01"
+    }
+  }
+}

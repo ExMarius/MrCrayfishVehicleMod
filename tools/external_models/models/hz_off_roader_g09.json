@@ -1,0 +1,86 @@
+{
+  "textures": {
+    "body": "vehicle:item/hz_kart_body",
+    "frame": "vehicle:item/hz_kart_frame",
+    "carbon": "vehicle:item/hz_kart_carbon",
+    "grille": "vehicle:item/hz_kart_grille",
+    "headlight": "vehicle:item/hz_kart_headlight",
+    "taillight": "vehicle:item/hz_kart_taillight",
+    "amber": "vehicle:item/hz_kart_amber",
+    "dash": "vehicle:item/hz_kart_dash",
+    "spring": "vehicle:item/hz_kart_spring",
+    "plate_ro": "vehicle:item/hz_plate_ro",
+    "chrome": "vehicle:item/hz_kart_chrome",
+    "seat": "vehicle:item/hz_kart_seat"
+  },
+  "elements": [
+    {
+      "from": [
+        7.4,
+        8.0,
+        7.6
+      ],
+      "to": [
+        8.6,
+        10.45,
+        8.4
+      ],
+      "faces": {
+        "down": {
+          "texture": "#chrome",
+          "uv": [
+            7.4,
+            7.6,
+            8.6,
+            8.4
+          ]
+        },
+        "up": {
+          "texture": "#chrome",
+          "uv": [
+            7.4,
+            7.6,
+            8.6,
+            8.4
+          ]
+        },
+        "north": {
+          "texture": "#chrome",
+          "uv": [
+            7.4,
+            6.78,
+            8.6,
+            9.23
+          ]
+        },
+        "south": {
+          "texture": "#chrome",
+          "uv": [
+            7.4,
+            6.78,
+            8.6,
+            9.23
+          ]
+        },
+        "west": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            6.78,
+            8.4,
+            9.23
+          ]
+        },
+        "east": {
+          "texture": "#chrome",
+          "uv": [
+            7.6,
+            6.78,
+            8.4,
+            9.23
+          ]
+        }
+      }
+    }
+  ]
+}

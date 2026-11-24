@@ -1,10 +1,10 @@
-# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip.
+# Direct HTTPS URL to MrCrayfishVehiclePlugin-resource-pack-26.3-r43.zip.
 # Leave blank while developing. Players need this pack to see vehicle models and hear vehicle sounds.
 resource-pack:
-  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip"
+  url: "https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r43.zip"
   # Ciclul AH: pack-ul s-a schimbat (con de trafic + placa de boost) => hash nou;
   # server.properties il primeste automat la fiecare deploy.
-  sha1: "b65e5e4ff892a31c29ff37e31471f6ad87955b8e"
+  sha1: "f659d230bf19a2ca659a6bb1b66354b642268fda"
   required: true
   prompt: "Acest resource pack este necesar pentru modelele și sunetele vehiculelor."
   # Retrimitere automata dupa join (era cauza ecranului Mojang dublu + pack aruncat

@@ -129,7 +129,7 @@ jobs:
 
       - name: Verify resource pack
         run: |
-          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip"
+          PACK="paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r43.zip"
           unzip -t "$PACK"
           PACK_SHA1=$(sha1sum "$PACK" | cut -d' ' -f1)
           CONFIG_SHA1=$(sed -n 's/^[[:space:]]*sha1: *"\([0-9a-f]*\)".*/\1/p' paper-plugin/src/main/resources/config.yml)
@@ -369,7 +369,7 @@ jobs:
           if-no-files-found: error
           path: |
             paper-plugin/build/libs/MrCrayfishVehiclePlugin-*.jar
-            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip
+            paper-plugin/build/MrCrayfishVehiclePlugin-resource-pack-26.3-r43.zip
 
       - name: Public pluginul si pack-ul in release
         if: success()
@@ -562,8 +562,8 @@ jobs:
         run: |
           API=https://client.falixnodes.net/api/v2/servers/3500167
           AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
-          URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip"
-          SHA1="b65e5e4ff892a31c29ff37e31471f6ad87955b8e"
+          URL="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r43.zip"
+          SHA1="f659d230bf19a2ca659a6bb1b66354b642268fda"
           exec > >(tee /tmp/diag.log) 2>&1
 
           echo "== 1. properties inainte"
@@ -641,8 +641,8 @@ jobs:
           API=https://client.falixnodes.net/api/v2/servers/3500167
           AUTH=(-H "Authorization: Bearer $FALIX_TOKEN" -H "Content-Type: application/json" -H "Accept: application/json")
           JAR="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-26.3.jar"
-          PACK="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r42.zip"
-          SHA1="b65e5e4ff892a31c29ff37e31471f6ad87955b8e"
+          PACK="https://github.com/ExMarius/MrCrayfishVehicleMod/releases/download/paper-plugin/MrCrayfishVehiclePlugin-resource-pack-26.3-r43.zip"
+          SHA1="f659d230bf19a2ca659a6bb1b66354b642268fda"
           exec > >(tee /tmp/deploy.log) 2>&1
           echo "== properties:"
           for B in \
